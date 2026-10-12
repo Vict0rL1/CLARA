@@ -849,6 +849,75 @@ html {
   background: var(--balance-gradient);
 }
 
+/* Detalle del movimiento al editar: importe grande con moneda, fecha, categoría, cuenta, origen y recurrencia. */
+.tx-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.tx-summary__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tx-summary__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink-2);
+}
+
+.tx-summary__icon--income,
+.tx-summary__icon--refund {
+  color: var(--good-text);
+}
+
+.tx-summary__icon--expense {
+  color: var(--critical-text);
+}
+
+.tx-summary__main {
+  min-width: 0;
+}
+
+.tx-summary__amount {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.tx-summary__amount--income,
+.tx-summary__amount--refund {
+  color: var(--good-text);
+}
+
+.tx-summary__currency {
+  font-size: var(--font-caption);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+}
+
+.tx-summary__meta {
+  margin: 0;
+  font-size: var(--font-body-sm);
+  color: var(--ink-2);
+}
+
 /* Línea de composición de la cifra: saldo en cuentas − reservado (y base del periodo si difiere). */
 .hero__ledger {
   display: flex;

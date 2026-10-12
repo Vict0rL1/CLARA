@@ -14,9 +14,10 @@ import { Toggle } from '../components/base'
 import { frequencyLabel } from '../labels'
 import { markOccurrence, saveTransaction, type OpContext } from '../../domain/operations'
 import { periodsProposedFor, setTransactionPeriods } from '../../domain/periodBudgets'
-import { inferRefundSplit, refundableByCategory, suggestSplitFromHistory } from '../../domain/splits'
+import { inferRefundSplit, refundableByCategory, suggestSplitFromHistory, txCategoryIds } from '../../domain/splits'
 import { openItemsUntil } from '../../domain/planItems'
 import { matchCategoryRule } from '../../domain/rules'
+import { similarTransactions } from '../../domain/duplicates'
 import { readMovementLink, suggestCategoryForMerchant } from '../../domain/shortcutLink'
 import { lastUsedAccount, recentCategories } from '../../domain/quickEntry'
 import { resolveSplitTemplate } from '../../domain/templates'
@@ -40,6 +41,7 @@ import { SplitEditor } from '../splitEditor'
 import { draftsFromLines, newSplitDraft, parseDrafts, type SplitDraft } from '../splitDrafts'
 import { useFormat } from '../format'
 import { accountName, categoryLabel, fieldError, issueMessage, otherIssues, planItemName, transactionTitle, withCurrent } from '../labels'
+import { sourceGroupOf } from '../../domain/txFilters'
 import { href, navigate, withQuery, type Route, navigateIfStillAt, useNavigateIfStillHere } from '../router'
 
 type FormKind = Exclude<TxKind, 'adjustment'>
@@ -220,6 +222,8 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
   // Vínculo con un pago o ingreso previsto (solo movimientos nuevos): evita contarlo dos veces.
   const [linkKey, setLinkKey] = useState('')
   const [expectRemainder, setExpectRemainder] = useState(false)
+  // Sugerencia de vínculo descartada por la persona (clave de la ocurrencia): no se vuelve a ofrecer.
+  const [dismissedLink, setDismissedLink] = useState('')
   // Compra dividida (gastos) o reparto de la devolución de una compra dividida.
   const [splitDrafts, setSplitDrafts] = useState<SplitDraft[] | null>(() => {
     const lines = existing?.splits ?? (duplicateOf?.kind === 'expense' ? duplicateOf.splits : undefined)
@@ -332,6 +336,22 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
   const periodIds = openPeriods.filter((b) => periodChecked(b.id)).map((b) => b.id)
 
   const parsedAmount = parseMoneyText(amountText, fmt)
+  // Posible duplicado antes de guardar: misma regla que la bandeja; solo avisa, nunca bloquea.
+  const similar = useMemo(() => {
+    if (existing || status !== 'realized' || !parsedAmount.ok || kind === 'transfer') return []
+    return similarTransactions(data, { id, kind, accountId, amountMinor: parsedAmount.minor, date, note }, linked?.sourceId)
+  }, [existing, status, parsedAmount, kind, data, id, accountId, date, note, linked])
+  // Si el importe (o la categoría y la fecha) coincide con una ocurrencia abierta del calendario, se ofrece vincularla.
+  const linkSuggestion = useMemo(() => {
+    if (existing || linkKey || status !== 'realized' || !parsedAmount.ok) return undefined
+    return linkCandidates.find((i) => i.key !== dismissedLink && (i.amountMinor === parsedAmount.minor || (!!i.categoryId && i.categoryId === categoryId && i.date === date)))
+  }, [existing, linkKey, status, parsedAmount, linkCandidates, dismissedLink, categoryId, date])
+  const applyLink = (key: string) => {
+    setLinkKey(key)
+    setExpectRemainder(false)
+    const item = linkCandidates.find((i) => i.key === key)
+    if (item && !amountText.trim()) setAmountText(fmt.moneyInput(item.amountMinor))
+  }
   const refundOriginal = kind === 'refund' && refundOfId ? data.transactions.find((x) => x.id === refundOfId) : undefined
   const refundSplitMode = !!refundOriginal?.splits?.length
   const refundPending = useMemo(() => (refundOriginal && refundSplitMode ? refundableByCategory(data, refundOriginal, id) : undefined), [data, refundOriginal, refundSplitMode, id])
@@ -498,6 +518,52 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
   return (
     <div className="stack">
       <PageHeader title={existing ? t('movementForm.editTitle') : t('movementForm.newTitle')} back={{ href: href(returnTo), label: t('common.back') }} />
+
+      {/* Detalle legible del movimiento guardado: importe con moneda, fecha, categoría, cuenta, origen y recurrencia. */}
+      {existing && (
+        <section className="tx-summary" aria-label={t('movementForm.summaryAria')} data-testid="movement-summary">
+          <div className="tx-summary__head">
+            <span className={`tx-summary__icon tx-summary__icon--${existing.kind}`} aria-hidden="true">
+              <Icon name={existing.kind === 'income' ? 'arrowDown' : existing.kind === 'expense' ? 'arrowUp' : existing.kind === 'transfer' ? 'transfer' : existing.kind === 'refund' ? 'refund' : 'sliders'} size={20} />
+            </span>
+            <div className="tx-summary__main">
+              <p className={`tx-summary__amount tx-summary__amount--${existing.kind}`}>
+                <span className="sr-only">{t(`txKind.${existing.kind}` as MessageKey)}: </span>
+                {existing.kind === 'income' || existing.kind === 'refund' ? '+' : existing.kind === 'expense' ? '−' : ''}
+                {fmt.money(existing.amountMinor)} <span className="tx-summary__currency">{existing.currency}</span>
+              </p>
+              <p className="tx-summary__meta">
+                {fmt.date(existing.date, { weekday: true })}
+                {' · '}
+                {existing.kind === 'transfer'
+                  ? `${accountName(data.accounts, existing.accountId, t)} → ${accountName(data.accounts, existing.toAccountId, t)}`
+                  : existing.kind === 'adjustment'
+                    ? accountName(data.accounts, existing.accountId, t)
+                    : `${existing.splits?.length ? txCategoryIds(existing).map((c) => categoryLabel(t, c)).join(', ') : categoryLabel(t, existing.categoryId)} · ${accountName(data.accounts, existing.accountId, t)}`}
+              </p>
+            </div>
+          </div>
+          <p className="item__badges">
+            <Badge icon="edit">{t(`source.${sourceGroupOf(existing)}` as MessageKey)}</Badge>
+            {existing.status === 'planned' && (
+              <Badge tone="info" icon="clock">
+                {t('status.planned')}
+              </Badge>
+            )}
+            {schedule && (
+              <Badge icon="calendar">
+                {schedule.name} · {frequencyLabel(t, schedule.frequency)}
+              </Badge>
+            )}
+            {existing.merchant && <Badge icon="tag">{existing.merchant}</Badge>}
+          </p>
+          {schedule && (
+            <p className="note">
+              {t('movementForm.scopeThisOnly', { name: schedule.name })} <a href={href(`/plan/programado/editar/${schedule.id}`)}>{t('movementForm.editSchedule')}</a>
+            </p>
+          )}
+        </section>
+      )}
 
       {link?.fromShortcut && (
         <div data-testid="shortcut-banner">
@@ -825,6 +891,27 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
           </>
         )}
 
+        {linkSuggestion && (
+          <div data-testid="link-suggestion">
+            <Alert
+              tone="info"
+              icon="calendar"
+              title={t(linkSuggestion.direction === 'income' ? 'movementForm.linkSuggestIncome' : 'movementForm.linkSuggestExpense', { name: planItemName(linkSuggestion, t), date: fmt.date(linkSuggestion.date, { compact: true, today }) })}
+              actions={
+                <>
+                  <button type="button" className="btn btn--primary btn--small" onClick={() => applyLink(linkSuggestion.key)}>
+                    {t('movementForm.linkSuggestYes')}
+                  </button>
+                  <button type="button" className="btn btn--ghost btn--small" onClick={() => setDismissedLink(linkSuggestion.key)}>
+                    {t('movementForm.linkSuggestNo')}
+                  </button>
+                </>
+              }
+            >
+              {t('movementForm.linkSuggestText', { amount: fmt.money(linkSuggestion.amountMinor) })}
+            </Alert>
+          </div>
+        )}
         {linkCandidates.length > 0 && status === 'realized' && (
           <SelectField
             label={t(kind === 'income' ? 'movementForm.linkIncome' : 'movementForm.linkExpense')}
@@ -972,6 +1059,21 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
           </Alert>
         )}
 
+        {similar.length > 0 && (
+          <div data-testid="duplicate-warning">
+            <Alert tone="warning" icon="alert" title={tn('movementForm.dupTitle', similar.length)} role="status">
+              <p>{t('movementForm.dupText')}</p>
+              <ul className="bullets">
+                {similar.slice(0, 2).map((x) => (
+                  <li key={x.id}>
+                    {transactionTitle(x, data.accounts, t)} · {fmt.date(x.date, { compact: true, today })} · {fmt.money(x.amountMinor)}{' '}
+                    <a href={href(withQuery(`/movimientos/editar/${x.id}`, { returnTo }))}>{t('movementForm.dupView')}</a>
+                  </li>
+                ))}
+              </ul>
+            </Alert>
+          </div>
+        )}
         {unknownIssues.length > 0 && (
           <Alert tone="critical" title={t('common.fixErrors')} role="alert">
             <ul>

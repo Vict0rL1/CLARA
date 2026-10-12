@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { go, startDemo } from './helpers'
+import { available, go, startDemo } from './helpers'
 
 /**
  * Ronda «Lukas como referencia» (2026-10-12): Inicio responde de un vistazo a «¿cuánto tengo?»,
@@ -53,4 +53,99 @@ test('Metas: arco de progreso accesible en Inicio y en Plan › Metas, con el mi
   const arcs = page.locator('.goal__summary .arc')
   await expect(arcs.first()).toBeVisible()
   await expect(arcs.first()).toHaveAttribute('aria-valuetext', valueText!)
+})
+
+test('Registro: aviso de posible duplicado antes de guardar; guardar sigue siendo posible', async ({ page }) => {
+  await startDemo(page)
+  await go(page, '/movimientos/nuevo')
+  await page.getByLabel('Importe', { exact: true }).fill('123.45')
+  await expect(page.getByTestId('duplicate-warning')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect(page.getByText('Movimiento guardado').first()).toBeVisible()
+  // El segundo igual (tipo, cuenta, importe, hoy) avisa con el existente a la vista; no bloquea.
+  await go(page, '/movimientos/nuevo')
+  await page.getByLabel('Importe', { exact: true }).fill('123.45')
+  const warn = page.getByTestId('duplicate-warning')
+  await expect(warn).toContainText('Posible duplicado: ya hay un movimiento igual')
+  await expect(warn).toContainText('$123.45')
+  await expect(warn.getByRole('link', { name: 'Ver el existente' })).toBeVisible()
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect(page.getByText('Movimiento guardado').first()).toBeVisible()
+  await go(page, '/movimientos')
+  await expect(page.locator('.item', { hasText: '$123.45' })).toHaveCount(2)
+})
+
+test('Registro: un importe igual a un pago programado abierto ofrece vincularlo; al guardar, el calendario lo da por pagado y el disponible no cambia', async ({ page }) => {
+  await startDemo(page)
+  await expect(page.getByTestId('available')).toHaveText('$136.78')
+  await go(page, '/movimientos/nuevo')
+  await page.getByLabel('Importe', { exact: true }).fill('650')
+  const suggestion = page.getByTestId('link-suggestion')
+  await expect(suggestion).toContainText('¿Es el pago programado «Renta de habitación»')
+  await expect(suggestion).toContainText('$650.00')
+  await suggestion.getByRole('button', { name: 'Sí, vincularlo' }).click()
+  await expect(page.getByTestId('link-suggestion')).toHaveCount(0)
+  await expect(page.getByLabel('Vincular con un pago previsto')).toHaveValue(/^schedule:/)
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect(page.getByText('Movimiento guardado').first()).toBeVisible()
+  // Pagar un pago ya reservado: baja el saldo y baja lo reservado; el disponible queda igual.
+  await expect(await available(page)).toHaveText('$136.78')
+  await page.getByTestId('show-full-home').click()
+  await expect(page.locator('section[aria-labelledby="upcoming-title"]')).not.toContainText('Renta de habitación')
+})
+
+test('Registro: «No, es otro» descarta la sugerencia y el movimiento se guarda sin vínculo', async ({ page }) => {
+  await startDemo(page)
+  await go(page, '/movimientos/nuevo')
+  await page.getByLabel('Importe', { exact: true }).fill('650')
+  await page.getByTestId('link-suggestion').getByRole('button', { name: 'No, es otro' }).click()
+  await expect(page.getByTestId('link-suggestion')).toHaveCount(0)
+  await expect(page.getByLabel('Vincular con un pago previsto')).toHaveValue('')
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect(page.getByText('Movimiento guardado').first()).toBeVisible()
+  // Sin vínculo, la renta sigue pendiente y el disponible baja 650.
+  await expect(await available(page)).toHaveText('-$513.22')
+})
+
+test('Detalle: al abrir un movimiento se ve importe con moneda, fecha, categoría, cuenta, origen y, si viene del calendario, el alcance de la edición', async ({ page }) => {
+  await startDemo(page)
+  await go(page, '/movimientos')
+  await page.locator('.item--link', { hasText: 'Renta de habitación' }).first().click()
+  const summary = page.getByTestId('movement-summary')
+  await expect(summary).toContainText('−$650.00')
+  await expect(summary).toContainText('CAD')
+  await expect(summary).toContainText('Programado')
+  await expect(summary).toContainText('Renta de habitación · Cada mes')
+  await expect(summary).toContainText('no cambia el programado «Renta de habitación» ni sus próximas ocurrencias')
+  await expect(summary.getByRole('link', { name: 'Editar el programado' })).toHaveAttribute('href', /plan\/programado\/editar\//)
+  // Un movimiento manual: origen «Manual» y sin nota de alcance.
+  await go(page, '/movimientos')
+  await page.locator('.item--link', { hasText: 'Ahorro' }).first().click()
+  await expect(page.getByTestId('movement-summary')).toContainText('Manual')
+  await expect(page.getByTestId('movement-summary')).not.toContainText('próximas ocurrencias')
+})
+
+test('Historial: al volver de un detalle se conservan los filtros y la posición de la lista', async ({ page }) => {
+  await startDemo(page)
+  await go(page, '/movimientos')
+  await page.getByTestId('open-filters').click()
+  await page.getByTestId('filters-sheet').getByRole('button', { name: 'Gasto', exact: true }).click()
+  await page.getByRole('button', { name: 'Ver resultados' }).click()
+  await expect(page.getByTestId('active-filters')).toContainText('Gasto')
+  const rows = page.locator('.item--link')
+  const count = await rows.count()
+  expect(count).toBeGreaterThan(4)
+  const last = rows.nth(count - 1)
+  await last.scrollIntoViewIfNeeded()
+  const before = await page.evaluate(() => window.scrollY)
+  expect(before).toBeGreaterThan(100)
+  await last.click()
+  await expect(page.getByTestId('movement-summary')).toBeVisible()
+  await page.getByRole('link', { name: 'Volver' }).click()
+  await expect(page.getByTestId('active-filters')).toContainText('Gasto')
+  await expect.poll(async () => page.evaluate(() => window.scrollY), { timeout: 3000 }).toBeGreaterThan(before - 80)
+  // Un enlace con sus propios filtros manda sobre lo recordado.
+  await go(page, '/movimientos?categoria=housing')
+  await expect(page.getByTestId('active-filters')).toContainText('Vivienda')
+  await expect(page.getByTestId('active-filters')).not.toContainText('Gasto')
 })
