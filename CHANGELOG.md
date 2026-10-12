@@ -8,6 +8,14 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
 
 ### Novedades
 
+- **Inicio** (ronda «Lukas como referencia», `docs/BENCHMARK-LUKAS.md`): bajo la cifra principal, «En cuentas», «Reservado»
+  y, si difiere, «Base del periodo»; en la vista esencial, una franja con los dos próximos pagos o ingresos; las metas
+  muestran un arco de progreso en Inicio y en Plan › Metas.
+- **Registro**: aviso de posible duplicado antes de guardar (con el existente a la vista; no bloquea) y, si el importe
+  coincide con un pago programado abierto, «¿Es el pago programado «X»?» con «Sí, vincularlo» / «No, es otro».
+- **Detalle del movimiento**: al editar, un resumen con importe y moneda, fecha, categoría, cuenta, origen, recurrencia y
+  el alcance de la edición cuando viene del calendario (solo este movimiento; enlace al programado).
+- **Historial**: al volver de un detalle se conservan los filtros, la búsqueda, las filas mostradas y la posición.
 - **Copia de seguridad por la hoja Compartir**: en el iPhone (y donde el navegador lo permita),
   «Exportar copia» abre Compartir para **Guardar en Archivos**; cancelar no es un error.
 - **Ajustes › Instalar Clara**: explica solo lo que ese navegador permite (botón de instalar, los pasos

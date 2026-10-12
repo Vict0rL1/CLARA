@@ -104,3 +104,22 @@ pasan en los tres tamaños antes y después; ninguna cifra cambia.
 | Categorías (configuración) | `v3-before/celular-dark-setup-categorias.png` | `v3-after/celular-dark-setup-categorias.png` | Botones a 12 px; fichas sin cambios. |
 
 Las mismas pantallas en tema claro: `celular-light-*.png` en las dos carpetas.
+
+## Ronda «Lukas como referencia» (12 de octubre de 2026, antes / después)
+
+Capturas de `npm run shots -- --label=v4-before` sobre `15756ef` (final de la auditoría del 12-oct) y
+`--label=v4-after` sobre la rama `feat/pulido-lukas-benchmark`, con los mismos datos de demostración, fecha
+(28-sep-2026), idioma, tema y tamaños. En el repositorio quedan las de Pixel 7 en ambos temas de las
+pantallas que cambiaron (`docs/screenshots/v4-before/` y `v4-after/`). Las guardas pasan antes y después; las
+cifras no cambian (`tests/e2e/lukas-round.spec.ts` las comprueba con la demo).
+
+| Pantalla | Antes (Pixel 7, oscuro) | Después | Qué cambió |
+|---|---|---|---|
+| Inicio (demo, esencial) | `v4-before/celular-dark-inicio-demo.png` | `v4-after/celular-dark-inicio-demo.png` | Línea «En cuentas $901.57 · Reservado −$764.79» bajo la cifra; franja «Próximos pagos e ingresos» con dos ítems y «2 más en el calendario». |
+| Inicio (primer uso) | `v4-before/celular-dark-inicio-primer-uso.png` | `v4-after/celular-dark-inicio-primer-uso.png` | Misma línea de composición; sin pagos programados no hay franja. |
+| Plan › Metas | `v4-before/celular-dark-plan-metas.png` | `v4-after/celular-dark-plan-metas.png` | Arco de progreso con el porcentaje en el centro en lugar de la barra; mismas cifras. |
+| Formulario de movimiento (edición, demo) | — (sin captura previa de la edición) | `v4-after/celular-dark-movimiento-detalle.png` | Resumen del movimiento (importe con moneda, fecha, categoría, cuenta, origen, recurrencia y alcance). |
+| Formulario con posible duplicado | — | `v4-after/celular-dark-movimiento-duplicado.png` | Aviso ámbar con el existente y «Ver el existente»; Guardar sigue activo. |
+| Formulario con sugerencia de vínculo | — | `v4-after/celular-dark-movimiento-vinculo.png` | «¿Es el pago programado «Renta de habitación» del 1 oct?» con «Sí, vincularlo» / «No, es otro». |
+
+Las mismas pantallas en tema claro: `celular-light-*.png` en las dos carpetas.
