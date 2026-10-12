@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { available, go, movementCount, startDemo, openDetails, pickCategory } from './helpers'
+import { available, go, movementCount, openDetails, pickCategory, startDemo, storedData } from './helpers'
 
 test('favoritos: desde Inicio abren el formulario con hoy, no registran nada solos y guardar dos veces no duplica', async ({ page }) => {
   await startDemo(page)
@@ -83,6 +83,9 @@ test('favoritos: crear desde el formulario, ordenar, cuenta eliminada pide elegi
   await expect(page.locator('.item')).toHaveCount(3)
   await page.getByRole('button', { name: 'Deshacer' }).click()
   await expect(page.locator('.item')).toHaveCount(4)
+  // Deshacer guarda de forma asíncrona: recargar antes de que termine perdía el favorito restaurado
+  // (CI a 320 px: 3 de 4 tras recargar). Se espera a que lo guardado tenga los cuatro.
+  await expect.poll(async () => (JSON.parse((await storedData(page)) ?? '{}') as { favorites?: unknown[] }).favorites?.length).toBe(4)
   await page.reload()
   await go(page, '/movimientos/favoritos')
   await expect(page.locator('.item__title')).toHaveText(['Café', 'Pasaje de autobús', 'Regalo', 'Lavandería'])
