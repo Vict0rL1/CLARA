@@ -292,6 +292,30 @@ Lo mismo se ejecuta en GitHub en cada PR (la insignia «CI» de arriba muestra e
 | `npm run lint` | Revisión de estilo y errores comunes (oxlint) |
 | `node scripts/generate-icons.mjs` | Regenera los iconos PNG de la PWA desde `public/icon.svg` |
 
+### Mapa del código con graphify (opcional)
+
+[graphify](https://github.com/Graphify-Labs/graphify) convierte el código en un grafo de
+conocimiento que el asistente de programación (Claude Code) consulta en vez de buscar archivo
+por archivo. El código se analiza en local con tree-sitter: no hace falta clave de API y nada
+sale del equipo. La habilidad `/graphify` ya está en el repositorio
+(`.claude/skills/graphify/`); solo falta instalar la herramienta de línea de comandos:
+
+```bash
+uv tool install graphifyy            # o: pipx install graphifyy (el paquete es «graphifyy», con doble y)
+graphify extract . --code-only       # grafo del código sin IA (~10 s); o `/graphify .` desde Claude Code
+graphify cluster-only . --no-label   # genera GRAPH_REPORT.md y graph.html
+graphify query "qué conecta el disponible con las metas"
+graphify explain "spendableBaseMinor"
+graphify path "AppStore" "DataRepository"
+graphify update .                    # tras cambiar código, sin coste de IA
+```
+
+El resultado (`graphify-out/`, unos 7 MB que se regeneran en segundos) no se versiona. Para que
+el asistente consulte siempre el grafo (una sección en `CLAUDE.md` y ganchos `PreToolUse` en
+`.claude/settings.json`), ejecuta `graphify claude install --project` y revisa esos archivos antes
+de confirmarlos: los ganchos llaman a `graphify` en cada herramienta y dan error donde no esté
+instalado.
+
 ## 7. Estructura del proyecto
 
 ```
