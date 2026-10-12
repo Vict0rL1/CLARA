@@ -3,6 +3,7 @@
  * El análisis es local salvo que haya un proveedor remoto configurado por variables de entorno
  * (nunca se simula). Ninguna IA calcula ni modifica saldos.
  */
+import { activeAccounts, isBudgetAccount } from '../../domain/balances'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createAiProvider, LocalProvider } from '../../domain/aiProvider'
 import { gate } from '../../domain/featureGate'
@@ -28,7 +29,7 @@ import { CategoryPicker } from '../components/CategoryPicker'
 import { Icon } from '../components/Icon'
 import { useToast } from '../components/toastContext'
 import { useFormat } from '../format'
-import { issueMessage } from '../labels'
+import { accountOptions, issueMessage } from '../labels'
 import { moneyErrorMessage } from '../moneyText'
 import { href, useNavigateIfStillHere, withQuery, type Route } from '../router'
 
@@ -79,7 +80,7 @@ export function Assistant({ route }: { route: Route }) {
   const speech = useMemo(() => speechApi(), [])
   const categories = useMemo(() => resolveCategories(data).filter((c) => !c.archived), [data])
   const learned = useMemo(() => learnCategories(data), [data])
-  const [accountId, setAccountId] = useState(() => data.accounts.find((a) => a.id === lastUsedAccount(data, 'expense'))?.id ?? data.accounts.find((a) => a.includeInBudget)?.id ?? data.accounts[0]?.id ?? '')
+  const [accountId, setAccountId] = useState(() => activeAccounts(data.accounts).find((a) => a.id === lastUsedAccount(data, 'expense'))?.id ?? activeAccounts(data.accounts).find(isBudgetAccount)?.id ?? activeAccounts(data.accounts)[0]?.id ?? data.accounts[0]?.id ?? '')
 
   useEffect(() => () => recognizer.current?.stop(), [])
   const [photoBusy, setPhotoBusy] = useState(false)
@@ -368,7 +369,7 @@ export function Assistant({ route }: { route: Route }) {
             {t('assistant.preview', { count: lines.length })}
           </h2>
           <p className="note">{t('assistant.previewHint')}</p>
-          {data.accounts.length > 1 && <SelectField label={t('assistant.account')} value={accountId} onChange={(e) => setAccountId(e.target.value)} options={data.accounts.map((a) => ({ value: a.id, label: a.name }))} />}
+          {activeAccounts(data.accounts).length > 1 && <SelectField label={t('assistant.account')} value={accountId} onChange={(e) => setAccountId(e.target.value)} options={accountOptions(data.accounts, t)} />}
           <ul className="plain-list assistant__lines" data-testid="assistant-preview">
             {lines.map((l, i) => (
               <li key={l.id} className="assistant__line">

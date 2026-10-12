@@ -15,7 +15,7 @@ import { MoneyField, Segmented, SelectField, TextField } from './components/fiel
 import { Icon } from './components/Icon'
 import { useToast } from './components/toastContext'
 import { useFormat } from './format'
-import { fieldError, issueMessage, otherIssues } from './labels'
+import { accountOptions, fieldError, issueMessage, otherIssues } from './labels'
 import { moneyErrorMessage, parseMoneyText } from './moneyText'
 import { href, withQuery } from './router'
 import { CategoryPicker } from './components/CategoryPicker'
@@ -111,7 +111,7 @@ export function FavoriteDialog({
         label={t('fields.account')}
         value={accountId}
         onChange={(e) => setAccountId(e.target.value)}
-        options={[...(accountId ? [] : [choose]), ...data.accounts.map((a) => ({ value: a.id, label: a.name }))]}
+        options={[...(accountId ? [] : [choose]), ...accountOptions(data.accounts, t, accountId)]}
         error={fieldError(t, fmt, issues, 'accountId')}
       />
       <CategoryPicker label={t('fields.category')} kind={kind} data={data} value={categoryId} onChange={setCategoryId} keep={favorite?.categoryId} error={fieldError(t, fmt, issues, 'categoryId')} />

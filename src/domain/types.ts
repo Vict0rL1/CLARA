@@ -15,7 +15,7 @@ export type Timestamp = string
 /** Código ISO 4217, por ejemplo 'CAD'. */
 export type CurrencyCode = string
 
-export const SCHEMA_VERSION = 10 as const
+export const SCHEMA_VERSION = 11 as const
 
 /**
  * 'credit' = tarjeta de crédito: su saldo es una DEUDA y se guarda como número
@@ -63,6 +63,13 @@ export interface Account {
   anchor: BalanceAnchor
   /** Solo tarjetas de crédito. */
   card?: CardDetails
+  /**
+   * v11. Archivada: conserva su historial y su saldo, pero no se ofrece para registrar ni
+   * programar, y no cuenta para el presupuesto ni para el patrimonio. Se puede restaurar.
+   */
+  archived?: boolean
+  /** v11. Posición en las listas (menor primero). La migración la rellena con el orden existente. */
+  order?: number
   createdAt: Timestamp
   updatedAt: Timestamp
 }

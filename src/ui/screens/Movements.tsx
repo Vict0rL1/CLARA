@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useState, useEffect, useRef } from 'react'
-import { txAppliesToAccount } from '../../domain/balances'
+import { sortedAccounts, txAppliesToAccount } from '../../domain/balances'
 import { sumMinor } from '../../domain/money'
 import { txCategoryIds } from '../../domain/splits'
 import { transactionsToCsv } from '../../domain/csvExport'
@@ -25,7 +25,7 @@ import { categoryVisual, categoryVisuals, type CategoryVisual } from '../../doma
 import { Icon, type IconName } from '../components/Icon'
 import { MonthSummary } from '../components/MonthSummary'
 import { useFormat } from '../format'
-import { accountName, categoryLabel, transactionTitle } from '../labels'
+import { accountLabel, accountName, categoryLabel, transactionTitle } from '../labels'
 import { href, navigate, type Route } from '../router'
 import { moneyErrorMessage, parseMoneyText } from '../moneyText'
 
@@ -37,12 +37,16 @@ export function Movements({ route }: { route?: Route }) {
   const fmt = useFormat()
   const data = useData()
   const today = useToday()
-  const linkHasFilters = !!(route?.query.get('categoria') || route?.query.get('etiqueta') || route?.query.get('desde') || route?.query.get('hasta'))
+  const linkHasFilters = !!(route?.query.get('categoria') || route?.query.get('etiqueta') || route?.query.get('desde') || route?.query.get('hasta') || route?.query.get('cuenta'))
   const [saved] = useState(() => (linkHasFilters ? null : takeListView(data.budgetId)))
   const [query, setQuery] = useState(saved?.query ?? '')
   const [kind, setKind] = useState<'all' | TxKind>(saved?.kind ?? 'all')
   const [status, setStatus] = useState<'all' | TxStatus>(saved?.status ?? 'all')
-  const [accountId, setAccountId] = useState(saved?.accountId ?? 'all')
+  // `?cuenta=` (desde Ajustes › Cuentas): también para una cuenta archivada, cuyo historial sigue aquí.
+  const [accountId, setAccountId] = useState(() => {
+    const linked = route?.query.get('cuenta')
+    return linked && data.accounts.some((a) => a.id === linked) ? linked : (saved?.accountId ?? 'all')
+  })
   // D4: varias categorías y etiquetas («cualquiera»), rango de importe y origen del registro.
   const [categoryIds, setCategoryIds] = useState<string[]>(() => (route?.query.get('categoria') ? [route.query.get('categoria')!] : (saved?.categoryIds ?? [])))
   const [tagIds, setTagIds] = useState<string[]>(() => (route?.query.get('etiqueta') ? [route.query.get('etiqueta')!] : (saved?.tagIds ?? [])))
@@ -96,7 +100,7 @@ export function Movements({ route }: { route?: Route }) {
   const activeChips: { key: string; label: string; clear: () => void }[] = [
     ...(kind !== 'all' ? [{ key: 'kind', label: t(`txKind.${kind}` as MessageKey), clear: () => setKind('all') }] : []),
     ...(status !== 'all' ? [{ key: 'status', label: t(status === 'realized' ? 'status.realized' : 'status.planned'), clear: () => setStatus('all') }] : []),
-    ...(accountId !== 'all' ? [{ key: 'account', label: accountName(data.accounts, accountId, t), clear: () => setAccountId('all') }] : []),
+    ...(accountId !== 'all' ? [{ key: 'account', label: data.accounts.find((a) => a.id === accountId) ? accountLabel(data.accounts.find((a) => a.id === accountId)!, t) : accountName(data.accounts, accountId, t), clear: () => setAccountId('all') }] : []),
     ...(categoryIds.length > 0 ? [{ key: 'category', label: categoryIds.map((c) => categoryLabel(t, c)).join(', '), clear: () => setCategoryIds([]) }] : []),
     ...(tagIds.length > 0 ? [{ key: 'tag', label: tagIds.map((id) => data.tags.find((x) => x.id === id)?.name ?? id).join(', '), clear: () => setTagIds([]) }] : []),
     ...(amountRange ? [{ key: 'amount', label: t('filters.amount.chip', { range: amountRange }), clear: () => { setAmountMin(''); setAmountMax('') } }] : []),
@@ -334,7 +338,7 @@ export function Movements({ route }: { route?: Route }) {
                   { value: 'planned', label: t('status.planned') },
                 ]}
               />
-              {data.accounts.length > 1 && <ChipGroup legend={t('fields.account')} value={accountId} onChange={setAccountId} options={[{ value: 'all', label: t('filters.allAccounts') }, ...data.accounts.map((a) => ({ value: a.id, label: a.name }))]} />}
+              {data.accounts.length > 1 && <ChipGroup legend={t('fields.account')} value={accountId} onChange={setAccountId} options={[{ value: 'all', label: t('filters.allAccounts') }, ...sortedAccounts(data.accounts).map((a) => ({ value: a.id, label: accountLabel(a, t) }))]} />}
               <CategoryPicker label={t('fields.category')} kind={kind === 'income' ? 'income' : 'expense'} data={data} multiple value={categoryIds} onChange={setCategoryIds} placeholder={t('filters.allCategories')} includeArchived testId="filter-category" />
               {data.tags.length > 0 && (
                 <fieldset className="field">

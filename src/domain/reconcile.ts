@@ -11,7 +11,7 @@
  * conoce el saldo. En tarjetas el saldo es negativo (deuda); el crédito disponible
  * NO es dinero propio y nunca se compara.
  */
-import { txAppliesToAccount, txEffectOnAccount } from './balances'
+import { isBudgetAccount, txAppliesToAccount, txEffectOnAccount } from './balances'
 import { addDays, daysBetween } from './dates'
 import { sumMinor } from './money'
 import type { Account, AppData, LocalDate, Reconciliation, Transaction } from './types'
@@ -99,7 +99,7 @@ export interface VerificationSummary {
 }
 
 export function verificationSummary(data: AppData, today: LocalDate): VerificationSummary {
-  const budgetAccounts = data.accounts.filter((a) => a.includeInBudget)
+  const budgetAccounts = data.accounts.filter(isBudgetAccount)
   const verified = budgetAccounts.map((a) => ({ account: a, rec: lastVerified(data, a.id) }))
   const unverifiedAccounts = verified.filter((v) => !v.rec).map((v) => v.account)
   const dates = verified.flatMap((v) => (v.rec ? [v.rec.date] : []))

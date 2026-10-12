@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { activeAccounts, isBudgetAccount } from '../../domain/balances'
 import { categoriesForKind } from '../../domain/categories'
 import { addDays, isValidLocalDate } from '../../domain/dates'
 import { favoritePrefill, type FavoritePrefill } from '../../domain/favorites'
@@ -41,7 +42,7 @@ import { useDeleteTransaction } from '../useDeleteTransaction'
 import { SplitEditor } from '../splitEditor'
 import { draftsFromLines, newSplitDraft, parseDrafts, type SplitDraft } from '../splitDrafts'
 import { useFormat } from '../format'
-import { accountName, categoryLabel, fieldError, issueMessage, otherIssues, planItemName, transactionTitle, withCurrent } from '../labels'
+import { accountName, accountOptions as accountOptionsFor, categoryLabel, fieldError, issueMessage, otherIssues, planItemName, transactionTitle, withCurrent } from '../labels'
 import { sourceGroupOf } from '../../domain/txFilters'
 import { href, navigate, withQuery, type Route, navigateIfStillAt, useNavigateIfStillHere } from '../router'
 
@@ -152,10 +153,12 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
   // Para transferencias, sin historial, se propone una cuenta que no sea tarjeta (el pago sale del banco).
   const accountFor = (k: TxKind) => {
     const last = lastUsedAccount(data, k)
+    const usable = activeAccounts(data.accounts)
     return (
-      data.accounts.find((a) => a.id === last) ??
-      (k === 'transfer' ? data.accounts.find((a) => a.includeInBudget && a.kind !== 'credit') : undefined) ??
-      data.accounts.find((a) => a.includeInBudget) ??
+      usable.find((a) => a.id === last) ??
+      (k === 'transfer' ? usable.find((a) => isBudgetAccount(a) && a.kind !== 'credit') : undefined) ??
+      usable.find(isBudgetAccount) ??
+      usable[0] ??
       data.accounts[0]!
     )
   }
@@ -517,7 +520,9 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
   })()
 
   const choose = { value: '', label: t('favorites.choose') }
-  const accountOptions = data.accounts.map((a) => ({ value: a.id, label: a.name }))
+  // Cuentas activas; la de un registro existente se conserva aunque esté archivada (marcada).
+  const accountOptions = accountOptionsFor(data.accounts, t, existing?.accountId)
+  const toAccountOptions = accountOptionsFor(data.accounts, t, existing?.toAccountId)
   const schedule = existing?.scheduleId ? data.schedules.find((s) => s.id === existing.scheduleId) : undefined
   const unknownIssues = otherIssues(issues, FIELD_PATHS)
 
@@ -695,7 +700,7 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
               label={t('fields.toAccount')}
               value={toAccountId}
               onChange={(e) => setToAccountId(e.target.value)}
-              options={accountOptions}
+              options={toAccountOptions}
               error={fieldError(t, fmt, issues, 'toAccountId')}
               hint={t('movementForm.transferHint')}
             />

@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { CategoryIcon } from '../components/CategoryIcon'
-import { accountBalance } from '../../domain/balances'
 import { detectTimeZone, todayInTimeZone } from '../../domain/dates'
-import { newId } from '../../domain/ids'
-import { changeCurrency, deleteAccount, saveAccount, updateSettings, type AccountDraft } from '../../domain/operations'
+import { changeCurrency, updateSettings } from '../../domain/operations'
 import { backupStatus, setBackupReminder } from '../../domain/backupReminder'
-import type { Account, AccountKind, AppData, BackupReminder, BudgetPeriodType, CurrencyCode, DateStyle, Language, NumberLocale, Weekday } from '../../domain/types'
-import { ACCOUNT_KINDS, BACKUP_REMINDERS, BUDGET_PERIOD_TYPES, DATE_STYLES, LANGUAGES, NUMBER_LOCALES, type Issue } from '../../domain/validation'
+import type { AppData, BackupReminder, BudgetPeriodType, CurrencyCode, DateStyle, Language, NumberLocale, Weekday } from '../../domain/types'
+import { BACKUP_REMINDERS, BUDGET_PERIOD_TYPES, DATE_STYLES, LANGUAGES, NUMBER_LOCALES } from '../../domain/validation'
 import { formatMoney } from '../../domain/money'
 import { createDemoData } from '../../demo/demoData'
 import { loadLanguage, translate, useT, type MessageKey } from '../../i18n'
@@ -22,19 +20,15 @@ import { nextFrame, ReadCancelled, readFileWithProgress } from '../readFile'
 import { usePwaState } from '../../pwa/register'
 import { useRun, useToday } from '../../state/hooks'
 import { getStore, useAppState, useData } from '../../state/store'
-import { Alert, Badge, Card, PageHeader } from '../components/common'
-import { CheckboxField, MoneyField, Segmented, SelectField, TextField } from '../components/fields'
-import { parseMoneyText, moneyErrorMessage } from '../moneyText'
-import { ConfirmDialog, Dialog } from '../components/Dialog'
+import { Alert, Card, PageHeader } from '../components/common'
+import { CheckboxField, Segmented, SelectField, TextField } from '../components/fields'
+import { ConfirmDialog } from '../components/Dialog'
 import { Icon } from '../components/Icon'
 import { href, navigate, type Route } from '../router'
 import { useToast } from '../components/toastContext'
-import { UpdateBalanceDialog } from '../dialogs'
 import { createFormatter, useFormat } from '../format'
-import { fieldError, issueMessage } from '../labels'
-import { CardFields, CardSummaryView } from '../cardUi'
+import { issueMessage } from '../labels'
 import { useThemePreference } from '../theme'
-import { parseCardFields, useCardFields, type CardErrors } from '../cardFields'
 import { NotificationsSection } from './NotificationsSection'
 import { RulesSection } from './RulesSection'
 import { PersonalizeSection } from './PersonalizeSection'
@@ -44,6 +38,7 @@ import { FeedbackSection } from './settings/FeedbackSection'
 import { IosShortcutsSection } from './settings/IosShortcutsSection'
 import { usePersistStatus } from '../persist'
 import { AssistantSection } from './settings/AssistantSection'
+import { AccountsSection } from './settings/AccountsSection'
 import { BackupsSection } from './settings/BackupsSection'
 import { PassphraseDialog } from './settings/PassphraseDialog'
 import { useEncryptedExport } from '../useEncryptedExport'
@@ -97,8 +92,6 @@ export function Settings({ route }: { route: Route }) {
   const run = useRun()
   const toast = useToast()
   const today = useToday()
-  const [accountDialog, setAccountDialog] = useState<Account | 'new' | null>(null)
-  const [balanceFor, setBalanceFor] = useState<string | null>(null)
   const [importProgress, setImportProgress] = useState<{ stage: 'reading' | 'validating'; loaded: number; total: number } | null>(null)
   const importAbort = useRef<AbortController | null>(null)
   const [importState, setImportState] = useState<{ issues: ImportIssue[] } | { data: AppData; exportedAt: string | null; withoutReceipts: boolean } | null>(null)
@@ -401,59 +394,7 @@ export function Settings({ route }: { route: Route }) {
       {section?.id === 'instalar' && <InstallSection />}
 
 
-      {section?.id === 'cuentas' && (
-      <Card labelledBy="accounts-title">
-        <h2 id="cuentas" className="card__title">
-          <span id="accounts-title">{t('settings.accounts.title')}</span>
-        </h2>
-        <ul className="item-list">
-          {data.accounts.map((a) => {
-            const b = accountBalance(data, a)
-            return (
-              <li key={a.id} className="item item--stacked">
-                <div className="item__row">
-                  <div className="item__main">
-                    <p className="item__title">{a.name}</p>
-                    <p className="item__meta">
-                      {t(`accountKind.${a.kind}` as MessageKey)} · {t('settings.accounts.updated', { when: fmt.timestamp(a.anchor.setAt) })}
-                    </p>
-                    <p className="item__badges">
-                      <Badge tone={a.includeInBudget ? 'info' : 'neutral'}>{t(a.includeInBudget ? 'settings.accounts.included' : 'settings.accounts.excluded')}</Badge>
-                    </p>
-                  </div>
-                  <p className="item__amount">
-                    {a.kind === 'credit'
-                      ? b.balanceMinor <= 0
-                        ? t('settings.accounts.debt', { amount: fmt.money(-b.balanceMinor) })
-                        : t('settings.accounts.creditInFavor', { amount: fmt.money(b.balanceMinor) })
-                      : fmt.money(b.balanceMinor)}
-                  </p>
-                </div>
-                {a.kind === 'credit' && <CardSummaryView account={a} fmt={fmt} />}
-                <div className="item__actions">
-                  <button type="button" className="btn btn--small btn--secondary" onClick={() => setBalanceFor(a.id)}>
-                    {t('home.updateBalance')}
-                    <span className="sr-only">: {a.name}</span>
-                  </button>
-                  <button type="button" className="btn btn--small btn--ghost" onClick={() => setAccountDialog(a)}>
-                    <Icon name="edit" size={16} />
-                    {t('common.edit')}
-                    <span className="sr-only">: {a.name}</span>
-                  </button>
-                </div>
-              </li>
-            )
-          })}
-        </ul>
-        <button type="button" className="btn btn--secondary" onClick={() => setAccountDialog('new')}>
-          <Icon name="plus" />
-          {t('settings.accounts.add')}
-        </button>
-        <Alert tone="neutral" icon="lock" title={t('settings.accounts.cardsTitle')}>
-          {t('settings.accounts.cardsText')}
-        </Alert>
-      </Card>
-      )}
+      {section?.id === 'cuentas' && <AccountsSection />}
 
       {section?.id === 'reglas' && <RulesSection />}
       {section?.id === 'etiquetas' && <TagsSection />}
@@ -726,8 +667,6 @@ export function Settings({ route }: { route: Route }) {
       )}
       {decrypting && <PassphraseDialog mode="decrypt" error={decrypting.error} onClose={() => setDecrypting(null)} onSubmit={openEncrypted} />}
       {currencyOpen && <CurrencyDialog current={data.settings.currency} language={data.settings.language} locale={data.settings.numberLocale} onPick={(code) => void pickCurrency(code)} onClose={() => setCurrencyOpen(false)} />}
-      {accountDialog && <AccountDialog account={accountDialog === 'new' ? null : accountDialog} onClose={() => setAccountDialog(null)} />}
-      {balanceFor && <UpdateBalanceDialog initialAccountId={balanceFor} onClose={() => setBalanceFor(null)} />}
 
       <ConfirmDialog
         open={!!importState && 'data' in importState}
@@ -780,106 +719,6 @@ export function Settings({ route }: { route: Route }) {
         <TextField label={t('settings.reset.typeWord', { word: t('settings.reset.word') })} value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" />
       </ConfirmDialog>
     </div>
-  )
-}
-
-function AccountDialog({ account, onClose }: { account: Account | null; onClose: () => void }) {
-  const { t } = useT()
-  const fmt = useFormat()
-  const run = useRun()
-  const toast = useToast()
-  const today = useToday()
-  const [id] = useState(() => account?.id ?? newId())
-  const [name, setName] = useState(account?.name ?? '')
-  const [kind, setKind] = useState<AccountKind>(account?.kind ?? 'bank')
-  const [include, setInclude] = useState(account?.includeInBudget ?? true)
-  const [balanceText, setBalanceText] = useState('')
-  const [issues, setIssues] = useState<Issue[]>([])
-  const [amountError, setAmountError] = useState<string | null>(null)
-  const [cardText, setCardText] = useCardFields(account?.card, fmt)
-  const [cardErrors, setCardErrors] = useState<CardErrors>({})
-
-  const submit = async () => {
-    let card: AccountDraft['card']
-    if (kind === 'credit') {
-      const parsed = parseCardFields(cardText, fmt, t)
-      setCardErrors(parsed.errors)
-      if (!parsed.card) return
-      card = parsed.card
-    }
-    let openingBalanceMinor: number | undefined
-    if (!account) {
-      const parsed = parseMoneyText(balanceText || '0', fmt, { allowNegative: true, allowZero: true })
-      setAmountError(moneyErrorMessage(t, parsed))
-      if (!parsed.ok) return
-      // En una tarjeta se escribe lo que se debe; se guarda como saldo negativo.
-      openingBalanceMinor = kind === 'credit' ? (parsed.minor === 0 ? 0 : -parsed.minor) : parsed.minor
-    }
-    const draft: AccountDraft = { id, name, kind, includeInBudget: include, openingBalanceMinor, openingDate: today, card }
-    const { result, saved } = await run((d, c) => saveAccount(d, draft, c))
-    if (!result.ok) {
-      setIssues(result.issues)
-      return
-    }
-    toast({ message: saved ? t('settings.accounts.saved') : t('save.error.generic'), tone: saved ? 'good' : 'critical' })
-    onClose()
-  }
-
-  const remove = async () => {
-    if (!account) return
-    const { result, saved } = await run((d, c) => deleteAccount(d, account.id, c))
-    if (!result.ok) {
-      setIssues(result.issues)
-      return
-    }
-    toast({ message: saved ? t('settings.accounts.deleted') : t('save.error.generic'), tone: saved ? 'good' : 'critical' })
-    onClose()
-  }
-
-  const generalIssue = issues.find((i) => i.path === 'id' || i.path === 'includeInBudget' || i.path === 'kind')
-  return (
-    <Dialog
-      open
-      onClose={onClose}
-      title={account ? t('settings.accounts.editTitle') : t('settings.accounts.newTitle')}
-      onSubmit={() => void submit()}
-      footer={
-        <>
-          {account && (
-            <button type="button" className="btn btn--danger-ghost" onClick={() => void remove()}>
-              {t('common.delete')}
-            </button>
-          )}
-          <button type="button" className="btn btn--secondary" onClick={onClose}>
-            {t('common.cancel')}
-          </button>
-          <button type="submit" className="btn btn--primary">
-            {t('common.save')}
-          </button>
-        </>
-      }
-    >
-      <TextField label={t('fields.name')} value={name} maxLength={40} onChange={(e) => setName(e.target.value)} error={fieldError(t, fmt, issues, 'name')} required />
-      <SelectField label={t('settings.accounts.kind')} value={kind} onChange={(e) => setKind(e.target.value as AccountKind)} options={ACCOUNT_KINDS.map((k) => ({ value: k, label: t(`accountKind.${k}` as MessageKey) }))} hint={t('settings.accounts.kindHint')} />
-      <CheckboxField
-        checked={include}
-        onChange={setInclude}
-        label={t('settings.accounts.includeLabel')}
-        hint={kind === 'credit' ? t('settings.accounts.creditIncludeHint') : t('settings.accounts.includeHint')}
-      />
-      {!account && (
-        <MoneyField
-          label={kind === 'credit' ? t('settings.accounts.debtLabel') : t('settings.accounts.openingBalance')}
-          hint={kind === 'credit' ? t('settings.accounts.debtHint') : t('settings.accounts.openingHint')}
-          value={balanceText}
-          onChange={setBalanceText}
-          error={amountError}
-          fmt={fmt}
-        />
-      )}
-      {kind === 'credit' && <CardFields value={cardText} onChange={setCardText} errors={cardErrors} fmt={fmt} />}
-      {generalIssue && <Alert tone="critical" title={issueMessage(t, fmt, generalIssue)} role="alert" />}
-    </Dialog>
   )
 }
 

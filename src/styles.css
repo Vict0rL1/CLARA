@@ -956,6 +956,105 @@ html {
   color: var(--ink);
 }
 
+.hero__ledger-link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+  text-underline-offset: 2px;
+}
+
+/* Ajustes › Cuentas: patrimonio neto y filas de cuenta (etapa 1 del programa). */
+.net-position {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.net-position__title {
+  margin: 0;
+  font-size: var(--font-body-sm);
+  font-weight: 650;
+  color: var(--ink-2);
+}
+
+.net-position__value {
+  margin: 0;
+  font-size: clamp(1.4rem, 6vw, 1.9rem);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.net-position__parts {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+  margin: 0;
+}
+
+.net-position__parts > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: var(--font-body-sm);
+}
+
+.net-position__parts dt {
+  flex: 1 1 auto;
+}
+
+.account-row__order {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.net-position__parts dt {
+  color: var(--ink-2);
+}
+
+.net-position__parts dd {
+  margin: 0;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.account-row__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+
+.account-row--archived .item__title,
+.account-row--archived .item__amount {
+  color: var(--ink-2);
+}
+
+.account-row__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+}
+
+.item__currency {
+  font-size: var(--font-caption);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+}
+
 /* Franja de próximos pagos en la vista esencial: dos filas y un enlace al calendario. */
 .upcoming-strip {
   display: flex;

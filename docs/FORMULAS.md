@@ -18,7 +18,7 @@ Son cifras distintas y la app nunca las mezcla:
 |---|---|---|
 | **Saldo de una cuenta** | Saldo de referencia + movimientos realizados posteriores (§3). En una tarjeta es negativo: la deuda. | Ajustes › Cuentas, Conciliar |
 | **Saldo para gastar (S)** | Suma de los saldos de las cuentas que **cuentan para el presupuesto**. Una tarjeta incluida resta su deuda. | Explicación de Inicio |
-| **Patrimonio** | Suma de **todas** las cuentas (también ahorro y tarjetas fuera del presupuesto). La app no lo muestra como cifra principal; se usa en pruebas para comprobar que transferir o apartar no crea ni destruye dinero. | — |
+| **Patrimonio neto** | Suma de **todas** las cuentas no archivadas (también ahorro y tarjetas fuera del presupuesto): los saldos positivos son «lo que tienes» y los negativos «lo que debes» (`netPosition`, §4). Las archivadas se informan aparte y no suman. Las pruebas lo usan para comprobar que transferir o apartar no crea ni destruye dinero. | Ajustes › Cuentas (con «¿Cómo se calculó?») |
 | **Disponible («Puedes gastar»)** | S − pagos pendientes o vencidos hasta el día del próximo ingreso − apartados del presupuesto (§6, §7). Nunca suma ingresos futuros ni crédito disponible. | Inicio |
 | **Proyección** | Parte de S y aplica, día a día, los ingresos y pagos **previstos** (§9). Los apartados no se restan (el dinero sigue en la cuenta); se marca si el saldo proyectado cae por debajo de ellos. Los ingresos retrasados no se suman. | Plan › Proyección |
 | **Crédito disponible** | Límite − deuda de una tarjeta. **No es dinero propio**: nunca entra en S, en el disponible ni en el patrimonio. | Tarjeta |
@@ -88,7 +88,21 @@ Efecto de cada tipo sobre una cuenta:
 ## 4. Cuentas del presupuesto y transferencias
 
 - Cada cuenta indica si **cuenta para el presupuesto** (`includeInBudget`).
-- **Saldo del presupuesto (S)** = Σ saldos actuales de las cuentas incluidas.
+- **Archivada** (`archived`, v11): conserva su saldo y todo su historial (sus movimientos siguen en
+  Movimientos, marcados «(archivada)» en el filtro), pero **no cuenta para el presupuesto ni para el
+  patrimonio** aunque siga marcada como incluida (`isBudgetAccount = includeInBudget && !archived`),
+  y no se ofrece para registrar, programar, importar ni conciliar. Un registro nuevo o un cambio de
+  cuenta hacia una archivada se rechaza (`accountArchived`); editar lo que ya tenía sigue permitido.
+  No se archiva la última cuenta del presupuesto (`lastBudgetAccount`) ni una con pagos programados
+  activos (`accountHasSchedules`: no pausados y sin fecha de fin pasada). Con saldo ≠ 0 se puede, y la
+  interfaz lo avisa. Restaurar la deja exactamente como estaba.
+- **Orden** (`order`, v11): posición en todas las listas y selectores (`sortedAccounts`,
+  `activeAccounts`); sin `order`, la posición en la lista. Reordenar (`reorderAccounts`) recibe todos
+  los ids una vez y solo cambia `order`.
+- **Patrimonio neto** (`netPosition`): activos = Σ saldos > 0 de las no archivadas; pasivos =
+  Σ |saldos < 0| (deuda de tarjetas, sobregiros); neto = activos − pasivos; «de esto, para el
+  presupuesto» = S. El crédito disponible de una tarjeta nunca es activo.
+- **Saldo del presupuesto (S)** = Σ saldos actuales de las cuentas incluidas y no archivadas.
 - Las **transferencias entre cuentas propias no son ingresos ni gastos**:
   - entre dos cuentas incluidas → S no cambia;
   - de una cuenta incluida a una excluida (por ejemplo, ahorro) → S baja;
@@ -498,8 +512,12 @@ Diferencia = saldo observado − saldo calculado
 - v6 → v7 añade `inbox: { snoozed: [], dismissed: [] }` e `incomeDistributions: []` solo
   si faltan. Las compras divididas (`transactions[].splits`), `allocations[].distributionId`
   y `trash[].unlinkedRefundSplits` son opcionales: los datos anteriores no cambian.
+- v10 → v11 añade a cada cuenta `archived: false` y `order: <posición>` solo si **faltan**; una
+  cuenta ya archivada u ordenada no cambia y una entrada mal formada se conserva tal cual para que
+  la validación la señale. Ningún importe, fecha ni movimiento se toca: las cifras son las mismas
+  antes y después (`migrations.test.ts`, `roundtrip.test.ts`, `migration-main.spec.ts`).
 - Antes de guardar por primera vez datos migrados, se conserva el texto original en
-  `localStorage` (`margen.data.before-v7`).
+  `localStorage` (`margen.data.before-v<versión nueva>`, hoy `before-v11`).
 - Datos o copias de una versión futura se rechazan (`schemaTooNew`) sin tocar los datos
   actuales; si una migración falla, se informa (`migrationFailed`) y no se modifica nada.
 - Copias, importación y «Borrar todos los datos» incluyen las entidades nuevas

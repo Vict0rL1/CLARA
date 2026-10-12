@@ -2,6 +2,7 @@
  * Verificar saldo (conciliación): compara el saldo calculado de una cuenta con el
  * que la persona ve en su banco o en efectivo, en la misma fecha.
  */
+import { activeAccounts, isBudgetAccount } from '../../domain/balances'
 import { useState } from 'react'
 import { newId } from '../../domain/ids'
 import { reconcileAccount, type ReconcileInput } from '../../domain/operations'
@@ -17,7 +18,7 @@ import { MoneyField, SelectField, TextField } from '../components/fields'
 import { Icon } from '../components/Icon'
 import { useToast } from '../components/toastContext'
 import { useFormat, type Formatter } from '../format'
-import { fieldError, issueMessage, otherIssues, transactionTitle } from '../labels'
+import { accountOptions, fieldError, issueMessage, otherIssues, transactionTitle } from '../labels'
 import { moneyErrorMessage, parseMoneyText } from '../moneyText'
 import { href, withQuery, type Route } from '../router'
 
@@ -37,7 +38,7 @@ export function Reconcile({ route }: { route: Route }) {
 
   const queryAccount = route.query.get('cuenta')
   const [accountId, setAccountId] = useState(
-    queryAccount && data.accounts.some((a) => a.id === queryAccount) ? queryAccount : (data.accounts.find((a) => a.includeInBudget) ?? data.accounts[0]!).id,
+    queryAccount && data.accounts.some((a) => a.id === queryAccount) ? queryAccount : (activeAccounts(data.accounts).find(isBudgetAccount) ?? activeAccounts(data.accounts)[0] ?? data.accounts[0]!).id,
   )
   const account = data.accounts.find((a) => a.id === accountId)!
   const isCredit = account.kind === 'credit'
@@ -122,7 +123,7 @@ export function Reconcile({ route }: { route: Route }) {
                 setAccountId(e.target.value)
                 reset()
               }}
-              options={data.accounts.map((a) => ({ value: a.id, label: a.name }))}
+              options={accountOptions(data.accounts, t, accountId)}
             />
           )}
           <TextField

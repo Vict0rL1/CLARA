@@ -2,6 +2,7 @@
  * Comparador de escenarios: amplía «¿Me alcanza?» con escenarios guardados.
  * Todo se simula sobre una copia (`domain/scenarios.ts`): nada cambia los datos reales.
  */
+import { activeAccounts, isBudgetAccount } from '../../domain/balances'
 import { useMemo, useState } from 'react'
 import { computeBudget } from '../../domain/budget'
 import { newId } from '../../domain/ids'
@@ -27,7 +28,7 @@ import { CheckboxField, MoneyField, Segmented, SelectField, TextField } from '..
 import { Icon } from '../components/Icon'
 import { useToast } from '../components/toastContext'
 import { useFormat, type Formatter } from '../format'
-import { fieldError, issueMessage, otherIssues } from '../labels'
+import { accountOptions, fieldError, issueMessage, otherIssues } from '../labels'
 import { moneyErrorMessage, parseMoneyText } from '../moneyText'
 import { href, withQuery, type Route, useNavigateIfStillHere } from '../router'
 
@@ -320,7 +321,7 @@ export function ScenarioForm({ route }: { route: Route }) {
   const editId = route.segments[2] === 'editar' ? route.segments[3] : undefined
   const existing = editId ? data.scenarios.find((s) => s.id === editId) : undefined
   const expenseSchedules = data.schedules.filter((s) => s.kind === 'expense')
-  const defaultAccountName = (data.accounts.find((a) => a.includeInBudget) ?? data.accounts[0])?.name ?? ''
+  const defaultAccountName = (activeAccounts(data.accounts).find(isBudgetAccount) ?? activeAccounts(data.accounts)[0] ?? data.accounts[0])?.name ?? ''
   const [id] = useState(() => existing?.id ?? newId())
   const [name, setName] = useState(existing?.name ?? '')
   const [changes, setChanges] = useState<ChangeDraft[]>(() =>
@@ -405,7 +406,7 @@ export function ScenarioForm({ route }: { route: Route }) {
                     label={t('fields.account')}
                     value={c.accountId}
                     onChange={(e) => update(c.key, { accountId: e.target.value })}
-                    options={[{ value: '', label: t('scenario.defaultAccount', { name: defaultAccountName }) }, ...data.accounts.map((a) => ({ value: a.id, label: a.name }))]}
+                    options={[{ value: '', label: t('scenario.defaultAccount', { name: defaultAccountName }) }, ...accountOptions(data.accounts, t)]}
                     hint={t('scenario.accountHint')}
                     error={fieldError(t, fmt, issues, `changes[${i}].accountId`)}
                   />

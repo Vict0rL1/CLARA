@@ -679,7 +679,10 @@ export function Home() {
             {budget.status === 'ok' && !viewing && (
               <p className="hero__ledger" data-testid="hero-ledger">
                 <span className="hero__ledger-item">
-                  <span className="hero__ledger-label">{t('home.ledger.cash')}</span> <span className="hero__ledger-value">{fmt.money(budget.spendableMinor)}</span>
+                  <a className="hero__ledger-label hero__ledger-link" href={href('/ajustes/cuentas')}>
+                    {t('home.ledger.cash')}
+                  </a>{' '}
+                  <span className="hero__ledger-value">{fmt.money(budget.spendableMinor)}</span>
                 </span>
                 {budget.baseMinor !== budget.spendableMinor && (
                   <span className="hero__ledger-item">

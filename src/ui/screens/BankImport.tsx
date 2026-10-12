@@ -1,4 +1,5 @@
 import { SUPPORTED_CURRENCIES } from '../../domain/money'
+import { activeAccounts, isBudgetAccount } from '../../domain/balances'
 import { useMemo, useRef, useState } from 'react'
 import { parseCsv, type BankDateFormat, type ColumnMapping, defaultSelection, guessMapping, type ImportRow, isImportable, looksLikeHeader, MAX_IMPORT_BYTES, MAX_IMPORT_ROWS, possibleDateFormats, previewImport } from '../../domain/bankImport'
 import { categoriesForKind } from '../../domain/categories'
@@ -15,7 +16,7 @@ import { CheckboxField, Segmented, SelectField } from '../components/fields'
 import { Icon } from '../components/Icon'
 import { useToast } from '../components/toastContext'
 import { useFormat } from '../format'
-import { categoryLabel, issueMessage } from '../labels'
+import { accountOptions, categoryLabel, issueMessage } from '../labels'
 import { href, useNavigateIfStillHere } from '../router'
 import { RuleDialog } from './RulesSection'
 import { CategoryPicker } from '../components/CategoryPicker'
@@ -47,7 +48,7 @@ export function BankImport() {
   const toast = useToast()
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const [accountId, setAccountId] = useState(() => (data.accounts.find((a) => a.includeInBudget) ?? data.accounts[0]!).id)
+  const [accountId, setAccountId] = useState(() => (activeAccounts(data.accounts).find(isBudgetAccount) ?? activeAccounts(data.accounts)[0] ?? data.accounts[0]!).id)
   const [file, setFile] = useState<LoadedFile | null>(null)
   const [fileError, setFileError] = useState<MessageKey | null>(null)
   const [hasHeader, setHasHeader] = useState(true)
@@ -219,7 +220,7 @@ export function BankImport() {
           label={t('bankImport.account')}
           value={accountId}
           onChange={(e) => setAccountId(e.target.value)}
-          options={data.accounts.map((a) => ({ value: a.id, label: a.name }))}
+          options={accountOptions(data.accounts, t)}
           hint={t('bankImport.accountHint')}
         />
         <div className="button-row">

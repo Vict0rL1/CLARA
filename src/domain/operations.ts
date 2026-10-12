@@ -5,6 +5,7 @@
  * Idempotencia: cada registro tiene un id generado al abrir el formulario.
  * Guardar dos veces el mismo id actualiza el registro; no crea duplicados.
  */
+import { isBudgetAccount } from './balances'
 import { computeBudget } from './budget'
 import { defaultCollectionsV9, defaultSettingsV9 } from './defaults'
 import { addDays, isValidLocalDate } from './dates'
@@ -155,6 +156,11 @@ export function saveTransaction(data: AppData, draft: TransactionDraft, ctx: OpC
   }
   const issues = validateTransaction(tx, { data, today: ctx.today })
   if (issues.length) return fail(issues)
+  // Una cuenta archivada conserva lo que ya tiene, pero no recibe registros nuevos ni cambios de cuenta hacia ella.
+  for (const path of ['accountId', 'toAccountId'] as const) {
+    const id = tx[path]
+    if (id && id !== existing?.[path] && data.accounts.find((a) => a.id === id)?.archived) return fail([{ path, code: 'accountArchived' }])
+  }
   const transactions = upsert(data.transactions, tx)
   // Las devoluciones ya vinculadas deben seguir siendo válidas (importe y reparto por categorías).
   if (existing) {
@@ -448,6 +454,9 @@ export function saveSchedule(data: AppData, draft: ScheduleDraft, ctx: OpContext
   }
   const issues = validateSchedule(schedule, { data })
   if (issues.length) return fail(issues)
+  if (schedule.accountId !== existing?.accountId && data.accounts.find((a) => a.id === schedule.accountId)?.archived) {
+    return fail([{ path: 'accountId', code: 'accountArchived' }])
+  }
   return { ok: true, data: touch({ ...data, schedules: upsert(data.schedules, schedule) }, ctx.now), value: schedule }
 }
 
@@ -742,6 +751,9 @@ export function saveAccount(data: AppData, draft: AccountDraft, ctx: OpContext):
     includeInBudget: draft.includeInBudget,
     ...(draft.kind === 'credit' && draft.card ? { card: cleanCard(draft.card) } : {}),
     anchor: existing?.anchor ?? { amountMinor: draft.openingBalanceMinor ?? 0, date: draft.openingDate ?? ctx.today, setAt: ctx.now },
+    // v11: archivar y ordenar tienen sus propias operaciones; editar conserva ambos. Una cuenta nueva va al final.
+    ...(existing?.archived ? { archived: true } : {}),
+    order: existing?.order ?? nextAccountOrder(data.accounts),
     createdAt: existing?.createdAt ?? ctx.now,
     updatedAt: ctx.now,
   }
@@ -752,8 +764,44 @@ export function saveAccount(data: AppData, draft: AccountDraft, ctx: OpContext):
     return fail([{ path: 'kind', code: 'creditKindChange' }])
   }
   const accounts = upsert(data.accounts, account)
-  if (!accounts.some((a) => a.includeInBudget)) return fail([{ path: 'includeInBudget', code: 'lastBudgetAccount' }])
+  if (!accounts.some(isBudgetAccount)) return fail([{ path: 'includeInBudget', code: 'lastBudgetAccount' }])
   return { ok: true, data: touch({ ...data, accounts }, ctx.now), value: account }
+}
+
+function nextAccountOrder(accounts: readonly Account[]): number {
+  return accounts.length === 0 ? 0 : Math.max(...accounts.map((a, i) => a.order ?? i)) + 1
+}
+
+/**
+ * Archivar conserva la cuenta, su saldo y todo su historial; solo deja de ofrecerse y de contar.
+ * No se archiva la última cuenta del presupuesto ni una con pagos programados activos (se piden
+ * mover o terminar antes). Un saldo distinto de cero no lo impide: la interfaz lo avisa.
+ */
+export function setAccountArchived(data: AppData, id: string, archived: boolean, ctx: OpContext): OpResult<Account> {
+  const account = data.accounts.find((a) => a.id === id)
+  if (!account) return fail([{ path: 'id', code: 'notFound' }])
+  if (!!account.archived === archived) return { ok: true, data, value: account, unchanged: true }
+  if (archived) {
+    if (!data.accounts.some((a) => a.id !== id && isBudgetAccount(a))) return fail([{ path: 'id', code: 'lastBudgetAccount' }])
+    const active = data.schedules.filter((s) => s.accountId === id && !s.paused && (!s.endDate || s.endDate >= ctx.today))
+    if (active.length) return fail([{ path: 'id', code: 'accountHasSchedules', params: { count: active.length } }])
+  }
+  const updated: Account = { ...account, archived, updatedAt: ctx.now }
+  if (!archived) delete updated.archived
+  return { ok: true, data: touch({ ...data, accounts: upsert(data.accounts, updated) }, ctx.now), value: updated }
+}
+
+/** Nuevo orden de TODAS las cuentas (ids, sin repetir ni faltar). Solo cambia `order`. */
+export function reorderAccounts(data: AppData, orderedIds: readonly string[], ctx: OpContext): OpResult<Account[]> {
+  const ids = new Set(orderedIds)
+  if (ids.size !== orderedIds.length || ids.size !== data.accounts.length || data.accounts.some((a) => !ids.has(a.id))) {
+    return fail([{ path: 'orderedIds', code: 'invalidValue' }])
+  }
+  const position = new Map(orderedIds.map((id, i) => [id, i]))
+  const changed = data.accounts.filter((a) => a.order !== position.get(a.id))
+  if (changed.length === 0) return { ok: true, data, value: data.accounts, unchanged: true }
+  const accounts = data.accounts.map((a) => (a.order === position.get(a.id) ? a : { ...a, order: position.get(a.id)!, updatedAt: ctx.now }))
+  return { ok: true, data: touch({ ...data, accounts }, ctx.now), value: accounts }
 }
 
 /** Quita campos vacíos de los datos de tarjeta. */
@@ -772,7 +820,7 @@ export function deleteAccount(data: AppData, id: string, ctx: OpContext): OpResu
     data.transactions.some(usesAccount) || data.trash.some((e) => usesAccount(e.transaction)) || data.schedules.some((s) => s.accountId === id)
   if (used) return fail([{ path: 'id', code: 'accountInUse' }])
   const accounts = data.accounts.filter((a) => a.id !== id)
-  if (!accounts.some((a) => a.includeInBudget)) return fail([{ path: 'id', code: 'lastBudgetAccount' }])
+  if (!accounts.some(isBudgetAccount)) return fail([{ path: 'id', code: 'lastBudgetAccount' }])
   // Las conciliaciones de una cuenta eliminada ya no tienen sentido. Los favoritos se
   // conservan: al usarlos, el formulario pide elegir otra cuenta.
   const reconciliations = data.reconciliations.filter((r) => r.accountId !== id)

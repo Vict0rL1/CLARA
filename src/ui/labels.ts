@@ -1,4 +1,5 @@
 /** Textos derivados de datos (categorías, nombres, mensajes de validación). */
+import { activeAccounts } from '../domain/balances'
 import type { PlanItem } from '../domain/planItems'
 import type { Account, Frequency, Plan, Transaction } from '../domain/types'
 import type { Issue } from '../domain/validation'
@@ -29,6 +30,21 @@ export function frequencyLabel(t: Translator['t'], f: Frequency): string {
 
 export function accountName(accounts: Account[], id: string | undefined, t: Translator['t']): string {
   return accounts.find((a) => a.id === id)?.name ?? t('common.unknownAccount')
+}
+
+/** Nombre con «(archivada)» si procede: para filtros e historial, donde las archivadas siguen apareciendo. */
+export function accountLabel(a: Pick<Account, 'name' | 'archived'>, t: Translator['t']): string {
+  return a.archived ? `${a.name} ${t('common.archivedSuffix')}` : a.name
+}
+
+/**
+ * Opciones de un selector de cuenta para registrar o programar: las activas, en su orden.
+ * `keepId` (la cuenta de un registro existente) se conserva aunque esté archivada, marcada.
+ */
+export function accountOptions(accounts: Account[], t: Translator['t'], keepId?: string): { value: string; label: string }[] {
+  const options = activeAccounts(accounts).map((a) => ({ value: a.id, label: a.name }))
+  const kept = keepId ? accounts.find((a) => a.id === keepId && a.archived) : undefined
+  return kept ? [...options, { value: kept.id, label: accountLabel(kept, t) }] : options
 }
 
 export function planItemName(item: PlanItem, t: Translator['t']): string {
