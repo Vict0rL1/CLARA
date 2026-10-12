@@ -28,6 +28,7 @@ import { LIMITS } from '../../domain/validation'
 import { useT, type MessageKey } from '../../i18n'
 import { useRun, useToday } from '../../state/hooks'
 import { useData } from '../../state/store'
+import { forgetListReturn } from '../listView'
 import { Alert, Badge, Card, EmptyState, PageHeader } from '../components/common'
 import { CheckboxField, MoneyField, Segmented, SelectField, TextField, FieldShell } from '../components/fields'
 import { parseMoneyText, moneyErrorMessage } from '../moneyText'
@@ -110,7 +111,10 @@ function AdjustmentView({ tx, returnTo }: { tx: Transaction; returnTo: string })
             className="btn btn--danger-ghost"
             onClick={async () => {
               const from = window.location.hash
-              if (await deleteTx(tx.id)) navigateIfStillAt(from, returnTo)
+              if (await deleteTx(tx.id)) {
+                forgetListReturn(data.budgetId)
+                navigateIfStillAt(from, returnTo)
+              }
             }}
           >
             <Icon name="trash" />
@@ -437,6 +441,8 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
       // Tras registrar un ingreso recibido se ofrece repartirlo (nunca se hace solo).
       ...(canDistribute ? { action: { label: t('distribution.offer'), onClick: () => navigate(`/movimientos/distribuir/${savedTx.id}`) } } : {}),
     })
+    // Tras guardar, el historial vuelve a abrirse limpio (solo «Volver» recupera la vista).
+    forgetListReturn(data.budgetId)
     leave(returnTo)
   }
 
@@ -1110,7 +1116,10 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
               className="btn btn--danger-ghost"
               onClick={async () => {
                 const from = window.location.hash
-                if (await deleteTx(existing.id)) navigateIfStillAt(from, returnTo)
+                if (await deleteTx(existing.id)) {
+                  forgetListReturn(data.budgetId)
+                  navigateIfStillAt(from, returnTo)
+                }
               }}
             >
               <Icon name="trash" />

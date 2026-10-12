@@ -16,6 +16,7 @@ import type { Transaction, TxKind, TxStatus } from '../../domain/types'
 import { useT, type MessageKey } from '../../i18n'
 import { useToday } from '../../state/hooks'
 import { useData } from '../../state/store'
+import { takeListView, writeListView } from '../listView'
 import { Badge, EmptyState, PageHeader, Why } from '../components/common'
 import { MoneyField, TextField } from '../components/fields'
 import { CategoryPicker } from '../components/CategoryPicker'
@@ -31,52 +32,13 @@ import { moneyErrorMessage, parseMoneyText } from '../moneyText'
 const KIND_ICON: Record<TxKind, IconName> = { income: 'arrowDown', expense: 'arrowUp', transfer: 'transfer', refund: 'refund', adjustment: 'sliders' }
 const PAGE = 60
 
-/**
- * Vista del historial (filtros, búsqueda, cuántas filas y hasta dónde se había bajado) guardada en
- * la sesión de la pestaña: al volver de un detalle se recupera; un enlace con sus propios filtros
- * (`?categoria=`, `?desde=`…) manda sobre lo guardado. Es presentación: nunca viaja en los datos.
- */
-interface SavedView {
-  query: string
-  kind: 'all' | TxKind
-  status: 'all' | TxStatus
-  accountId: string
-  categoryIds: string[]
-  tagIds: string[]
-  from: string
-  to: string
-  amountMin: string
-  amountMax: string
-  source: 'all' | SourceGroup
-  limit: number
-  scrollY: number
-}
-const viewKey = (budgetId: string) => `clara.movements.view:${budgetId}`
-function readSavedView(budgetId: string): SavedView | null {
-  try {
-    const raw = sessionStorage.getItem(viewKey(budgetId))
-    if (!raw) return null
-    const v = JSON.parse(raw) as Partial<SavedView>
-    return typeof v === 'object' && v !== null && typeof v.limit === 'number' ? (v as SavedView) : null
-  } catch {
-    return null
-  }
-}
-function writeSavedView(budgetId: string, view: SavedView) {
-  try {
-    sessionStorage.setItem(viewKey(budgetId), JSON.stringify(view))
-  } catch {
-    /* sin sesión (modo privado del navegador): no se recuerda y no pasa nada */
-  }
-}
-
 export function Movements({ route }: { route?: Route }) {
   const { t, tn } = useT()
   const fmt = useFormat()
   const data = useData()
   const today = useToday()
   const linkHasFilters = !!(route?.query.get('categoria') || route?.query.get('etiqueta') || route?.query.get('desde') || route?.query.get('hasta'))
-  const [saved] = useState(() => (linkHasFilters ? null : readSavedView(data.budgetId)))
+  const [saved] = useState(() => (linkHasFilters ? null : takeListView(data.budgetId)))
   const [query, setQuery] = useState(saved?.query ?? '')
   const [kind, setKind] = useState<'all' | TxKind>(saved?.kind ?? 'all')
   const [status, setStatus] = useState<'all' | TxStatus>(saved?.status ?? 'all')
@@ -96,7 +58,7 @@ export function Movements({ route }: { route?: Route }) {
   const scrollYRef = useRef(saved?.scrollY ?? 0)
   // Cada cambio de filtros se recuerda; la posición se anota al abrir una fila (ver `rememberScroll`).
   useEffect(() => {
-    writeSavedView(data.budgetId, { query, kind, status, accountId, categoryIds, tagIds, from, to, amountMin, amountMax, source, limit, scrollY: scrollYRef.current })
+    writeListView(data.budgetId, { query, kind, status, accountId, categoryIds, tagIds, from, to, amountMin, amountMax, source, limit, scrollY: scrollYRef.current })
   }, [data.budgetId, query, kind, status, accountId, categoryIds, tagIds, from, to, amountMin, amountMax, source, limit])
   // Al volver: la app lleva cada pantalla arriba en el primer cuadro; después se recupera la posición.
   useEffect(() => {
@@ -109,9 +71,11 @@ export function Movements({ route }: { route?: Route }) {
     // Solo al montar: `saved` no cambia después.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  const rememberScroll = () => {
+  // Solo al abrir una fila (enlace): seleccionar en lote o tocar un botón no marca «volver».
+  const rememberScroll = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!(e.target instanceof Element) || !e.target.closest('a')) return
     scrollYRef.current = window.scrollY
-    writeSavedView(data.budgetId, { query, kind, status, accountId, categoryIds, tagIds, from, to, amountMin, amountMax, source, limit, scrollY: window.scrollY })
+    writeListView(data.budgetId, { query, kind, status, accountId, categoryIds, tagIds, from, to, amountMin, amountMax, source, limit, scrollY: window.scrollY, returning: true })
   }
   const [selecting, setSelecting] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
