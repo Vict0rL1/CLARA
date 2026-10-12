@@ -2702,7 +2702,7 @@ export const en: Record<keyof typeof es, string> = {
   'home.more.count_one': '{count} section',
   'home.more.count_other': '{count} sections',
   'home.viewHint.title': 'Home in essential view',
-  'home.viewHint.text': 'You see just the essentials. You can pick the full view in Settings › Home & privacy.',
+  'home.viewHint.text': 'Just the essentials. The full view is chosen in Settings.',
   'home.viewHint.action': 'Go to Settings',
   'home.viewHint.dismiss': 'Got it',
   'movements.filters': 'Filters',
@@ -2984,4 +2984,5 @@ export const en: Record<keyof typeof es, string> = {
   'movementForm.summaryAria': 'Transaction summary',
   'movementForm.scopeThisOnly': 'Changing or deleting this entry does not change the scheduled “{name}” or its future occurrences.',
   'movementForm.editSchedule': 'Edit the scheduled item',
+  'home.upcomingStrip': 'Coming up',
 }

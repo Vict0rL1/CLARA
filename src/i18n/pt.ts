@@ -2700,7 +2700,7 @@ export const pt: Record<keyof typeof es, string> = {
   'home.more.count_one': '{count} seção',
   'home.more.count_other': '{count} seções',
   'home.viewHint.title': 'Início na visão essencial',
-  'home.viewHint.text': 'Você vê só o essencial. Pode escolher a visão completa em Ajustes › Início e privacidade.',
+  'home.viewHint.text': 'Só o essencial. A visão completa escolhe-se em Ajustes.',
   'home.viewHint.action': 'Ir para Ajustes',
   'home.viewHint.dismiss': 'Entendi',
   'movements.filters': 'Filtros',
@@ -2982,4 +2982,5 @@ export const pt: Record<keyof typeof es, string> = {
   'movementForm.summaryAria': 'Resumo do movimento',
   'movementForm.scopeThisOnly': 'Alterar ou excluir este movimento não muda o programado “{name}” nem as próximas ocorrências.',
   'movementForm.editSchedule': 'Editar o programado',
+  'home.upcomingStrip': 'A seguir',
 }

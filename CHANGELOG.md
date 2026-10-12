@@ -15,7 +15,8 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
   coincide con un pago programado abierto, «¿Es el pago programado «X»?» con «Sí, vincularlo» / «No, es otro».
 - **Detalle del movimiento**: al editar, un resumen con importe y moneda, fecha, categoría, cuenta, origen, recurrencia y
   el alcance de la edición cuando viene del calendario (solo este movimiento; enlace al programado).
-- **Historial**: al volver de un detalle se conservan los filtros, la búsqueda, las filas mostradas y la posición.
+- **Historial**: al volver de un detalle («Volver» o atrás) se conservan los filtros, la búsqueda, las filas mostradas y la
+  posición; tras guardar o eliminar, o al entrar desde la barra, la lista abre limpia como siempre.
 - **Copia de seguridad por la hoja Compartir**: en el iPhone (y donde el navegador lo permita),
   «Exportar copia» abre Compartir para **Guardar en Archivos**; cancelar no es un error.
 - **Ajustes › Instalar Clara**: explica solo lo que ese navegador permite (botón de instalar, los pasos

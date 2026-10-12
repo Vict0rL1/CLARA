@@ -964,9 +964,15 @@ export function Home() {
           {/* Vista esencial: los dos próximos pagos o ingresos en una franja (la vista completa tiene la tarjeta). */}
           {essential && upcoming.length > 0 && (
             <section className="upcoming-strip" aria-labelledby="upcoming-strip-title" data-testid="upcoming-strip">
-              <h2 id="upcoming-strip-title" className="upcoming-strip__title">
-                <Icon name="calendar" size={16} /> {t('home.upcomingTitle')}
-              </h2>
+              <div className="upcoming-strip__head">
+                <h2 id="upcoming-strip-title" className="upcoming-strip__title">
+                  <Icon name="calendar" size={16} /> {t('home.upcomingStrip')}
+                </h2>
+                <a className="link-more" href={href('/plan/calendario')}>
+                  {upcoming.length > 2 ? tn('home.upcomingMore', upcoming.length - 2) : t('home.seeCalendar')}
+                  <Icon name="chevronRight" size={16} />
+                </a>
+              </div>
               <ul className="upcoming-strip__list">
                 {upcoming.slice(0, 2).map((i) => (
                   <li key={i.key} className="upcoming-strip__item">
@@ -987,10 +993,6 @@ export function Home() {
                   </li>
                 ))}
               </ul>
-              <a className="link-more" href={href('/plan/calendario')}>
-                {upcoming.length > 2 ? tn('home.upcomingMore', upcoming.length - 2) : t('home.seeCalendar')}
-                <Icon name="chevronRight" size={16} />
-              </a>
             </section>
           )}
           {/* Favoritos: atajos para registrar; en ambas vistas, tras el primer aviso (C1). */}
@@ -1002,7 +1004,7 @@ export function Home() {
                 <strong>{t('home.viewHint.title')}</strong> {t('home.viewHint.text')}
               </p>
               <div className="button-row">
-                <a className="btn btn--secondary btn--small" href={href('/ajustes?seccion=personalizar')}>
+                <a className="btn btn--ghost btn--small" href={href('/ajustes?seccion=personalizar')}>
                   {t('home.viewHint.action')}
                 </a>
                 <button type="button" className="btn btn--ghost btn--small" onClick={dismissHint}>

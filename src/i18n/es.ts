@@ -2701,7 +2701,7 @@ export const es = {
   'home.more.count_one': '{count} sección',
   'home.more.count_other': '{count} secciones',
   'home.viewHint.title': 'Inicio en vista esencial',
-  'home.viewHint.text': 'Verás lo imprescindible. Puedes elegir la vista completa en Ajustes › Inicio y privacidad.',
+  'home.viewHint.text': 'Solo lo imprescindible. La vista completa se elige en Ajustes.',
   'home.viewHint.action': 'Ir a Ajustes',
   'home.viewHint.dismiss': 'Entendido',
   'movements.filters': 'Filtros',
@@ -2983,4 +2983,5 @@ export const es = {
   'movementForm.summaryAria': 'Resumen del movimiento',
   'movementForm.scopeThisOnly': 'Cambiar o eliminar este movimiento no cambia el programado «{name}» ni sus próximas ocurrencias.',
   'movementForm.editSchedule': 'Editar el programado',
+  'home.upcomingStrip': 'Lo próximo',
 } as const

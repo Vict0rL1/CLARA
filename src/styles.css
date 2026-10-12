@@ -918,14 +918,29 @@ html {
   color: var(--ink-2);
 }
 
+/* Las insignias del detalle (programado «nombre · frecuencia», comercio) pueden ser largas: se parten en lugar de desbordar. */
+.tx-summary .badge {
+  white-space: normal;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
 /* Línea de composición de la cifra: saldo en cuentas − reservado (y base del periodo si difiere). */
 .hero__ledger {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px 14px;
+  gap: 2px 12px;
   margin: -2px 0 2px;
   font-size: var(--font-body-sm);
   color: var(--ink-2);
+}
+
+/* Pantallas muy estrechas: la línea cabe entera en tamaño de leyenda (los importes siguen en la explicación). */
+@media (max-width: 359px) {
+  .hero__ledger {
+    gap: 2px 8px;
+    font-size: 0.75rem;
+  }
 }
 
 .hero__ledger-item {
@@ -945,11 +960,20 @@ html {
 .upcoming-strip {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px;
+  gap: 4px;
+  padding: 6px 12px 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface);
+}
+
+/* Cabecera en una fila: título a la izquierda y «N más en el calendario» a la derecha. */
+.upcoming-strip__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 40px;
 }
 
 .upcoming-strip__title {
@@ -957,9 +981,16 @@ html {
   align-items: center;
   gap: 6px;
   margin: 0;
+  min-width: 0;
   font-size: var(--font-body-sm);
   font-weight: 650;
   color: var(--ink-2);
+}
+
+.upcoming-strip__head .link-more {
+  flex: none;
+  min-height: 40px;
+  font-size: var(--font-body-sm);
 }
 
 .upcoming-strip__list {
@@ -976,7 +1007,7 @@ html {
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 8px;
-  min-height: 28px;
+  min-height: 26px;
 }
 
 .upcoming-strip__name {
@@ -998,9 +1029,6 @@ html {
   white-space: nowrap;
 }
 
-.upcoming-strip .link-more {
-  align-self: flex-start;
-}
 
 /* Cajas INGRESOS / GASTOS y barra «Disponible · N %» del héroe (D2). */
 .hero__boxes {
@@ -1082,8 +1110,21 @@ html {
   min-width: 0;
 }
 
+.view-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.view-hint > p {
+  flex: 1 1 200px;
+  margin: 0;
+  font-size: var(--font-body-sm);
+}
+
 .view-hint .button-row {
-  margin-top: 8px;
+  gap: 4px;
 }
 
 .hero__label {

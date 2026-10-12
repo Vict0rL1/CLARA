@@ -2700,7 +2700,7 @@ export const fr: Record<keyof typeof es, string> = {
   'home.more.count_one': '{count} section',
   'home.more.count_other': '{count} sections',
   'home.viewHint.title': 'Accueil en vue essentielle',
-  'home.viewHint.text': 'Vous voyez l’essentiel. La vue complète se choisit dans Réglages › Accueil et confidentialité.',
+  'home.viewHint.text': 'L’essentiel seulement. La vue complète se choisit dans Réglages.',
   'home.viewHint.action': 'Aller aux réglages',
   'home.viewHint.dismiss': 'Compris',
   'movements.filters': 'Filtres',
@@ -2982,4 +2982,5 @@ export const fr: Record<keyof typeof es, string> = {
   'movementForm.summaryAria': 'Résumé du mouvement',
   'movementForm.scopeThisOnly': 'Modifier ou supprimer ce mouvement ne change pas le prévu « {name} » ni ses prochaines occurrences.',
   'movementForm.editSchedule': 'Modifier le prévu',
+  'home.upcomingStrip': 'À venir',
 }

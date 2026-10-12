@@ -123,3 +123,9 @@ cifras no cambian (`tests/e2e/lukas-round.spec.ts` las comprueba con la demo).
 | Formulario con sugerencia de vínculo | — | `v4-after/celular-dark-movimiento-vinculo.png` | «¿Es el pago programado «Renta de habitación» del 1 oct?» con «Sí, vincularlo» / «No, es otro». |
 
 Las mismas pantallas en tema claro: `celular-light-*.png` en las dos carpetas.
+
+A 320 × 640 (`celular-pequeno`) la suite completa encontró dos cosas que las capturas de Pixel 7 no mostraban: la insignia
+«programado · frecuencia» del resumen del movimiento desbordaba la pantalla (347 px) y la vista esencial de la demo subía a
+2,77 pantallas. Las insignias del resumen se parten, la franja de próximos pagos lleva el título corto y el enlace en la
+misma fila, y la línea «En cuentas · Reservado» cabe en una sola línea; la guarda C1 queda en ≤ 2,75 pantallas a 320 px
+para la vista esencial (decisión 146).
