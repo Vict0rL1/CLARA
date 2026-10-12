@@ -57,13 +57,14 @@ test('copia sin fotos: aviso de tamaño, archivo sin recibos que no cuenta como 
   await expect(page.getByTestId('backup-receipts')).toContainText('Incluye 1 recibo(s) con foto')
   await expect(page.getByText('Nunca has exportado una copia de seguridad.')).toBeVisible()
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-without-receipts').click()])
+  // El aviso se comprueba antes de leer el archivo: en CI la lectura puede tardar más de lo que dura el aviso.
+  await expect(page.getByText('Copia sin fotos descargada').first()).toBeVisible()
   expect(download.suggestedFilename()).toMatch(/^clara-demo-copia-sin-fotos-.*\.json$/)
   const text = readFileSync((await download.path())!, 'utf8')
   expect(text).not.toContain('receiptUri')
   const file = JSON.parse(text)
   expect(file.omitted).toEqual(['receipts'])
   expect(file.data.transactions.length).toBe(d.transactions.length)
-  await expect(page.getByText('Copia sin fotos descargada').first()).toBeVisible()
   // No cuenta como copia de seguridad: el estado sigue igual.
   await expect(page.getByText('Nunca has exportado una copia de seguridad.')).toBeVisible()
 
