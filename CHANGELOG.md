@@ -27,6 +27,11 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
 
 ### Cambios
 
+- **Pulido visual** (auditoría 2026-10-12): una sola escala de radios (botones y campos a 12 px, tarjetas a 16,
+  píldoras solo en chips e insignias), tres niveles de sombra con valores propios del tema oscuro, movimiento
+  entre 120 y 220 ms, bordes de campo con contraste 3:1 en ambos temas, extremos redondeados y trazo
+  discontinuo para «periodo anterior» en los gráficos. La cifra principal muestra el importe final de inmediato
+  (antes contaba durante medio segundo). Sin cambios de maquetación ni de cálculo.
 - **Importar CSV**: una fila que parece el pago de una tarjeta («PAGO TARJETA VISA» en el banco, «PAYMENT -
   THANK YOU» en la tarjeta) se señala y queda desmarcada, con la explicación de que se registra como
   transferencia para no contar la compra y el pago como dos gastos.

@@ -79,8 +79,14 @@
   --series-1: #3b82f6;
   --series-2: #f59e0b;
   --series-3: #10b981;
-  --shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
-  --shadow-raised: 0 4px 16px rgba(15, 23, 42, 0.12);
+  /* Sombras: sm (tarjetas, en reposo) · md (flotantes: avisos, globos) · lg (diálogos y hojas). */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 6px 20px rgba(15, 23, 42, 0.12);
+  --shadow-lg: 0 16px 48px rgba(15, 23, 42, 0.18);
+  --shadow: var(--shadow-sm);
+  --shadow-raised: var(--shadow-md);
+  /* Borde de campos: ≥ 3:1 sobre la superficie en ambos temas (contraste no textual, WCAG 1.4.11). */
+  --border-input: #7a899e;
   --pressed: color-mix(in srgb, var(--ink) 8%, transparent);
   /* ---- Colores de categoría (16, iguales en ambos temas) ---- */
   --cat-emerald: #10b981;
@@ -105,6 +111,12 @@
   --radius-lg: 20px;
   --radius-xl: 24px;
   --radius-pill: 999px;
+  /* Escala: mark 4 (marcas y barras finas) · xs 8 (bloques pequeños) · sm 10 (filas, pestañas, cajas)
+     · control 12 (botones, campos, opciones) · md 16 (tarjetas) · lg 20 · xl 24 (hojas) · pill (chips,
+     insignias, interruptores y pistas de progreso). Nada fuera de la escala. */
+  --radius-mark: 4px;
+  --radius-xs: 8px;
+  --radius-control: 12px;
   --radius: var(--radius-md);
   /* ---- Espaciado (4 · 8 · 12 · 16 · 20 · 24 · 32) ---- */
   --sp-4: 4px;
@@ -144,9 +156,12 @@
   --fab: 56px;
   --fab-glow: 0 8px 24px rgba(16, 185, 129, 0.35);
   --tap: 44px;
-  --dur: 140ms;
+  /* Movimiento: fast 120 (pulsaciones) · base 160 (estados, fundidos) · slow 200 (barras) · hojas 220.
+     Todo entre 120 y 220 ms; con «reducir movimiento» se anula abajo. */
+  --dur-fast: 120ms;
+  --dur: 160ms;
+  --dur-slow: 200ms;
   --dur-sheet: 220ms;
-  --dur-countup: 600ms;
   --ease: cubic-bezier(0.2, 0, 0, 1);
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   /* Anchos máximos */
@@ -190,8 +205,10 @@
     --series-1: #60a5fa;
     --series-2: #fbbf24;
     --series-3: #34d399;
-    --shadow: none;
-    --shadow-raised: 0 4px 16px rgba(0, 0, 0, 0.5);
+    --shadow-sm: none;
+    --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.45);
+    --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.55);
+    --border-input: #64748b;
     --pressed: color-mix(in srgb, #ffffff 10%, transparent);
   }
 }
@@ -226,8 +243,10 @@
   --series-1: #60a5fa;
   --series-2: #fbbf24;
   --series-3: #34d399;
-  --shadow: none;
-  --shadow-raised: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-sm: none;
+  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.55);
+  --border-input: #64748b;
   --pressed: color-mix(in srgb, #ffffff 10%, transparent);
 }
 
@@ -299,7 +318,7 @@ code {
   font-size: 0.85em;
   background: var(--surface-2);
   padding: 0 4px;
-  border-radius: 4px;
+  border-radius: var(--radius-mark);
   overflow-wrap: break-word;
 }
 
@@ -324,7 +343,7 @@ code {
   margin: 0;
   padding: 0.75rem;
   background: var(--surface-2);
-  border-radius: var(--radius-sm, 8px);
+  border-radius: var(--radius-sm);
   font-family: inherit;
   font-size: 0.875rem;
   white-space: pre-wrap;
@@ -444,7 +463,7 @@ code {
   place-items: center;
   width: 32px;
   height: 32px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--primary);
   color: var(--primary-ink);
   font-weight: 800;
@@ -644,7 +663,7 @@ html {
   left: 25%;
   right: 25%;
   height: 3px;
-  border-radius: 0 0 3px 3px;
+  border-radius: 0 0 var(--radius-mark) var(--radius-mark);
   background: var(--primary);
 }
 
@@ -1208,7 +1227,7 @@ table td,
   gap: var(--space-2);
   min-height: var(--tap);
   padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   transition:
     background-color var(--dur) var(--ease),
     border-color var(--dur) var(--ease),
@@ -1387,8 +1406,8 @@ table td,
   width: 100%;
   min-height: 48px;
   padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--axis);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border-input);
   background: var(--surface);
   color: var(--ink);
   font: inherit;
@@ -1488,8 +1507,8 @@ table td,
   justify-content: center;
   min-height: 44px;
   padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-control);
   background: var(--surface);
   font-weight: 600;
   cursor: pointer;
@@ -1644,7 +1663,7 @@ fieldset.bill-row {
   align-items: center;
   gap: 4px;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: 0.78rem;
   font-weight: 650;
   line-height: 1.5;
@@ -1759,7 +1778,7 @@ fieldset.bill-row {
 .item--link {
   color: inherit;
   text-decoration: none;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: 12px 8px;
   margin: 0 -8px;
 }
@@ -1908,14 +1927,14 @@ fieldset.bill-row {
 /* Barra de progreso: la pista es un tono claro de la misma familia. */
 .meter__track {
   height: 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--series-1) 18%, var(--surface));
   overflow: hidden;
 }
 
 .meter__fill {
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--series-1);
 }
 
@@ -2117,7 +2136,7 @@ fieldset.bill-row {
 
 .composition__seg {
   position: relative;
-  border-radius: 4px;
+  border-radius: var(--radius-mark);
   min-width: 4px;
 }
 
@@ -2135,7 +2154,7 @@ fieldset.bill-row {
   background: var(--ink);
   color: var(--surface);
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   font-size: 0.8rem;
   z-index: 5;
   pointer-events: none;
@@ -2180,7 +2199,7 @@ fieldset.bill-row {
 .legend__swatch {
   width: 12px;
   height: 12px;
-  border-radius: 3px;
+  border-radius: var(--radius-mark);
 }
 
 .legend__swatch--mark {
@@ -2333,7 +2352,7 @@ fieldset.bill-row {
   background: var(--surface);
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: 8px 10px;
   font-size: 0.85rem;
   pointer-events: none;
@@ -2366,7 +2385,7 @@ fieldset.bill-row {
   gap: 4px;
   background: var(--surface-2);
   padding: 4px;
-  border-radius: 14px;
+  border-radius: var(--radius-control);
   /* En celular las pestañas se desplazan en horizontal en vez de partirse en dos filas. */
   overflow-x: auto;
   scroll-snap-type: x proximity;
@@ -2402,7 +2421,7 @@ fieldset.bill-row {
   gap: 6px;
   min-height: 44px;
   padding: 6px 12px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   color: var(--ink-2);
   text-decoration: none;
   font-weight: 650;
@@ -2478,7 +2497,7 @@ fieldset.bill-row {
   justify-content: center;
   gap: 2px;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--ink);
   font: inherit;
@@ -2515,7 +2534,7 @@ fieldset.bill-row {
   line-height: 1;
   min-width: 16px;
   padding: 2px 4px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--warning-mark);
   color: #1a1400;
   font-weight: 800;
@@ -2538,7 +2557,7 @@ fieldset.bill-row {
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--ink);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-lg);
   overflow: auto;
 }
 
@@ -2601,7 +2620,7 @@ fieldset.bill-row {
   }
 }
 .toast {
-  animation: toast-in 0.18s ease-out;
+  animation: toast-in var(--dur) var(--ease-out);
 }
 @keyframes toast-in {
   from {
@@ -2621,10 +2640,10 @@ fieldset.bill-row {
   align-items: center;
   gap: 10px;
   padding: 8px 8px 8px 14px;
-  border-radius: 12px;
+  border-radius: var(--radius-control);
   background: #1c2422;
   color: #ffffff;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-md);
 }
 
 .toast--critical {
@@ -2635,7 +2654,7 @@ fieldset.bill-row {
 .toast--held {
   align-self: flex-end;
   padding: 4px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .plans__toolbar {
@@ -2746,7 +2765,7 @@ fieldset.bill-row {
     right: auto;
     width: 4px;
     height: auto;
-    border-radius: 0 4px 4px 0;
+    border-radius: 0 var(--radius-mark) var(--radius-mark) 0;
   }
 
   /* «Agregar» primero en la columna lateral, como botón principal. */
@@ -2879,7 +2898,7 @@ fieldset.bill-row {
 .bars__track {
   grid-area: track;
   height: 12px;
-  border-radius: 4px;
+  border-radius: var(--radius-mark);
   background: color-mix(in srgb, var(--series-1) 12%, var(--surface));
 }
 
@@ -2887,7 +2906,7 @@ fieldset.bill-row {
   display: block;
   height: 100%;
   min-width: 2px;
-  border-radius: 0 4px 4px 0;
+  border-radius: 0 var(--radius-mark) var(--radius-mark) 0;
   background: var(--series-1);
 }
 
@@ -2994,7 +3013,7 @@ fieldset.bill-row {
   min-height: 44px;
   padding: 6px 14px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface);
   color: var(--ink);
   text-decoration: none;
@@ -3096,7 +3115,7 @@ fieldset.bill-row {
   min-height: 44px;
   padding: 8px 12px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-control);
   background: var(--surface);
   color: var(--ink);
   text-decoration: none;
@@ -3133,7 +3152,8 @@ fieldset.bill-row {
   }
   /* E4: las hojas y los avisos aparecen sin animación. */
   .sheet__panel,
-  .toast {
+  .toast,
+  .count-up.is-updated {
     animation: none !important;
   }
 }
@@ -3235,7 +3255,7 @@ fieldset.bill-row {
 
 .form-details {
   border: 1px solid var(--border);
-  border-radius: var(--radius-md, 12px);
+  border-radius: var(--radius-md);
   padding: 0 var(--space-3, 12px);
 }
 
@@ -3268,7 +3288,7 @@ kbd {
   font-family: inherit;
   font-size: 0.85em;
   border: 1px solid var(--border-strong, var(--border));
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   padding: 1px 6px;
   background: var(--surface-2);
 }
@@ -3278,7 +3298,7 @@ kbd {
   gap: var(--space-3, 12px);
   padding: var(--space-3, 12px);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md, 12px);
+  border-radius: var(--radius-md);
 }
 
 /* Personalización */
@@ -3434,7 +3454,7 @@ progress {
   border-bottom: 0;
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   background: var(--bg-elevated, var(--surface));
-  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-lg);
   padding-bottom: var(--safe-bottom);
   animation: sheet-up var(--dur-sheet) ease-out;
 }
@@ -3464,7 +3484,7 @@ progress {
   width: 40px;
   height: 4px;
   margin: 10px auto 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--border-strong, var(--border));
 }
 
@@ -3538,11 +3558,11 @@ progress {
   height: 32px;
   padding: 0;
   border: 2px solid var(--border-strong, var(--border));
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface-2);
   position: relative;
   cursor: pointer;
-  transition: background 160ms ease, border-color 160ms ease;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
 
 .toggle__knob {
@@ -3558,7 +3578,7 @@ progress {
   align-items: center;
   justify-content: center;
   box-shadow: var(--shadow);
-  transition: transform 160ms ease;
+  transition: transform var(--dur) var(--ease);
 }
 
 .toggle.is-on {
@@ -3669,7 +3689,7 @@ progress {
 
 .skeleton__line {
   height: 14px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   background: linear-gradient(90deg, var(--surface-2) 25%, var(--border) 50%, var(--surface-2) 75%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.4s linear infinite;
@@ -3702,7 +3722,7 @@ progress {
   width: 100%;
   padding-left: 40px;
   padding-right: 44px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .searchbar__clear {
@@ -3762,7 +3782,7 @@ progress {
   min-height: 44px;
   padding: 4px 12px 4px 6px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface);
   color: var(--ink);
   font: inherit;
@@ -3899,16 +3919,16 @@ button.cat-chip:hover {
 
 .progress__track {
   height: 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface-2);
   overflow: hidden;
 }
 
 .progress__fill {
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--accent);
-  transition: width 240ms ease;
+  transition: width var(--dur-slow) var(--ease);
 }
 
 .progress--warning .progress__fill {
@@ -4292,7 +4312,7 @@ button.cat-chip:hover {
   position: relative;
   z-index: 1;
   background: var(--surface);
-  transition: transform 160ms ease;
+  transition: transform var(--dur) var(--ease);
   touch-action: pan-y;
 }
 
@@ -4546,7 +4566,7 @@ li.is-selected > .item--select {
   color: inherit;
   font: inherit;
   text-align: left;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   min-height: 44px;
   cursor: pointer;
 }
@@ -4649,11 +4669,15 @@ li.is-selected > .item--select {
 .trend__cur {
   stroke: var(--series-1);
   stroke-width: 3;
+  stroke-linecap: round;
   stroke-linejoin: round;
 }
+/* Periodo anterior: trazo discontinuo (no solo otro color). */
 .trend__prev {
   stroke: var(--text-muted);
   stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
   stroke-dasharray: 6 4;
 }
 .future__band {
@@ -4663,6 +4687,8 @@ li.is-selected > .item--select {
 .future__line {
   stroke: var(--series-1);
   stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .future__dot {
   fill: var(--surface);
@@ -4699,7 +4725,7 @@ li.is-selected > .item--select {
   text-decoration: none;
   padding: 6px 4px;
   min-height: 44px;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
 }
 .top-list a:hover,
 .top-list a:focus-visible {
@@ -4811,7 +4837,7 @@ li.is-selected > .item--select {
   width: 56px;
   height: 56px;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   border: 1px solid var(--border);
   flex: 0 0 auto;
 }
@@ -4865,8 +4891,20 @@ html.is-discreet .item:hover .item__title,
 html.is-discreet .item:focus-within .item__title {
   filter: blur(5px);
 }
+/* La cifra final se muestra de inmediato (nunca un conteo que la retrase); al cambiar, un fundido breve. */
 .count-up {
   font-variant-numeric: tabular-nums;
+}
+.count-up.is-updated {
+  animation: count-settle var(--dur) var(--ease-out);
+}
+@keyframes count-settle {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
 }
 .screen-skeleton {
   padding-top: 8px;
@@ -4972,7 +5010,7 @@ html.is-discreet .item:focus-within .item__title {
   place-items: center;
   width: 32px;
   height: 32px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--surface-2);
   color: var(--accent-text);
 }
@@ -5062,7 +5100,7 @@ html.is-discreet .item:focus-within .item__title {
 
 .month-summary__chevron {
   margin-left: auto;
-  transition: transform 0.15s ease;
+  transition: transform var(--dur) var(--ease);
 }
 
 .month-summary[open] > summary .month-summary__chevron {
@@ -5148,7 +5186,7 @@ html.is-discreet .item:focus-within .item__title {
 .voice-meter__track {
   flex: 1 1 auto;
   height: 10px;
-  border-radius: 5px;
+  border-radius: var(--radius-mark);
   background: var(--surface-2);
   border: 1px solid var(--border);
   overflow: hidden;

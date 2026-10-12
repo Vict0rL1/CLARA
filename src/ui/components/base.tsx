@@ -446,36 +446,26 @@ export function SwipeRow({
   )
 }
 
-/* ---------- Cifra animada (count-up) ---------- */
+/* ---------- Cifra principal (count-up) ---------- */
 
 /**
- * Anima la cifra principal del valor anterior al nuevo interpolando ENTEROS (unidades menores) con
- * requestAnimationFrame. Con «reducir movimiento», en modo privado o en el primer render se muestra
- * el valor final directamente. El texto final siempre es `format(valueMinor)`.
+ * Muestra SIEMPRE el importe final de inmediato: un conteo animado retrasaría la cifra que la persona
+ * necesita leer. Al cambiar de valor, un fundido de 160 ms (`.is-updated`) señala el cambio; con
+ * «reducir movimiento» no hay ninguna animación.
  */
-export function CountUp({ valueMinor, format, animate = true, durationMs = 450 }: { valueMinor: number; format: (minor: number) => string; animate?: boolean; durationMs?: number }) {
-  const [shown, setShown] = useState(valueMinor)
+export function CountUp({ valueMinor, format, animate = true }: { valueMinor: number; format: (minor: number) => string; animate?: boolean }) {
   const previous = useRef<number | null>(null)
+  const [updated, setUpdated] = useState(false)
   useEffect(() => {
     const from = previous.current
     previous.current = valueMinor
     const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (from === null || !animate || reduced || from === valueMinor) {
-      setShown(valueMinor)
-      return
-    }
-    let frame = 0
-    const start = performance.now()
-    const step = (now: number) => {
-      const p = Math.min(1, (now - start) / durationMs)
-      const eased = 1 - (1 - p) * (1 - p)
-      setShown(from + Math.round((valueMinor - from) * eased))
-      if (p < 1) frame = requestAnimationFrame(step)
-    }
-    frame = requestAnimationFrame(step)
-    return () => cancelAnimationFrame(frame)
-  }, [valueMinor, animate, durationMs])
-  return <span className="count-up">{format(shown)}</span>
+    if (from === null || !animate || reduced || from === valueMinor) return
+    setUpdated(true)
+    const timer = window.setTimeout(() => setUpdated(false), 200)
+    return () => window.clearTimeout(timer)
+  }, [valueMinor, animate])
+  return <span className={updated ? 'count-up is-updated' : 'count-up'}>{format(valueMinor)}</span>
 }
 
 /* ---------- Esqueleto de pantalla (carga diferida) ---------- */
