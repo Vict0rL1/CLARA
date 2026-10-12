@@ -176,6 +176,25 @@ reglas que la compilación comprueba sola (`npm run build` falla con el motivo; 
 La política de seguridad de contenido solo añade ese origen cuando la configuración pasa, y la app usa
 el análisis local en cualquier otro caso sin fingir un proveedor (`src/domain/aiConfig.ts`, decisión 138).
 
+**Límite de estas comprobaciones (auditoría 2026-10-12, R-01 condicional).** Son guardas de forma: un token
+opaco (sin forma de secreto conocido) en un host `https` que no esté en la lista de proveedores **pasa**, y
+la compilación no puede saber qué hay detrás de esa dirección. Por eso activar el proveedor exige, antes
+de definir las variables y fuera de este repositorio, un servicio propio que cumpla todo esto (ninguno
+existe hoy y aquí no se afirma lo contrario):
+
+1. Guarda la credencial real del proveedor en su servidor; el token público solo identifica a la app.
+2. Autoriza por usuario o por instalación y limita el uso (cuotas y ritmo), de modo que un token copiado
+   del paquete no sirva para gastar la cuota de otros.
+3. No registra ni conserva el texto financiero más allá de la respuesta; el contrato de datos se documenta
+   antes de activarlo y se refleja en Ajustes › Privacidad (hoy dice que el análisis es local).
+4. Responde con el mismo formato que `aiProvider.ts` sanea (`sanitize`): la app sigue sin aceptar importes,
+   fechas o categorías fuera de lo permitido, y sigue cayendo al análisis local ante cualquier error.
+5. Se prueba contra la vista previa de Cloudflare con `VITE_AI_ENDPOINT`/`VITE_AI_KEY` definidos como
+   **variables de repositorio** (nunca secretos) y se comprueba en el navegador que `connect-src` solo
+   añade ese origen.
+
+Hasta entonces la beta compila sin proveedor: no hay ningún servicio activado, contratado ni probado.
+
 ### Despliegues (`.github/workflows/deploy.yml`)
 
 `ci.yml` llama a `deploy.yml` solo cuando `check` y los tres `e2e` están en verde, así que nada sin

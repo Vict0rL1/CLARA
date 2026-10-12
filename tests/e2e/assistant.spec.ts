@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { go, openAddSheet, startDemo, movementCount, storedData } from './helpers'
+import { available, go, movementCount, openAddSheet, openApp, startDemo, storedData } from './helpers'
 
 test('asistente: texto → vista previa editable → registro todo o nada; nada se guarda antes de confirmar', async ({ page }) => {
   await startDemo(page)
@@ -53,4 +53,57 @@ test('asistente: sin importe no inventa nada; un importe inválido bloquea todo 
   await page.getByRole('button', { name: 'Registrar 1 movimiento' }).click()
   await expect(line.getByText('Escribe un importe.')).toBeVisible()
   expect(await movementCount(page)).toBe(before)
+})
+
+/**
+ * Transparencia del asistente (auditoría 2026-10-12, §6): el texto se analiza en el dispositivo, cada
+ * línea se ve y se edita antes de registrar, nada se guarda sin importe y lo registrado persiste.
+ * Presupuesto nuevo de 2 000 con apartado de 300 → 1 700; «café 4.50» y «cobré 500 de freelance»
+ * dejan 2 000 − 300 − 4,50 + 500 = 2 195,50, también tras recargar.
+ */
+test('asistente: «café 4.50» y «cobré 500 de freelance» se registran; «café» solo no se puede guardar; 2 195,50 persiste', async ({ page }) => {
+  await openApp(page)
+  await page.getByRole('button', { name: 'Configurar con mis datos' }).click()
+  await page.getByRole('button', { name: 'Continuar' }).click()
+  await page.getByLabel('Saldo disponible').fill('2000')
+  await page.getByRole('button', { name: 'Continuar' }).click()
+  await page.getByRole('radio', { name: 'No tengo fecha' }).check()
+  await page.getByRole('button', { name: 'Continuar' }).click()
+  await page.getByRole('button', { name: 'Continuar' }).click()
+  await page.getByLabel('Cantidad reservada').fill('300')
+  await page.getByRole('button', { name: 'Ver resumen' }).click()
+  await page.getByRole('button', { name: 'Empezar a usar Clara' }).click()
+  await expect(page.getByTestId('available')).toHaveText('$1,700.00')
+
+  const analyze = async (text: string) => {
+    await go(page, '/asistente')
+    await page.getByLabel('Texto').fill(text)
+    await page.getByRole('button', { name: 'Analizar' }).click()
+    return page.getByTestId('assistant-preview').locator('.assistant__line').first()
+  }
+  const coffee = await analyze('café 4.50')
+  await expect(coffee.getByLabel('Importe')).toHaveValue('4.50')
+  await expect(coffee.getByRole('radio', { name: 'Gasto' })).toBeChecked()
+  await page.getByRole('button', { name: 'Registrar 1 movimiento' }).click()
+  await expect(page.getByText('1 movimiento registrado')).toBeVisible()
+  await expect(await available(page)).toHaveText('$1,695.50')
+
+  const paid = await analyze('cobré 500 de freelance')
+  await expect(paid.getByLabel('Importe')).toHaveValue('500.00')
+  await expect(paid.getByRole('radio', { name: 'Ingreso' })).toBeChecked()
+  await page.getByRole('button', { name: 'Registrar 1 movimiento' }).click()
+  await expect(await available(page)).toHaveText('$2,195.50')
+
+  // Sin importe no se inventa nada ni se guarda.
+  const bare = await analyze('café')
+  await expect(bare.getByLabel('Importe')).toHaveValue('')
+  await expect(bare.getByText('Sin importe: escríbelo.')).toBeVisible()
+  await page.getByRole('button', { name: 'Registrar 1 movimiento' }).click()
+  await expect(bare.getByText('Escribe un importe.')).toBeVisible()
+  expect(await movementCount(page)).toBe(2)
+
+  // Tras recargar (la pestaña queda en Movimientos), Inicio sigue mostrando lo guardado.
+  await page.reload()
+  await expect(await available(page)).toHaveText('$2,195.50')
+  expect(await movementCount(page)).toBe(2)
 })
