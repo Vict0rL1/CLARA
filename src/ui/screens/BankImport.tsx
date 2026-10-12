@@ -16,7 +16,8 @@ import { CheckboxField, Segmented, SelectField } from '../components/fields'
 import { Icon } from '../components/Icon'
 import { useToast } from '../components/toastContext'
 import { useFormat } from '../format'
-import { accountOptions, categoryLabel, issueMessage } from '../labels'
+import { accountOptions, categoryLabel, issueMessage, planItemName } from '../labels'
+import { reviewProposals, type ProposalReview } from '../../domain/review'
 import { href, useNavigateIfStillHere } from '../router'
 import { RuleDialog } from './RulesSection'
 import { CategoryPicker } from '../components/CategoryPicker'
@@ -60,6 +61,8 @@ export function BankImport() {
   const [expenseCategory, setExpenseCategory] = useState('other_expense')
   const [incomeCategory, setIncomeCategory] = useState('other_income')
   const [choices, setChoices] = useState<Map<string, boolean>>(new Map())
+  // Filas que la persona decidió vincular con el pago programado que coincide (por huella).
+  const [links, setLinks] = useState<Map<string, boolean>>(new Map())
   // Categoría elegida a mano en una fila (tiene prioridad sobre las reglas).
   const [rowCategories, setRowCategories] = useState<Map<string, string>>(new Map())
   const [ruleFor, setRuleFor] = useState<{ pattern: string; kind: 'expense' | 'income'; categoryId: string } | null>(null)
@@ -162,6 +165,9 @@ export function BankImport() {
       categoryId: categoryFor(r).categoryId,
       note: r.description || undefined,
       importRef: r.importRef,
+      ...(links.get(r.importRef) && reviews.get(r.importRef)?.scheduleMatch
+        ? { scheduleId: reviews.get(r.importRef)!.scheduleMatch!.sourceId, occurrenceDate: reviews.get(r.importRef)!.scheduleMatch!.date }
+        : {}),
     }))
     const { result, saved } = await run((d, c) => importTransactions(d, { items, sameDayAlreadyInBalance: sameDayIncluded }, c))
     setBusy(false)
@@ -200,6 +206,22 @@ export function BankImport() {
     }
   }
   const cardPaymentRows = preview ? preview.rows.filter((r) => r.cardPaymentHint && isImportable(r)).length : 0
+
+  // Revisión única (etapa 2): coincidencia con pagos programados abiertos, como en el formulario y el asistente.
+  const reviews = useMemo(() => {
+    const map = new Map<string, ProposalReview>()
+    if (!preview) return map
+    const rows = preview.rows.filter(isImportable)
+    const result = reviewProposals(
+      data,
+      rows.map((r) => ({ id: idFor(r.importRef), source: 'csv' as const, kind: r.kind, amountMinor: r.amountMinor, date: r.date, accountId, categoryId: categoryFor(r).categoryId, description: r.description })),
+      today,
+    )
+    rows.forEach((r, i) => map.set(r.importRef, result.reviews[i]!))
+    return map
+    // `categoryFor` cambia con las categorías elegidas a mano; `rowCategories` es su única entrada variable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preview, data, accountId, today, rowCategories])
 
   const possibleMatch = (row: ImportRow) => {
     const match = row.matchId ? data.transactions.find((tx) => tx.id === row.matchId) : undefined
@@ -412,9 +434,19 @@ export function BankImport() {
                           {matchHint ? ` · ${matchHint}` : ''}
                           {importable && row.anchorRelation === 'before' ? ` · ${t('bankImport.notInBalance')}` : ''}
                           {category?.rule ? ` · ${t('bankImport.byRule', { pattern: category.rule.pattern })}` : ''}
+                          {importable && reviews.get(row.importRef)?.scheduleMatch
+                            ? ` · ${t('bankImport.scheduleMatch', { name: planItemName(reviews.get(row.importRef)!.scheduleMatch!, t), date: fmt.date(reviews.get(row.importRef)!.scheduleMatch!.date, { compact: true, today }) })}`
+                            : ''}
                         </span>
                         <span className="item__badges">{rowBadges(row)}</span>
                       </label>
+                      {importable && reviews.get(row.importRef)?.scheduleMatch && (
+                        <CheckboxField
+                          checked={!!links.get(row.importRef)}
+                          onChange={(v) => setLinks((prev) => new Map(prev).set(row.importRef!, v))}
+                          label={t('bankImport.linkSchedule', { name: planItemName(reviews.get(row.importRef)!.scheduleMatch!, t) })}
+                        />
+                      )}
                       {importable && category && (
                         <div className="import-row__category">
                           <select

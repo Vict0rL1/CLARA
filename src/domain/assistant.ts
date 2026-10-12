@@ -20,6 +20,9 @@ export interface ConfirmedEntry {
   /** Foto del recibo comprimida (solo entradas desde foto). */
   receiptUri?: string
   source: TransactionSource
+  /** Vínculo con un pago o ingreso programado abierto (lo eligió la persona en la revisión). */
+  scheduleId?: string
+  occurrenceDate?: LocalDate
 }
 
 /** Registra todas las entradas o ninguna. Los errores llevan el índice de la entrada (`entries[i].campo`). */
@@ -42,6 +45,7 @@ export function saveConfirmedEntries(data: AppData, entries: readonly ConfirmedE
         ...(e.note ? { note: e.note } : {}),
         ...(e.merchant ? { merchant: e.merchant } : {}),
         ...(e.receiptUri ? { receiptUri: e.receiptUri } : {}),
+        ...(e.scheduleId && e.occurrenceDate ? { scheduleId: e.scheduleId, occurrenceDate: e.occurrenceDate } : {}),
         source: e.source,
       },
       ctx,
