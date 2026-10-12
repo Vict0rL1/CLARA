@@ -310,11 +310,14 @@ graphify path "AppStore" "DataRepository"
 graphify update .                    # tras cambiar código, sin coste de IA
 ```
 
-El resultado (`graphify-out/`, unos 7 MB que se regeneran en segundos) no se versiona. Para que
-el asistente consulte siempre el grafo (una sección en `CLAUDE.md` y ganchos `PreToolUse` en
-`.claude/settings.json`), ejecuta `graphify claude install --project` y revisa esos archivos antes
-de confirmarlos: los ganchos llaman a `graphify` en cada herramienta y dan error donde no esté
-instalado.
+El resultado (`graphify-out/`, unos 7 MB que se regeneran en segundos) no se versiona. El grafo se
+mantiene al día solo: un gancho `Stop` de Claude Code (`.claude/settings.json`) ejecuta
+`graphify update .` en segundo plano al terminar cada respuesta, únicamente si `graphify` está
+instalado y ya existe `graphify-out/graph.json`. Para tus propios commits, `graphify hook install`
+(una vez por clon) añade ganchos de git que lo reconstruyen tras cada commit y cambio de rama. Para
+que el asistente consulte siempre el grafo antes de leer archivos (sección en `CLAUDE.md` y ganchos
+`PreToolUse`), ejecuta `graphify claude install --project` y revisa esos archivos antes de
+confirmarlos: dan error donde `graphify` no esté instalado.
 
 ## 7. Estructura del proyecto
 
