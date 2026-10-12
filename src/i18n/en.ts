@@ -2967,4 +2967,9 @@ export const en: Record<keyof typeof es, string> = {
   'period.biweekHint': 'A calendar half-month runs from the 1st to the 15th and from the 16th to month end. It is not the same as being paid “every two weeks” (14 days): if that is your case, choose “Until my next income” and the period will follow your pay dates.',
   'setup.summary.provisionalPeriod': 'Without a next income date, the calculation uses your period ({label}): it ends on {date}, {days} left. When you know the date, add it in Plan › Calendar.',
   'setup.income.periodInstead': 'With the “{period}” period, your money is split over the days left in the period; you don’t need to choose a number of days. You can add an income later in Plan › Calendar.',
+  'home.ledger.cash': 'In accounts',
+  'home.ledger.reserved': 'Reserved',
+  'home.ledger.base': 'Period base',
+  'home.upcomingMore_one': '{count} more in the calendar',
+  'home.upcomingMore_other': '{count} more in the calendar',
 }

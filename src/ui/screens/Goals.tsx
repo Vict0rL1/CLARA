@@ -11,7 +11,7 @@ import { LIMITS, type Issue } from '../../domain/validation'
 import { useT } from '../../i18n'
 import { useRun, useToday } from '../../state/hooks'
 import { useData } from '../../state/store'
-import { Alert, Badge, Card, EmptyState, Meter, PageHeader, Why } from '../components/common'
+import { Alert, Badge, Card, EmptyState, PageHeader, ProgressArc, Why } from '../components/common'
 import { MoneyField, Segmented, TextField } from '../components/fields'
 import { parseMoneyText, moneyErrorMessage } from '../moneyText'
 import { Icon } from '../components/Icon'
@@ -108,9 +108,13 @@ export function Goals() {
                       </Badge>
                     )}
                   </p>
-                  <Meter fraction={p.fraction} label={g.name} valueText={valueText} />
-                  <p className="goal__progress">{valueText}</p>
-                  {!p.complete && <p className="item__meta">{t('goals.remaining', { amount: fmt.money(p.remainingMinor) })}</p>}
+                  <div className="goal__summary">
+                    <ProgressArc fraction={p.fraction} label={g.name} valueText={valueText} text={fmt.percent(p.fraction)} complete={p.complete} size={56} />
+                    <div className="goal__summary-text">
+                      <p className="goal__progress">{valueText}</p>
+                      {!p.complete && <p className="item__meta">{t('goals.remaining', { amount: fmt.money(p.remainingMinor) })}</p>}
+                    </div>
+                  </div>
                   {/* D7: acumulado frente a la recta ideal y fecha estimada (solo con ≥ 2 aportes). */}
                   {g.allocations.length > 0 && <GoalChart trajectory={goalTrajectory(g, today)} fmt={fmt} today={today} />}
                   {(() => {

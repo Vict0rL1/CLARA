@@ -2965,4 +2965,9 @@ export const pt: Record<keyof typeof es, string> = {
   'period.biweekHint': 'A quinzena do calendário vai do dia 1 ao 15 e do 16 ao fim do mês. Não é o mesmo que receber «a cada 2 semanas» (14 dias): nesse caso, escolha «Até minha próxima receita» e o período seguirá seus recebimentos.',
   'setup.summary.provisionalPeriod': 'Sem data da próxima receita, o cálculo usa seu período ({label}): termina em {date} e faltam {days}. Quando souber a data, adicione em Plano › Calendário.',
   'setup.income.periodInstead': 'Com o período “{period}”, seu dinheiro é dividido entre os dias que faltam do período; não é preciso escolher um número de dias. Você pode adicionar uma receita depois em Plano › Calendário.',
+  'home.ledger.cash': 'Nas contas',
+  'home.ledger.reserved': 'Reservado',
+  'home.ledger.base': 'Base do período',
+  'home.upcomingMore_one': '{count} mais no calendário',
+  'home.upcomingMore_other': '{count} mais no calendário',
 }

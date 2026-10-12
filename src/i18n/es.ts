@@ -2966,4 +2966,9 @@ export const es = {
   'period.biweekHint': 'La quincena del calendario va del 1 al 15 y del 16 a fin de mes. No es lo mismo que cobrar «cada 2 semanas» (14 días): si cobras así, elige «Hasta mi próximo ingreso» y el periodo seguirá tus cobros.',
   'setup.summary.provisionalPeriod': 'Sin fecha de próximo ingreso, el cálculo usa tu periodo ({label}): termina el {date} y quedan {days}. Cuando sepas la fecha, agrégala en Plan › Calendario.',
   'setup.income.periodInstead': 'Con el periodo «{period}», tu dinero se reparte entre los días que quedan del periodo; no hace falta elegir un número de días. Puedes agregar un ingreso más adelante en Plan › Calendario.',
+  'home.ledger.cash': 'En cuentas',
+  'home.ledger.reserved': 'Reservado',
+  'home.ledger.base': 'Base del periodo',
+  'home.upcomingMore_one': '{count} más en el calendario',
+  'home.upcomingMore_other': '{count} más en el calendario',
 } as const

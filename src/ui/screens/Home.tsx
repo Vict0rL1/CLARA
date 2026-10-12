@@ -25,7 +25,7 @@ import { useT, type MessageKey } from '../../i18n'
 import { useRun, useToday } from '../../state/hooks'
 import { useData } from '../../state/store'
 import { CompositionBar } from '../components/charts'
-import { Alert, Badge, CalcRow, Card, EmptyState, Explain, Meter, Why } from '../components/common'
+import { Alert, Badge, CalcRow, Card, EmptyState, Explain, Meter, ProgressArc, Why } from '../components/common'
 import { Icon } from '../components/Icon'
 import { useToast } from '../components/toastContext'
 import { HorizonPicker, MarkPaidDialog, UpdateBalanceDialog } from '../dialogs'
@@ -557,13 +557,12 @@ export function Home() {
               const p = goalProgress(g)
               const valueText = t('goals.progressText', { saved: fmt.money(p.savedMinor), target: fmt.money(p.targetMinor), pct: fmt.percent(p.fraction) })
               return (
-                <li key={g.id}>
-                  <div className="goal-mini__row">
+                <li key={g.id} className="goal-mini">
+                  <ProgressArc fraction={p.fraction} label={g.name} valueText={valueText} text={fmt.percent(p.fraction)} complete={p.complete} />
+                  <div className="goal-mini__main">
                     <span className="goal-mini__name">{g.name}</span>
-                    <span className="goal-mini__pct">{fmt.percent(p.fraction)}</span>
+                    <span className="item__meta">{valueText}</span>
                   </div>
-                  <Meter fraction={p.fraction} label={g.name} valueText={valueText} />
-                  <p className="item__meta">{valueText}</p>
                 </li>
               )
             })}
@@ -676,6 +675,22 @@ export function Home() {
                 </>
               )}
             </p>
+            {/* Saldo en cuentas, reservado y (si difiere) base del periodo: lo que compone la cifra, sin abrir la explicación. */}
+            {budget.status === 'ok' && !viewing && (
+              <p className="hero__ledger" data-testid="hero-ledger">
+                <span className="hero__ledger-item">
+                  <span className="hero__ledger-label">{t('home.ledger.cash')}</span> <span className="hero__ledger-value">{fmt.money(budget.spendableMinor)}</span>
+                </span>
+                {budget.baseMinor !== budget.spendableMinor && (
+                  <span className="hero__ledger-item">
+                    <span className="hero__ledger-label">{t('home.ledger.base')}</span> <span className="hero__ledger-value">{fmt.money(budget.baseMinor)}</span>
+                  </span>
+                )}
+                <span className="hero__ledger-item">
+                  <span className="hero__ledger-label">{t('home.ledger.reserved')}</span> <span className="hero__ledger-value">−{fmt.money(budget.reservedTotalMinor + budget.goalsReservedMinor)}</span>
+                </span>
+              </p>
+            )}
             {budget.status === 'ok' && (
               <>
                 <div className="hero__boxes">
@@ -945,6 +960,38 @@ export function Home() {
                 ))}
               </div>
             </details>
+          )}
+          {/* Vista esencial: los dos próximos pagos o ingresos en una franja (la vista completa tiene la tarjeta). */}
+          {essential && upcoming.length > 0 && (
+            <section className="upcoming-strip" aria-labelledby="upcoming-strip-title" data-testid="upcoming-strip">
+              <h2 id="upcoming-strip-title" className="upcoming-strip__title">
+                <Icon name="calendar" size={16} /> {t('home.upcomingTitle')}
+              </h2>
+              <ul className="upcoming-strip__list">
+                {upcoming.slice(0, 2).map((i) => (
+                  <li key={i.key} className="upcoming-strip__item">
+                    <span className="upcoming-strip__name">{planItemName(i, t)}</span>
+                    <span className="upcoming-strip__when">
+                      {i.state === 'overdue' ? (
+                        <Badge tone="warning" icon="alert">
+                          {t('state.overdue')}
+                        </Badge>
+                      ) : (
+                        fmt.date(i.date, { compact: true, today, weekday: true })
+                      )}
+                    </span>
+                    <span className="upcoming-strip__amount">
+                      {i.budgetEffectMinor > 0 ? '+' : i.budgetEffectMinor < 0 ? '−' : ''}
+                      {fmt.money(i.amountMinor)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <a className="link-more" href={href('/plan/calendario')}>
+                {upcoming.length > 2 ? tn('home.upcomingMore', upcoming.length - 2) : t('home.seeCalendar')}
+                <Icon name="chevronRight" size={16} />
+              </a>
+            </section>
           )}
           {/* Favoritos: atajos para registrar; en ambas vistas, tras el primer aviso (C1). */}
           <FavoriteChips returnTo="/" limit={4} />

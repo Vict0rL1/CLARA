@@ -2965,4 +2965,9 @@ export const fr: Record<keyof typeof es, string> = {
   'period.biweekHint': 'La quinzaine du calendrier va du 1er au 15 et du 16 à la fin du mois. Ce n’est pas la même chose qu’être payé « toutes les deux semaines » (14 jours) : dans ce cas, choisissez « Jusqu’à mon prochain revenu » et la période suivra vos paies.',
   'setup.summary.provisionalPeriod': 'Sans date de prochain revenu, le calcul utilise votre période ({label}) : elle se termine le {date} et il reste {days}. Quand vous connaîtrez la date, ajoutez-la dans Plan › Calendrier.',
   'setup.income.periodInstead': 'Avec la période « {period} », votre argent est réparti sur les jours restants de la période ; inutile de choisir un nombre de jours. Vous pourrez ajouter un revenu plus tard dans Plan › Calendrier.',
+  'home.ledger.cash': 'Sur les comptes',
+  'home.ledger.reserved': 'Réservé',
+  'home.ledger.base': 'Base de la période',
+  'home.upcomingMore_one': '{count} de plus dans le calendrier',
+  'home.upcomingMore_other': '{count} de plus dans le calendrier',
 }

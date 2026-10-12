@@ -72,6 +72,30 @@ export function StatTile({ label, value, hint }: { label: string; value: string;
 }
 
 /** Barra de progreso con texto visible (el color no es el único indicador). */
+/**
+ * Arco de progreso (metas): anillo con extremos redondeados y el porcentaje en el centro; completa → ✓.
+ * Mismo rol accesible que `Meter` (progressbar con texto de valor); el porcentaje visible llega ya
+ * formateado por quien lo usa (`fmt.percent`), así respeta el idioma.
+ */
+export function ProgressArc({ fraction, label, valueText, text, complete, size = 48 }: { fraction: number; label: string; valueText: string; text: string; complete?: boolean; size?: number }) {
+  const f = Math.min(1, Math.max(0, fraction))
+  const pct = Math.round(f * 100)
+  const stroke = 5
+  const r = (size - stroke) / 2
+  const c = 2 * Math.PI * r
+  return (
+    <span className={`arc${complete ? ' arc--complete' : ''}`} role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-valuetext={valueText} style={{ width: size, height: size }}>
+      <svg viewBox={`0 0 ${size} ${size}`} aria-hidden="true" focusable="false">
+        <circle className="arc__track" cx={size / 2} cy={size / 2} r={r} strokeWidth={stroke} />
+        <circle className="arc__fill" cx={size / 2} cy={size / 2} r={r} strokeWidth={stroke} strokeDasharray={`${(c * f).toFixed(2)} ${c.toFixed(2)}`} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
+      </svg>
+      <span className="arc__text" aria-hidden="true">
+        {complete ? <Icon name="check" size={16} /> : text}
+      </span>
+    </span>
+  )
+}
+
 export function Meter({ fraction, label, valueText }: { fraction: number; label: string; valueText: string }) {
   const pct = Math.round(Math.min(1, Math.max(0, fraction)) * 100)
   return (

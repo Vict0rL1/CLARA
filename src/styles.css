@@ -849,6 +849,90 @@ html {
   background: var(--balance-gradient);
 }
 
+/* Línea de composición de la cifra: saldo en cuentas − reservado (y base del periodo si difiere). */
+.hero__ledger {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin: -2px 0 2px;
+  font-size: var(--font-body-sm);
+  color: var(--ink-2);
+}
+
+.hero__ledger-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.hero__ledger-value {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+/* Franja de próximos pagos en la vista esencial: dos filas y un enlace al calendario. */
+.upcoming-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.upcoming-strip__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--font-body-sm);
+  font-weight: 650;
+  color: var(--ink-2);
+}
+
+.upcoming-strip__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.upcoming-strip__item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.upcoming-strip__name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upcoming-strip__when {
+  font-size: var(--font-caption);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.upcoming-strip__amount {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.upcoming-strip .link-more {
+  align-self: flex-start;
+}
+
 /* Cajas INGRESOS / GASTOS y barra «Disponible · N %» del héroe (D2). */
 .hero__boxes {
   display: grid;
@@ -1922,6 +2006,76 @@ fieldset.bill-row {
 
 .goal-mini__name {
   overflow-wrap: break-word;
+}
+
+/* Metas en Inicio: arco + nombre y cifras en una fila. */
+.goal-mini {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.goal-mini__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* Arco de progreso (metas): anillo con extremos redondeados; la pista es un tono claro de la misma familia. */
+.arc {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+}
+
+.arc svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.arc__track {
+  fill: none;
+  stroke: color-mix(in srgb, var(--series-3) 18%, var(--surface));
+}
+
+.arc__fill {
+  fill: none;
+  stroke: var(--series-3);
+  stroke-linecap: round;
+  transition: stroke-dasharray var(--dur-slow) var(--ease);
+}
+
+.arc--complete .arc__fill {
+  stroke: var(--good-mark);
+}
+
+.arc__text {
+  position: relative;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.arc--complete .arc__text {
+  color: var(--good-text);
+}
+
+.goal__summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.goal__summary-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 /* Barra de progreso: la pista es un tono claro de la misma familia. */
