@@ -1940,6 +1940,10 @@ fieldset.bill-row {
   background: var(--surface-2);
 }
 
+.item--link:active {
+  background: var(--pressed);
+}
+
 .item__icon {
   flex: none;
   display: grid;
@@ -2784,6 +2788,21 @@ fieldset.bill-row {
   overflow: auto;
 }
 
+.dialog[open] {
+  animation: dialog-in var(--dur) var(--ease-out);
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .dialog::backdrop {
   background: rgba(10, 14, 13, 0.55);
 }
@@ -3252,6 +3271,10 @@ fieldset.bill-row {
   background: var(--surface-2);
 }
 
+.chip:active {
+  background: var(--pressed);
+}
+
 .chip__amount {
   white-space: nowrap;
   color: var(--muted);
@@ -3376,6 +3399,7 @@ fieldset.bill-row {
   /* E4: las hojas y los avisos aparecen sin animación. */
   .sheet__panel,
   .toast,
+  .dialog[open],
   .count-up.is-updated {
     animation: none !important;
   }
@@ -4067,6 +4091,10 @@ button.cat-chip:hover {
 }
 
 .list-row--link:hover {
+  background: var(--surface-2);
+}
+
+.list-row--link:active {
   background: var(--pressed);
 }
 
