@@ -1560,7 +1560,7 @@ export const en: Record<keyof typeof es, string> = {
   'setup.skipToSummary': 'See my result now',
   'setup.summary.provisionalTitle': 'Provisional calculation',
   'setup.summary.provisionalBills': 'You did not add upcoming payments. If you have rent or other payments before your next income, what you can spend is lower: add them in Plan › Calendar.',
-  'setup.summary.provisionalIncome': 'Without a next income date, a {days}-day period is used. When you know the date, add it in Plan › Calendar.',
+  'setup.summary.provisionalIncome': 'Without a next income date, your money is split over {days} days, until {date}. When you know the date, add it in Plan › Calendar.',
   'home.moreNotices_one': '{count} more notice',
   'home.moreNotices_other': '{count} more notices',
   'explain.glossary.title': 'What each figure means',
@@ -2965,4 +2965,6 @@ export const en: Record<keyof typeof es, string> = {
   'bankImport.cardPaymentNote_one': '{count} row looks like a card payment and is left unchecked. A card payment is neither an expense nor an income: the purchase was already the expense. Record it as a transfer between your accounts (“+” tab › Transfer) so it is not counted twice.',
   'bankImport.cardPaymentNote_other': '{count} rows look like card payments and are left unchecked. A card payment is neither an expense nor an income: the purchase was already the expense. Record them as transfers between your accounts (“+” tab › Transfer) so they are not counted twice.',
   'period.biweekHint': 'A calendar half-month runs from the 1st to the 15th and from the 16th to month end. It is not the same as being paid “every two weeks” (14 days): if that is your case, choose “Until my next income” and the period will follow your pay dates.',
+  'setup.summary.provisionalPeriod': 'Without a next income date, the calculation uses your period ({label}): it ends on {date}, {days} left. When you know the date, add it in Plan › Calendar.',
+  'setup.income.periodInstead': 'With the “{period}” period, your money is split over the days left in the period; you don’t need to choose a number of days. You can add an income later in Plan › Calendar.',
 }

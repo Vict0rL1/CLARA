@@ -1558,7 +1558,7 @@ export const pt: Record<keyof typeof es, string> = {
   'setup.skipToSummary': 'Ver meu resultado agora',
   'setup.summary.provisionalTitle': 'Cálculo provisório',
   'setup.summary.provisionalBills': 'Você não adicionou pagamentos próximos. Se tem aluguel ou outros pagamentos antes da sua próxima receita, o que pode gastar é menor: adicione em Plano › Calendário.',
-  'setup.summary.provisionalIncome': 'Sem data da próxima receita, usa-se um período de {days} dias. Quando souber a data, adicione em Plano › Calendário.',
+  'setup.summary.provisionalIncome': 'Sem data da próxima receita, seu dinheiro é dividido em {days} dias, até {date}. Quando souber a data, adicione em Plano › Calendário.',
   'home.moreNotices_one': 'Mais {count} aviso',
   'home.moreNotices_other': 'Mais {count} avisos',
   'explain.glossary.title': 'O que cada número significa',
@@ -2963,4 +2963,6 @@ export const pt: Record<keyof typeof es, string> = {
   'bankImport.cardPaymentNote_one': '{count} linha parece o pagamento de um cartão e fica desmarcada. Um pagamento de cartão não é despesa nem receita: a compra já foi a despesa. Registre-o como transferência entre suas contas (aba «+» › Transferência) para não contá-lo duas vezes.',
   'bankImport.cardPaymentNote_other': '{count} linhas parecem pagamentos de cartão e ficam desmarcadas. Um pagamento de cartão não é despesa nem receita: a compra já foi a despesa. Registre-os como transferências entre suas contas (aba «+» › Transferência) para não contá-los duas vezes.',
   'period.biweekHint': 'A quinzena do calendário vai do dia 1 ao 15 e do 16 ao fim do mês. Não é o mesmo que receber «a cada 2 semanas» (14 dias): nesse caso, escolha «Até minha próxima receita» e o período seguirá seus recebimentos.',
+  'setup.summary.provisionalPeriod': 'Sem data da próxima receita, o cálculo usa seu período ({label}): termina em {date} e faltam {days}. Quando souber a data, adicione em Plano › Calendário.',
+  'setup.income.periodInstead': 'Com o período “{period}”, seu dinheiro é dividido entre os dias que faltam do período; não é preciso escolher um número de dias. Você pode adicionar uma receita depois em Plano › Calendário.',
 }

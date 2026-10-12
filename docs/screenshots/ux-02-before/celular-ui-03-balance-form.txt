@@ -1,0 +1,98 @@
+Paso 2 de 6
+
+Tu dinero hoy
+Moneda
+CAD · dólar canadiense
+USD · dólar estadounidense
+MXN · peso mexicano
+COP · peso colombiano
+PEN · sol peruano
+ARS · peso argentino
+CLP · peso chileno
+BRL · real brasileño
+UYU · peso uruguayo
+PYG · guaraní paraguayo
+BOB · boliviano
+GTQ · quetzal guatemalteco
+HNL · lempira hondureño
+NIO · córdoba oro
+CRC · colón costarricense
+PAB · balboa panameño
+DOP · peso dominicano
+EUR · euro
+GBP · libra esterlina
+CHF · franco suizo
+SEK · corona sueca
+NOK · corona noruega
+DKK · corona danesa
+PLN · esloti
+CZK · corona checa
+HUF · forinto húngaro
+RON · leu rumano
+BGN · leva búlgara
+ISK · corona islandesa
+TRY · lira turca
+UAH · grivna
+JPY · yen
+CNY · yuan
+KRW · won surcoreano
+INR · rupia india
+AUD · dólar australiano
+NZD · dólar neozelandés
+SGD · dólar singapurense
+HKD · dólar hongkonés
+TWD · nuevo dólar taiwanés
+THB · bat
+PHP · peso filipino
+IDR · rupia indonesia
+MYR · ringit
+VND · dong
+PKR · rupia pakistaní
+AED · dírham de los Emiratos Árabes Unidos
+SAR · rial saudí
+ILS · nuevo séquel israelí
+EGP · libra egipcia
+ZAR · rand
+NGN · naira
+KES · chelín keniano
+MAD · dírham marroquí
+QAR · rial catarí
+KWD · dinar kuwaití
+
+Un presupuesto usa una sola moneda.
+
+Periodo del presupuesto
+Semanal
+Quincena del calendario (1–15 y 16–fin)
+Mensual
+Trimestral
+Semestral
+Anual
+Personalizado
+Hasta mi próximo ingreso
+
+Cómo se agrupan tus cifras. Mensual es lo habitual; «hasta mi próximo ingreso» usa la fecha de tu ingreso.
+
+Formato de números
+$1,234.56 (punto decimal)
+1234,56 $ (coma decimal)
+$ 1.234,56 (español de Colombia)
+$1,234.56 (inglés de Canadá)
+$1,234.56 (inglés de Estados Unidos)
+1 234,56 $ (francés de Canadá)
+1 234,56 $ (francés de Francia)
+$ 1.234,56 (portugués de Brasil)
+Nombre de la cuenta
+Saldo disponible
+CAD
+
+El saldo que ves ahora en tu banco (o en efectivo). Si estás en sobregiro, escribe un número negativo, por ejemplo -25.
+
+Fecha de este saldo
+
+Normalmente hoy.
+
+Zona horaria detectada: America/Vancouver. Puedes cambiarla en Ajustes.
+
+Volver
+Continuar

@@ -1558,7 +1558,7 @@ export const fr: Record<keyof typeof es, string> = {
   'setup.skipToSummary': 'Voir mon résultat maintenant',
   'setup.summary.provisionalTitle': 'Calcul provisoire',
   'setup.summary.provisionalBills': 'Vous n’avez pas ajouté de paiements à venir. Si vous avez un loyer ou d’autres paiements avant votre prochain revenu, ce que vous pouvez dépenser est plus bas : ajoutez-les dans Plan › Calendrier.',
-  'setup.summary.provisionalIncome': 'Sans date de prochain revenu, une période de {days} jours est utilisée. Quand vous connaîtrez la date, ajoutez-la dans Plan › Calendrier.',
+  'setup.summary.provisionalIncome': 'Sans date de prochain revenu, votre argent est réparti sur {days} jours, jusqu’au {date}. Quand vous connaîtrez la date, ajoutez-la dans Plan › Calendrier.',
   'home.moreNotices_one': '{count} avis de plus',
   'home.moreNotices_other': '{count} avis de plus',
   'explain.glossary.title': 'Ce que signifie chaque chiffre',
@@ -2963,4 +2963,6 @@ export const fr: Record<keyof typeof es, string> = {
   'bankImport.cardPaymentNote_one': '{count} ligne ressemble au paiement d’une carte et reste décochée. Un paiement de carte n’est ni une dépense ni un revenu : l’achat était déjà la dépense. Enregistrez-le comme virement entre vos comptes (onglet « + » › Virement) pour ne pas le compter deux fois.',
   'bankImport.cardPaymentNote_other': '{count} lignes ressemblent à des paiements de carte et restent décochées. Un paiement de carte n’est ni une dépense ni un revenu : l’achat était déjà la dépense. Enregistrez-les comme virements entre vos comptes (onglet « + » › Virement) pour ne pas les compter deux fois.',
   'period.biweekHint': 'La quinzaine du calendrier va du 1er au 15 et du 16 à la fin du mois. Ce n’est pas la même chose qu’être payé « toutes les deux semaines » (14 jours) : dans ce cas, choisissez « Jusqu’à mon prochain revenu » et la période suivra vos paies.',
+  'setup.summary.provisionalPeriod': 'Sans date de prochain revenu, le calcul utilise votre période ({label}) : elle se termine le {date} et il reste {days}. Quand vous connaîtrez la date, ajoutez-la dans Plan › Calendrier.',
+  'setup.income.periodInstead': 'Avec la période « {period} », votre argent est réparti sur les jours restants de la période ; inutile de choisir un nombre de jours. Vous pourrez ajouter un revenu plus tard dans Plan › Calendrier.',
 }

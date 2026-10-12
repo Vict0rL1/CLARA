@@ -73,6 +73,14 @@ forman parte de `npm run check`):
   sale; sin guiones automáticos en las pestañas. En francés, «Aides publiques».
 - Contraste suficiente en el botón secundario de la guía al pasar el puntero.
 
+Auditoría del 11–12 de octubre de 2026 (`docs/AUDIT-2026-10-12.md`):
+
+- **Resumen de la configuración (UX-02):** con periodo mensual y sin fecha de ingreso, el resumen decía
+  «se usa un periodo de 14 días» mientras calculaba con los 21 días que quedaban del mes. Ahora explica el
+  horizonte que de verdad usó (el periodo y su último día, o los días elegidos y su fecha final), el paso
+  «Tu próximo ingreso» solo pide un número de días con «hasta mi próximo ingreso» y ese valor no se guarda
+  si no se pidió. Las cifras no cambian.
+
 ## [1.0.0-beta.1] — primera beta pública
 
 Clara es un prototipo local de finanzas personales: tus datos viven solo en este navegador, sin

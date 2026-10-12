@@ -165,6 +165,12 @@ Decisiones:
 - **Sin próximo ingreso:** no se divide entre cero. Se pide agregar un ingreso o
   elegir un **horizonte** (7, 14 o 30 días); con horizonte, D = días elegidos y se
   reservan los pagos hasta esa fecha.
+- **Con un periodo de calendario (§31) el horizonte en días no participa:** D = días que
+  quedan del periodo (hoy incluido) y el último día del periodo está INCLUIDO. La explicación
+  (resumen de la configuración, Inicio) describe el horizonte que `computeBudget` devolvió
+  (`horizon.source`: `income`, `fallback` o `period`), nunca un valor del formulario que no
+  participó en el cálculo; el selector de días solo se muestra con «hasta mi próximo ingreso»
+  y `fallbackHorizonDays` solo se guarda si se mostró (UX-02, decisión 140).
 - **Redondeo hacia abajo** en «por día» y «por semana»: así nunca se sugiere gastar
   más de lo disponible.
 - **Saldo negativo:** se permite (sobregiro). El disponible puede ser negativo; en ese

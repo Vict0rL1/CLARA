@@ -1559,7 +1559,7 @@ export const es = {
   'setup.skipToSummary': 'Ver mi resultado ahora',
   'setup.summary.provisionalTitle': 'Cálculo provisional',
   'setup.summary.provisionalBills': 'No agregaste pagos próximos. Si tienes renta u otros pagos antes de tu próximo ingreso, lo que puedes gastar es menor: agrégalos en Plan › Calendario.',
-  'setup.summary.provisionalIncome': 'Sin fecha de próximo ingreso se usa un periodo de {days} días. Cuando sepas la fecha, agrégala en Plan › Calendario.',
+  'setup.summary.provisionalIncome': 'Sin fecha de próximo ingreso, tu dinero se reparte en {days} días, hasta el {date}. Cuando sepas la fecha, agrégala en Plan › Calendario.',
   'home.moreNotices_one': '{count} aviso más',
   'home.moreNotices_other': '{count} avisos más',
   'explain.glossary.title': 'Qué significa cada cifra',
@@ -2964,4 +2964,6 @@ export const es = {
   'bankImport.cardPaymentNote_one': '{count} fila parece el pago de una tarjeta y queda desmarcada. Un pago de tarjeta no es un gasto ni un ingreso: la compra ya fue el gasto. Regístralo como transferencia entre tus cuentas (pestaña «+» › Transferencia) para no contarlo dos veces.',
   'bankImport.cardPaymentNote_other': '{count} filas parecen pagos de tarjeta y quedan desmarcadas. Un pago de tarjeta no es un gasto ni un ingreso: la compra ya fue el gasto. Regístralos como transferencias entre tus cuentas (pestaña «+» › Transferencia) para no contarlos dos veces.',
   'period.biweekHint': 'La quincena del calendario va del 1 al 15 y del 16 a fin de mes. No es lo mismo que cobrar «cada 2 semanas» (14 días): si cobras así, elige «Hasta mi próximo ingreso» y el periodo seguirá tus cobros.',
+  'setup.summary.provisionalPeriod': 'Sin fecha de próximo ingreso, el cálculo usa tu periodo ({label}): termina el {date} y quedan {days}. Cuando sepas la fecha, agrégala en Plan › Calendario.',
+  'setup.income.periodInstead': 'Con el periodo «{period}», tu dinero se reparte entre los días que quedan del periodo; no hace falta elegir un número de días. Puedes agregar un ingreso más adelante en Plan › Calendario.',
 } as const
