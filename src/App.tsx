@@ -16,6 +16,7 @@ import { href, useRoute, type Route } from './ui/router'
 import { useLocalNotifications } from './ui/notifications'
 import { useScheduledJobs } from './ui/useScheduledJobs'
 import { useAutoBackup } from './ui/useAutoBackup'
+import { useNavHeightVar } from './ui/navHeight'
 import { LockContext } from './ui/lock/lockContext'
 import { LockScreen } from './ui/lock/LockScreen'
 import { useLock } from './ui/lock/useLock'
@@ -419,6 +420,8 @@ function Shell() {
   const [addOpenAt, setAddOpenAt] = useState<string | null>(null)
   const addOpen = addOpenAt === route.path
   const setAddOpen = (open: boolean) => setAddOpenAt(open ? route.path : null)
+  const navRef = useRef<HTMLElement>(null)
+  useNavHeightVar(navRef, state.phase === 'ready' && !!state.data)
 
   if (state.phase !== 'ready' || !state.data) return null
   const data = state.data
@@ -480,7 +483,7 @@ function Shell() {
         </a>
       </header>
       <div className="shell__body">
-        <nav className="nav" aria-label={t('nav.aria')}>
+        <nav className="nav" aria-label={t('nav.aria')} ref={navRef}>
           {NAV.map((item) => {
             const adding = route.segments[0] === 'movimientos' && route.segments[1] === 'nuevo'
             const active = item.add

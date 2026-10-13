@@ -120,7 +120,9 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
 
 ## Interfaz y accesibilidad
 
-- Móvil primero; sin desplazamiento horizontal de 320 px a escritorio; texto ampliable (rem).
+- Móvil primero; sin desplazamiento horizontal de 320 px a escritorio; texto ampliable (rem). Con texto al 200 %
+  en 320 px tampoco (es/en/pt/fr): la barra inferior pasa a dos filas (`useNavHeightVar` ajusta `--nav-h`),
+  pestañas y filas se ajustan, y una palabra que no cabe se parte en vez de salirse.
 - Estados siempre con icono + texto, nunca solo color. Contraste AA (claro y oscuro), también en texto SVG
   (axe no lo mide: prueba de contraste calculado). Solo tokens definidos: `themeTokens.test.ts` falla con un `var(--x)` inexistente.
 - Cada campo con etiqueta, ayuda y error asociados (`FieldShell`). Botones ≥ 40–44 px.

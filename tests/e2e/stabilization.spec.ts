@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { START, available, go, openDetails, pickCategory, startDemo, storedData, writeStoredData } from './helpers'
+import { START, available, go, openDetails, pickCategory, setLanguage, startDemo, storedData, writeStoredData, type UiLanguage } from './helpers'
 
 /**
  * Regresiones de navegador de la auditoría posterior (2026-10-12/13) sobre `e7c9d87`. Cada prueba
@@ -368,3 +368,50 @@ for (const theme of ['light', 'dark'] as const) {
     expect(await svgTextContrast(page, '.donut__sub')).toBeGreaterThanOrEqual(4.5)
   })
 }
+
+test('13 · texto al 200 % en 320 px: Cuentas, Metas, Datos y Calendario sin desplazamiento horizontal en es/en/pt/fr; la barra inferior entera, nada tapado y el foco visible', async ({ page }, info) => {
+  test.skip(info.project.name !== 'celular-pequeno', 'el caso es la pantalla de 320 px')
+  test.setTimeout(240_000)
+  await startDemo(page)
+  const languages: UiLanguage[] = ['Español', 'English', 'Português', 'Français']
+  for (const language of languages) {
+    await setLanguage(page, language)
+    for (const route of ['/ajustes/cuentas', '/plan/metas', '/ajustes/datos', '/plan/calendario']) {
+      await go(page, route)
+      // Igual que la auditoría: tamaño de letra raíz al 200 % (las medidas de la app están en rem).
+      await page.addStyleTag({ content: 'html { font-size: 200% !important; }' })
+      const where = `${language} ${route}`
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth), { message: where }).toBeLessThanOrEqual(320)
+      const layout = await page.evaluate(() => {
+        const nav = document.querySelector('.nav')!.getBoundingClientRect()
+        const items = Array.from(document.querySelectorAll('.nav .nav__item')).map((el) => {
+          const r = el.getBoundingClientRect()
+          const label = el.querySelector('.nav__label') as HTMLElement
+          return { left: r.left, right: r.right, bottom: r.bottom, truncated: label.scrollWidth > label.clientWidth + 1 }
+        })
+        const main = document.querySelector('.main') as HTMLElement
+        return { navHeight: nav.height, navBottom: nav.bottom, items, padding: parseFloat(getComputedStyle(main).paddingBottom), vh: window.innerHeight }
+      })
+      expect(layout.items, where).toHaveLength(6)
+      for (const item of layout.items) {
+        expect(item.left, where).toBeGreaterThanOrEqual(0)
+        expect(item.right, where).toBeLessThanOrEqual(320)
+        expect(item.bottom, where).toBeLessThanOrEqual(layout.vh + 1)
+        expect(item.truncated, where).toBe(false)
+      }
+      // El relleno inferior del contenido cubre el alto real de la barra (una o dos filas).
+      expect(layout.padding, where).toBeGreaterThanOrEqual(layout.navHeight)
+    }
+  }
+  // Teclado: el elemento enfocado se ve (contorno o sombra) y queda dentro de la pantalla.
+  await page.keyboard.press('Tab')
+  const focus = await page.evaluate(() => {
+    const el = document.activeElement as HTMLElement
+    const cs = getComputedStyle(el)
+    const r = el.getBoundingClientRect()
+    return { visible: cs.outlineStyle !== 'none' || cs.boxShadow !== 'none', left: r.left, right: r.right }
+  })
+  expect(focus.visible).toBe(true)
+  expect(focus.left).toBeGreaterThanOrEqual(0)
+  expect(focus.right).toBeLessThanOrEqual(320)
+})
