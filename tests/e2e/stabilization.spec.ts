@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { go, startDemo, storedData } from './helpers'
+import { go, openDetails, startDemo, storedData } from './helpers'
 
 /**
  * Regresiones de navegador de la auditoría posterior (2026-10-12/13) sobre `e7c9d87`. Cada prueba
@@ -46,4 +46,26 @@ test('AS-01 · la misma moneda sigue funcionando: «café 10 CAD» se registra s
   await expect(page.getByTestId('assistant-currency-blocked')).toHaveCount(0)
   await page.getByRole('button', { name: 'Registrar 1 movimiento' }).click()
   await expect(page.getByText('1 movimiento registrado').first()).toBeVisible()
+})
+
+test('FIN-01 · vincular un pago del día del saldo, ya incluido en él, no vuelve a restarlo (antes, después y tras recargar)', async ({ page }) => {
+  await startDemo(page)
+  // El saldo de referencia de la demo es del 26-sep: un pago de la luz anotado ese día y ya incluido.
+  await go(page, '/movimientos/nuevo?kind=expense&date=2026-09-26')
+  await page.getByLabel('Importe').fill('42.80')
+  await openDetails(page)
+  await page.getByLabel('Nota (opcional)').fill('Luz en ventanilla')
+  await page.getByLabel(/^Ya estaba incluido en el saldo/).check()
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect(page.getByText('Movimiento guardado').first()).toBeVisible()
+  await go(page, '/ajustes/cuentas')
+  const net = await page.getByTestId('net-worth').innerText()
+
+  await go(page, '/plan/calendario')
+  await page.getByRole('button', { name: 'Vincular: Recibo de luz' }).click()
+  await expect(page.getByText('«Recibo de luz» vinculado: ya cuenta como pagado').first()).toBeVisible()
+  await go(page, '/ajustes/cuentas')
+  await expect(page.getByTestId('net-worth')).toHaveText(net)
+  await page.reload()
+  await expect(page.getByTestId('net-worth')).toHaveText(net)
 })

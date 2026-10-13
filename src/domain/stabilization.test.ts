@@ -72,3 +72,73 @@ describe('AS-01 · el asistente nunca guarda otra moneda como la del presupuesto
     expect(ok.ok).toBe(true)
   })
 })
+
+/* ------------------------------------------------------------------ */
+/* FIN-01                                                              */
+/* ------------------------------------------------------------------ */
+import { accountBalance as balanceOf, netPosition } from './balances'
+import { computeBudget } from './budget'
+import { saveTransaction } from './operations'
+import { linkSettlement, unlinkedSettlements } from './reconcileSchedules'
+import { recategorizeTransactions } from './bulk'
+import { validateAppData } from '../storage/backup'
+import type { AppData } from './types'
+
+/** Demo con un pago de la luz (42,80) anotado el día del saldo de referencia. */
+function withSameDayPayment(alreadyInBalance: boolean) {
+  const { data, today, ctx } = demo()
+  const main = data.accounts[0]!
+  const r = saveTransaction(data, { id: 'tx_luz', kind: 'expense', status: 'realized', amountMinor: 4280, date: main.anchor.date, accountId: main.id, categoryId: 'utilities', note: 'luz en ventanilla', alreadyInBalance }, ctx)
+  if (!r.ok) throw new Error(JSON.stringify(r.issues))
+  return { data: r.data, today, ctx, main }
+}
+const accountBalance = (data: AppData, id: string) => balanceOf(data, data.accounts.find((a) => a.id === id)!).balanceMinor
+const reload = (data: AppData): AppData => {
+  const r = validateAppData(JSON.parse(JSON.stringify(data)))
+  if (!r.ok) throw new Error(JSON.stringify(r.issues))
+  return r.data
+}
+
+describe('FIN-01 · vincular un pago ya registrado nunca cambia el saldo real', () => {
+  for (const included of [true, false]) {
+    it(`pago del día del saldo ${included ? 'ya incluido' : 'posterior al saldo'}: saldo y patrimonio iguales; el disponible solo libera la reserva`, () => {
+      const { data, today, ctx, main } = withSameDayPayment(included)
+      const proposals = unlinkedSettlements(data, today)
+      const match = proposals.find((p) => p.transaction.id === 'tx_luz')!
+      expect(match).toBeDefined()
+      const before = { balance: accountBalance(data, main.id), net: netPosition(data).netMinor, available: computeBudget(data, today).availableMinor }
+      const linked = linkSettlement(data, 'tx_luz', match.item.sourceId, match.item.date, ctx)
+      expect(linked.ok).toBe(true)
+      if (!linked.ok) return
+      const tx = linked.data.transactions.find((t) => t.id === 'tx_luz')!
+      expect(tx.realizedAt).toBe(data.transactions.find((t) => t.id === 'tx_luz')!.realizedAt)
+      expect(accountBalance(linked.data, main.id)).toBe(before.balance)
+      expect(netPosition(linked.data).netMinor).toBe(before.net)
+      // La ocurrencia ya no se reserva: lo disponible sube exactamente lo reservado.
+      expect(computeBudget(linked.data, today).availableMinor).toBe(before.available + 4280)
+      // Idempotente y estable tras recargar (serializar + validar).
+      const again = linkSettlement(linked.data, 'tx_luz', match.item.sourceId, match.item.date, ctx)
+      expect(again.ok && again.unchanged).toBe(true)
+      const reloaded = reload(linked.data)
+      expect(accountBalance(reloaded, main.id)).toBe(before.balance)
+      expect(computeBudget(reloaded, today).availableMinor).toBe(before.available + 4280)
+    })
+  }
+
+  it('recategorizar en lote un pago ya incluido tampoco lo vuelve a restar', () => {
+    const { data, ctx, main } = withSameDayPayment(true)
+    const before = accountBalance(data, main.id)
+    const r = recategorizeTransactions(data, ['tx_luz'], 'other_expense', ctx)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(accountBalance(r.data, main.id)).toBe(before)
+  })
+
+  it('el formulario sigue pudiendo decidir: «no incluido» explícito sí lo aplica', () => {
+    const { data, ctx, main } = withSameDayPayment(true)
+    const before = accountBalance(data, main.id)
+    const tx = data.transactions.find((t) => t.id === 'tx_luz')!
+    const r = saveTransaction(data, { id: tx.id, kind: tx.kind, status: 'realized', amountMinor: tx.amountMinor, date: tx.date, accountId: tx.accountId, categoryId: tx.categoryId, alreadyInBalance: false }, ctx)
+    expect(r.ok && accountBalance(r.data, main.id)).toBe(before - 4280)
+  })
+})

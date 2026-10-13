@@ -110,7 +110,19 @@ export function saveTransaction(data: AppData, draft: TransactionDraft, ctx: OpC
     const anchor = account?.anchor
     const sameDayAsAnchor = !!anchor && draft.date === anchor.date
     const previous = existing?.status === 'realized' ? existing.realizedAt : undefined
-    if (sameDayAsAnchor && draft.alreadyInBalance) {
+    // FIN-01: quien no decide la marca (vincular con un programado, recategorizar en lote, etiquetas,
+    // aplazar…) no puede cambiar si el movimiento ya estaba incluido en el saldo escrito. Solo se
+    // conserva si siguen iguales la cuenta y la fecha; un `false` explícito (el formulario) sí lo aplica.
+    const keptInBalance =
+      sameDayAsAnchor &&
+      draft.alreadyInBalance === undefined &&
+      existing?.status === 'realized' &&
+      existing.accountId === draft.accountId &&
+      existing.date === draft.date &&
+      (existing.realizedAt ?? existing.createdAt) <= anchor.setAt
+    if (keptInBalance) {
+      realizedAt = previous
+    } else if (sameDayAsAnchor && draft.alreadyInBalance) {
       // Ya estaba en el saldo escrito: se fecha en el mismo instante del saldo → no se vuelve a aplicar.
       realizedAt = anchor.setAt
     } else if (sameDayAsAnchor) {
