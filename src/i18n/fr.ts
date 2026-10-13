@@ -3216,4 +3216,8 @@ export const fr: Record<keyof typeof es, string> = {
   'assistant.currencyBlocked_other': '{count} lignes sont dans une autre devise. Saisissez leurs montants en {currency} ou retirez-les pour enregistrer.',
   'plans.form.carryNote': 'Ce cycle inclut un report de {carried} : la limite de base est de {base}.',
   'plans.form.carryReset': 'Cette limite est inférieure au report ({carried}) : à l’enregistrement, le report est retiré et {amount} devient la limite de base.',
+  'replace.undoStale': 'Non annulé : vous avez enregistré des changements depuis et ils seraient perdus. Les données précédentes sont dans Copies locales sous « Avant la restauration ».',
+  'replace.undoStaleNoCopy': 'Non annulé : vous avez enregistré des changements depuis et ils seraient perdus. Si vous avez besoin des données précédentes, importez la sauvegarde exportée.',
+  'replace.openLocalCopies': 'Voir les copies locales',
+  'localBackup.restoreUndone': 'Restauration annulée : les données précédentes sont revenues',
 }

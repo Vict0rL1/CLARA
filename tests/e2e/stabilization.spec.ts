@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
 import { START, go, openDetails, startDemo, storedData } from './helpers'
 
@@ -104,4 +105,72 @@ test('FIN-02 · bajar un límite por debajo de lo arrastrado avisa antes de guar
   await go(page, '/plan/planes')
   await page.getByTestId('plan-list').getByRole('link', { name: /Servicios \(luz, agua, gas\)/ }).click()
   await expect(page.getByTestId('plan-limit-breakdown')).toContainText('Límite base $50.00 · arrastre +$50.00 = $100.00')
+})
+
+/** El «Deshacer» de un aviso: en el propio aviso o, si otro lo sustituyó, en el botón que queda unos segundos. */
+const undoOf = (page: import('@playwright/test').Page, text: string) =>
+  page.locator('.toast').filter({ hasText: text }).getByRole('button', { name: 'Deshacer' }).or(page.getByTestId('toast-held').getByRole('button', { name: 'Deshacer' }))
+
+test('REC-01 · importar una copia, registrar algo y pulsar «Deshacer»: se niega, explica dónde está lo anterior y el registro sobrevive a recargar', async ({ page }) => {
+  await startDemo(page)
+  await go(page, '/ajustes/copia')
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Exportar copia' }).click()])
+  const backup = JSON.parse(readFileSync((await download.path())!, 'utf8'))
+  backup.data.accounts[0].name = 'Cuenta importada'
+  await page.getByTestId('import-file').setInputFiles({ name: 'copia.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(backup)) })
+  await page.getByRole('dialog', { name: '¿Reemplazar tus datos con esta copia?' }).getByRole('button', { name: 'Reemplazar datos' }).click()
+  await expect(page.getByText('Copia importada').first()).toBeVisible()
+  // Dentro del aviso, un movimiento nuevo.
+  await go(page, '/movimientos/nuevo')
+  await page.getByLabel('Importe').fill('7.77')
+  await openDetails(page)
+  await page.getByLabel('Nota (opcional)').fill('Después de importar')
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect(page.getByText('Movimiento guardado').first()).toBeVisible()
+  await undoOf(page, 'Copia importada').first().click()
+  await expect(page.getByText('No se deshizo: guardaste cambios después y se perderían.').first()).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Ver copias locales' })).toBeVisible()
+  await go(page, '/')
+  await page.reload()
+  await expect(page.getByTestId('available')).toBeVisible()
+  expect((await txs(page)).some((t) => t.note === 'Después de importar')).toBe(true)
+  await go(page, '/ajustes/copias-locales')
+  await expect(page.getByTestId('local-backup-list')).toContainText('Antes de restaurar')
+})
+
+test('REC-01 · sin cambios posteriores, «Deshacer» la importación sí vuelve a lo anterior', async ({ page }) => {
+  await startDemo(page)
+  await go(page, '/ajustes/copia')
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Exportar copia' }).click()])
+  const backup = JSON.parse(readFileSync((await download.path())!, 'utf8'))
+  backup.data.accounts[0].name = 'Cuenta importada'
+  await page.getByTestId('import-file').setInputFiles({ name: 'copia.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(backup)) })
+  await page.getByRole('dialog', { name: '¿Reemplazar tus datos con esta copia?' }).getByRole('button', { name: 'Reemplazar datos' }).click()
+  await undoOf(page, 'Copia importada').first().click()
+  await expect(page.getByText('Importación deshecha: se recuperaron los datos anteriores').first()).toBeVisible()
+  await page.reload()
+  await go(page, '/ajustes/cuentas')
+  await expect(page.getByText('Cuenta importada')).toHaveCount(0)
+})
+
+test('REC-01 · restaurar una copia local, registrar algo y pulsar «Deshacer»: se niega y el registro sobrevive a recargar', async ({ page }) => {
+  await startDemo(page)
+  await go(page, '/ajustes/copias-locales')
+  await page.getByTestId('backup-now').click()
+  await expect(page.getByText('Copia local guardada')).toBeVisible()
+  await page.getByRole('button', { name: /^Restaurar ?: / }).click()
+  await page.getByRole('dialog', { name: '¿Restaurar esta copia?' }).getByRole('button', { name: 'Restaurar' }).click()
+  await expect(page.getByText('Copia restaurada').first()).toBeVisible()
+  await go(page, '/movimientos/nuevo')
+  await page.getByLabel('Importe').fill('5.55')
+  await openDetails(page)
+  await page.getByLabel('Nota (opcional)').fill('Después de restaurar')
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect(page.getByText('Movimiento guardado').first()).toBeVisible()
+  await undoOf(page, 'Copia restaurada').first().click()
+  await expect(page.getByText('No se deshizo: guardaste cambios después y se perderían.').first()).toBeVisible()
+  await go(page, '/')
+  await page.reload()
+  await expect(page.getByTestId('available')).toBeVisible()
+  expect((await txs(page)).some((t) => t.note === 'Después de restaurar')).toBe(true)
 })

@@ -3217,4 +3217,8 @@ export const es = {
   'assistant.currencyBlocked_other': '{count} líneas están en otra moneda. Escribe sus importes en {currency} o quítalas para poder registrar.',
   'plans.form.carryNote': 'Este ciclo incluye un arrastre de {carried}: el límite base queda en {base}.',
   'plans.form.carryReset': 'Este límite es menor que lo arrastrado ({carried}): al guardar se quita el arrastre y {amount} pasa a ser el límite base.',
+  'replace.undoStale': 'No se deshizo: guardaste cambios después y se perderían. Lo anterior está en Copias locales como «Antes de restaurar».',
+  'replace.undoStaleNoCopy': 'No se deshizo: guardaste cambios después y se perderían. Si necesitas lo anterior, importa la copia que tenías exportada.',
+  'replace.openLocalCopies': 'Ver copias locales',
+  'localBackup.restoreUndone': 'Restauración deshecha: se recuperaron los datos anteriores',
 } as const

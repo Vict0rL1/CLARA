@@ -3218,4 +3218,8 @@ export const en: Record<keyof typeof es, string> = {
   'assistant.currencyBlocked_other': '{count} lines are in another currency. Enter their amounts in {currency} or remove them to record.',
   'plans.form.carryNote': 'This cycle includes {carried} carried over: the base limit is {base}.',
   'plans.form.carryReset': 'This limit is lower than what was carried over ({carried}): saving removes the carry-over and {amount} becomes the base limit.',
+  'replace.undoStale': 'Not undone: you saved changes afterwards and they would be lost. The previous data is in Local copies as “Before restoring”.',
+  'replace.undoStaleNoCopy': 'Not undone: you saved changes afterwards and they would be lost. If you need the previous data, import the backup you had exported.',
+  'replace.openLocalCopies': 'See local copies',
+  'localBackup.restoreUndone': 'Restore undone: the previous data is back',
 }

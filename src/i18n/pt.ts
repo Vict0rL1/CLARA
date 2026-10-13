@@ -3216,4 +3216,8 @@ export const pt: Record<keyof typeof es, string> = {
   'assistant.currencyBlocked_other': '{count} linhas estão em outra moeda. Escreva os valores em {currency} ou remova-as para registrar.',
   'plans.form.carryNote': 'Este ciclo inclui {carried} transferido: o limite base fica em {base}.',
   'plans.form.carryReset': 'Este limite é menor que o transferido ({carried}): ao salvar, a transferência é removida e {amount} passa a ser o limite base.',
+  'replace.undoStale': 'Não foi desfeito: você salvou alterações depois e elas seriam perdidas. Os dados anteriores estão em Cópias locais como «Antes de restaurar».',
+  'replace.undoStaleNoCopy': 'Não foi desfeito: você salvou alterações depois e elas seriam perdidas. Se precisar dos dados anteriores, importe a cópia que tinha exportado.',
+  'replace.openLocalCopies': 'Ver cópias locais',
+  'localBackup.restoreUndone': 'Restauração desfeita: os dados anteriores voltaram',
 }
