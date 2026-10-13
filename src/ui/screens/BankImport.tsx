@@ -69,6 +69,9 @@ export function BankImport() {
   const [limit, setLimit] = useState(PAGE)
   const [issues, setIssues] = useState<Issue[]>([])
   const [busy, setBusy] = useState(false)
+  // Más de MAX_IMPORT_ROWS filas: confirmar exige reconocer cuántas quedan fuera (nunca en silencio).
+  const [omittedAck, setOmittedAck] = useState(false)
+  const int = (n: number) => new Intl.NumberFormat(fmt.numberLocale).format(n)
   // Un id por fila, fijado al verla por primera vez: confirmar dos veces no duplica.
   const ids = useRef(new Map<string, string>())
   const idFor = (ref: string) => {
@@ -154,7 +157,7 @@ export function BankImport() {
   }
 
   const confirm = async () => {
-    if (busy || !preview || selected.length === 0) return
+    if (busy || !preview || selected.length === 0 || (preview.omittedRows > 0 && !omittedAck)) return
     setBusy(true)
     const items = selected.filter(isImportable).map((r) => ({
       id: idFor(r.importRef),
@@ -177,7 +180,7 @@ export function BankImport() {
     }
     const created = result.value.ids
     toast({
-      message: saved ? tn('bankImport.done', created.length) : t('save.error.generic'),
+      message: saved ? `${tn('bankImport.done', created.length)}${preview.omittedRows > 0 ? ` · ${tn('bankImport.omittedAfter', preview.omittedRows)}` : ''}` : t('save.error.generic'),
       tone: saved ? 'good' : 'critical',
       action: created.length ? { label: t('common.undo'), onClick: () => void run((d, c) => removeTransactions(d, created, c)) } : undefined,
     })
@@ -285,11 +288,15 @@ export function BankImport() {
               name="amount-mode"
               value={splitAmount ? 'split' : 'single'}
               onChange={(v) =>
-                setMapping(
-                  v === 'single'
-                    ? { date: mapping.date, description: mapping.description, amount: mapping.debit ?? Math.min(2, width - 1) }
-                    : { date: mapping.date, description: mapping.description, debit: mapping.amount ?? Math.min(2, width - 1), credit: Math.min((mapping.amount ?? 2) + 1, width - 1) },
-                )
+                setMapping({
+                  date: mapping.date,
+                  description: mapping.description,
+                  ...(mapping.currency !== undefined ? { currency: mapping.currency } : {}),
+                  ...(mapping.reference !== undefined ? { reference: mapping.reference } : {}),
+                  ...(v === 'single'
+                    ? { amount: mapping.debit ?? Math.min(2, width - 1) }
+                    : { debit: mapping.amount ?? Math.min(2, width - 1), credit: Math.min((mapping.amount ?? 2) + 1, width - 1) }),
+                })
               }
               options={[
                 { value: 'single', label: t('bankImport.amountSingle') },
@@ -338,6 +345,17 @@ export function BankImport() {
                 }}
                 options={[{ value: '', label: t('bankImport.currencyColumnNone') }, ...columnOptions]}
                 hint={t('bankImport.currencyColumnHint')}
+              />
+              {/* Referencia del banco: identidad estable de cada fila (dos movimientos iguales no se confunden). */}
+              <SelectField
+                label={t('bankImport.referenceColumn')}
+                value={mapping.reference === undefined ? '' : String(mapping.reference)}
+                onChange={(e) => {
+                  const { reference: _omit, ...rest } = mapping
+                  setMapping(e.target.value === '' ? rest : { ...rest, reference: Number(e.target.value) })
+                }}
+                options={[{ value: '', label: t('bankImport.currencyColumnNone') }, ...columnOptions]}
+                hint={t('bankImport.referenceColumnHint')}
               />
             </div>
             <CheckboxField
@@ -389,7 +407,11 @@ export function BankImport() {
                 </li>
               )}
             </ul>
-            {preview.tooManyRows && <Alert tone="warning" title={t('bankImport.tooManyRows', { max: MAX_IMPORT_ROWS })} />}
+            {preview.omittedLines && (
+              <Alert tone="critical" title={t('bankImport.tooManyRows', { total: int(preview.totalRows), max: int(MAX_IMPORT_ROWS), from: int(preview.omittedLines.from), to: int(preview.omittedLines.to), omitted: int(preview.omittedRows) })}>
+                <p data-testid="import-omitted">{t('bankImport.tooManyRowsHelp')}</p>
+              </Alert>
+            )}
             {preview.counts.possibleDuplicate > 0 && <p className="note">{t('bankImport.possibleNote')}</p>}
             {preview.counts.duplicate > 0 && <p className="note">{t('bankImport.duplicateNote')}</p>}
             {preview.counts.trashed > 0 && (
@@ -515,8 +537,11 @@ export function BankImport() {
                 {t('bankImport.balanceEffect', { account: account.name, currency: data.settings.currency, effect: fmt.money(balanceEffect.effectMinor, { sign: true }), count: balanceEffect.count })}
               </p>
             )}
+            {preview.omittedRows > 0 && (
+              <CheckboxField label={tn('bankImport.omittedAck', preview.omittedRows)} checked={omittedAck} onChange={setOmittedAck} />
+            )}
             <div className="form__actions">
-              <button type="button" className="btn btn--primary btn--large" disabled={busy || selected.length === 0} onClick={() => void confirm()}>
+              <button type="button" className="btn btn--primary btn--large" disabled={busy || selected.length === 0 || (preview.omittedRows > 0 && !omittedAck)} onClick={() => void confirm()}>
                 <Icon name="check" />
                 {tn('bankImport.confirm', selected.length)}
               </button>

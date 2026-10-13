@@ -52,8 +52,11 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
 - Mensuales en 29/30/31 → último día del mes corto.
 - Operaciones idempotentes: el id se genera al abrir el formulario; guardar dos veces
   actualiza el mismo registro.
-- Importación CSV (`domain/bankImport.ts`): huella `importRef` evita reimportar; posibles
-  duplicados desmarcados; todo o nada; el archivo nunca sale del dispositivo.
+- Importación CSV (`domain/bankImport.ts`): huella `importRef` (referencia del banco o descripción
+  COMPLETA; las huellas antiguas de 80 caracteres se siguen reconociendo) evita reimportar; posibles
+  duplicados desmarcados; filas con error visibles y nunca importadas; lo marcado se guarda todo o
+  nada; más de 5000 filas → cuántas y cuáles quedan fuera, y confirmar exige reconocerlo; el archivo
+  nunca sale del dispositivo.
 - Papelera: eliminar saca el movimiento de `transactions` a `trash` (nunca participa en
   cálculos). Restaurar no deja vínculos rotos ni liquida dos veces una ocurrencia; filas
   CSV en la papelera no se reimportan. Sin borrado automático.
@@ -144,7 +147,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
 
 - Ningún secreto, clave o credencial en el código, el navegador o los registros.
   No hace falta `.env` en esta fase.
-- La importación valida TODO el archivo y no aplica nada si hay un error.
+- Restaurar una copia valida TODO el archivo y no aplica nada si hay un error. CSV del banco: cada fila
+  con error se muestra con su motivo y no se importa; las filas marcadas se guardan todo o nada.
 - Cambios de formato de datos: subir `SCHEMA_VERSION` (hoy 12) y añadir migración con prueba.
   Las migraciones solo rellenan campos ausentes; nunca borran datos mal formados.
 - Guardado (`indexedDbRepository.ts`, `localStorageRepository.ts`; ver `docs/STORAGE.md`): nunca sobrescribe lo que otra pestaña u otra

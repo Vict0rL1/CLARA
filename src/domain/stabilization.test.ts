@@ -512,3 +512,103 @@ describe('9 · calendario: más allá de la proyección no hay cifra', () => {
     expect(dayBalance(p, FIX_TODAY)).toMatchObject({ state: 'projected' })
   })
 })
+
+/* ------------------------------------------------------------------ */
+import { defaultSelection, isImportable, MAX_IMPORT_ROWS, previewImport, type ImportOptions, type ImportPreview } from './bankImport'
+import { deleteTransaction, importTransactions } from './operations'
+
+describe('10 · CSV: identidad completa de cada fila, revisión de posibles duplicados y filas que quedan fuera', () => {
+  const P = 'COMPRA TARJETA 4521 SUPERMERCADO EL AHORRO SUCURSAL CENTRO AVENIDA PRINCIPAL 1234 C'
+  const A = `${P} REF 0001 CAJA 3`
+  const B = `${P} REF 0002 CAJA 7`
+  const opts = (over: Partial<ImportOptions> = {}): ImportOptions => ({ accountId: 'main', mapping: { date: 0, description: 1, amount: 2 }, hasHeader: false, dateFormat: 'ymd', invertSign: false, locale: 'en-CA', today: FIX_TODAY, ...over })
+  let importSeq = 0
+  /** Importa lo que la vista previa marca por defecto (como la pantalla), con ids nuevos. */
+  function importDefault(d: AppData, table: string[][], o = opts()): { preview: ImportPreview; data: AppData } {
+    const preview = previewImport(table, d, o)
+    const chosen = defaultSelection(preview)
+    const items = preview.rows
+      .filter((r) => chosen.has(r.line) && isImportable(r))
+      .map((r) => ({ id: `imp-${++importSeq}`, kind: r.kind!, amountMinor: r.amountMinor!, date: r.date!, accountId: 'main', categoryId: r.kind === 'income' ? 'other_income' : 'other_expense', note: r.description, importRef: r.importRef! }))
+    if (items.length === 0) return { preview, data: d }
+    const res = importTransactions(d, { items, sameDayAlreadyInBalance: false }, ctx())
+    if (!res.ok) throw new Error(JSON.stringify(res.issues))
+    return { preview, data: res.data }
+  }
+  const ctx = () => ({ today: FIX_TODAY, now: '2026-09-28T16:00:00.000Z' })
+  const statuses = (p: ImportPreview) => p.rows.map((r) => r.status)
+
+  it('dos filas distintas que comparten los 80 primeros caracteres ya no chocan: la segunda es «posible duplicado», nunca se omite en silencio', () => {
+    expect(A.slice(0, 80)).toBe(B.slice(0, 80))
+    const first = importDefault(baseData(), [['2026-09-20', A, '-45.10']])
+    expect(first.data.transactions).toHaveLength(1)
+    const second = previewImport([['2026-09-20', B, '-45.10']], first.data, opts())
+    expect(statuses(second)).toEqual(['possibleDuplicate'])
+    expect(second.rows[0]!.matchId).toBe(first.data.transactions[0]!.id)
+    // Con las dos en el extracto siguiente: A es duplicado exacto (ya cuenta para lo importado) y B,
+    // que no tiene contrapartida, es nueva y se ofrece marcada. Antes B era «duplicado» y se omitía.
+    const both = previewImport([['2026-09-20', A, '-45.10'], ['2026-09-20', B, '-45.10']], first.data, opts())
+    expect(statuses(both)).toEqual(['duplicate', 'new'])
+    expect([...defaultSelection(both)]).toEqual([2])
+  })
+
+  it('repetir, reordenar o solapar un extracto no crea nada dos veces; dos compras idénticas del mismo día cuentan como dos', () => {
+    const file = [
+      ['2026-09-20', 'CAFE CENTRAL', '-4.50'],
+      ['2026-09-20', 'CAFE CENTRAL', '-4.50'],
+      ['2026-09-21', A, '-45.10'],
+      ['2026-09-21', B, '-45.10'],
+      ['2026-09-22', 'NOMINA', '1200.00'],
+    ]
+    const first = importDefault(baseData(), file)
+    expect(first.data.transactions).toHaveLength(5)
+    expect(statuses(previewImport(file, first.data, opts()))).toEqual(['duplicate', 'duplicate', 'duplicate', 'duplicate', 'duplicate'])
+    expect(statuses(previewImport([...file].reverse(), first.data, opts()))).toEqual(['duplicate', 'duplicate', 'duplicate', 'duplicate', 'duplicate'])
+    // Extracto que se solapa: las 3 últimas filas + una nueva.
+    const overlap = previewImport([...file.slice(2), ['2026-09-23', 'FARMACIA', '-12.00']], first.data, opts())
+    expect(statuses(overlap)).toEqual(['duplicate', 'duplicate', 'duplicate', 'new'])
+  })
+
+  it('las huellas antiguas (80 caracteres) se siguen reconociendo: misma nota → duplicado; nota editada → posible duplicado; en la papelera → papelera', () => {
+    const legacy = (id: string, note: string, n = 1) => fixtureTx({ id, kind: 'expense', amountMinor: 4510, date: '2026-09-20', categoryId: 'other_expense', note, importRef: `main|2026-09-20|-4510|${note.toLowerCase().slice(0, 80)}|${n}` })
+    const d = baseData({ transactions: [legacy('old-a', A)] })
+    expect(statuses(previewImport([['2026-09-20', A, '-45.10']], d, opts()))).toEqual(['duplicate'])
+    expect(statuses(previewImport([['2026-09-20', B, '-45.10']], d, opts()))).toEqual(['possibleDuplicate'])
+    const edited = baseData({ transactions: [{ ...legacy('old-a', A), note: 'Súper' }] })
+    expect(statuses(previewImport([['2026-09-20', A, '-45.10']], edited, opts()))).toEqual(['possibleDuplicate'])
+    const trashed = deleteTransaction(d, 'old-a', ctx())
+    expect(trashed.ok).toBe(true)
+    if (!trashed.ok) return
+    expect(statuses(previewImport([['2026-09-20', A, '-45.10']], trashed.data, opts()))).toEqual(['trashed'])
+  })
+
+  it('con referencia del banco: filas idénticas con referencias distintas son distintas, y reimportar con o sin la columna no duplica', () => {
+    const withRef = opts({ mapping: { date: 0, description: 1, amount: 2, reference: 3 } })
+    const file = [
+      ['2026-09-20', 'CAFE CENTRAL', '-4.50', 'TX-1'],
+      ['2026-09-20', 'CAFE CENTRAL', '-4.50', 'TX-2'],
+    ]
+    const first = importDefault(baseData(), file, withRef)
+    expect(first.data.transactions.map((t) => t.importRef)).toEqual(['main|ref|TX-1|2026-09-20|-450|1', 'main|ref|TX-2|2026-09-20|-450|1'])
+    // El extracto siguiente trae solo TX-2 (en primer lugar): duplicado de TX-2, no de TX-1.
+    const next = previewImport([['2026-09-20', 'CAFE CENTRAL', '-4.50', 'TX-2'], ['2026-09-20', 'CAFE CENTRAL', '-4.50', 'TX-3']], first.data, withRef)
+    const tx2 = first.data.transactions.find((t) => t.importRef?.includes('|TX-2|'))!.id
+    expect(next.rows.map((r) => [r.status, r.matchId])).toEqual([
+      ['duplicate', tx2],
+      ['new', undefined],
+    ])
+    // Sin la columna de referencia, el mismo archivo se reconoce por la nota: nada nuevo.
+    expect(statuses(previewImport(file, first.data, opts()))).toEqual(['duplicate', 'duplicate'])
+  })
+
+  it('más de 5,000 filas: número exacto de filas fuera y sus líneas; ninguna de ellas aparece en la vista previa', () => {
+    const rows = Array.from({ length: MAX_IMPORT_ROWS + 37 }, (_, i) => ['2026-09-20', `Fila ${i + 1}`, '-1.00'])
+    const p = previewImport([['Fecha', 'Concepto', 'Importe'], ...rows], baseData(), opts({ hasHeader: true }))
+    expect(p).toMatchObject({ tooManyRows: true, totalRows: MAX_IMPORT_ROWS + 37, omittedRows: 37, omittedLines: { from: MAX_IMPORT_ROWS + 2, to: MAX_IMPORT_ROWS + 38 } })
+    expect(p.rows).toHaveLength(MAX_IMPORT_ROWS)
+    expect(p.rows[p.rows.length - 1]!.description).toBe(`Fila ${MAX_IMPORT_ROWS}`)
+    const small = previewImport(rows.slice(0, 3), baseData(), opts())
+    expect(small).toMatchObject({ tooManyRows: false, totalRows: 3, omittedRows: 0 })
+    expect(small.omittedLines).toBeUndefined()
+  })
+})

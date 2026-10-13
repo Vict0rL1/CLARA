@@ -301,3 +301,30 @@ test('9 · un día más allá de los 400 días de proyección dice que no hay sa
   await expect(page.getByTestId('sim-beyond')).toBeVisible()
   await expect(page.getByTestId('sim-result')).toHaveCount(0)
 })
+
+test('10 · CSV: dos descripciones largas que empiezan igual no se omiten; un archivo de 5,003 filas dice cuáles quedan fuera y exige reconocerlo', async ({ page }) => {
+  await startDemo(page)
+  const P = 'COMPRA TARJETA 4521 SUPERMERCADO EL AHORRO SUCURSAL CENTRO AVENIDA PRINCIPAL 1234 C'
+  const load = async (text: string) => {
+    await go(page, '/movimientos/importar')
+    await page.getByTestId('bank-file').setInputFiles({ name: 'banco.csv', mimeType: 'text/csv', buffer: Buffer.from(text) })
+    await expect(page.getByRole('heading', { name: '3. Revisa y confirma' })).toBeVisible()
+  }
+  await load(['Date,Description,Amount', `2026-09-27,${P} REF 0001,-45.10`].join('\n'))
+  await page.getByRole('button', { name: 'Importar 1 movimiento' }).click()
+  await expect(page.getByText('1 movimiento importado').first()).toBeVisible()
+  // El extracto siguiente trae otra compra distinta con los mismos 80 primeros caracteres: se revisa, no se omite.
+  await load(['Date,Description,Amount', `2026-09-27,${P} REF 0002,-45.10`].join('\n'))
+  await expect(page.getByText('1 posible duplicado')).toBeVisible()
+  await expect(page.getByText('ya importado')).toHaveCount(0)
+  await expect(page.getByRole('checkbox', { name: /REF 0002/ })).not.toBeChecked()
+
+  const rows = Array.from({ length: 5003 }, (_, i) => `2026-09-27,Fila ${i + 1},-1.00`)
+  await load(['Date,Description,Amount', ...rows].join('\n'))
+  await expect(page.getByText('El archivo tiene 5,003 filas y Clara analiza como máximo 5,000 por vez: las filas 5,002 a 5,004 (3) no se muestran ni se importarán.')).toBeVisible()
+  await expect(page.getByTestId('import-omitted')).toContainText('Divide el archivo')
+  const confirm = page.getByRole('button', { name: /^Importar \d+ movimientos$/ })
+  await expect(confirm).toBeDisabled()
+  await page.getByLabel('Entiendo que 3 filas del archivo quedan fuera de esta importación').check()
+  await expect(confirm).toBeEnabled()
+})

@@ -349,15 +349,32 @@ guarda hasta confirmar la vista previa. Límites: 2 MB y 5000 filas.
   siguen la misma regla cada una. Los movimientos importados llevan siempre la moneda del
   presupuesto (§11), y la vista previa dice cuánto cambiará el saldo con las filas marcadas
   posteriores al saldo de referencia.
-- **Huella** `importRef = cuenta | fecha | importe con signo | descripción normalizada |
-  nº de repetición`. La descripción se normaliza (minúsculas, sin acentos, espacios
-  simples, 80 caracteres). El nº de repetición distingue dos filas idénticas del mismo
-  archivo (dos cafés iguales el mismo día).
-- **Duplicado exacto:** ya existe un movimiento con la misma huella → no se puede
-  importar. Importar dos veces el mismo archivo no crea nada.
+- **Huella** `importRef`. Con **referencia del banco** (columna opcional: «Referencia»,
+  «Transaction ID», «FITID», «Número de operación»…, detectada sola solo con cabecera exacta o
+  elegida): `cuenta | ref | referencia | fecha | importe con signo | nº de repetición`. Sin ella:
+  `cuenta | fecha | importe con signo | descripción normalizada COMPLETA | nº de repetición`
+  (minúsculas, sin acentos, espacios simples; hasta 200 caracteres). El nº de repetición
+  distingue dos filas idénticas del mismo archivo (dos cafés iguales el mismo día). Siempre se
+  calcula también la huella por contenido, así que reimportar con o sin la columna de referencia
+  no duplica.
+- **Duplicado exacto:** ya existe un movimiento con alguna de las huellas de la fila → no se
+  puede importar. Importar dos veces el mismo archivo, reordenado o solapado, no crea nada.
+- **Huellas anteriores (80 caracteres):** hasta octubre de 2026 la descripción se cortaba en 80
+  caracteres y dos filas distintas que empezaban igual chocaban (la segunda se omitía). Se siguen
+  reconociendo: un movimiento importado (o en la papelera) de la misma cuenta, fecha e importe con
+  los mismos 80 primeros caracteres es duplicado (o «en la papelera») si su nota es idéntica a la
+  descripción completa, y **posible duplicado** si no lo es. Una huella antigua cuyo contenido no
+  se puede comprobar (nota editada) también es posible duplicado; nunca se reimporta en silencio.
+  Una fila con referencia del banco no se empareja así con otra que tenía otra referencia.
 - **Posible duplicado:** movimiento realizado de la misma cuenta, mismo tipo e importe,
-  fecha a ±3 días y sin huella (registrado a mano). Cada movimiento empareja una sola
-  fila. Se muestra **desmarcado**.
+  fecha a ±3 días y sin huella (registrado a mano), o el caso anterior. Cada movimiento
+  empareja una sola fila. Se muestra **desmarcado**.
+- **Más de 5000 filas:** se analizan las primeras 5000; la vista previa da el total, cuántas
+  quedan fuera y qué líneas (p. ej. «las filas 5,002 a 5,004 (3)»). Importar exige marcar «Entiendo
+  que N filas quedan fuera» y el aviso final lo repite. Las restantes se importan en otro archivo
+  (lo ya importado se reconoce como duplicado).
+- **Filas con error** (fecha, importe, cero, futura, moneda, demasiado grande): se muestran con su
+  motivo y nunca se importan; no impiden importar las demás filas marcadas.
 - **Saldo:** se guardan como realizados y siguen la regla del §3. Las filas anteriores a
   la fecha del saldo de referencia quedan como historial y no cambian el saldo. Las del
   mismo día: por defecto «ya incluidas» (`realizedAt = setAt`), con casilla para cambiarlo.
