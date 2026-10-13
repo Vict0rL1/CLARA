@@ -3227,4 +3227,7 @@ export const pt: Record<keyof typeof es, string> = {
   'review.plannedIncome': 'Data futura: fica como receita prevista e não soma ao disponível até você recebê-la',
   'review.plannedExpense': 'Data futura: fica como despesa prevista; não muda o saldo de hoje',
   'stats.netNegative': 'Gasto líquido negativo: as devoluções superaram as despesas do período, por isso a barra fica abaixo do zero (a tabela mostra o mesmo valor).',
+  'calendar.flow.beyond': 'Sem saldo projetado para este dia: a projeção vai até {date} ({days} dias a partir de hoje). Não mostramos um valor que não foi calculado.',
+  'calendar.flow.beyondNote': 'A projeção vai até {date}; os dias seguintes não têm saldo calculado.',
+  'calendar.sim.beyond': 'A simulação só vai até {date}: escolha um dia anterior.',
 }

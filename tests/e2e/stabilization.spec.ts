@@ -277,3 +277,27 @@ test('8 · con más devoluciones que gastos, la barra de gasto baja del cero (ni
   await bars.getByRole('button', { name: 'Ver tabla' }).click()
   await expect(bars.locator('tbody tr').last()).toContainText('-$756.82')
 })
+
+test('9 · un día más allá de los 400 días de proyección dice que no hay saldo calculado; antes del límite sí da la cifra', async ({ page }) => {
+  await startDemo(page)
+  await go(page, '/plan/calendario')
+  for (let i = 0; i < 14; i++) await page.getByRole('button', { name: 'Mes siguiente' }).click()
+  await expect(page.getByRole('heading', { name: /noviembre de 2027/i }).first()).toBeVisible()
+  const day = (n: number) => page.locator('button.cal-day', { has: page.locator('.cal-day__num', { hasText: new RegExp(`^−?${n}$`) }) })
+  await expect(page.getByTestId('calendar-beyond-note')).toContainText('La proyección llega hasta el')
+  // 1-nov-2027 es el día 400 (el último proyectado): tiene cifra.
+  await day(1).click()
+  await expect(page.getByTestId('day-balance')).toHaveAttribute('data-state', 'projected')
+  await expect(page.getByTestId('day-balance')).toContainText('$')
+  // 20-nov-2027 queda fuera: ninguna cifra, el motivo y hasta dónde llega.
+  await day(1).click()
+  await day(20).click()
+  const balance = page.getByTestId('day-balance')
+  await expect(balance).toHaveAttribute('data-state', 'beyond')
+  await expect(balance).toContainText('Sin saldo proyectado para este día')
+  await expect(balance).not.toContainText('$')
+  // La simulación de ese día tampoco inventa un resultado.
+  await page.getByLabel('Importe a simular').fill('100')
+  await expect(page.getByTestId('sim-beyond')).toBeVisible()
+  await expect(page.getByTestId('sim-result')).toHaveCount(0)
+})

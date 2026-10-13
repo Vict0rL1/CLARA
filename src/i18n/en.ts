@@ -3229,4 +3229,7 @@ export const en: Record<keyof typeof es, string> = {
   'review.plannedIncome': 'Future date: saved as expected income; it doesn\'t add to what you can spend until you receive it',
   'review.plannedExpense': 'Future date: saved as an expected expense; today\'s balance doesn\'t change',
   'stats.netNegative': 'Negative net spending: refunds exceeded expenses in that period, so its bar drops below zero (the table shows the same figure).',
+  'calendar.flow.beyond': 'No projected balance for this day: the projection reaches {date} ({days} days from today). A figure that wasn\'t calculated isn\'t shown.',
+  'calendar.flow.beyondNote': 'The projection reaches {date}; later days have no calculated balance.',
+  'calendar.sim.beyond': 'The simulation only reaches {date}: choose an earlier day.',
 }

@@ -3227,4 +3227,7 @@ export const fr: Record<keyof typeof es, string> = {
   'review.plannedIncome': 'Date future : enregistré comme revenu prévu ; il ne s\'ajoute pas au disponible avant d\'être reçu',
   'review.plannedExpense': 'Date future : enregistré comme dépense prévue ; le solde d\'aujourd\'hui ne change pas',
   'stats.netNegative': 'Dépenses nettes négatives : les remboursements ont dépassé les dépenses de la période, la barre passe donc sous zéro (le tableau affiche le même montant).',
+  'calendar.flow.beyond': 'Pas de solde projeté pour ce jour : la projection va jusqu\'au {date} ({days} jours à partir d\'aujourd\'hui). Aucun montant non calculé n\'est affiché.',
+  'calendar.flow.beyondNote': 'La projection va jusqu\'au {date} ; les jours suivants n\'ont pas de solde calculé.',
+  'calendar.sim.beyond': 'La simulation ne va que jusqu\'au {date} : choisissez un jour antérieur.',
 }

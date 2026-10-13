@@ -181,3 +181,19 @@ export function estimateDailySpend(data: AppData, today: LocalDate, lookbackDays
   const dailyMinor = daysObserved > 0 ? floorDiv(totalMinor, daysObserved) : 0
   return { dailyMinor, totalMinor, daysObserved, sufficient: daysObserved >= 7 }
 }
+
+/** Días que el calendario proyecta como máximo (desde hoy, incluido). Más allá no hay cifra por día. */
+export const CALENDAR_PROJECTION_MAX_DAYS = 400
+
+export type DayBalance = { state: 'past' } | { state: 'projected'; endMinor: number } | { state: 'beyond'; lastDate: LocalDate }
+
+/**
+ * Saldo de un día del calendario: pasado (vive en Cuentas), proyectado (cierre de ese día) o fuera de
+ * la proyección. Nunca se toma el último día proyectado como si fuera el saldo de un día posterior.
+ */
+export function dayBalance(projection: Pick<ProjectionResult, 'today' | 'days'>, date: LocalDate): DayBalance {
+  if (date < projection.today) return { state: 'past' }
+  const day = projection.days.find((d) => d.date === date)
+  if (day) return { state: 'projected', endMinor: day.endMinor }
+  return { state: 'beyond', lastDate: projection.days[projection.days.length - 1]?.date ?? projection.today }
+}

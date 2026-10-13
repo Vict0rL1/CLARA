@@ -495,3 +495,20 @@ describe('8 · análisis y estadísticas: explicaciones que cuadran y gráficos 
     expect(signedScale([500, 0], 12, 130).y(0)).toBe(130)
   })
 })
+
+/* ------------------------------------------------------------------ */
+import { CALENDAR_PROJECTION_MAX_DAYS, dayBalance, projectBalance } from './projection'
+import { addDays } from './dates'
+
+describe('9 · calendario: más allá de la proyección no hay cifra', () => {
+  it('dentro del límite da el cierre del día; después, «fuera de la proyección» con la última fecha calculada', () => {
+    const data = baseData({ schedules: [fixtureBill(addDays(FIX_TODAY, 430), 99900, { id: 'late' })] })
+    const p = projectBalance(data, FIX_TODAY, { days: CALENDAR_PROJECTION_MAX_DAYS })
+    const last = addDays(FIX_TODAY, CALENDAR_PROJECTION_MAX_DAYS - 1)
+    expect(dayBalance(p, last)).toEqual({ state: 'projected', endMinor: p.endMinor })
+    // El día 431 tiene un pago grande: no se puede presentar el saldo del día 400 como si fuera el suyo.
+    expect(dayBalance(p, addDays(FIX_TODAY, 430))).toEqual({ state: 'beyond', lastDate: last })
+    expect(dayBalance(p, addDays(FIX_TODAY, -1))).toEqual({ state: 'past' })
+    expect(dayBalance(p, FIX_TODAY)).toMatchObject({ state: 'projected' })
+  })
+})

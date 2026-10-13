@@ -132,6 +132,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   solapamientos y lo que cabe en la primera pantalla; corren en los tres tamaños.
 - Gráficos: seguir la paleta validada (`--series-*`), etiquetas selectivas, tabla alternativa. Valores con signo
   (`signedScale`): el cero dentro del eje, nunca alturas negativas; gráfico y tabla dicen la misma cifra.
+- Calendario: proyecta hasta `CALENDAR_PROJECTION_MAX_DAYS` (400); más allá no hay cifra (`dayBalance` → `beyond`),
+  nunca el saldo del último día calculado.
 - Categorías: un solo dibujo (`CategoryIcon`) y un solo selector (`CategoryPicker`); nada de `<select>` de
   categoría salvo la tabla de la importación CSV. Listas vacías con `EmptyState` (icono, título y una
   línea de texto, ≤ 1 acción). Explicaciones largas: una frase + «¿Por qué?» (`Why`).

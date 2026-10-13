@@ -3228,4 +3228,7 @@ export const es = {
   'review.plannedIncome': 'Fecha futura: queda como ingreso previsto y no suma a lo disponible hasta que lo recibas',
   'review.plannedExpense': 'Fecha futura: queda como gasto previsto; no cambia el saldo de hoy',
   'stats.netNegative': 'Gasto neto negativo: las devoluciones superaron a los gastos del periodo, así que su barra baja del cero (la tabla muestra la misma cifra).',
+  'calendar.flow.beyond': 'Sin saldo proyectado para este día: la proyección llega hasta el {date} ({days} días desde hoy). No se muestra una cifra que no se ha calculado.',
+  'calendar.flow.beyondNote': 'La proyección llega hasta el {date}; los días posteriores no tienen saldo calculado.',
+  'calendar.sim.beyond': 'La simulación solo llega hasta el {date}: elige un día anterior.',
 } as const
