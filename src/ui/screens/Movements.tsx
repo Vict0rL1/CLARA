@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState } from 'react'
+import { memo, useCallback, useMemo, useState, useEffect, useRef } from 'react'
 import { txAppliesToAccount } from '../../domain/balances'
 import { sumMinor } from '../../domain/money'
 import { txCategoryIds } from '../../domain/splits'
@@ -16,6 +16,7 @@ import type { Transaction, TxKind, TxStatus } from '../../domain/types'
 import { useT, type MessageKey } from '../../i18n'
 import { useToday } from '../../state/hooks'
 import { useData } from '../../state/store'
+import { takeListView, writeListView } from '../listView'
 import { Badge, EmptyState, PageHeader, Why } from '../components/common'
 import { MoneyField, TextField } from '../components/fields'
 import { CategoryPicker } from '../components/CategoryPicker'
@@ -36,22 +37,46 @@ export function Movements({ route }: { route?: Route }) {
   const fmt = useFormat()
   const data = useData()
   const today = useToday()
-  const [query, setQuery] = useState('')
-  const [kind, setKind] = useState<'all' | TxKind>('all')
-  const [status, setStatus] = useState<'all' | TxStatus>('all')
-  const [accountId, setAccountId] = useState('all')
+  const linkHasFilters = !!(route?.query.get('categoria') || route?.query.get('etiqueta') || route?.query.get('desde') || route?.query.get('hasta'))
+  const [saved] = useState(() => (linkHasFilters ? null : takeListView(data.budgetId)))
+  const [query, setQuery] = useState(saved?.query ?? '')
+  const [kind, setKind] = useState<'all' | TxKind>(saved?.kind ?? 'all')
+  const [status, setStatus] = useState<'all' | TxStatus>(saved?.status ?? 'all')
+  const [accountId, setAccountId] = useState(saved?.accountId ?? 'all')
   // D4: varias categorías y etiquetas («cualquiera»), rango de importe y origen del registro.
-  const [categoryIds, setCategoryIds] = useState<string[]>(() => (route?.query.get('categoria') ? [route.query.get('categoria')!] : []))
-  const [tagIds, setTagIds] = useState<string[]>(() => (route?.query.get('etiqueta') ? [route.query.get('etiqueta')!] : []))
-  const [from, setFrom] = useState(() => route?.query.get('desde') || '')
-  const [to, setTo] = useState(() => route?.query.get('hasta') || '')
-  const [amountMin, setAmountMin] = useState('')
-  const [amountMax, setAmountMax] = useState('')
-  const [source, setSource] = useState<'all' | SourceGroup>('all')
+  const [categoryIds, setCategoryIds] = useState<string[]>(() => (route?.query.get('categoria') ? [route.query.get('categoria')!] : (saved?.categoryIds ?? [])))
+  const [tagIds, setTagIds] = useState<string[]>(() => (route?.query.get('etiqueta') ? [route.query.get('etiqueta')!] : (saved?.tagIds ?? [])))
+  const [from, setFrom] = useState(() => route?.query.get('desde') || saved?.from || '')
+  const [to, setTo] = useState(() => route?.query.get('hasta') || saved?.to || '')
+  const [amountMin, setAmountMin] = useState(saved?.amountMin ?? '')
+  const [amountMax, setAmountMax] = useState(saved?.amountMax ?? '')
+  const [source, setSource] = useState<'all' | SourceGroup>(saved?.source ?? 'all')
   const [bulkSheet, setBulkSheet] = useState<null | 'category' | 'tag'>(null)
   const [bulkCategoryId, setBulkCategoryId] = useState('')
   const [bulkTagIds, setBulkTagIds] = useState<string[]>([])
-  const [limit, setLimit] = useState(PAGE)
+  const [limit, setLimit] = useState(saved?.limit ?? PAGE)
+  const scrollYRef = useRef(saved?.scrollY ?? 0)
+  // Cada cambio de filtros se recuerda; la posición se anota al abrir una fila (ver `rememberScroll`).
+  useEffect(() => {
+    writeListView(data.budgetId, { query, kind, status, accountId, categoryIds, tagIds, from, to, amountMin, amountMax, source, limit, scrollY: scrollYRef.current })
+  }, [data.budgetId, query, kind, status, accountId, categoryIds, tagIds, from, to, amountMin, amountMax, source, limit])
+  // Al volver: la app lleva cada pantalla arriba en el primer cuadro; después se recupera la posición.
+  useEffect(() => {
+    const y = saved?.scrollY ?? 0
+    if (y <= 0) return
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => window.scrollTo({ top: y }))
+    })
+    return () => cancelAnimationFrame(frame)
+    // Solo al montar: `saved` no cambia después.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  // Solo al abrir una fila (enlace): seleccionar en lote o tocar un botón no marca «volver».
+  const rememberScroll = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!(e.target instanceof Element) || !e.target.closest('a')) return
+    scrollYRef.current = window.scrollY
+    writeListView(data.budgetId, { query, kind, status, accountId, categoryIds, tagIds, from, to, amountMin, amountMax, source, limit, scrollY: window.scrollY, returning: true })
+  }
   const [selecting, setSelecting] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
   const [confirmBulk, setConfirmBulk] = useState(false)
@@ -422,7 +447,9 @@ export function Movements({ route }: { route?: Route }) {
               <h2 id="planned-title" className="section-title">
                 {t('movements.plannedSection')} <span className="section-title__note">· {t('movements.plannedNote')}</span>
               </h2>
-              <TxList txs={planned} today={today} selecting={selecting} selected={selected} onToggle={toggleSelected} />
+              <div onClickCapture={rememberScroll}>
+                <TxList txs={planned} today={today} selecting={selecting} selected={selected} onToggle={toggleSelected} />
+              </div>
             </section>
           )}
 
@@ -431,7 +458,9 @@ export function Movements({ route }: { route?: Route }) {
               <h2 id="realized-title" className="section-title">
                 {t('movements.realizedSection')}
               </h2>
-              <TxList txs={shownRealized} today={today} groupByDate selecting={selecting} selected={selected} onToggle={toggleSelected} />
+              <div onClickCapture={rememberScroll}>
+                <TxList txs={shownRealized} today={today} groupByDate selecting={selecting} selected={selected} onToggle={toggleSelected} />
+              </div>
               {realized.length > shownRealized.length && (
                 <button type="button" className="btn btn--secondary" onClick={() => setLimit((l) => l + PAGE)}>
                   {t('movements.showMore', { count: realized.length - shownRealized.length })}

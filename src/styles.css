@@ -849,6 +849,187 @@ html {
   background: var(--balance-gradient);
 }
 
+/* Detalle del movimiento al editar: importe grande con moneda, fecha, categoría, cuenta, origen y recurrencia. */
+.tx-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.tx-summary__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tx-summary__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink-2);
+}
+
+.tx-summary__icon--income,
+.tx-summary__icon--refund {
+  color: var(--good-text);
+}
+
+.tx-summary__icon--expense {
+  color: var(--critical-text);
+}
+
+.tx-summary__main {
+  min-width: 0;
+}
+
+.tx-summary__amount {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.tx-summary__amount--income,
+.tx-summary__amount--refund {
+  color: var(--good-text);
+}
+
+.tx-summary__currency {
+  font-size: var(--font-caption);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+}
+
+.tx-summary__meta {
+  margin: 0;
+  font-size: var(--font-body-sm);
+  color: var(--ink-2);
+}
+
+/* Las insignias del detalle (programado «nombre · frecuencia», comercio) pueden ser largas: se parten en lugar de desbordar. */
+.tx-summary .badge {
+  white-space: normal;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/* Línea de composición de la cifra: saldo en cuentas − reservado (y base del periodo si difiere). */
+.hero__ledger {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin: -2px 0 2px;
+  font-size: var(--font-body-sm);
+  color: var(--ink-2);
+}
+
+/* Pantallas muy estrechas: la línea cabe entera en tamaño de leyenda (los importes siguen en la explicación). */
+@media (max-width: 359px) {
+  .hero__ledger {
+    gap: 2px 8px;
+    font-size: 0.75rem;
+  }
+}
+
+.hero__ledger-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.hero__ledger-value {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+/* Franja de próximos pagos en la vista esencial: dos filas y un enlace al calendario. */
+.upcoming-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 12px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+/* Cabecera en una fila: título a la izquierda y «N más en el calendario» a la derecha. */
+.upcoming-strip__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 40px;
+}
+
+.upcoming-strip__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  min-width: 0;
+  font-size: var(--font-body-sm);
+  font-weight: 650;
+  color: var(--ink-2);
+}
+
+.upcoming-strip__head .link-more {
+  flex: none;
+  min-height: 40px;
+  font-size: var(--font-body-sm);
+}
+
+.upcoming-strip__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.upcoming-strip__item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 26px;
+}
+
+.upcoming-strip__name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upcoming-strip__when {
+  font-size: var(--font-caption);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.upcoming-strip__amount {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+
 /* Cajas INGRESOS / GASTOS y barra «Disponible · N %» del héroe (D2). */
 .hero__boxes {
   display: grid;
@@ -929,8 +1110,21 @@ html {
   min-width: 0;
 }
 
+.view-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.view-hint > p {
+  flex: 1 1 200px;
+  margin: 0;
+  font-size: var(--font-body-sm);
+}
+
 .view-hint .button-row {
-  margin-top: 8px;
+  gap: 4px;
 }
 
 .hero__label {
@@ -1787,6 +1981,10 @@ fieldset.bill-row {
   background: var(--surface-2);
 }
 
+.item--link:active {
+  background: var(--pressed);
+}
+
 .item__icon {
   flex: none;
   display: grid;
@@ -1922,6 +2120,76 @@ fieldset.bill-row {
 
 .goal-mini__name {
   overflow-wrap: break-word;
+}
+
+/* Metas en Inicio: arco + nombre y cifras en una fila. */
+.goal-mini {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.goal-mini__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* Arco de progreso (metas): anillo con extremos redondeados; la pista es un tono claro de la misma familia. */
+.arc {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+}
+
+.arc svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.arc__track {
+  fill: none;
+  stroke: color-mix(in srgb, var(--series-3) 18%, var(--surface));
+}
+
+.arc__fill {
+  fill: none;
+  stroke: var(--series-3);
+  stroke-linecap: round;
+  transition: stroke-dasharray var(--dur-slow) var(--ease);
+}
+
+.arc--complete .arc__fill {
+  stroke: var(--good-mark);
+}
+
+.arc__text {
+  position: relative;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.arc--complete .arc__text {
+  color: var(--good-text);
+}
+
+.goal__summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.goal__summary-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 /* Barra de progreso: la pista es un tono claro de la misma familia. */
@@ -2561,6 +2829,21 @@ fieldset.bill-row {
   overflow: auto;
 }
 
+.dialog[open] {
+  animation: dialog-in var(--dur) var(--ease-out);
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .dialog::backdrop {
   background: rgba(10, 14, 13, 0.55);
 }
@@ -3029,6 +3312,10 @@ fieldset.bill-row {
   background: var(--surface-2);
 }
 
+.chip:active {
+  background: var(--pressed);
+}
+
 .chip__amount {
   white-space: nowrap;
   color: var(--muted);
@@ -3153,6 +3440,7 @@ fieldset.bill-row {
   /* E4: las hojas y los avisos aparecen sin animación. */
   .sheet__panel,
   .toast,
+  .dialog[open],
   .count-up.is-updated {
     animation: none !important;
   }
@@ -3844,6 +4132,10 @@ button.cat-chip:hover {
 }
 
 .list-row--link:hover {
+  background: var(--surface-2);
+}
+
+.list-row--link:active {
   background: var(--pressed);
 }
 
