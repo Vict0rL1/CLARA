@@ -6,7 +6,9 @@
 import { describe, expect, it } from 'vitest'
 import { saveConfirmedEntries } from './assistant'
 import { parseText } from './parser'
-import { reviewProposal } from './review'
+import { reviewProposal, reviewProposals, type Proposal } from './review'
+import { explainRuleMatch } from './rules'
+import type { CategoryRule } from './types'
 import { createDemoData } from '../demo/demoData'
 import { todayInTimeZone } from './dates'
 
@@ -336,5 +338,79 @@ describe('6 · revertir tras recargar: el orden de las claves no es un cambio', 
     if (!again.ok) throw new Error('again')
     const second = commitAndReload(first, again.data)
     expect(canRevert(second, entry)).toBe('conflict')
+  })
+})
+
+describe('7 · reglas y revisión del asistente: una sola regla y efectos exactos', () => {
+  const rule = (id: string, pattern: string, categoryId: string, createdAt: string): CategoryRule => ({ id, pattern, kind: 'expense', categoryId, createdAt, updatedAt: createdAt })
+  const cats = [
+    { id: 'transport', kind: 'expense' as const },
+    { id: 'dining', kind: 'expense' as const },
+    { id: 'groceries', kind: 'expense' as const },
+    { id: 'salary', kind: 'income' as const },
+  ]
+  const ctxWith = (rules: CategoryRule[]) => ({ today: '2026-09-28', currency: 'CAD', language: 'es' as const, categories: cats, rules })
+
+  it('«uber» y después «uber eats»: el asistente y la explicación eligen comida (el patrón más largo)', () => {
+    const rules = [rule('r1', 'uber', 'transport', '2026-01-01T00:00:00.000Z'), rule('r2', 'uber eats', 'dining', '2026-02-01T00:00:00.000Z')]
+    const [eats] = parseText('uber eats 25', ctxWith(rules))
+    expect(eats).toMatchObject({ categoryId: 'dining', amountMinor: 2500 })
+    expect(eats!.hints).toContain('categoryRule')
+    expect(explainRuleMatch('uber eats', 'expense', rules)?.rule.id).toBe('r2')
+    const [ride] = parseText('uber 12', ctxWith(rules))
+    expect(ride!.categoryId).toBe('transport')
+    // El orden de la lista no cambia nada.
+    expect(parseText('uber eats 25', ctxWith([...rules].reverse()))[0]!.categoryId).toBe('dining')
+  })
+
+  it('a igual longitud gana la más antigua en los dos sitios, aunque la lista venga en otro orden', () => {
+    const rules = [rule('new', 'market', 'groceries', '2026-05-01T00:00:00.000Z'), rule('old', 'market', 'dining', '2026-01-01T00:00:00.000Z')]
+    expect(parseText('market 30', ctxWith(rules))[0]!.categoryId).toBe('dining')
+    expect(explainRuleMatch('market', 'expense', rules)).toMatchObject({ rule: { id: 'old' }, reason: 'oldest' })
+    // Un patrón por debajo del mínimo nunca coincide (antes, «» o «a» coincidía con todo en el asistente).
+    expect(parseText('pan 3', ctxWith([rule('short', 'p', 'transport', '2026-01-01T00:00:00.000Z')]))[0]!.hints).not.toContain('categoryRule')
+  })
+
+  it('cero, negativo y con decimales en unidades menores: la revisión los marca inválidos, igual que al guardar', () => {
+    const { data, ctx } = demo()
+    const accountId = data.accounts[0]!.id
+    for (const amountMinor of [0, -500, 12.5]) {
+      const r = reviewProposal(data, { id: `p${amountMinor}`, source: 'ai_text', kind: 'expense', amountMinor, date: ctx.today, accountId, categoryId: 'dining' }, ctx.today)
+      expect(r.ok, String(amountMinor)).toBe(false)
+      expect(r.effectMinor, String(amountMinor)).toBe(0)
+      const reviewCodes = r.issues.filter((i) => i.path === 'amountMinor').map((i) => i.code)
+      const saved = saveTransaction(data, { id: 'x', kind: 'expense', status: 'realized', amountMinor, date: ctx.today, accountId, categoryId: 'dining' }, ctx)
+      expect(saved.ok, String(amountMinor)).toBe(false)
+      if (saved.ok) continue
+      expect(reviewCodes, String(amountMinor)).toEqual(saved.issues.filter((i) => i.path === 'amountMinor').map((i) => i.code))
+    }
+  })
+
+  it('un pago vinculado a un recibo ya reservado baja el saldo pero no lo disponible; sin vincular, sí', () => {
+    const { data, ctx } = demo()
+    const accountId = data.accounts[0]!.id
+    const before = computeBudget(data, ctx.today).availableMinor
+    const pay = (linkToSchedule: boolean): Proposal => ({ id: 'luz', source: 'ai_text', kind: 'expense', amountMinor: 4280, date: ctx.today, accountId, categoryId: 'utilities', linkToSchedule })
+    const linked = reviewProposals(data, [pay(true)], ctx.today, { now: ctx.now })
+    expect(linked.reviews[0]!.scheduleMatch?.date).toBe('2026-09-27')
+    expect(linked.reviews[0]).toMatchObject({ ok: true, effectMinor: -4280, availableEffectMinor: 0 })
+    expect(linked.available).toEqual({ beforeMinor: before, afterMinor: before })
+    // Lo simulado es lo que pasa al guardar de verdad.
+    const saved = saveConfirmedEntries(data, [{ id: 'luz', kind: 'expense', amountMinor: 4280, date: ctx.today, accountId, categoryId: 'utilities', source: 'ai_text', scheduleId: linked.reviews[0]!.scheduleMatch!.sourceId, occurrenceDate: '2026-09-27' }], ctx)
+    expect(saved.ok && computeBudget(saved.data, ctx.today).availableMinor).toBe(before)
+    const unlinked = reviewProposals(data, [pay(false)], ctx.today, { now: ctx.now })
+    expect(unlinked.reviews[0]!.availableEffectMinor).toBeUndefined()
+    expect(unlinked.available).toEqual({ beforeMinor: before, afterMinor: before - 4280 })
+  })
+
+  it('un ingreso con fecha futura no cambia el saldo de hoy ni sube lo disponible', () => {
+    const { data, ctx } = demo()
+    const accountId = data.accounts[0]!.id
+    const before = computeBudget(data, ctx.today).availableMinor
+    const s = reviewProposals(data, [{ id: 'bonus', source: 'ai_text', kind: 'income', amountMinor: 50000, date: '2026-10-05', accountId, categoryId: 'salary' }], ctx.today, { now: ctx.now })
+    expect(s.reviews[0]).toMatchObject({ ok: true, planned: true, effectMinor: 0 })
+    expect(s.totalEffectMinor).toBe(0)
+    expect(s.available!.afterMinor).toBeLessThanOrEqual(before)
+    expect(s.available!.afterMinor).toBe(before)
   })
 })

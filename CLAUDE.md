@@ -65,7 +65,9 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
 - Favoritos solo rellenan el formulario; nunca registran movimientos.
 - Parser del asistente (`domain/parser.ts`): las pruebas pasan por `parseText` (lo que usa el
   asistente), no solo por `parseEntry`; una coma entre dígitos es parte del importe. El asistente
-  escribe en un `<textarea>` (una línea por movimiento).
+  escribe en un `<textarea>` (una línea por movimiento). Reglas de categoría: un solo resolutor
+  (`rankRuleMatches`: patrón más largo, a igualdad la más antigua) para asistente, revisión y Ajustes.
+  La revisión distingue saldo (solo realizado) de disponible (simulado sobre una copia, nunca deducido).
 - Gastos planificados = metas `kind: 'expense'` (`domain/plannedExpenses.ts`): el plan es
   solo sugerencia; solo lo apartado descuenta. Vinculados a una ocurrencia, esa ocurrencia
   no se reserva dos veces (`reserves.ts`). Pagar = gasto real + liberar reserva en una

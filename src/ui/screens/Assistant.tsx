@@ -20,7 +20,7 @@ import { implausibilityRatio, isImplausibleAmount } from '../../domain/plausibil
 import { lastUsedAccount } from '../../domain/quickEntry'
 import type { Issue } from '../../domain/validation'
 import { useT, type MessageKey } from '../../i18n'
-import { useRun, useToday } from '../../state/hooks'
+import { makeContext, useRun, useToday } from '../../state/hooks'
 import { useData } from '../../state/store'
 import { PrimaryButton, SecondaryButton, TextButton } from '../components/base'
 import { Alert, Badge, Card, PageHeader } from '../components/common'
@@ -32,7 +32,6 @@ import { useFormat } from '../format'
 import { accountOptions, issueMessage } from '../labels'
 import { reviewProposals } from '../../domain/review'
 import { ProposalReviewView } from '../components/ProposalReview'
-import { signedMoney } from '../signedMoney'
 import { moneyErrorMessage } from '../moneyText'
 import { href, useNavigateIfStillHere, withQuery, type Route } from '../router'
 
@@ -211,9 +210,12 @@ export function Assistant({ route }: { route: Route }) {
           categoryId: l.categoryId,
           description: l.entry.description,
           note: l.note.trim() || undefined,
+          linkToSchedule: !!l.linked,
         }
       }),
       today,
+      // Lo disponible antes/después se simula con la misma operación que al registrar.
+      { now: makeContext(data.settings.timeZone).now },
     )
   }, [lines, data, accountId, today])
   const reviewOf = (id: string) => reviewed?.reviews.find((r) => r.id === id)
@@ -422,7 +424,9 @@ export function Assistant({ route }: { route: Route }) {
           <p className="note">{t('assistant.previewHint')}</p>
           {reviewed && (
             <p className="note" data-testid="review-summary">
-              {t('review.summary', { amount: signedMoney(fmt, reviewed.totalEffectMinor) })}
+              {reviewed.available && reviewed.available.afterMinor !== reviewed.available.beforeMinor
+                ? t('review.summary', { before: fmt.money(reviewed.available.beforeMinor), after: fmt.money(reviewed.available.afterMinor) })
+                : t('review.summarySame', { amount: fmt.money(reviewed.available?.beforeMinor ?? availableMinor) })}
               {reviewed.counts.duplicates > 0 ? ` · ${tn('review.duplicatesCount', reviewed.counts.duplicates)}` : ''}
               {reviewed.counts.scheduleMatches > 0 ? ` · ${tn('review.scheduleCount', reviewed.counts.scheduleMatches)}` : ''}
             </p>

@@ -10,7 +10,7 @@
  */
 import { addDays, isValidLocalDate, parseLocalDate, toLocalDate, weekday } from './dates'
 import { currencyDigits, isSupportedCurrency, stripCurrencyMark, symbolMatchesCurrency } from './money'
-import { normalizeText } from './rules'
+import { normalizeText, rankRuleMatches } from './rules'
 import type { AppData, Language, LocalDate, Transaction } from './types'
 
 export interface ParsedEntry {
@@ -65,7 +65,8 @@ export interface ParseContext {
   /** Palabra normalizada → categoría, aprendido del historial (`learnCategories`). */
   learned?: Record<string, string>
   /** Reglas de categoría de la persona (patrón normalizado → categoría). */
-  rules?: readonly { pattern: string; kind: 'expense' | 'income'; categoryId: string }[]
+  /** Reglas de la persona; `createdAt` desempata patrones de igual longitud (la más antigua gana). */
+  rules?: readonly { pattern: string; kind: 'expense' | 'income'; categoryId: string; createdAt?: string }[]
 }
 
 export const MAX_PARSER_LINES = 200
@@ -438,12 +439,14 @@ export function parseEntry(raw: string, ctx: ParseContext): ParsedEntry {
   // Categoría: regla de la persona > aprendizaje > diccionario
   const allowed = new Set(ctx.categories.filter((c) => c.kind === kind).map((c) => c.id))
   let categoryId: string | undefined
-  for (const r of ctx.rules ?? []) {
-    if (r.kind === kind && allowed.has(r.categoryId) && normDesc.includes(normalizeText(r.pattern)) && (!categoryId || r.pattern.length > 0)) {
-      categoryId = r.categoryId
-      hints.push('categoryRule')
-      break
-    }
+  // Mismo resolutor que Ajustes › Reglas y la revisión: el patrón más largo gana, a igualdad la más antigua.
+  const rule = rankRuleMatches(
+    normDesc,
+    (ctx.rules ?? []).filter((r) => r.kind === kind && allowed.has(r.categoryId)),
+  )[0]
+  if (rule) {
+    categoryId = rule.categoryId
+    hints.push('categoryRule')
   }
   if (!categoryId && ctx.learned) {
     for (const w of significantWords(normDesc)) {

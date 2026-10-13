@@ -11,7 +11,8 @@ import { Icon } from './Icon'
 /**
  * Lo que la persona ve de una propuesta antes de confirmarla, igual venga de un CSV, de texto, de
  * voz o de una foto: posible duplicado (con enlace al existente), coincidencia con un pago
- * programado (vincular es decisión suya), efecto en lo disponible, regla que dio la categoría y
+ * programado (vincular es decisión suya), efecto en el saldo de las cuentas (y en lo disponible, calculado,
+ * cuando se vincula), regla que dio la categoría y
  * «ya registrado» si el id ya está guardado. Solo muestra: no registra nada.
  */
 export function ProposalReviewView({ review, linked, onLink, returnTo, testId }: { review: ProposalReview; linked?: boolean; onLink?: (value: boolean) => void; returnTo: string; testId?: string }) {
@@ -53,9 +54,16 @@ export function ProposalReviewView({ review, linked, onLink, returnTo, testId }:
           {review.rule.competitors.length > 0 && ` · ${t(review.rule.reason === 'oldest' ? 'review.ruleOldest' : 'review.ruleLongest', { count: review.rule.competitors.length + 1 })}`}
         </p>
       )}
-      {review.ok && review.effectMinor !== 0 && (
+      {review.ok && review.planned && (
+        <p className="review__line review__line--muted" data-testid="review-effect">
+          {t(review.kind === 'income' ? 'review.plannedIncome' : 'review.plannedExpense')}
+        </p>
+      )}
+      {review.ok && !review.planned && (review.effectMinor !== 0 || review.availableEffectMinor !== undefined) && (
         <p className="review__line review__line--muted" data-testid="review-effect">
           {t('review.effect', { amount: signedMoney(fmt, review.effectMinor) })}
+          {review.availableEffectMinor !== undefined &&
+            ` · ${review.availableEffectMinor === 0 ? t('review.effectAvailableSame') : t('review.effectAvailable', { amount: signedMoney(fmt, review.availableEffectMinor) })}`}
         </p>
       )}
     </div>

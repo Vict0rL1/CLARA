@@ -15,11 +15,15 @@ test('asistente: la revisión propone vincular con el pago programado que coinci
   await page.getByRole('button', { name: 'Analizar' }).click()
   const preview = page.getByTestId('assistant-preview')
   await expect(preview.locator('.assistant__line')).toHaveCount(1)
-  await expect(page.getByTestId('review-summary')).toContainText('Efecto en lo disponible: −$650.00')
+  // Sin vincular, la renta se pagaría y además seguiría reservada: lo disponible bajaría 650.
+  await expect(page.getByTestId('review-summary')).toContainText('Lo disponible pasaría de $136.78 a -$513.22')
   await expect(page.getByTestId('review-summary')).toContainText('1 coincide con un pago programado')
   const line = preview.locator('.assistant__line').first()
   await expect(line.getByTestId('review-schedule')).toContainText('¿Es el pago programado «Renta de habitación» del 1 oct?')
   await line.getByLabel('Vincular: el calendario lo dará por pagado y no se reservará dos veces').check()
+  // Vinculada, la revisión calcula lo disponible de verdad: el saldo baja, lo disponible no (decisión 7).
+  await expect(line.getByTestId('review-effect')).toHaveText('Saldo de tus cuentas: −$650.00 · Disponible: sin cambio (usa lo que ya estaba reservado)')
+  await expect(page.getByTestId('review-summary')).toContainText('Lo disponible no cambia: $136.78')
   await page.getByRole('button', { name: 'Registrar 1 movimiento' }).click()
   await expect(page.getByText('1 movimiento registrado')).toBeVisible()
   // Vinculado: lo reservado se libera y el disponible no cambia (misma regla que el formulario).

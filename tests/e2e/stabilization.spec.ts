@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { START, go, openDetails, startDemo, storedData } from './helpers'
+import { START, available, go, openDetails, pickCategory, startDemo, storedData } from './helpers'
 
 /**
  * Regresiones de navegador de la auditoría posterior (2026-10-12/13) sobre `e7c9d87`. Cada prueba
@@ -215,4 +215,39 @@ test('6 · un gasto recién guardado se puede revertir después de recargar, y e
   await expect(page.getByTestId('available')).toHaveText('$136.78')
   await page.reload()
   await expect(page.getByTestId('available')).toHaveText('$136.78')
+})
+
+test('7 · con «uber» y «uber eats» el asistente elige la regla más específica; lo disponible que anuncia la revisión es el que queda al registrar', async ({ page }) => {
+  await startDemo(page)
+  await go(page, '/ajustes/reglas')
+  for (const [pattern, category] of [
+    ['uber', 'Transporte'],
+    ['uber eats', 'Restaurantes y café'],
+  ] as const) {
+    await page.getByRole('button', { name: 'Nueva regla' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Nueva regla de categoría' })
+    await dialog.getByLabel('Si la descripción contiene').fill(pattern)
+    await pickCategory(page, dialog.getByLabel('Categoría'), category)
+    await dialog.getByRole('button', { name: 'Guardar', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+  }
+  await go(page, '/asistente')
+  await page.getByLabel('Texto').fill('uber eats 25\nuber 12\nrenta 650')
+  await page.getByRole('button', { name: 'Analizar' }).click()
+  const lines = page.getByTestId('assistant-preview').locator('.assistant__line')
+  await expect(lines).toHaveCount(3)
+  await expect(lines.nth(0).getByLabel('Categoría')).toHaveAttribute('data-value', 'dining')
+  await expect(lines.nth(1).getByLabel('Categoría')).toHaveAttribute('data-value', 'transport')
+  // Sin vincular, la renta se restaría y seguiría reservada; vinculada, libera su reserva.
+  const summary = page.getByTestId('review-summary')
+  await expect(summary).toContainText('Lo disponible pasaría de $136.78 a -$550.22')
+  const rent = lines.nth(2)
+  await rent.getByLabel('Vincular: el calendario lo dará por pagado y no se reservará dos veces').check()
+  await expect(rent.getByTestId('review-effect')).toHaveText('Saldo de tus cuentas: −$650.00 · Disponible: sin cambio (usa lo que ya estaba reservado)')
+  await expect(lines.nth(0).getByTestId('review-effect')).toHaveText('Saldo de tus cuentas: −$25.00')
+  await expect(summary).toContainText('Lo disponible pasaría de $136.78 a $99.78')
+  await page.getByRole('button', { name: 'Registrar 3 movimientos' }).click()
+  await expect(page.getByText('3 movimientos registrados').first()).toBeVisible()
+  await go(page, '/')
+  await expect(await available(page)).toHaveText('$99.78')
 })
