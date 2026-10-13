@@ -8,6 +8,16 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
 
 ### Novedades
 
+- **Análisis** (etapa 4 del programa): nuevo destino en la barra (Inicio · Movimientos · + · Plan · Análisis · Ajustes) con
+  señales calculadas con reglas fijas (pagos vencidos, saldo proyectado en negativo o bajo los apartados, límites, metas por
+  detrás, gasto a fecha equivalente, categoría dominante, copia pendiente), cada una con «¿Cómo se calculó?» (regla y cifras), y
+  pestañas a Estadísticas, Revisión semanal y ¿Qué cambió?. Cada gráfico de Estadísticas explica su cálculo. Sin IA ni
+  notificaciones; nada se guarda.
+- **Datos y recuperación** (Ajustes): un solo sitio con el estado de lo que protege tus datos (guardado, copia exportada y
+  verificada, copias locales, copia previa a migración, esquema, registros, papelera, historial, errores, sin conexión), el
+  orden en que recuperar algo si falla, exportar desde ahí y descargar la copia previa a la migración. «Almacenamiento y
+  privacidad» vive ahora dentro de esta sección (el enlace antiguo sigue funcionando). Dice claramente que no hay sincronización
+  ni cuenta. El índice de Ajustes avisa en esa fila solo cuando hay algo que revisar.
 - **Calendario de flujo de caja** (etapa 3 del programa; esquema 12): cada día muestra el saldo proyectado al cerrarlo
   (misma proyección que Plan › Proyección, al menos 60 días) y el primer día en negativo, con «¿Cómo se calculó?».
   «Simular un pago» calcula sobre una copia y solo ofrece abrir el formulario como gasto previsto; nada se guarda solo.

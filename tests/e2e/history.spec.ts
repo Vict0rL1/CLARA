@@ -16,7 +16,7 @@ test('historial: muestra antes y después, revierte y explica conflictos', async
   await editCoffee(page, '10')
   await expect(await available(page)).toHaveText('$131.03')
 
-  await go(page, '/ajustes/almacenamiento')
+  await go(page, '/ajustes/datos')
   await page.getByRole('link', { name: 'Historial de cambios' }).click()
   await expect(page.getByRole('heading', { name: 'Historial de cambios' })).toBeVisible()
   await expect(page.getByText('no es una prueba inalterable')).toBeVisible()

@@ -10,6 +10,7 @@ import { useT } from '../../i18n'
 import { useRun, useToday } from '../../state/hooks'
 import { useData } from '../../state/store'
 import { Alert, Badge, CalcRow, Card, Explain, Meter, PageHeader } from '../components/common'
+import { InsightsTabs } from '../components/InsightsTabs'
 import { CheckboxField } from '../components/fields'
 import { Icon } from '../components/Icon'
 import { useFormat, type Formatter } from '../format'
@@ -42,6 +43,7 @@ export function WeeklyReview({ route }: { route: Route }) {
   return (
     <div className="stack">
       <PageHeader title={t('weekly.title')} back={{ href: href('/'), label: t('nav.home') }} />
+      <InsightsTabs active="revision" />
       <nav className="month-nav" aria-label={t('weekly.navAria')}>
         <a className="btn btn--ghost btn--icon" href={prevHref}>
           <Icon name="chevronLeft" />

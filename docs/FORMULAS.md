@@ -1195,3 +1195,35 @@ compactos ni se redondean para calcular.
   de §7: una meta del presupuesto resta lo apartado; una externa, nada. El historial de aportes lista
   `allocations` con su motivo (`reason`; sin motivo, por el signo) y es solo presentación.
 
+## 38. Análisis explicable y centro de datos y recuperación (etapa 4)
+
+- **Señales** (`domain/analysis.ts`, `analysisItems`): reglas fijas, sin IA ni notificaciones, recalculadas
+  al abrir Análisis; cada señal lleva su id estable (regla + registro), gravedad (urgente › atención ›
+  para saber), parámetros y un desglose «porque» con las cifras exactas que la producen. Reglas:
+  pagos vencidos sin marcar (los mismos que el calendario: Σ importes); saldo proyectado en negativo
+  o por debajo de los apartados (misma proyección de §9 a 60 días: saldo real + ingresos previstos −
+  pagos previstos hasta ese día = saldo de ese día, al céntimo); límite superado o ≥ umbral «cerca»
+  (`planProgress`); meta por detrás del ritmo (`goalPace`, §37); gasto del mes a fecha equivalente del
+  mes anterior (gasto neto del día 1 a hoy frente a los mismos días del mes anterior; solo si los datos
+  cubren ambos tramos y la base no es 0; aviso desde ±10 %); categoría dominante (≥ 30 % del gasto
+  neto del mes); copia de seguridad pendiente (misma regla que el recordatorio; nunca en la demo).
+  Nada de esto se guarda ni se posterga: la bandeja de pendientes (§24) sigue siendo el sitio de los
+  avisos accionables con posponer/descartar.
+- **Navegación**: «Análisis» es destino primario (barra inferior y lateral) y agrupa Avisos,
+  Estadísticas, Revisión semanal y ¿Qué cambió? con pestañas; las rutas antiguas no cambian. Cada
+  gráfico de Estadísticas lleva su «¿Cómo se calculó?» (categorías, barras, tendencia, comercios).
+- **Centro de datos y recuperación** (`domain/recovery.ts`, `recoveryStatus`): estado por filas, cada
+  una con icono + texto y enlace a su sección: guardado (IndexedDB / almacenamiento local / solo
+  memoria = crítico), copia exportada (nunca = crítico; cambios posteriores = aviso; demo = informativo),
+  copia verificada (ninguna = aviso; última exportación sin verificar o > 90 días = informativo),
+  copias locales automáticas (sin soporte = aviso), copia previa a la migración
+  (`margen.data.before-v<esquema>`), esquema, recuento de registros, papelera, historial local,
+  errores registrados (saneados) y modo sin conexión. El estado general es el peor de las filas. El
+  orden de recuperación es fijo y honesto: copia exportada › copia local automática › copia previa a
+  la migración › papelera › revertir desde el historial; cada paso dice si está disponible ahora.
+  Exportar desde el centro es la misma acción (y el mismo registro) que en Copias de seguridad; la
+  copia previa a la migración se puede descargar desde el centro (texto exacto, nunca se modifica).
+  La antigua sección «Almacenamiento y privacidad» (dónde viven los datos, guardado persistente,
+  copia del origen) vive dentro del centro; `/ajustes/almacenamiento` sigue llegando. Nunca hay
+  sincronización ni cuenta: si el navegador borra sus datos, solo se recupera lo exportado.
+

@@ -11,6 +11,7 @@ import { useT, type MessageKey } from '../../i18n'
 import { useToday } from '../../state/hooks'
 import { useData } from '../../state/store'
 import { Alert, Badge, CalcRow, Card, PageHeader } from '../components/common'
+import { InsightsTabs } from '../components/InsightsTabs'
 import { SelectField, TextField } from '../components/fields'
 import { Icon } from '../components/Icon'
 import { useFormat } from '../format'
@@ -100,6 +101,7 @@ export function WhatChanged({ route }: { route: Route }) {
   return (
     <div className="stack">
       <PageHeader title={t('changes.title')} back={{ href: href('/'), label: t('nav.home') }} />
+      <InsightsTabs active="cambios" />
       <Card labelledBy="changes-point">
         <h2 id="changes-point" className="card__title">
           {t('changes.compareTitle')}

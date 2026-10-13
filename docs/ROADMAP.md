@@ -109,6 +109,10 @@ siguientes) y consultarlo antes de contratar nada.
 
 ## Trabajo pendiente ordenado
 
+> Programa de producto de octubre de 2026 (cuentas → revisión y programados → flujo de caja,
+> límites y metas → centro de datos, navegación y análisis): estado por sección, resultados reales
+> y trabajo restante priorizado en `docs/PROGRAMA-2026-10-13.md`.
+
 ### A. Errores que bloquean una prueba controlada
 
 Ninguno conocido tras esta revisión (ver la conclusión del PR). Antes de la prueba hay que

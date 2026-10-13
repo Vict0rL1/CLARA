@@ -14,7 +14,7 @@ test('tras la primera visita, la app abre sin conexión y conserva los datos', {
   await expect(page.getByTestId('available')).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText('Demo · datos ficticios')).toBeVisible()
   // Como una persona: tocar Ajustes dentro de la app (cambia el hash, no carga otra página).
-  await go(page, '/ajustes/almacenamiento')
+  await go(page, '/ajustes/datos')
   // Si falla, el mensaje muestra lo que hay en pantalla (p. ej. «… no activo todavía …»).
   const shown = (await page.locator('main').innerText()).replace(/\s+/g, ' ').slice(0, 400)
   await expect(page.getByText(/^Uso sin conexión:/), shown).toContainText('Uso sin conexión: activo.')
