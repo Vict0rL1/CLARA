@@ -161,7 +161,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   iteraciones 1–2 000 000, tamaños de sal/IV/datos); «no válida» ≠ «frase incorrecta».
 - Todo lo que empieza por `VITE_` es público. `VITE_AI_KEY` solo puede ser un token de alcance limitado
   para un servicio propio: `checkRemoteAiConfig` (`domain/aiConfig.ts`) hace fallar la compilación con
-  una clave con forma de secreto o un endpoint directo a un proveedor de IA.
+  una clave con forma de secreto, un endpoint directo a un proveedor de IA (host sin puntos finales),
+  credenciales en la URL o un origen que no esté en `VITE_AI_ALLOWED_ORIGINS` (obligatoria).
 - El *service worker* (`pwa/sw.template.js`, generado por `vite.config.ts`) solo cachea
   archivos de la app, nunca datos. Solo se registra en producción y contexto seguro.
   Actualizar solo recarga la pestaña que lo pidió y no se ofrece con un formulario abierto. La versión compilada lleva una CSP

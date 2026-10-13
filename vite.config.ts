@@ -15,7 +15,8 @@ import { serviceWorker } from './pwa/serviceWorkerPlugin.ts'
  */
 /**
  * Origen permitido para el proveedor remoto del asistente: solo si la compilación define
- * `VITE_AI_ENDPOINT` con https. Sin él, `connect-src` sigue siendo solo la propia app.
+ * `VITE_AI_ENDPOINT` con https y su origen está en `VITE_AI_ALLOWED_ORIGINS` (lo comprueba
+ * `safeRemoteEndpoint`). Sin él, `connect-src` sigue siendo solo la propia app.
  */
 export function remoteOrigin(endpoint: string | undefined): string | null {
   if (!endpoint) return null
@@ -28,8 +29,9 @@ export function remoteOrigin(endpoint: string | undefined): string | null {
 }
 
 /**
- * Endpoint del proveedor remoto solo si la configuración es segura (R-01): https, no un host de
- * proveedor de IA y una clave que no tenga forma de secreto. Si no lo es, la compilación FALLA con el
+ * Endpoint del proveedor remoto solo si la configuración es segura (R-01 y punto 11 de la
+ * estabilización): https sin credenciales en la URL, no un host de proveedor de IA (sin puntos finales),
+ * un origen declarado en `VITE_AI_ALLOWED_ORIGINS` y una clave que no tenga forma de secreto. Si no lo es, la compilación FALLA con el
  * motivo: no se publica una app con una credencial dentro. Sin variables → sin proveedor.
  */
 export function safeRemoteEndpoint(env: RemoteAiEnv): string | undefined {

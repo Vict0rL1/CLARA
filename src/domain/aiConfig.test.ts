@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { checkRemoteAiConfig, isProviderHost, looksLikeProviderSecret, REMOTE_AI_REASON_TEXT } from './aiConfig'
 import { createAiProvider } from './aiProvider'
 
-const OWN = { VITE_AI_ENDPOINT: 'https://clara-ai.example.com/v1/parse', VITE_AI_KEY: 'pub_clara_beta_7f3a9c' }
+const OWN = { VITE_AI_ENDPOINT: 'https://clara-ai.example.com/v1/parse', VITE_AI_KEY: 'pub_clara_beta_7f3a9c', VITE_AI_ALLOWED_ORIGINS: 'https://clara-ai.example.com' }
 
 describe('R-01 · configuración del proveedor remoto', () => {
   it('sin variables no hay proveedor; con una sola, tampoco (y se dice)', () => {
@@ -14,7 +14,7 @@ describe('R-01 · configuración del proveedor remoto', () => {
 
   it('un servicio propio por https con un token público pasa', () => {
     expect(checkRemoteAiConfig(OWN)).toEqual({ ok: true, endpoint: OWN.VITE_AI_ENDPOINT, origin: 'https://clara-ai.example.com', host: 'clara-ai.example.com' })
-    expect(checkRemoteAiConfig({ VITE_AI_ENDPOINT: ' https://ai.example.org:8443/parse ', VITE_AI_KEY: 'token' })).toMatchObject({ ok: true, host: 'ai.example.org:8443' })
+    expect(checkRemoteAiConfig({ VITE_AI_ENDPOINT: ' https://ai.example.org:8443/parse ', VITE_AI_KEY: 'token', VITE_AI_ALLOWED_ORIGINS: 'https://ai.example.org:8443' })).toMatchObject({ ok: true, host: 'ai.example.org:8443' })
     expect(createAiProvider(OWN).id).toBe('remote')
   })
 
@@ -43,6 +43,34 @@ describe('R-01 · configuración del proveedor remoto', () => {
   })
 
   it('cada motivo de rechazo tiene un texto para el registro de compilación (sin la clave)', () => {
-    for (const reason of ['incomplete', 'insecureEndpoint', 'providerHost', 'secretKey'] as const) expect(REMOTE_AI_REASON_TEXT[reason].length).toBeGreaterThan(20)
+    for (const reason of ['incomplete', 'insecureEndpoint', 'providerHost', 'secretKey', 'credentialsInUrl', 'originNotAllowed'] as const) expect(REMOTE_AI_REASON_TEXT[reason].length).toBeGreaterThan(20)
+  })
+
+  it('11 · usuario y contraseña en la URL, o un parámetro con forma de credencial, se rechazan', () => {
+    for (const endpoint of ['https://user:pass@clara-ai.example.com/parse', 'https://token@clara-ai.example.com/parse', 'http://u:p@clara-ai.example.com/', 'https://clara-ai.example.com/parse?key=abc', 'https://clara-ai.example.com/parse?api_key=abc', 'https://clara-ai.example.com/parse?access_token=abc']) {
+      expect(checkRemoteAiConfig({ ...OWN, VITE_AI_ENDPOINT: endpoint }), endpoint).toEqual({ ok: false, reason: 'credentialsInUrl' })
+      expect(createAiProvider({ ...OWN, VITE_AI_ENDPOINT: endpoint }).id, endpoint).toBe('local')
+    }
+    // Un parámetro inocuo sí vale.
+    expect(checkRemoteAiConfig({ ...OWN, VITE_AI_ENDPOINT: 'https://clara-ai.example.com/parse?v=2' })).toMatchObject({ ok: true })
+  })
+
+  it('11 · un punto final en el host (FQDN) no salta la lista de proveedores; el endpoint aceptado sale sin él', () => {
+    for (const host of ['api.openai.com.', 'API.ANTHROPIC.COM.', 'api.openai.com..', 'miempresa.openai.azure.com.']) {
+      expect(isProviderHost(host), host).toBe(true)
+      expect(checkRemoteAiConfig({ ...OWN, VITE_AI_ENDPOINT: `https://${host}/v1/chat/completions`, VITE_AI_ALLOWED_ORIGINS: `https://${host}` }), host).toEqual({ ok: false, reason: 'providerHost' })
+    }
+    expect(checkRemoteAiConfig({ ...OWN, VITE_AI_ENDPOINT: 'https://clara-ai.example.com./v1/parse' })).toEqual({ ok: true, endpoint: 'https://clara-ai.example.com/v1/parse', origin: 'https://clara-ai.example.com', host: 'clara-ai.example.com' })
+  })
+
+  it('11 · solo orígenes que quien despliega declara: sin lista, o con otro origen u otro puerto, no hay proveedor remoto', () => {
+    const { VITE_AI_ALLOWED_ORIGINS: _omit, ...noList } = OWN
+    expect(checkRemoteAiConfig(noList)).toEqual({ ok: false, reason: 'originNotAllowed' })
+    expect(createAiProvider(noList).id).toBe('local')
+    for (const allowed of ['https://other.example.com', 'https://clara-ai.example.com:8443', 'http://clara-ai.example.com', 'https://u:p@clara-ai.example.com', 'no es una url']) {
+      expect(checkRemoteAiConfig({ ...OWN, VITE_AI_ALLOWED_ORIGINS: allowed }), allowed).toEqual({ ok: false, reason: 'originNotAllowed' })
+    }
+    // Varias entradas, mayúsculas y punto final se normalizan; un proveedor en la lista se ignora.
+    expect(checkRemoteAiConfig({ ...OWN, VITE_AI_ALLOWED_ORIGINS: 'https://api.openai.com, HTTPS://Clara-AI.example.com./' })).toMatchObject({ ok: true, origin: 'https://clara-ai.example.com' })
   })
 })
