@@ -40,7 +40,7 @@ src/test/      fixtures y datos sintéticos (1k/10k/50k)
 
 ## Navegación (hash router propio, `src/ui/router.ts`)
 
-Pestañas: Inicio · Movimientos · **+ Agregar** · Plan · Ajustes. Rutas: `/`, `/movimientos[/nuevo|editar/:id|importar|papelera|favoritos|plantillas|distribuir/:id]`, `/alcanza[/escenarios|faltante]`, `/plan[/calendario|metas|proyeccion|programado|periodos]`, `/conciliar`, `/revision`, `/cambios`, `/pendientes`, `/buscar`, `/ajustes[/historial]`.
+Pestañas: Inicio · Movimientos · **+ Agregar** · Plan · Análisis · Ajustes. Rutas: `/`, `/movimientos[/nuevo|editar/:id|importar|papelera|favoritos|plantillas|distribuir/:id]`, `/alcanza[/escenarios|faltante]`, `/plan[/calendario|metas|proyeccion|programado|periodos]`, `/conciliar`, `/analisis` (hub con pestañas a `/estadisticas`, `/revision` y `/cambios`), `/pendientes`, `/buscar`, `/ajustes[/datos|historial|...]`.
 
 ## Fórmulas vigentes (`docs/FORMULAS.md`)
 

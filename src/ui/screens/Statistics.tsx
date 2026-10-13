@@ -13,6 +13,7 @@ import { useToday } from '../../state/hooks'
 import { useData } from '../../state/store'
 import { MonthNavigator, SecondaryButton } from '../components/base'
 import { Card, EmptyState, Explain, PageHeader } from '../components/common'
+import { InsightsTabs } from '../components/InsightsTabs'
 import { TextField } from '../components/fields'
 import { Icon } from '../components/Icon'
 import { CategoryDonut, FutureBalanceChart, IncomeExpenseBars, TrendLines } from '../components/statsCharts'
@@ -94,6 +95,7 @@ export function Statistics({ route }: { route: Route }) {
           {t('stats.exportPdf')}
         </SecondaryButton>
       </PageHeader>
+      <InsightsTabs active="estadisticas" />
       <p className="muted statistics__intro">{t('stats.intro')}</p>
       <div className="chips" role="group" aria-label={t('stats.periodType')}>
         {CHIPS.map((p) => (
@@ -143,6 +145,9 @@ export function Statistics({ route }: { route: Route }) {
             ) : (
               <CategoryDonut categories={breakdown.categories} total={breakdown.total} fmt={fmt} label={(id) => categoryLabel(t, id)} color={color} icon={icon} onSelect={(id) => navigate(withQuery('/movimientos', { categoria: id, desde: range.start, hasta: range.end }))} />
             )}
+            <Explain summary={t('common.howCalculated')}>
+              <p>{t('stats.byCategoryExplain')}</p>
+            </Explain>
           </Card>
 
           <Card labelledBy="stats-bars-title">
@@ -150,6 +155,9 @@ export function Statistics({ route }: { route: Route }) {
               {t('stats.barsTitle')}
             </h2>
             <IncomeExpenseBars series={series} fmt={fmt} label={label} axisLabel={axisLabel} currentStart={range.start} onOpen={type === 'custom' ? undefined : (p) => go({ fecha: p.range.start })} />
+            <Explain summary={t('common.howCalculated')}>
+              <p>{t('stats.barsExplain')}</p>
+            </Explain>
           </Card>
 
           <Card labelledBy="stats-trend-title">
@@ -157,6 +165,9 @@ export function Statistics({ route }: { route: Route }) {
               {t('stats.trendTitle')}
             </h2>
             <TrendLines trend={trend} fmt={fmt} today={today} />
+            <Explain summary={t('common.howCalculated')}>
+              <p>{t('stats.trendExplain')}</p>
+            </Explain>
           </Card>
 
           <Card labelledBy="stats-top-title">
@@ -178,6 +189,9 @@ export function Statistics({ route }: { route: Route }) {
                 ))}
               </ol>
             )}
+            <Explain summary={t('common.howCalculated')}>
+              <p>{t('stats.topExplain')}</p>
+            </Explain>
           </Card>
 
           <Card labelledBy="stats-avg-title">

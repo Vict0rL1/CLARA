@@ -597,7 +597,7 @@ html {
   right: 0;
   bottom: 0;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   background: var(--surface);
   border-top: 1px solid var(--border);
   padding: 4px max(4px, env(safe-area-inset-right)) calc(4px + var(--safe-bottom)) max(4px, env(safe-area-inset-left));
@@ -3689,7 +3689,7 @@ fieldset.bill-row {
   }
 }
 
-/* Pantallas muy estrechas (≤ 359 px): cinco secciones y la barra superior caben sin cortarse. */
+/* Pantallas muy estrechas (≤ 359 px): seis huecos (cinco secciones y «Agregar») y la barra superior caben sin cortarse. */
 @media (max-width: 359px) {
   .nav {
     padding-left: max(2px, env(safe-area-inset-left));
@@ -5745,3 +5745,67 @@ html.is-discreet .item:focus-within .item__title {
   stroke-dasharray: 2 3;
   stroke-width: 1;
 }
+
+/* Etapa 4: centro de datos y análisis explicable */
+.data-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.data-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.data-row__icon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--muted);
+}
+
+.data-row--ok .data-row__icon {
+  color: var(--good-text);
+}
+
+.data-row--warn .data-row__icon {
+  color: var(--warning-text);
+}
+
+.data-row--critical .data-row__icon {
+  color: var(--critical-text);
+}
+
+.data-row__text {
+  color: inherit;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.data-row__text:hover,
+.data-row__text:focus-visible {
+  text-decoration: underline;
+}
+
+.data-steps {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 8px;
+}
+
+.insight-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.insight .card__title {
+  overflow-wrap: anywhere;
+}
+

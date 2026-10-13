@@ -21,7 +21,6 @@ import { LockScreen } from './ui/lock/LockScreen'
 import { useLock } from './ui/lock/useLock'
 import { usePrivacyLevel } from './ui/preferences'
 import { ScreenSkeleton } from './ui/components/base'
-import { Afford } from './ui/screens/Afford'
 import { Home } from './ui/screens/Home'
 import { MovementForm } from './ui/screens/MovementForm'
 import { Movements } from './ui/screens/Movements'
@@ -29,6 +28,8 @@ import { Setup } from './ui/screens/Setup'
 import { logError } from './ui/errorLog'
 
 // Pantallas secundarias: se cargan aparte (el service worker las guarda igual para usarlas sin conexión).
+const Afford = lazy(() => import('./ui/screens/Afford').then((m) => ({ default: m.Afford })))
+const Insights = lazy(() => import('./ui/screens/Insights').then((m) => ({ default: m.Insights })))
 const Plan = lazy(() => import('./ui/screens/Plan').then((m) => ({ default: m.Plan })))
 const PlanForm = lazy(() => import('./ui/screens/Plans').then((m) => ({ default: m.PlanForm })))
 const PlanDetail = lazy(() => import('./ui/screens/Plans').then((m) => ({ default: m.PlanDetail })))
@@ -233,7 +234,9 @@ function initials(name: string | undefined): string | null {
     .join('')
 }
 
-type NavKey = 'nav.home' | 'nav.movements' | 'nav.add' | 'nav.plan' | 'nav.settings'
+type NavKey = 'nav.home' | 'nav.movements' | 'nav.add' | 'nav.plan' | 'nav.insights' | 'nav.settings'
+// Rutas que cuentan como «Análisis» (etapa 4): el destino agrupa estadísticas, revisión semanal y ¿qué cambió?
+const INSIGHTS_TOPS = new Set(['analisis', 'estadisticas', 'revision', 'cambios'])
 const NAV: { path: string; match: string; key: NavKey; icon: IconName; add?: boolean }[] = [
   { path: '/', match: '', key: 'nav.home', icon: 'home' },
   { path: '/movimientos', match: 'movimientos', key: 'nav.movements', icon: 'list' },
@@ -242,6 +245,7 @@ const NAV: { path: string; match: string; key: NavKey; icon: IconName; add?: boo
   { path: '/movimientos/nuevo', match: '', key: 'nav.add', icon: 'plus', add: true },
   // «/plan» abre la última pestaña visitada (Planes la primera vez).
   { path: '/plan', match: 'plan', key: 'nav.plan', icon: 'calendar' },
+  { path: '/analisis', match: 'analisis', key: 'nav.insights', icon: 'chart' },
   { path: '/ajustes', match: 'ajustes', key: 'nav.settings', icon: 'sliders' },
 ]
 
@@ -481,7 +485,7 @@ function Shell() {
             const adding = route.segments[0] === 'movimientos' && route.segments[1] === 'nuevo'
             const active = item.add
               ? adding
-              : !adding && (item.match === top || (item.match === '' && (top === '' || top === 'alcanza' || top === 'revision' || top === 'pendientes')))
+              : !adding && (item.match === top || (item.match === 'analisis' && INSIGHTS_TOPS.has(top)) || (item.match === '' && (top === '' || top === 'alcanza' || top === 'pendientes')))
             const inner = (
               <>
                 <span className="nav__icon">
@@ -569,6 +573,7 @@ function Screen({ route }: { route: Route }) {
   if (a === 'alcanza' && b === 'escenarios') return <Scenarios key={key} />
   if (a === 'alcanza') return <Afford key={key} />
   if (a === 'cambios') return <WhatChanged key={`${key}?${route.query.toString()}`} route={route} />
+  if (a === 'analisis') return <Insights key={key} />
   if (a === 'pendientes') return <Inbox key={key} />
   if (a === 'revision') return <WeeklyReview key={`${key}?${route.query.toString()}`} route={route} />
   if (a === 'movimientos' && (b === 'nuevo' || b === 'editar')) return <MovementForm key={`${key}?${route.query.toString()}`} route={route} />

@@ -15,11 +15,9 @@ import { localDateInTimeZone } from '../../domain/dates'
 import { MAX_BACKUP_BYTES, parseBackup, performExport, type ImportIssue } from '../../storage/backup'
 import { APP_VERSION, downloadText, useExportBackup, useVerifyBackup } from '../backupActions'
 import { BUILD_HASH } from '../version'
-import { IndexedDbRepository } from '../../storage/indexedDbRepository'
 import { nextFrame, ReadCancelled, readFileWithProgress } from '../readFile'
-import { usePwaState } from '../../pwa/register'
 import { useRun, useToday } from '../../state/hooks'
-import { getStore, useAppState, useData } from '../../state/store'
+import { getStore, useData } from '../../state/store'
 import { Alert, Card, PageHeader } from '../components/common'
 import { CheckboxField, Segmented, SelectField, TextField } from '../components/fields'
 import { ConfirmDialog } from '../components/Dialog'
@@ -36,10 +34,10 @@ import { InstallSection } from './settings/InstallSection'
 import { ErrorReport } from './settings/ErrorReport'
 import { FeedbackSection } from './settings/FeedbackSection'
 import { IosShortcutsSection } from './settings/IosShortcutsSection'
-import { usePersistStatus } from '../persist'
 import { AssistantSection } from './settings/AssistantSection'
 import { AccountsSection } from './settings/AccountsSection'
 import { BackupsSection } from './settings/BackupsSection'
+import { DataCenterSection } from './settings/DataCenterSection'
 import { PassphraseDialog } from './settings/PassphraseDialog'
 import { useEncryptedExport } from '../useEncryptedExport'
 import { DEV_MODE } from './Pro'
@@ -88,7 +86,6 @@ export function Settings({ route }: { route: Route }) {
   const { t, tn } = useT()
   const fmt = useFormat()
   const data = useData()
-  const state = useAppState()
   const run = useRun()
   const toast = useToast()
   const today = useToday()
@@ -113,7 +110,6 @@ export function Settings({ route }: { route: Route }) {
   }, [route.segments, legacy])
   const [search, setSearch] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
-  const pwa = usePwaState()
 
   const detected = detectTimeZone()
   const zones = Array.from(new Set([data.settings.timeZone, detected, ...COMMON_TIME_ZONES]))
@@ -268,6 +264,9 @@ export function Settings({ route }: { route: Route }) {
     etiquetas: tn('settings.value.tags', data.tags.length),
     programados: tn('settings.value.scheduled', data.schedules.filter((x) => !x.paused).length),
     copia: backup.lastExportAt ? t('settings.value.lastExport', { when: fmt.date(localDateInTimeZone(new Date(backup.lastExportAt), data.settings.timeZone), { compact: true }) }) : t('settings.value.never'),
+    // El índice solo avisa cuando hay algo que revisar (copia nunca exportada o cambios sin copia); el
+    // detalle vive en la sección. Sin aviso no hay subtítulo: el índice no crece (guarda C3 a 320 px).
+    datos: data.isDemo ? undefined : backup.neverExported ? t('settings.value.dataCritical') : backup.hasUnbackedChanges ? t('settings.value.dataWarn') : undefined,
   }
   return (
     <div className={section ? 'stack settings-sub' : 'stack'}>
@@ -401,6 +400,7 @@ export function Settings({ route }: { route: Route }) {
       {section?.id === 'programados' && <ScheduledSection />}
       {section?.id === 'safe-to-spend' && <SafeToSpendSection />}
       {section?.id === 'copias-locales' && <BackupsSection />}
+      {section?.id === 'datos' && <DataCenterSection />}
 
       {section?.id === 'copia' && (
       <Card labelledBy="backup-title">
@@ -514,34 +514,6 @@ export function Settings({ route }: { route: Route }) {
             </ul>
           </Alert>
         )}
-      </Card>
-      )}
-
-      {section?.id === 'almacenamiento' && (
-      <Card labelledBy="almacenamiento">
-        <h2 id="almacenamiento" className="card__title">
-          {t('settings.storage.title')}
-        </h2>
-        {state.phase === 'ready' && state.storage === 'memory' && <Alert tone="critical" title={t('shell.memoryTitle')}>{t('shell.memoryText')}</Alert>}
-        <ul className="bullets">
-          <li>{t('settings.storage.local')}</li>
-          {getStore().backend !== 'memory' && <li data-testid="storage-backend">{t(getStore().backend === 'indexeddb' ? 'settings.storage.backend.indexeddb' : 'settings.storage.backend.localStorage')}</li>}
-          <li>{t('settings.storage.lost')}</li>
-          <li>{t('settings.storage.noSync')}</li>
-          <li>{t('settings.storage.eviction')}</li>
-          <li>{t('settings.storage.notEncrypted')}</li>
-          <li>{t(pwa.offlineReady ? 'settings.storage.offlineReady' : 'settings.storage.offlineNotReady')}</li>
-          <li>{t('settings.storage.noAccount')}</li>
-          <li>{t('settings.storage.noBank')}</li>
-          <li>{t('settings.storage.noAi')}</li>
-        </ul>
-        <PersistentStorage />
-        <OriginCopy />
-        <p className="note">{t('history.openHint')}</p>
-        <a className="btn btn--secondary" href={href('/ajustes/historial')}>
-          <Icon name="clock" size={18} />
-          {t('history.open')}
-        </a>
       </Card>
       )}
 
@@ -726,67 +698,6 @@ export function Settings({ route }: { route: Route }) {
  * Pedir al navegador que no borre los datos del sitio por falta de espacio
  * (`navigator.storage.persist`, ver `ui/persist.ts`). El navegador decide.
  */
-function PersistentStorage() {
-  const { t } = useT()
-  const { status, request } = usePersistStatus()
-  if (status === 'checking') return null
-  return (
-    <div className="stack-sm" data-testid="persist-storage">
-      <p>
-        <Icon name={status === 'granted' ? 'check' : 'info'} size={16} /> {t(`settings.storage.persist.${status}` as 'settings.storage.persist.granted')}
-      </p>
-      {status === 'notGranted' && (
-        <button type="button" className="btn btn--secondary" onClick={() => void request()}>
-          {t('settings.storage.persist.request')}
-        </button>
-      )}
-    </div>
-  )
-}
-
-/**
- * Copia de los datos tal como estaban en localStorage antes de pasar a IndexedDB. Se conserva
- * hasta que la persona decida eliminarla (no se borra sola).
- */
-function OriginCopy() {
-  const { t } = useT()
-  const toast = useToast()
-  const [copy, setCopy] = useState(() => IndexedDbRepository.readOriginCopy())
-  const [confirming, setConfirming] = useState(false)
-  if (!copy) return null
-  return (
-    <div className="stack-sm" data-testid="origin-copy">
-      <p>
-        <Icon name="info" size={16} /> {t('settings.storage.originCopy', { size: (copy.length / 1024 / 1024).toFixed(2) })}
-      </p>
-      <div className="button-row">
-        <button type="button" className="btn btn--secondary btn--small" onClick={() => downloadText('clara-datos-anteriores-a-indexeddb.json', copy)}>
-          <Icon name="download" size={16} />
-          {t('settings.storage.originDownload')}
-        </button>
-        <button type="button" className="btn btn--danger-ghost btn--small" onClick={() => setConfirming(true)}>
-          {t('settings.storage.originDelete')}
-        </button>
-      </div>
-      <ConfirmDialog
-        open={confirming}
-        title={t('settings.storage.originDeleteTitle')}
-        confirmLabel={t('settings.storage.originDelete')}
-        destructive
-        onCancel={() => setConfirming(false)}
-        onConfirm={() => {
-          IndexedDbRepository.deleteOriginCopy()
-          setCopy(null)
-          setConfirming(false)
-          toast({ message: t('settings.storage.originDeleted'), tone: 'good' })
-        }}
-      >
-        <p>{t('settings.storage.originDeleteText')}</p>
-      </ConfirmDialog>
-    </div>
-  )
-}
-
 /* ------------------------------------------------------------------ */
 /* Índice de Ajustes: lista agrupada con búsqueda (C3)                 */
 /* ------------------------------------------------------------------ */
