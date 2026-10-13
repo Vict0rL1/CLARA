@@ -277,3 +277,64 @@ describe('REC-02 · los metadatos de una copia se validan antes de darla por bue
     expect(validateAppData(JSON.parse(JSON.stringify(good.data))).ok).toBe(true)
   })
 })
+
+/* ------------------------------------------------------------------ */
+/* 6 · Historial tras recargar                                         */
+/* ------------------------------------------------------------------ */
+import { canRevert, recordHistory, revertEntry, sameValue } from './history'
+import { saveAccount, saveGoal, saveSchedule } from './operations'
+
+describe('6 · revertir tras recargar: el orden de las claves no es un cambio', () => {
+  /** Como `AppStore.commit` + recargar: historial registrado y datos reconstruidos por la validación. */
+  const commitAndReload = (prev: AppData, next: AppData) => reload(recordHistory(prev, next, '2026-09-28T16:00:00.000Z'))
+
+  it('sameValue ignora el orden de las claves y las claves `undefined`, y distingue cambios reales', () => {
+    expect(sameValue({ a: 1, b: [1, { c: 2, d: 3 }] }, { b: [1, { d: 3, c: 2 }], a: 1 })).toBe(true)
+    expect(sameValue({ a: 1, x: undefined }, { a: 1 })).toBe(true)
+    expect(sameValue({ a: 1 }, { a: 2 })).toBe(false)
+    expect(sameValue([1, 2], [2, 1])).toBe(false)
+    expect(sameValue({ a: null }, { a: undefined })).toBe(false)
+  })
+
+  it('un gasto recién guardado se puede revertir después de recargar y el saldo vuelve al de antes', () => {
+    const { data, ctx } = demo()
+    const main = data.accounts[0]!
+    // Como el formulario: con origen y comercio (sus claves se guardan antes que `realizedAt`).
+    const saved = saveTransaction(data, { id: 'tx_nuevo', kind: 'expense', status: 'realized', amountMinor: 1234, date: ctx.today, accountId: main.id, categoryId: 'dining', note: 'cena', merchant: 'Bistró', source: 'manual' }, ctx)
+    if (!saved.ok) throw new Error('save')
+    const reloaded = commitAndReload(data, saved.data)
+    const entry = reloaded.history[reloaded.history.length - 1]!
+    // La recarga sí reordena las claves: sin la comparación estructural esto era «conflicto».
+    const stored = reloaded.transactions.find((t) => t.id === 'tx_nuevo')!
+    expect(JSON.stringify(stored)).not.toBe(JSON.stringify(entry.changes[0]!.after))
+    expect(canRevert(reloaded, entry)).toBe('ok')
+    const r = revertEntry(reloaded, entry.id, ctx)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.data.transactions.some((t) => t.id === 'tx_nuevo')).toBe(false)
+    expect(accountBalance(r.data, main.id)).toBe(accountBalance(data, main.id))
+  })
+
+  it('editar un gasto, una cuenta, una meta y un programado: revertibles tras recargar; un cambio real posterior sigue bloqueando', () => {
+    const { data, ctx } = demo()
+    const tx = data.transactions.find((t) => t.status === 'realized' && t.kind === 'expense')!
+    const edits: [string, (d: AppData) => AppData][] = [
+      ['movimiento', (d) => { const r = saveTransaction(d, { ...tx, amountMinor: tx.amountMinor + 100, source: 'manual' }, ctx); if (!r.ok) throw new Error('tx'); return r.data }],
+      ['cuenta', (d) => { const r = saveAccount(d, { ...d.accounts[0]!, name: 'Cuenta renombrada' }, ctx); if (!r.ok) throw new Error('acc ' + JSON.stringify(r.issues)); return r.data }],
+      ['meta', (d) => { const g = d.goals[0]!; const r = saveGoal(d, { ...g, name: 'Meta renombrada' }, ctx); if (!r.ok) throw new Error('goal ' + JSON.stringify(r.issues)); return r.data }],
+      ['programado', (d) => { const s = d.schedules[0]!; const r = saveSchedule(d, { ...s, name: 'Programado renombrado' }, ctx); if (!r.ok) throw new Error('sched ' + JSON.stringify(r.issues)); return r.data }],
+    ]
+    for (const [label, edit] of edits) {
+      const reloaded = commitAndReload(data, edit(data))
+      const entry = reloaded.history[reloaded.history.length - 1]!
+      expect(canRevert(reloaded, entry), label).toBe('ok')
+    }
+    // Conflicto real: el mismo movimiento cambia otra vez después → no se revierte el primero.
+    const first = commitAndReload(data, edits[0]![1](data))
+    const entry = first.history[first.history.length - 1]!
+    const again = saveTransaction(first, { ...first.transactions.find((t) => t.id === tx.id)!, amountMinor: tx.amountMinor + 999 }, ctx)
+    if (!again.ok) throw new Error('again')
+    const second = commitAndReload(first, again.data)
+    expect(canRevert(second, entry)).toBe('conflict')
+  })
+})
