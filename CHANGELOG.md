@@ -8,6 +8,17 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
 
 ### Novedades
 
+- **Calendario de flujo de caja** (etapa 3 del programa; esquema 12): cada día muestra el saldo proyectado al cerrarlo
+  (misma proyección que Plan › Proyección, al menos 60 días) y el primer día en negativo, con «¿Cómo se calculó?».
+  «Simular un pago» calcula sobre una copia y solo ofrece abrir el formulario como gasto previsto; nada se guarda solo.
+  «Parece que ya pagaste» propone vincular movimientos registrados que coinciden con un pago o ingreso programado
+  abierto; vincular es explícito y nunca liquida dos veces una ocurrencia.
+- **Límites con arrastre**: al crear o editar un límite recurrente se elige si lo no gastado pasa al siguiente ciclo (lo
+  excedido se resta, nunca por debajo de 0); el detalle desglosa «límite base · arrastre», lista lo programado y pendiente
+  del ciclo como compromiso (no como gasto), compara con el ciclo anterior en el mismo punto cuando hay datos y recuerda
+  que un límite no es dinero apartado.
+- **Metas**: cada meta con fecha dice si vas por detrás, al ritmo o por delante y por cuánto, su efecto en lo disponible
+  (apartado del presupuesto o en otra cuenta) y un historial de aportes con motivo.
 - **Revisión antes de registrar** (etapa 2 del programa): el asistente y la importación de CSV muestran lo mismo por cada
   propuesta: posible duplicado (con enlace al existente), «¿Es el pago programado «X»?» con casilla para vincular, efecto en lo
   disponible, la regla que dio la categoría y «ya registrado» si se reintenta. Nada se vincula ni se guarda solo.

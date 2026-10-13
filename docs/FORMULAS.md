@@ -516,8 +516,11 @@ Diferencia = saldo observado − saldo calculado
   cuenta ya archivada u ordenada no cambia y una entrada mal formada se conserva tal cual para que
   la validación la señale. Ningún importe, fecha ni movimiento se toca: las cifras son las mismas
   antes y después (`migrations.test.ts`, `roundtrip.test.ts`, `migration-main.spec.ts`).
+- v11 → v12 añade a cada límite (`plans[]`) `rollover: 'none'` solo si **falta**; `carriedMinor` es
+  opcional y solo lo escribe la renovación de un límite con arrastre. Ningún importe, fecha ni
+  movimiento se toca (`stage3.test.ts`, `migration-main.spec.ts`).
 - Antes de guardar por primera vez datos migrados, se conserva el texto original en
-  `localStorage` (`margen.data.before-v<versión nueva>`, hoy `before-v11`).
+  `localStorage` (`margen.data.before-v<versión nueva>`, hoy `before-v12`).
 - Datos o copias de una versión futura se rechazan (`schemaTooNew`) sin tocar los datos
   actuales; si una migración falla, se informa (`migrationFailed`) y no se modifica nada.
 - Copias, importación y «Borrar todos los datos» incluyen las entidades nuevas
@@ -1151,3 +1154,44 @@ compactos ni se redondean para calcular.
   nunca inventa un «antes». En Movimientos, el orden (fecha o importe, ascendente o descendente) y el
   **neto del día** (ingresos y devoluciones suman, gastos restan, ajustes según su sentido,
   transferencias no cuentan) son presentación: no cambian ningún saldo.
+
+## 37. Flujo de caja en el calendario, límites con arrastre y ritmo de las metas (etapa 3)
+
+- **Saldo proyectado por día** (`projectBalance`, §9): el calendario usa la misma proyección que
+  Plan › Proyección, sin gasto diario estimado, desde hoy hasta el final del mes visible y como
+  mínimo 60 días. Cada día enseña el saldo al cerrarlo (`endMinor`); los días anteriores a hoy no
+  se proyectan (el saldo real está en Cuentas). El **primer día en negativo** es `firstNegativeDate`
+  con el saldo de ese día; si no lo hay, se dice hasta qué fecha llega la proyección. Un día con
+  saldo proyectado negativo lleva la marca «−» y texto accesible, nunca solo color.
+- **Simulación** (`ProjectionOptions.extraOutflows`): un pago extra en una fecha concreta se resta
+  ese día (una fecha pasada cuenta hoy) sobre una copia; el resultado dice el saldo al cerrar ese
+  día y el primer negativo que provoca. No se guarda nada: «Registrar como previsto» solo abre el
+  formulario relleno (gasto previsto en esa fecha) y la persona decide. La proyección y el
+  disponible del calendario no cambian mientras se simula.
+- **Conciliación de programados** (`domain/reconcileSchedules.ts`): `unlinkedSettlements` propone,
+  para cada ocurrencia abierta (pendiente o vencida, de 45 días atrás a 14 adelante), el movimiento
+  realizado sin `scheduleId` del mismo sentido e importe a ±3 días (el más cercano; cada movimiento
+  se propone una sola vez). `linkSettlement` solo añade `scheduleId` + `occurrenceDate` al
+  movimiento (operación idempotente, §5): la ocurrencia pasa a contar como movimiento, no como
+  reserva, y lo disponible sube justo lo reservado. Si la ocurrencia ya tiene liquidación final, se
+  rechaza (`occurrenceAlreadySettled`): nunca se liquida dos veces. Nada se vincula solo.
+- **Arrastre de un límite** (`Plan.rollover`, v12): con `'none'` (valor por defecto) cada ciclo
+  empieza con el límite base; con `'carry'`, al cerrar un ciclo recurrente el siguiente parte de
+  `máx(0, base + (límite − gastado))`: lo que sobró se suma y lo excedido se resta. `carriedMinor`
+  guarda esa diferencia y `planBaseMinor = amountMinor − carriedMinor`; editar el límite conserva el
+  arrastre. El detalle lo desglosa («Límite base · arrastre = límite»). Es una regla del plan: no
+  mueve dinero, no es un apartado y no cambia lo disponible (asignado ≠ disponible, §16).
+- **Comprometido en el ciclo** (`planUpcoming`): pagos programados pendientes o vencidos del ciclo
+  en las categorías del plan (sentido gasto). Es compromiso previsto, no gasto: «gastado» no lo
+  incluye; «restante tras lo previsto» = límite − gastado − comprometido (puede ser negativo).
+- **Comparación con el ciclo anterior** (`planComparison`): mismo número de días transcurridos
+  sobre el ciclo anterior (`equivalentDate`); se enseña lo gastado hasta ese día en los dos ciclos,
+  la diferencia y el cierre del anterior. Sin ciclo anterior o sin ningún movimiento anterior al
+  ciclo actual en esas categorías no hay comparación (nunca se asume 0).
+- **Ritmo de una meta** (`goalPace`, §42): `ideal` = punto de la recta desde el inicio de la meta
+  hasta su fecha objetivo evaluado hoy; `delta = ahorrado − ideal`. Tolerancia del 1 % del objetivo
+  (mínimo 1 unidad menor): por debajo «por detrás» (se dice cuánto tocaría llevar), por encima «por
+  delante», si no «al ritmo». Sin fecha objetivo no hay ritmo. El **efecto en el disponible** es el
+  de §7: una meta del presupuesto resta lo apartado; una externa, nada. El historial de aportes lista
+  `allocations` con su motivo (`reason`; sin motivo, por el signo) y es solo presentación.
+

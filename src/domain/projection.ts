@@ -40,6 +40,8 @@ export interface ProjectionOptions {
    * Solo cambia la proyección: nunca los movimientos reales ni el disponible.
    */
   scenario?: IncomeScenario
+  /** Simulaciones (etapa 3): salidas extra en fechas concretas; nunca se guardan. Fechas pasadas cuentan hoy. */
+  extraOutflows?: { date: LocalDate; amountMinor: number }[]
 }
 
 export interface ProjectionResult {
@@ -84,6 +86,12 @@ export function projectBalance(data: AppData, today: LocalDate, options: Project
     byDate.set(date, list)
   }
 
+  const extraByDate = new Map<LocalDate, number>()
+  for (const x of options.extraOutflows ?? []) {
+    if (!(Number.isInteger(x.amountMinor) && x.amountMinor > 0)) continue
+    const date = x.date < today ? today : x.date
+    extraByDate.set(date, (extraByDate.get(date) ?? 0) + x.amountMinor)
+  }
   const days: ProjectionDay[] = []
   let balance = startMinor
   let lowest = { date: today, minor: startMinor }
@@ -94,7 +102,7 @@ export function projectBalance(data: AppData, today: LocalDate, options: Project
     const date = addDays(today, d)
     const events = byDate.get(date) ?? []
     const eventsMinor = sumMinor(events.map((e) => e.budgetEffectMinor))
-    const extraMinor = d === 0 ? -extraToday : 0
+    const extraMinor = -(d === 0 ? extraToday : 0) - (extraByDate.get(date) ?? 0)
     const startOfDay = balance
     balance = sumMinor([balance, eventsMinor, -dailySpendMinor, extraMinor])
     days.push({ date, startMinor: startOfDay, events, eventsMinor, dailySpendMinor, extraMinor, endMinor: balance })

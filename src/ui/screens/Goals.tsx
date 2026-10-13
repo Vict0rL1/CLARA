@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react'
 import { computeBudget, scheduledIncomeItems } from '../../domain/budget'
 import { addDays } from '../../domain/dates'
-import { goalEta, goalTrajectory } from '../../domain/goalChart'
+import { goalEta, goalPace, goalTrajectory } from '../../domain/goalChart'
 import { GoalChart } from '../components/statsCharts'
 import { goalPlan, goalProgress } from '../../domain/goals'
 import { newId } from '../../domain/ids'
 import { deleteGoal, restoreGoal, saveGoal } from '../../domain/operations'
-import type { CategoryColor, ContributionFrequency, Goal, GoalFunding } from '../../domain/types'
+import type { AllocationReason, CategoryColor, ContributionFrequency, Goal, GoalFunding } from '../../domain/types'
 import { LIMITS, type Issue } from '../../domain/validation'
 import { useT } from '../../i18n'
 import { useRun, useToday } from '../../state/hooks'
@@ -126,6 +126,27 @@ export function Goals() {
                       </p>
                     )
                   })()}
+                  {/* Etapa 3: ritmo frente a la recta ideal, con cifras; y efecto sobre el disponible. */}
+                  {(() => {
+                    const pace = goalPace(g, today)
+                    if (pace.status === 'noDate' || pace.status === 'complete') return null
+                    const date = fmt.date(g.targetDate!, { compact: true, today })
+                    return (
+                      <p className={`item__meta goal__pace goal__pace--${pace.status}`} data-testid="goal-pace">
+                        <Icon name={pace.status === 'behind' ? 'alert' : pace.status === 'ahead' ? 'trend' : 'checkCircle'} size={16} />
+                        {pace.status === 'behind'
+                          ? t('goals.paceBehind', { amount: fmt.money(-pace.deltaMinor), date, ideal: fmt.money(pace.idealToDateMinor) })
+                          : pace.status === 'ahead'
+                            ? t('goals.paceAhead', { amount: fmt.money(pace.deltaMinor), date })
+                            : t('goals.paceOnTrack', { date })}
+                      </p>
+                    )
+                  })()}
+                  {(g.fundedFrom !== 'budget' || p.savedMinor > 0) && (
+                    <p className="item__meta" data-testid="goal-impact">
+                      {g.fundedFrom === 'budget' ? t('goals.impact', { amount: fmt.money(p.savedMinor) }) : t('goals.impactExternal')}
+                    </p>
+                  )}
                   <div className="goal__plan">
                     {plan.status === 'ok' && (
                       <>
@@ -147,6 +168,7 @@ export function Goals() {
                       </Alert>
                     )}
                   </div>
+                  <GoalHistory goal={g} />
                   <div className="button-row">
                     {!p.complete && (
                       <button type="button" className="btn btn--primary btn--small" onClick={() => setDialog({ goal: g, mode: 'add' })}>
@@ -323,5 +345,37 @@ function RegularGoalForm({ existing, editId, returnTo }: { existing: Goal | unde
         </div>
       </form>
     </div>
+  )
+}
+
+/* Etapa 3: historial de aportes (apartados virtuales) con su motivo; solo muestra. */
+function GoalHistory({ goal }: { goal: Goal }) {
+  const { t } = useT()
+  const fmt = useFormat()
+  const today = useToday()
+  const rows = [...goal.allocations].sort((a, b) => (a.date === b.date ? b.createdAt.localeCompare(a.createdAt) : b.date.localeCompare(a.date)))
+  const reasonOf = (a: Goal['allocations'][number]): AllocationReason => a.reason ?? (a.amountMinor < 0 ? 'release' : 'contribution')
+  return (
+    <details className="explain goal__history">
+      <summary className="explain__summary">
+        <Icon name="list" size={16} />
+        {t('goals.historyTitle')} ({rows.length})
+      </summary>
+      {rows.length === 0 ? (
+        <p className="note">{t('goals.historyEmpty')}</p>
+      ) : (
+        <ul className="item-list" data-testid="goal-history">
+          {rows.slice(0, 50).map((a) => (
+            <li key={a.id} className="item">
+              <span className="item__main">
+                <span className="item__title">{t(`goals.reason.${reasonOf(a)}`)}</span>
+                <span className="item__meta">{fmt.date(a.date, { compact: true, today })}</span>
+              </span>
+              <span className="item__amount">{fmt.money(a.amountMinor, { sign: true })}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </details>
   )
 }

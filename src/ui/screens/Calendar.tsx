@@ -1,23 +1,28 @@
 import { useMemo, useState } from 'react'
-import { addDays, addMonthsClamped, endOfMonth, startOfMonth, weekday } from '../../domain/dates'
+import { addDays, addMonthsClamped, daysBetween, endOfMonth, maxDate, startOfMonth, weekday } from '../../domain/dates'
 import { closeOccurrence, deleteTransaction, revertTransaction, setOccurrenceSkipped } from '../../domain/operations'
 import { useRestoreFromTrash } from '../useDeleteTransaction'
 import { nextPendingOccurrence } from '../../domain/repeat'
 import { categoryVisual, categoryVisuals } from '../../domain/categories'
 import { CategoryIcon } from '../components/CategoryIcon'
 import { planItems, type PlanItem } from '../../domain/planItems'
+import { projectBalance, type ProjectionDay } from '../../domain/projection'
+import { linkSettlement, unlinkedSettlements } from '../../domain/reconcileSchedules'
 import { useT, type MessageKey } from '../../i18n'
 import { useRun, useToday } from '../../state/hooks'
 import { useData } from '../../state/store'
-import { Alert, Badge, Card, EmptyState, Why, type Tone } from '../components/common'
+import { Alert, Badge, Card, EmptyState, Explain, Why, type Tone } from '../components/common'
+import { MoneyField } from '../components/fields'
+import { moneyErrorMessage, parseMoneyText } from '../moneyText'
 import { Icon } from '../components/Icon'
 import { useToast } from '../components/toastContext'
 import { MarkPaidDialog } from '../dialogs'
 import { useFormat } from '../format'
-import { frequencyLabel, planItemName } from '../labels'
-import { href } from '../router'
+import { frequencyLabel, issueMessage, planItemName } from '../labels'
+import { href, withQuery } from '../router'
 import { ScheduleSheet } from './ScheduleSheet'
 
+const MIN_PROJECTION_DAYS = 60
 const STATE_TONE: Record<PlanItem['state'], Tone> = { pending: 'info', overdue: 'warning', paid: 'good', skipped: 'neutral' }
 
 export function Calendar() {
@@ -31,6 +36,7 @@ export function Calendar() {
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [payItem, setPayItem] = useState<PlanItem | null>(null)
   const [sheetFor, setSheetFor] = useState<string | null>(null)
+  const [simText, setSimText] = useState('')
   const restore = useRestoreFromTrash()
 
   const monthEnd = endOfMonth(month)
@@ -41,6 +47,36 @@ export function Calendar() {
     [data, today, month],
   )
   const listed = selectedDay ? monthItems.filter((i) => i.date === selectedDay) : monthItems
+
+  // Etapa 3: flujo de caja proyectado (misma proyección que Plan › Proyección, sin gasto diario estimado)
+  // hasta el final del mes visible y como mínimo 60 días, para que una simulación muestre el faltante
+  // aunque caiga en el mes siguiente. Los días pasados no se proyectan: el saldo real vive en Cuentas.
+  const projectionEnd = maxDate(monthEnd, addDays(today, MIN_PROJECTION_DAYS - 1))
+  const projectionDays = Math.min(400, daysBetween(today, projectionEnd) + 1)
+  const projection = useMemo(() => projectBalance(data, today, { days: projectionDays }), [data, today, projectionDays])
+  const byDate = useMemo(() => new Map<string, ProjectionDay>(projection.days.map((d) => [d.date, d])), [projection])
+  const lastProjected = projection.days[projection.days.length - 1]?.date ?? today
+  const firstNegative = projection.firstNegativeDate ? byDate.get(projection.firstNegativeDate) : undefined
+  // Simulación: un pago extra el día elegido (o hoy). Se calcula sobre una copia; nunca se guarda.
+  const simDay = selectedDay && selectedDay > today ? selectedDay : today
+  const simParsed = simText.trim() ? parseMoneyText(simText, fmt) : null
+  const simMinor = simParsed?.ok ? simParsed.minor : 0
+  // Un mes de proyección es barato: se recalcula al escribir, sin memorizar.
+  const simulated = simMinor > 0 ? projectBalance(data, today, { days: projectionDays, extraOutflows: [{ date: simDay, amountMinor: simMinor }] }) : null
+  const simDayResult = simulated?.days.find((d) => d.date === simDay)
+  const simNegative = simulated?.firstNegativeDate ? simulated.days.find((d) => d.date === simulated.firstNegativeDate) : undefined
+  // Conciliación: movimientos ya registrados que parecen una ocurrencia abierta sin vincular.
+  const unlinked = useMemo(() => unlinkedSettlements(data, today), [data, today])
+
+  const link = async (txId: string, scheduleId: string, occurrenceDate: string, name: string) => {
+    const { result, saved } = await run((d, c) => linkSettlement(d, txId, scheduleId, occurrenceDate, c))
+    if (!result.ok) {
+      const issue = result.issues[0]
+      toast({ message: issue ? issueMessage(t, fmt, issue) : t('save.error.generic'), tone: 'critical' })
+      return
+    }
+    toast({ message: saved ? t('calendar.reconcile.linked', { name }) : t('save.error.generic'), tone: saved ? 'good' : 'critical' })
+  }
 
   // Cuadrícula que empieza en lunes.
   const offset = (weekday(month) + 6) % 7
@@ -200,6 +236,49 @@ export function Calendar() {
         </Card>
       )}
 
+      <Card labelledBy="flow-title">
+        <h2 id="flow-title" className="card__title">
+          <Icon name="trend" />
+          {t('calendar.flow.title')}
+        </h2>
+        <p className={firstNegative ? 'flow-line flow-line--negative' : 'flow-line'} data-testid="flow-line">
+          <Icon name={firstNegative ? 'alert' : 'checkCircle'} size={16} />
+          {firstNegative
+            ? t('calendar.flow.shortfall', { date: fmt.date(firstNegative.date, { compact: true, today }), amount: fmt.money(firstNegative.endMinor) })
+            : t('calendar.flow.noShortfall', { date: fmt.date(lastProjected, { compact: true, today }) })}
+        </p>
+        <Explain>{t('calendar.flow.explain')}</Explain>
+      </Card>
+
+      {unlinked.length > 0 && (
+        <Card labelledBy="reconcile-title">
+          <h2 id="reconcile-title" className="card__title">
+            <Icon name="check" />
+            {t('calendar.reconcile.title')}
+          </h2>
+          <p className="note">{t('calendar.reconcile.text')}</p>
+          <ul className="item-list" data-testid="reconcile-list">
+            {unlinked.map(({ item, transaction }) => {
+              const name = planItemName(item, t)
+              return (
+                <li key={`${item.key}:${transaction.id}`} className="item item--stacked">
+                  <p className="item__title">{t('calendar.reconcile.row', { name, date: fmt.date(item.date, { compact: true, today }), txDate: fmt.date(transaction.date, { compact: true, today }), amount: fmt.money(transaction.amountMinor) })}</p>
+                  <div className="item__actions">
+                    <button type="button" className="btn btn--small btn--primary" aria-label={`${t('calendar.reconcile.link')}: ${name}`} onClick={() => void link(transaction.id, item.sourceId, item.date, name)}>
+                      <Icon name="check" size={16} />
+                      {t('calendar.reconcile.link')}
+                    </button>
+                    <a className="btn btn--small btn--ghost" href={href(withQuery(`/movimientos/editar/${transaction.id}`, { returnTo: '/plan/calendario' }))}>
+                      {t('calendar.viewMovement')}
+                    </a>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </Card>
+      )}
+
       <Card labelledBy="month-title">
         <div className="month-nav">
           <button type="button" className="btn btn--ghost btn--icon" onClick={() => { setMonth(addMonthsClamped(month, -1, 1)); setSelectedDay(null) }} aria-label={t('calendar.prevMonth')}>
@@ -234,19 +313,27 @@ export function Calendar() {
                   const inMonth = d >= month && d <= monthEnd
                   const dayItems = inMonth ? monthItems.filter((i) => i.date === d) : []
                   const open = dayItems.filter((i) => i.state === 'pending' || i.state === 'overdue').length
-                  const label = `${fmt.date(d, { weekday: true })}${dayItems.length ? ` · ${t('calendar.dayCount', { count: dayItems.length })}` : ''}`
+                  const negative = inMonth && (byDate.get(d)?.endMinor ?? 0) < 0
+                  const label = `${fmt.date(d, { weekday: true })}${dayItems.length ? ` · ${t('calendar.dayCount', { count: dayItems.length })}` : ''}${negative ? ` · ${t('calendar.flow.negativeMark')}` : ''}`
                   return (
                     <td key={d} className="cal-grid__cell">
                       {inMonth && (
                         <button
                           type="button"
-                          className={['cal-day', d === today ? 'is-today' : '', d === selectedDay ? 'is-selected' : '', dayItems.length ? 'has-items' : ''].join(' ')}
+                          className={['cal-day', d === today ? 'is-today' : '', d === selectedDay ? 'is-selected' : '', dayItems.length ? 'has-items' : '', negative ? 'is-negative' : ''].join(' ')}
                           aria-pressed={d === selectedDay}
                           aria-label={label}
                           aria-current={d === today ? 'date' : undefined}
                           onClick={() => setSelectedDay(d === selectedDay ? null : d)}
                         >
-                          <span className="cal-day__num">{Number(d.slice(8))}</span>
+                          <span className="cal-day__num">
+                            {negative && (
+                              <span className="cal-day__neg" aria-hidden="true">
+                                −
+                              </span>
+                            )}
+                            {Number(d.slice(8))}
+                          </span>
                           {dayItems.length > 0 && (
                             <span className={`cal-day__dot${open === 0 ? ' cal-day__dot--done' : ''}`} aria-hidden="true">
                               {dayItems.length}
@@ -272,7 +359,45 @@ export function Calendar() {
             {t('calendar.showMonth')}
           </button>
         )}
+        {selectedDay && (
+          <p className="item__meta" data-testid="day-balance">
+            {selectedDay < today ? t('calendar.flow.past') : t('calendar.flow.dayBalance', { amount: fmt.money(byDate.get(selectedDay)?.endMinor ?? projection.endMinor) })}
+          </p>
+        )}
         {listed.length === 0 ? <EmptyState compact icon="calendar" title={t('calendar.empty')} /> : <ul className="item-list">{listed.map(renderItem)}</ul>}
+      </Card>
+
+      <Card labelledBy="sim-title">
+        <h2 id="sim-title" className="card__title">
+          <Icon name="scale" />
+          {t('calendar.sim.title')}
+        </h2>
+        <p className="note">{t('calendar.sim.hint')}</p>
+        <MoneyField label={t('calendar.sim.amount')} hint={fmt.date(simDay, { weekday: true, compact: true, today })} value={simText} onChange={setSimText} error={simParsed ? moneyErrorMessage(t, simParsed) : null} fmt={fmt} name="simulate" />
+        {simulated && simDayResult && (
+          <>
+            <p className={simNegative ? 'flow-line flow-line--negative' : 'flow-line'} data-testid="sim-result" aria-live="polite">
+              <Icon name={simNegative ? 'alert' : 'checkCircle'} size={16} />
+              {t('calendar.sim.result', {
+                date: fmt.date(simDay, { compact: true, today }),
+                balance: fmt.money(simDayResult.endMinor),
+                shortfall: simNegative
+                  ? t('calendar.flow.shortfall', { date: fmt.date(simNegative.date, { compact: true, today }), amount: fmt.money(simNegative.endMinor) })
+                  : t('calendar.flow.noShortfall', { date: fmt.date(lastProjected, { compact: true, today }) }),
+              })}
+            </p>
+            <div className="button-row">
+              <a className="btn btn--secondary btn--small" href={href(withQuery('/movimientos/nuevo', { kind: 'expense', amount: String(simMinor), date: simDay, status: 'planned', returnTo: '/plan/calendario' }))}>
+                <Icon name="plus" size={16} />
+                {t('calendar.sim.register')}
+              </a>
+              <button type="button" className="btn btn--ghost btn--small" onClick={() => setSimText('')}>
+                <Icon name="x" size={16} />
+                {t('calendar.sim.clear')}
+              </button>
+            </div>
+          </>
+        )}
       </Card>
 
       <Card labelledBy="schedules-title">

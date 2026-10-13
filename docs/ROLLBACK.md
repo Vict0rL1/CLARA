@@ -1,7 +1,7 @@
 # Volver atrás un despliegue (rollback)
 
 Clara guarda los datos de cada persona en su propio navegador, con un formato que tiene número:
-`SCHEMA_VERSION` (hoy **11**, en `src/domain/types.ts`). Cuando una versión nueva cambia ese número,
+`SCHEMA_VERSION` (hoy **12**, en `src/domain/types.ts`). Cuando una versión nueva cambia ese número,
 al abrirse **convierte** los datos al formato nuevo (antes guarda una copia del original). Por eso
 volver a una versión anterior no siempre es seguro.
 
@@ -13,7 +13,7 @@ volver a una versión anterior no siempre es seguro.
 
 ### Por qué (lo que se comprobó, V2)
 
-Con datos ya convertidos al esquema 11, la compilación anterior de `main` (esquema 8) muestra **una
+Con datos ya convertidos al esquema 12, la compilación anterior de `main` (esquema 8) muestra **una
 página en blanco**. Los datos siguen intactos, pero la persona ve una app vacía y cree que los perdió.
 Una versión anterior no sabe leer un formato que todavía no existía cuando se escribió.
 
@@ -59,6 +59,6 @@ Responde «Sí» o «No» y por qué (código de salida 0 o 1).
 2. Abre un PR. CI ejecuta todas las pruebas y `deploy-preview` publica una vista previa con la prueba
    rápida.
 3. Fusiona en `main`: `deploy-production` despliega y vuelve a ejecutar la prueba rápida.
-4. Si el fallo estaba en la migración misma, la copia previa (`margen.data.before-v11` en el
+4. Si el fallo estaba en la migración misma, la copia previa (`margen.data.before-v12` en el
    navegador de cada persona) sigue ahí: el arreglo puede volver a migrar desde ella. Nunca se borra
    para «solucionar» una incompatibilidad.

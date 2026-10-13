@@ -2989,6 +2989,73 @@ fieldset.bill-row {
   color: #ffffff;
 }
 
+/* Etapa 3: días con saldo proyectado negativo (marca «−» + texto accesible, nunca solo color). */
+.cal-day.is-negative {
+  border-color: var(--critical-text);
+  border-style: dashed;
+}
+
+.cal-day.is-negative .cal-day__num {
+  color: var(--critical-text);
+  font-weight: 800;
+}
+
+.cal-day.is-selected.is-negative .cal-day__num {
+  color: var(--primary-ink);
+}
+
+.cal-day__neg {
+  font-size: 0.75em;
+  margin-right: 1px;
+}
+
+.flow-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-weight: 650;
+  color: var(--good-text);
+  overflow-wrap: anywhere;
+}
+
+.flow-line .icon {
+  flex: none;
+  margin-top: 2px;
+}
+
+.flow-line--negative {
+  color: var(--critical-text);
+}
+
+.goal__pace {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.goal__pace .icon {
+  flex: none;
+  margin-top: 1px;
+}
+
+.goal__pace--behind {
+  color: var(--warning-text);
+}
+
+.goal__pace--ahead,
+.goal__pace--onTrack {
+  color: var(--good-text);
+}
+
+.goal__history .item-list {
+  padding: 0 12px 8px;
+}
+
+.goal__history .note {
+  padding: 0 12px 8px;
+}
+
 /* ------------------------------------------------------------------ */
 /* Diálogos y mensajes                                                 */
 /* ------------------------------------------------------------------ */
