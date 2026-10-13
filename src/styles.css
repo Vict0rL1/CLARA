@@ -5001,7 +5001,7 @@ li.is-selected > .item--select {
   margin: 8px 0;
 }
 .pace-chart__limit {
-  stroke: var(--danger);
+  stroke: var(--critical-mark);
   stroke-width: 1.5;
   stroke-dasharray: 4 4;
 }
@@ -5023,7 +5023,7 @@ li.is-selected > .item--select {
   background: var(--text-muted);
 }
 .legend__swatch--limit {
-  background: var(--danger);
+  background: var(--critical-mark);
 }
 
 /* ---- Estadísticas (§7.6) ---- */
@@ -5048,7 +5048,7 @@ li.is-selected > .item--select {
   color: var(--good-text);
 }
 .stat__delta--bad {
-  color: var(--danger);
+  color: var(--critical-text);
 }
 .stat__delta--neutral {
   color: var(--text-muted);
@@ -5072,14 +5072,15 @@ li.is-selected > .item--select {
 .donut__slice {
   stroke: var(--cat-color);
 }
+/* SVG: `fill` con tokens que existen en claro y oscuro (antes `--text`, sin definir → negro en oscuro). */
 .donut__total {
   font-size: 11px;
   font-weight: 700;
-  fill: var(--text);
+  fill: var(--text-primary);
 }
 .donut__sub {
-  font-size: 8px;
-  fill: var(--text-muted);
+  font-size: 9px;
+  fill: var(--text-secondary);
 }
 .donut__list {
   list-style: none;
@@ -5154,7 +5155,7 @@ li.is-selected > .item--select {
   stroke-width: 1;
 }
 .chart__axis--zero {
-  stroke: var(--danger);
+  stroke: var(--critical-mark);
   stroke-dasharray: 3 3;
 }
 .stats-axis {
@@ -5178,7 +5179,7 @@ li.is-selected > .item--select {
   stroke-width: 2;
 }
 .bars__group.is-active .bars__bar {
-  stroke: var(--text);
+  stroke: var(--text-primary);
   stroke-width: 1;
 }
 .bars__bar.series-3 {

@@ -121,7 +121,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
 ## Interfaz y accesibilidad
 
 - Móvil primero; sin desplazamiento horizontal de 320 px a escritorio; texto ampliable (rem).
-- Estados siempre con icono + texto, nunca solo color. Contraste AA (claro y oscuro).
+- Estados siempre con icono + texto, nunca solo color. Contraste AA (claro y oscuro), también en texto SVG
+  (axe no lo mide: prueba de contraste calculado). Solo tokens definidos: `themeTokens.test.ts` falla con un `var(--x)` inexistente.
 - Cada campo con etiqueta, ayuda y error asociados (`FieldShell`). Botones ≥ 40–44 px.
 - Cada cifra principal tiene su explicación ("¿Cómo se calculó?").
 - No mostrar botones de funciones que no existen. No simular notificaciones,

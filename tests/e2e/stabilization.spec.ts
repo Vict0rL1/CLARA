@@ -328,3 +328,43 @@ test('10 · CSV: dos descripciones largas que empiezan igual no se omiten; un ar
   await page.getByLabel('Entiendo que 3 filas del archivo quedan fuera de esta importación').check()
   await expect(confirm).toBeEnabled()
 })
+
+/** Contraste WCAG entre el `fill` de un texto SVG y el primer fondo opaco de sus antecesores. */
+async function svgTextContrast(page: import('@playwright/test').Page, selector: string) {
+  return page.locator(selector).first().evaluate((el) => {
+    const parse = (c: string) => {
+      const m = c.match(/rgba?\(([^)]+)\)/)
+      if (!m) return null
+      const [r, g, b, a] = m[1]!.split(',').map((x) => Number(x.trim()))
+      return { r: r!, g: g!, b: b!, a: a ?? 1 }
+    }
+    const lum = (c: { r: number; g: number; b: number }) => {
+      const ch = (v: number) => {
+        const s = v / 255
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
+      }
+      return 0.2126 * ch(c.r) + 0.7152 * ch(c.g) + 0.0722 * ch(c.b)
+    }
+    let bg = null as ReturnType<typeof parse>
+    for (let n: Element | null = el; n && !bg; n = n.parentElement) {
+      const p = parse(getComputedStyle(n).backgroundColor)
+      if (p && p.a > 0) bg = p
+    }
+    const fg = parse(getComputedStyle(el).fill)
+    if (!fg || !bg) return 0
+    return (Math.max(lum(fg), lum(bg)) + 0.05) / (Math.min(lum(fg), lum(bg)) + 0.05)
+  })
+}
+
+for (const theme of ['light', 'dark'] as const) {
+  test(`12 · el total y el subtítulo del donut cumplen contraste AA en tema ${theme === 'light' ? 'claro' : 'oscuro'} (axe no mide el texto SVG)`, async ({ page }) => {
+    // El tema es una preferencia del dispositivo (oscuro por defecto): se fija antes de abrir la app.
+    await page.addInitScript((t) => localStorage.setItem('clara.theme', t), theme)
+    await startDemo(page)
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
+    await go(page, '/estadisticas')
+    await expect(page.locator('.donut__total').first()).toBeVisible()
+    expect(await svgTextContrast(page, '.donut__total')).toBeGreaterThanOrEqual(4.5)
+    expect(await svgTextContrast(page, '.donut__sub')).toBeGreaterThanOrEqual(4.5)
+  })
+}
