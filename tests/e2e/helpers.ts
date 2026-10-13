@@ -541,3 +541,17 @@ export async function waitForPrecache(page: Page) {
     { timeout: 60_000 },
   )
 }
+
+/**
+ * Espera a que la app confirme lo guardado («Guardando…» desaparece) antes de seguir. Recargar con una
+ * escritura de IndexedDB en curso la aborta: así fallaba a veces «el orden se recuerda» (punto 14).
+ */
+export async function waitForSaved(page: Page) {
+  await expect(page.locator('.save-indicator--saving')).toHaveCount(0)
+}
+
+/** Recarga solo cuando lo último quedó guardado (ver `waitForSaved`). */
+export async function reloadWhenSaved(page: Page) {
+  await waitForSaved(page)
+  await page.reload()
+}

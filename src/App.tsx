@@ -354,7 +354,9 @@ function LockedShell() {
 function Shell() {
   const { t } = useT()
   const state = useAppState()
-  const unsaved = state.phase === 'ready' && state.unsaved
+  // Sin guardar = un guardado que falló o uno que aún no terminó: recargar o cerrar la pestaña mientras
+  // IndexedDB escribe aborta la escritura y el último cambio se perdería sin aviso.
+  const unsaved = state.phase === 'ready' && (state.unsaved || state.save.state === 'saving')
 
   // Con cambios sin guardar, el navegador pregunta antes de cerrar o recargar la pestaña.
   useEffect(() => {

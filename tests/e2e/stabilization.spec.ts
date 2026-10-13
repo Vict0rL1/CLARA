@@ -415,3 +415,23 @@ test('13 · texto al 200 % en 320 px: Cuentas, Metas, Datos y Calendario sin des
   expect(focus.left).toBeGreaterThanOrEqual(0)
   expect(focus.right).toBeLessThanOrEqual(320)
 })
+
+test('14 · un deslizamiento rápido (soltar antes de que se pinte el movimiento) abre la fila y su botón recibe el toque', async ({ page, isMobile }) => {
+  test.skip(!isMobile, 'gesto táctil')
+  await startDemo(page)
+  await go(page, '/movimientos')
+  const row = page.locator('.swipe').first()
+  await expect(row).toBeVisible()
+  // Los tres eventos en la misma tarea: React no pinta entre el movimiento y el soltar (lo que pasaba
+  // con la máquina cargada en la suite completa: «Eliminar» quedaba tapado y el clic, interceptado).
+  await row.locator('.swipe__content').evaluate((el) => {
+    const r = el.getBoundingClientRect()
+    const at = (type: string, x: number) => el.dispatchEvent(new PointerEvent(type, { pointerType: 'touch', clientX: x, clientY: r.top + 10, pointerId: 7, bubbles: true }))
+    at('pointerdown', r.left + 200)
+    at('pointermove', r.left + 60)
+    at('pointerup', r.left + 60)
+  })
+  await expect(row).toHaveClass(/is-open-left/)
+  await row.getByRole('button', { name: /^Eliminar «/ }).click({ timeout: 5000 })
+  await expect(page.getByText('Movimiento enviado a la papelera')).toBeVisible()
+})

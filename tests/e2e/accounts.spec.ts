@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { available, go, startDemo } from './helpers'
+import { available, go, reloadWhenSaved, startDemo } from './helpers'
 
 /**
  * Etapa 1 del programa: Ajustes › Cuentas con patrimonio neto explicado, orden que vale en todas
@@ -29,7 +29,8 @@ test('cuentas: patrimonio neto cuadrado y explicado; el orden se recuerda y lleg
   await page.getByRole('button', { name: `Bajar: ${first}` }).click()
   await expect(rows.first()).toHaveAttribute('data-account-name', second)
   await expect(rows.nth(1)).toHaveAttribute('data-account-name', first)
-  await page.reload()
+  // El orden se ve al instante; se recarga cuando la app confirma que está guardado (punto 14).
+  await reloadWhenSaved(page)
   await expect(page.getByTestId('accounts-active').locator('.account-row').first()).toHaveAttribute('data-account-name', second)
   await go(page, '/movimientos/nuevo')
   await expect(page.getByLabel('Cuenta', { exact: true }).locator('option').first()).toHaveText(second)
