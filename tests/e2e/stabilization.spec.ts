@@ -174,3 +174,23 @@ test('REC-01 · restaurar una copia local, registrar algo y pulsar «Deshacer»:
   await expect(page.getByTestId('available')).toBeVisible()
   expect((await txs(page)).some((t) => t.note === 'Después de restaurar')).toBe(true)
 })
+
+test('REC-02 · una copia con «exportedAt» inválido muestra un error del archivo al importar y al verificar; nada se guarda y todo carga tras recargar', async ({ page }) => {
+  await startDemo(page)
+  await go(page, '/ajustes/copia')
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Exportar copia' }).click()])
+  const backup = JSON.parse(readFileSync((await download.path())!, 'utf8'))
+  backup.exportedAt = 'not-a-date'
+  const buffer = Buffer.from(JSON.stringify(backup))
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  await page.getByTestId('import-file').setInputFiles({ name: 'rara.json', mimeType: 'application/json', buffer })
+  await expect(page.getByText('No se importó el archivo')).toBeVisible()
+  await expect(page.getByText('La fecha de exportación del archivo no es válida («not-a-date»)').first()).toBeVisible()
+  await page.getByTestId('verify-file').setInputFiles({ name: 'rara.json', mimeType: 'application/json', buffer })
+  await expect(page.getByText('La fecha de exportación del archivo no es válida («not-a-date»)').nth(1)).toBeVisible()
+  expect(errors).toEqual([])
+  await go(page, '/')
+  await page.reload()
+  await expect(page.getByTestId('available')).toHaveText('$136.78')
+})

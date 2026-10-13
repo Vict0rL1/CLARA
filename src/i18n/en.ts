@@ -3222,4 +3222,5 @@ export const en: Record<keyof typeof es, string> = {
   'replace.undoStaleNoCopy': 'Not undone: you saved changes afterwards and they would be lost. If you need the previous data, import the backup you had exported.',
   'replace.openLocalCopies': 'See local copies',
   'localBackup.restoreUndone': 'Restore undone: the previous data is back',
+  'issue.invalidExportDate': 'The file’s export date is not valid (“{found}”): the file is damaged or was edited by hand. Nothing was applied; use another backup or export a new one.',
 }

@@ -10,7 +10,7 @@
  *
  * Estas operaciones no cambian `AppData.updatedAt`: registrar una copia no es un dato nuevo.
  */
-import { addDays, localDateInTimeZone } from './dates'
+import { addDays, isValidTimestamp, localDateInTimeZone } from './dates'
 import type { OpContext, OpResult } from './operations'
 import type { AppData, BackupReminder, LocalDate, Timestamp } from './types'
 
@@ -71,6 +71,8 @@ export function recordVerification(
   ctx: OpContext,
 ): OpResult<undefined> {
   if (file.budgetId !== data.budgetId) return { ok: false, issues: [{ path: 'file', code: 'notABackupOfThisBudget' }] }
+  // REC-02: nunca se guarda una fecha que no lo es (haría ilegibles los datos al recargar).
+  if (file.exportedAt !== null && !isValidTimestamp(file.exportedAt)) return { ok: false, issues: [{ path: 'exportedAt', code: 'invalidTimestamp' }] }
   return {
     ok: true,
     data: {

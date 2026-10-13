@@ -3220,4 +3220,5 @@ export const fr: Record<keyof typeof es, string> = {
   'replace.undoStaleNoCopy': 'Non annulé : vous avez enregistré des changements depuis et ils seraient perdus. Si vous avez besoin des données précédentes, importez la sauvegarde exportée.',
   'replace.openLocalCopies': 'Voir les copies locales',
   'localBackup.restoreUndone': 'Restauration annulée : les données précédentes sont revenues',
+  'issue.invalidExportDate': 'La date d’exportation du fichier n’est pas valide (« {found} ») : le fichier est endommagé ou a été modifié à la main. Rien n’a été appliqué ; utilisez une autre sauvegarde ou exportez-en une nouvelle.',
 }

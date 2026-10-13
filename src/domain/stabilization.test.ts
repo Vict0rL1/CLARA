@@ -238,3 +238,42 @@ describe('FIN-02/03 · el arrastre nunca produce límites inválidos', () => {
     }
   })
 })
+
+/* ------------------------------------------------------------------ */
+/* REC-02                                                              */
+/* ------------------------------------------------------------------ */
+import { backupText, parseBackup } from '../storage/backup'
+import { recordVerification } from './backupReminder'
+
+describe('REC-02 · los metadatos de una copia se validan antes de darla por buena', () => {
+  const file = (patch: Record<string, unknown>) => {
+    const { data } = demo()
+    const parsed = JSON.parse(backupText(data, NOW, '1.0.0-test'))
+    return JSON.stringify({ ...parsed, ...patch })
+  }
+
+  it('una fecha de exportación que no es fecha es un error del archivo, no un éxito', () => {
+    const r = parseBackup(file({ exportedAt: 'not-a-date' }))
+    expect(r.ok).toBe(false)
+    expect(!r.ok && r.issues[0]).toMatchObject({ path: 'exportedAt', code: 'invalidExportDate', params: { found: 'not-a-date' } })
+    for (const bad of [12345, true, {}, '2026-13-45T99:00:00Z']) expect(parseBackup(file({ exportedAt: bad })).ok, String(bad)).toBe(false)
+  })
+
+  it('las formas antiguas siguen valiendo: sin fecha, con `null` o con una fecha ISO válida', () => {
+    for (const ok of [{ exportedAt: undefined }, { exportedAt: null }, { exportedAt: '2026-09-28T16:00:00.000Z' }]) {
+      const r = parseBackup(file(ok))
+      expect(r.ok, JSON.stringify(ok)).toBe(true)
+    }
+    expect(parseBackup(file({ exportedAt: null })).ok && (parseBackup(file({ exportedAt: null })) as { exportedAt: string | null }).exportedAt).toBeNull()
+  })
+
+  it('verificar nunca guarda una fecha inválida (y lo guardado sigue cargando)', () => {
+    const { data, ctx } = demo()
+    const bad = recordVerification(data, { budgetId: data.budgetId, exportedAt: 'not-a-date' }, ctx)
+    expect(bad.ok).toBe(false)
+    const good = recordVerification(data, { budgetId: data.budgetId, exportedAt: '2026-09-28T16:00:00.000Z' }, ctx)
+    expect(good.ok).toBe(true)
+    if (!good.ok) return
+    expect(validateAppData(JSON.parse(JSON.stringify(good.data))).ok).toBe(true)
+  })
+})

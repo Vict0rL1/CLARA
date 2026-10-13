@@ -3221,4 +3221,5 @@ export const es = {
   'replace.undoStaleNoCopy': 'No se deshizo: guardaste cambios después y se perderían. Si necesitas lo anterior, importa la copia que tenías exportada.',
   'replace.openLocalCopies': 'Ver copias locales',
   'localBackup.restoreUndone': 'Restauración deshecha: se recuperaron los datos anteriores',
+  'issue.invalidExportDate': 'La fecha de exportación del archivo no es válida («{found}»): el archivo está dañado o se editó a mano. No se aplicó nada; usa otra copia o exporta una nueva.',
 } as const

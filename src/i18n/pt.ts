@@ -3220,4 +3220,5 @@ export const pt: Record<keyof typeof es, string> = {
   'replace.undoStaleNoCopy': 'Não foi desfeito: você salvou alterações depois e elas seriam perdidas. Se precisar dos dados anteriores, importe a cópia que tinha exportado.',
   'replace.openLocalCopies': 'Ver cópias locais',
   'localBackup.restoreUndone': 'Restauração desfeita: os dados anteriores voltaram',
+  'issue.invalidExportDate': 'A data de exportação do arquivo não é válida («{found}»): o arquivo está danificado ou foi editado à mão. Nada foi aplicado; use outra cópia ou exporte uma nova.',
 }
