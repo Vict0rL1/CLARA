@@ -142,3 +142,99 @@ describe('FIN-01 · vincular un pago ya registrado nunca cambia el saldo real', 
     expect(r.ok && accountBalance(r.data, main.id)).toBe(before - 4280)
   })
 })
+
+/* ------------------------------------------------------------------ */
+/* FIN-02/03                                                           */
+/* ------------------------------------------------------------------ */
+import { closeDuePlans, planBaseMinor, savePlan } from './plans'
+import { MAX_AMOUNT_MINOR } from './money'
+import { baseData, tx as fixtureTx } from '../test/fixtures'
+import type { Plan } from './types'
+
+const carriedPlan = (over: Partial<Plan> = {}): Plan => ({
+  id: 'p1', kind: 'limit', name: 'Comida', categoryIds: ['dining'], amountMinor: 35000, currency: 'CAD', periodType: 'month',
+  startDate: '2026-09-01', endDate: '2026-09-30', recurring: true, status: 'active', alertAt80: true, alertAt100: true,
+  rollover: 'carry', carriedMinor: 5000, createdAt: '2026-09-01T12:00:00.000Z', updatedAt: '2026-09-01T12:00:00.000Z', ...over,
+})
+const draftOf = (p: Plan, amountMinor: number, rollover = p.rollover) => ({ id: p.id, name: p.name, categoryIds: p.categoryIds, amountMinor, periodType: p.periodType, recurring: p.recurring, alertAt80: p.alertAt80, alertAt100: p.alertAt100, rollover })
+const editCtx = { today: '2026-09-15', now: '2026-09-15T12:00:00.000Z' }
+const valid = (data: AppData) => {
+  const r = validateAppData(JSON.parse(JSON.stringify(data)))
+  return r.ok ? true : r.issues
+}
+/** Cierra `cycles` meses seguidos (1-oct, 1-nov…) y devuelve los límites renovados. */
+function renewMany(data: AppData, cycles: number): { data: AppData; plans: Plan[] } {
+  let d = data
+  const out: Plan[] = []
+  for (let i = 1; i <= cycles; i++) {
+    const today = `2026-${String(9 + i).padStart(2, '0')}-02`
+    const r = closeDuePlans(d, { today, now: `${today}T12:00:00.000Z` })
+    if (!r.ok) throw new Error(JSON.stringify(r.issues))
+    d = r.data
+    out.push(...r.value.renewed)
+  }
+  return { data: d, plans: out }
+}
+
+describe('FIN-02/03 · el arrastre nunca produce límites inválidos', () => {
+  it('editar por debajo de lo arrastrado quita el arrastre y el importe pasa a ser la base; varias renovaciones siguen siendo válidas', () => {
+    const d = baseData({ plans: [carriedPlan()] })
+    const r = savePlan(d, draftOf(carriedPlan(), 3000), editCtx)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.amountMinor).toBe(3000)
+    expect(r.value.carriedMinor).toBeUndefined()
+    expect(planBaseMinor(r.value)).toBe(3000)
+    expect(valid(r.data)).toBe(true)
+    // Sin rollover: la base vuelve cada ciclo; con arrastre suma lo no gastado. Siempre ≥ 0 y válido.
+    for (const rollover of ['none', 'carry'] as const) {
+      const start = savePlan(d, draftOf(carriedPlan(), 3000, rollover), editCtx)
+      if (!start.ok) throw new Error('edit')
+      const { data, plans } = renewMany(start.data, 3)
+      expect(plans).toHaveLength(3)
+      for (const p of plans) {
+        expect(p.amountMinor).toBeGreaterThanOrEqual(0)
+        expect(planBaseMinor(p)).toBe(3000)
+      }
+      expect(rollover === 'carry' ? plans.map((p) => p.amountMinor) : plans.map((p) => p.amountMinor)).toEqual(rollover === 'carry' ? [6000, 9000, 12000] : [3000, 3000, 3000])
+      expect(valid(data)).toBe(true)
+    }
+  })
+
+  it('editar por encima de lo arrastrado conserva el arrastre; con arrastre negativo también', () => {
+    const keep = savePlan(baseData({ plans: [carriedPlan()] }), draftOf(carriedPlan(), 6000), editCtx)
+    expect(keep.ok && keep.value).toMatchObject({ amountMinor: 6000, carriedMinor: 5000 })
+    const negative = carriedPlan({ amountMinor: 0, carriedMinor: -30000 })
+    const r = savePlan(baseData({ plans: [negative] }), draftOf(negative, 5000), editCtx)
+    expect(r.ok && r.value).toMatchObject({ amountMinor: 5000, carriedMinor: -30000 })
+    expect(r.ok && planBaseMinor(r.value)).toBe(35000)
+  })
+
+  it('un límite base por encima del máximo se rechaza al editar', () => {
+    const p = carriedPlan({ amountMinor: 0, carriedMinor: -100 })
+    const r = savePlan(baseData({ plans: [p] }), draftOf(p, MAX_AMOUNT_MINOR), editCtx)
+    expect(r.ok).toBe(false)
+    expect(!r.ok && r.issues.map((i) => i.code)).toContain('amountTooLarge')
+  })
+
+  it('renovar un límite máximo con arrastre no pasa del máximo y el resultado valida en todos los ciclos', () => {
+    const p = carriedPlan({ amountMinor: MAX_AMOUNT_MINOR - 10, carriedMinor: undefined })
+    const { data, plans } = renewMany(baseData({ plans: [p] }), 3)
+    for (const q of plans) {
+      expect(q.amountMinor).toBeLessThanOrEqual(MAX_AMOUNT_MINOR)
+      expect(Math.abs(q.carriedMinor ?? 0)).toBeLessThanOrEqual(MAX_AMOUNT_MINOR)
+    }
+    expect(plans[0]).toMatchObject({ amountMinor: MAX_AMOUNT_MINOR, carriedMinor: 10 })
+    expect(valid(data)).toBe(true)
+  })
+
+  it('datos guardados con una base negativa (antes del arreglo) se renuevan con una base válida', () => {
+    for (const rollover of ['none', 'carry'] as const) {
+      const legacy = carriedPlan({ amountMinor: 3000, carriedMinor: 5000, rollover })
+      const spent = baseData({ plans: [legacy], transactions: [fixtureTx({ id: 't1', kind: 'expense', categoryId: 'dining', amountMinor: 1000, date: '2026-09-10' })] })
+      const { data, plans } = renewMany(spent, 2)
+      for (const q of plans) expect(q.amountMinor).toBeGreaterThanOrEqual(0)
+      expect(valid(data)).toBe(true)
+    }
+  })
+})

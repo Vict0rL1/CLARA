@@ -3214,4 +3214,6 @@ export const pt: Record<keyof typeof es, string> = {
   'issue.writtenCurrency': 'Você escreveu {found}; este orçamento usa {expected} e nada é convertido. Escreva o valor em {expected} ou remova a linha.',
   'assistant.currencyBlocked_one': '1 linha está em outra moeda. Escreva o valor em {currency} ou remova-a para registrar.',
   'assistant.currencyBlocked_other': '{count} linhas estão em outra moeda. Escreva os valores em {currency} ou remova-as para registrar.',
+  'plans.form.carryNote': 'Este ciclo inclui {carried} transferido: o limite base fica em {base}.',
+  'plans.form.carryReset': 'Este limite é menor que o transferido ({carried}): ao salvar, a transferência é removida e {amount} passa a ser o limite base.',
 }

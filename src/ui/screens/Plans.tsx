@@ -8,7 +8,7 @@ import { resolveCategories } from '../../domain/categories'
 import { goalPlan, goalProgress } from '../../domain/goals'
 import { newId } from '../../domain/ids'
 import { updateSettings } from '../../domain/operations'
-import { cycleFor, deletePlan, planBaseMinor, planCategoryOptions, planComparison, planDailySeries, planProgress, plansSummary, planTransactions, planUpcoming, repeatPlan, restorePlan, savePlan, setPlanStatus, type PlanProgress, type PlanSeriesPoint } from '../../domain/plans'
+import { carryAfterEdit, cycleFor, deletePlan, planBaseMinor, planCategoryOptions, planComparison, planDailySeries, planProgress, plansSummary, planTransactions, planUpcoming, repeatPlan, restorePlan, savePlan, setPlanStatus, type PlanProgress, type PlanSeriesPoint } from '../../domain/plans'
 import type { BudgetPeriodType, Goal } from '../../domain/types'
 import { BUDGET_PERIOD_TYPES, LIMITS, type Issue } from '../../domain/validation'
 import { useT, type MessageKey } from '../../i18n'
@@ -317,6 +317,18 @@ export function PlanForm({ route }: { route: Route }) {
         }}
       >
         <MoneyField big label={t('plans.form.amount')} hint={t('plans.form.amountHint')} value={amountText} onChange={setAmountText} error={amountError ?? fieldError(t, fmt, issues, 'amountMinor')} fmt={fmt} />
+        {existing?.carriedMinor !== undefined && existing.carriedMinor !== 0 && (() => {
+          // FIN-02: lo que pasará con el arrastre al guardar, antes de guardar.
+          const typed = parseMoneyText(amountText, fmt)
+          const carry = typed.ok ? carryAfterEdit(existing, typed.minor) : { carriedMinor: existing.carriedMinor }
+          return (
+            <p className="note" data-testid="plan-carry-note">
+              {carry.carriedMinor === undefined && typed.ok
+                ? t('plans.form.carryReset', { carried: fmt.money(existing.carriedMinor), amount: fmt.money(typed.minor) })
+                : t('plans.form.carryNote', { carried: fmt.money(existing.carriedMinor, { sign: true }), base: fmt.money(typed.ok ? typed.minor - existing.carriedMinor : planBaseMinor(existing)) })}
+            </p>
+          )
+        })()}
         <TextField label={t('plans.form.name')} hint={t('plans.form.nameHint')} value={name} maxLength={LIMITS.nameMax} onChange={(e) => setName(e.target.value)} error={fieldError(t, fmt, issues, 'name')} />
         <CategoryPicker
           multiple

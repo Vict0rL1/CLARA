@@ -3215,4 +3215,6 @@ export const es = {
   'issue.writtenCurrency': 'Escribiste {found}; este presupuesto usa {expected} y no se convierte. Escribe el importe en {expected} o quita la línea.',
   'assistant.currencyBlocked_one': '1 línea está en otra moneda. Escribe su importe en {currency} o quítala para poder registrar.',
   'assistant.currencyBlocked_other': '{count} líneas están en otra moneda. Escribe sus importes en {currency} o quítalas para poder registrar.',
+  'plans.form.carryNote': 'Este ciclo incluye un arrastre de {carried}: el límite base queda en {base}.',
+  'plans.form.carryReset': 'Este límite es menor que lo arrastrado ({carried}): al guardar se quita el arrastre y {amount} pasa a ser el límite base.',
 } as const

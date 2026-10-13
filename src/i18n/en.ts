@@ -3216,4 +3216,6 @@ export const en: Record<keyof typeof es, string> = {
   'issue.writtenCurrency': 'You wrote {found}; this budget uses {expected} and nothing is converted. Enter the amount in {expected} or remove the line.',
   'assistant.currencyBlocked_one': '1 line is in another currency. Enter its amount in {currency} or remove it to record.',
   'assistant.currencyBlocked_other': '{count} lines are in another currency. Enter their amounts in {currency} or remove them to record.',
+  'plans.form.carryNote': 'This cycle includes {carried} carried over: the base limit is {base}.',
+  'plans.form.carryReset': 'This limit is lower than what was carried over ({carried}): saving removes the carry-over and {amount} becomes the base limit.',
 }

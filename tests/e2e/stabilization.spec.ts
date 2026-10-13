@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { go, openDetails, startDemo, storedData } from './helpers'
+import { START, go, openDetails, startDemo, storedData } from './helpers'
 
 /**
  * Regresiones de navegador de la auditoría posterior (2026-10-12/13) sobre `e7c9d87`. Cada prueba
@@ -68,4 +68,40 @@ test('FIN-01 · vincular un pago del día del saldo, ya incluido en él, no vuel
   await expect(page.getByTestId('net-worth')).toHaveText(net)
   await page.reload()
   await expect(page.getByTestId('net-worth')).toHaveText(net)
+})
+
+test('FIN-02 · bajar un límite por debajo de lo arrastrado avisa antes de guardar, quita el arrastre y las renovaciones siguen siendo válidas', async ({ page }) => {
+  await startDemo(page)
+  await go(page, '/plan/planes/nuevo')
+  await page.getByLabel('Límite máximo').fill('100')
+  await page.getByTestId('plan-categories').click()
+  await page.getByTestId('category-picker').getByRole('option', { name: 'Servicios (luz, agua, gas)' }).first().click()
+  await page.getByRole('button', { name: 'Listo' }).click()
+  await page.getByRole('switch', { name: 'Arrastrar lo no gastado al siguiente ciclo' }).click()
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect(page.getByText('Plan guardado')).toBeVisible()
+  // 2-oct: septiembre cierra sin gasto → octubre 100 + 100.
+  await go(page, '/')
+  await page.clock.setSystemTime(new Date(START.getTime() + 4 * 86_400_000))
+  await page.reload()
+  await expect(page.getByTestId('available')).toBeVisible()
+  await go(page, '/plan/planes')
+  await page.getByTestId('plan-list').getByRole('link', { name: /Servicios \(luz, agua, gas\)/ }).click()
+  await expect(page.getByTestId('plan-limit-breakdown')).toContainText('Límite base $100.00 · arrastre +$100.00 = $200.00')
+  await page.getByRole('link', { name: 'Editar' }).click()
+  await expect(page.getByTestId('plan-carry-note')).toContainText('el límite base queda en $100.00')
+  await page.getByLabel('Límite máximo').fill('50')
+  await expect(page.getByTestId('plan-carry-note')).toContainText('Este límite es menor que lo arrastrado ($100.00): al guardar se quita el arrastre y $50.00 pasa a ser el límite base.')
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect(page.getByText('Plan guardado')).toBeVisible()
+  await expect(page.getByTestId('plan-spent')).toContainText('/ $50.00')
+  await expect(page.getByTestId('plan-limit-breakdown')).toHaveCount(0)
+  // 2-nov: octubre cierra sin gasto → noviembre 50 + 50; los datos siguen cargando (nada inválido guardado).
+  await go(page, '/')
+  await page.clock.setSystemTime(new Date(START.getTime() + 35 * 86_400_000))
+  await page.reload()
+  await expect(page.getByTestId('available')).toBeVisible()
+  await go(page, '/plan/planes')
+  await page.getByTestId('plan-list').getByRole('link', { name: /Servicios \(luz, agua, gas\)/ }).click()
+  await expect(page.getByTestId('plan-limit-breakdown')).toContainText('Límite base $50.00 · arrastre +$50.00 = $100.00')
 })

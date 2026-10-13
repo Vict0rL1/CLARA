@@ -13,7 +13,7 @@ import { planItems, type PlanItem } from './planItems'
 import { categoriesForKind } from './categories'
 import { addDays, daysBetween, isValidLocalDate } from './dates'
 import { newId } from './ids'
-import { mulDivFloor, sumMinor } from './money'
+import { MAX_AMOUNT_MINOR, mulDivFloor, sumMinor } from './money'
 import { getPeriod } from './periods'
 import { categoryAllocations } from './splits'
 import type { OpContext, OpResult } from './operations'
@@ -156,10 +156,33 @@ export function planDailySeries(data: AppData, plan: Plan, cycle: PlanCycle, tod
   return out
 }
 
+/**
+ * Lo que este ciclo conserva del arrastre al editar (FIN-02). El importe escrito es el límite del
+ * ciclo; el límite base es `importe − arrastre` y tiene que ser un importe positivo. Si la persona
+ * pone un límite por debajo de lo arrastrado, el arrastre se quita y ese importe pasa a ser el
+ * límite base (el formulario lo avisa antes de guardar). Un límite base por encima del máximo se
+ * rechaza (`amountTooLarge`).
+ */
+export function carryAfterEdit(existing: Pick<Plan, 'amountMinor' | 'carriedMinor'> | undefined, amountMinor: number): { carriedMinor?: number; issue?: Issue } {
+  const carried = existing?.carriedMinor
+  if (carried === undefined) return {}
+  if (!existing || amountMinor === existing.amountMinor) return { carriedMinor: carried }
+  const base = amountMinor - carried
+  if (base < 1) return {}
+  if (base > MAX_AMOUNT_MINOR) return { carriedMinor: carried, issue: { path: 'amountMinor', code: 'amountTooLarge' } }
+  return { carriedMinor: carried }
+}
+
+/** Límite base acotado a [1, máximo]: protege la renovación de datos guardados antes de FIN-02/03. */
+function boundedBase(plan: Pick<Plan, 'amountMinor' | 'carriedMinor'>): number {
+  return Math.min(MAX_AMOUNT_MINOR, Math.max(1, planBaseMinor(plan)))
+}
+
 function buildPlan(data: AppData, draft: PlanDraft, ctx: OpContext, existing?: Plan): Plan | Issue[] {
   const periodChanged = existing !== undefined && (existing.periodType !== draft.periodType || (draft.periodType === 'custom' && (existing.startDate !== draft.startDate || existing.endDate !== draft.endDate)))
   const custom = draft.periodType === 'custom' ? { startDate: draft.startDate, endDate: draft.endDate } : undefined
   const cycle = !existing || periodChanged ? cycleFor(draft.periodType, data.settings, ctx.today, custom) : { start: existing.startDate, end: existing.endDate }
+  const carry = carryAfterEdit(existing, draft.amountMinor)
   const plan: Plan = {
     id: draft.id,
     kind: 'limit',
@@ -178,11 +201,12 @@ function buildPlan(data: AppData, draft: PlanDraft, ctx: OpContext, existing?: P
     ...(existing?.result ? { result: existing.result } : {}),
     // v12: el arrastre se elige al crear o editar; lo que este ciclo ya recibió del anterior no cambia al editar.
     rollover: draft.rollover ?? existing?.rollover ?? 'none',
-    ...(existing?.carriedMinor !== undefined ? { carriedMinor: existing.carriedMinor } : {}),
+    ...(carry.carriedMinor !== undefined ? { carriedMinor: carry.carriedMinor } : {}),
     createdAt: existing?.createdAt ?? ctx.now,
     updatedAt: ctx.now,
   }
   const issues = validatePlan(plan, { data: { settings: data.settings, categories: data.categories } })
+  if (carry.issue) issues.push(carry.issue)
   if (draft.periodType === 'custom' && !cycle) issues.push({ path: 'endDate', code: 'endBeforeStart' })
   return issues.length ? issues : plan
 }
@@ -259,10 +283,12 @@ export function closeDuePlans(data: AppData, ctx: OpContext): OpResult<ClosePlan
     if (plan.recurring) {
       const next = cycleFor(plan.periodType, data.settings, ctx.today)
       if (!next) continue
-      // Arrastre (v12): el ciclo nuevo parte del límite base más lo que sobró (o menos lo excedido), nunca por debajo de 0.
+      // Arrastre (v12): el ciclo nuevo parte del límite base más lo que sobró (o menos lo excedido),
+      // nunca por debajo de 0 ni por encima del máximo (FIN-03); el límite base siempre es válido (FIN-02).
       const carry = plan.rollover === 'carry'
+      const base = boundedBase(plan)
       const carried = carry ? done.result!.deltaMinor : 0
-      const nextAmount = carry ? Math.max(0, planBaseMinor(plan) + carried) : planBaseMinor(plan)
+      const nextAmount = carry ? Math.min(MAX_AMOUNT_MINOR, Math.max(0, base + carried)) : base
       const fresh: Plan = {
         ...plan,
         id: newId(),
@@ -275,7 +301,7 @@ export function closeDuePlans(data: AppData, ctx: OpContext): OpResult<ClosePlan
         updatedAt: ctx.now,
       }
       delete fresh.result
-      if (carry) fresh.carriedMinor = nextAmount - planBaseMinor(plan)
+      if (carry) fresh.carriedMinor = nextAmount - base
       else delete fresh.carriedMinor
       plans = [...plans, fresh]
       renewed.push(fresh)
