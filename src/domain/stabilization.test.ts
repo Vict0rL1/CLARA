@@ -414,3 +414,84 @@ describe('7 · reglas y revisión del asistente: una sola regla y efectos exacto
     expect(s.available!.afterMinor).toBe(before)
   })
 })
+
+/* ------------------------------------------------------------------ */
+import { analysisItems, type Because } from './analysis'
+import { account as fixtureAccount, bill as fixtureBill, income as fixtureIncome, TODAY as FIX_TODAY } from '../test/fixtures'
+import { signedScale } from '../ui/chartScale'
+
+/** La ecuación de «¿Cómo se calculó?» cuadra con sus operandos: a ± b ± … = resultado. */
+function equationHolds(because: Because[]): boolean {
+  const eq = because.findIndex((b) => b.op === '=')
+  if (eq < 0) return true
+  let acc = 0
+  because.slice(0, eq).forEach((b, i) => {
+    const v = b.value as number
+    acc = i === 0 || b.op === '+' ? acc + v : acc - v
+  })
+  return acc === because[eq]!.value
+}
+
+describe('8 · análisis y estadísticas: explicaciones que cuadran y gráficos con signo', () => {
+  const withBalance = (amountMinor: number, extra: Partial<AppData> = {}) =>
+    baseData({ accounts: [fixtureAccount({ id: 'main', anchor: { amountMinor, date: FIX_TODAY, setAt: '2026-09-28T13:00:00.000Z' } })], ...extra })
+
+  it('un ingreso y un pago el mismo día se muestran en bruto (+100 y −150), no neteados (0 y −50)', () => {
+    const data = withBalance(3000, { schedules: [fixtureIncome('2026-10-02', 10000, { id: 'in' }), fixtureBill('2026-10-02', 15000, { id: 'out' })] })
+    const shortfall = analysisItems(data, FIX_TODAY).find((i) => i.id === 'shortfall')!
+    expect(shortfall.params).toMatchObject({ date: '2026-10-02', amount: -2000 })
+    const v = Object.fromEntries(shortfall.because.map((b) => [b.id, b.value]))
+    expect(v).toEqual({ startBalance: 3000, inflowsUntil: 10000, outflowsUntil: 15000, balanceOn: -2000 })
+    expect(equationHolds(shortfall.because)).toBe(true)
+  })
+
+  it('si el saldo de hoy ya es negativo, el aviso dice ese saldo negativo aunque hoy entre un ingreso', () => {
+    const data = withBalance(-5000, { schedules: [fixtureIncome(FIX_TODAY, 10000, { id: 'in' })] })
+    const shortfall = analysisItems(data, FIX_TODAY).find((i) => i.id === 'shortfall')!
+    expect(shortfall.params).toMatchObject({ date: FIX_TODAY, amount: -5000 })
+    expect(shortfall.because).toEqual([{ id: 'startBalance', kind: 'money', value: -5000, op: '=' }])
+  })
+
+  it('límite superado: límite − gastado = restante (negativo), con los operandos en ese orden', () => {
+    const plan = carriedPlan({ amountMinor: 10000, rollover: undefined, carriedMinor: undefined })
+    const data = withBalance(100000, { plans: [plan], transactions: [fixtureTx({ id: 't1', amountMinor: 12000, categoryId: 'dining', date: FIX_TODAY })] })
+    const over = analysisItems(data, FIX_TODAY).find((i) => i.id === 'limitOver')!
+    expect(over.because.map((b) => [b.id, b.value, b.op ?? ''])).toEqual([
+      ['limit', 10000, ''],
+      ['spent', 12000, '−'],
+      ['remaining', -2000, '='],
+    ])
+    expect(equationHolds(over.because)).toBe(true)
+    expect(over.params.remaining).toBe(2000)
+  })
+
+  it('conciliar: el pago del mismo día de una ocurrencia es para esa ocurrencia, aunque otra anterior también esté en la ventana', () => {
+    const data = withBalance(100000, {
+      schedules: [fixtureBill('2026-09-26', 4000, { id: 'early', name: 'Gimnasio' }), fixtureBill(FIX_TODAY, 4000, { id: 'exact', name: 'Internet' })],
+      transactions: [fixtureTx({ id: 'pay', amountMinor: 4000, categoryId: 'utilities', date: FIX_TODAY })],
+    })
+    const s = unlinkedSettlements(data, FIX_TODAY)
+    expect(s.map((x) => [x.item.sourceId, x.transaction.id, x.distanceDays])).toEqual([['exact', 'pay', 0]])
+    // Con dos pagos, cada uno va a su ocurrencia (la del 26 recibe el suyo del 26).
+    const two = { ...data, transactions: [...data.transactions, fixtureTx({ id: 'pay26', amountMinor: 4000, categoryId: 'utilities', date: '2026-09-26' })] }
+    expect(unlinkedSettlements(two, FIX_TODAY).map((x) => [x.item.sourceId, x.transaction.id])).toEqual([
+      ['early', 'pay26'],
+      ['exact', 'pay'],
+    ])
+  })
+
+  it('escala con signo: alturas nunca negativas, el cero dentro del eje y la barra negativa baja del cero', () => {
+    const { y, bar } = signedScale([123810, -75682], 12, 130)
+    expect(y(0)).toBeGreaterThan(12)
+    expect(y(0)).toBeLessThan(130)
+    const income = bar(123810)
+    const refund = bar(-75682)
+    expect(income.height).toBeGreaterThan(0)
+    expect(refund.height).toBeGreaterThan(0)
+    expect(refund.y).toBeCloseTo(y(0))
+    expect(refund.y + refund.height).toBeCloseTo(130)
+    expect(income.height / refund.height).toBeCloseTo(123810 / 75682)
+    // Sin negativos, el cero es la base del eje (igual que antes).
+    expect(signedScale([500, 0], 12, 130).y(0)).toBe(130)
+  })
+})

@@ -3226,4 +3226,5 @@ export const pt: Record<keyof typeof es, string> = {
   'review.effectAvailableSame': 'Disponível: sem mudança (usa o que já estava reservado)',
   'review.plannedIncome': 'Data futura: fica como receita prevista e não soma ao disponível até você recebê-la',
   'review.plannedExpense': 'Data futura: fica como despesa prevista; não muda o saldo de hoje',
+  'stats.netNegative': 'Gasto líquido negativo: as devoluções superaram as despesas do período, por isso a barra fica abaixo do zero (a tabela mostra o mesmo valor).',
 }

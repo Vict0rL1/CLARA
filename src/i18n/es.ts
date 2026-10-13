@@ -3227,4 +3227,5 @@ export const es = {
   'review.effectAvailableSame': 'Disponible: sin cambio (usa lo que ya estaba reservado)',
   'review.plannedIncome': 'Fecha futura: queda como ingreso previsto y no suma a lo disponible hasta que lo recibas',
   'review.plannedExpense': 'Fecha futura: queda como gasto previsto; no cambia el saldo de hoy',
+  'stats.netNegative': 'Gasto neto negativo: las devoluciones superaron a los gastos del periodo, así que su barra baja del cero (la tabla muestra la misma cifra).',
 } as const

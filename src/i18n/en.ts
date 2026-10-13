@@ -3228,4 +3228,5 @@ export const en: Record<keyof typeof es, string> = {
   'review.effectAvailableSame': 'Available: no change (uses what was already set aside)',
   'review.plannedIncome': 'Future date: saved as expected income; it doesn\'t add to what you can spend until you receive it',
   'review.plannedExpense': 'Future date: saved as an expected expense; today\'s balance doesn\'t change',
+  'stats.netNegative': 'Negative net spending: refunds exceeded expenses in that period, so its bar drops below zero (the table shows the same figure).',
 }

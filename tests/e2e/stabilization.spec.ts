@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { START, available, go, openDetails, pickCategory, startDemo, storedData } from './helpers'
+import { START, available, go, openDetails, pickCategory, startDemo, storedData, writeStoredData } from './helpers'
 
 /**
  * Regresiones de navegador de la auditoría posterior (2026-10-12/13) sobre `e7c9d87`. Cada prueba
@@ -250,4 +250,30 @@ test('7 · con «uber» y «uber eats» el asistente elige la regla más especí
   await expect(page.getByText('3 movimientos registrados').first()).toBeVisible()
   await go(page, '/')
   await expect(await available(page)).toHaveText('$99.78')
+})
+
+test('8 · con más devoluciones que gastos, la barra de gasto baja del cero (ninguna altura negativa) y gráfico, aviso y tabla dicen lo mismo', async ({ page }) => {
+  await startDemo(page)
+  const data = JSON.parse((await storedData(page))!) as { accounts: { id: string }[]; transactions: unknown[] }
+  const at = '2026-09-28T15:00:00.000Z'
+  data.transactions.push({ id: 'refund-big', kind: 'refund', status: 'realized', amountMinor: 200000, currency: 'CAD', date: '2026-09-20', accountId: data.accounts[0]!.id, categoryId: 'dining', note: 'Devolución grande', createdAt: at, updatedAt: at, realizedAt: at })
+  await writeStoredData(page, data)
+  await page.reload()
+  await go(page, '/estadisticas')
+  const bars = page.locator('.bars').first()
+  await expect(bars).toBeVisible()
+  const heights = await bars.locator('rect.bars__bar').evaluateAll((els) => els.map((e) => Number(e.getAttribute('height'))))
+  expect(heights.length).toBeGreaterThan(0)
+  for (const h of heights) expect(h).toBeGreaterThanOrEqual(0)
+  const negative = bars.locator('rect.bars__bar--negative')
+  await expect(negative).toHaveCount(1)
+  await expect(negative).toHaveAttribute('data-value', '-75682')
+  // Se ve (altura real) y está por debajo de la línea del cero.
+  const [barBox, axisY] = await Promise.all([negative.evaluate((e) => ({ y: Number(e.getAttribute('y')), h: Number(e.getAttribute('height')) })), bars.locator('line.chart__axis').first().getAttribute('y1')])
+  expect(barBox.h).toBeGreaterThan(10)
+  expect(barBox.y).toBeCloseTo(Number(axisY), 1)
+  await expect(bars.getByTestId('bars-negative-note')).toContainText('las devoluciones superaron a los gastos')
+  await expect(page.getByTestId('bars-tooltip')).toContainText('Gastos -$756.82')
+  await bars.getByRole('button', { name: 'Ver tabla' }).click()
+  await expect(bars.locator('tbody tr').last()).toContainText('-$756.82')
 })

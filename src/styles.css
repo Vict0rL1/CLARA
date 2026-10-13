@@ -5187,6 +5187,19 @@ li.is-selected > .item--select {
 .bars__bar.series-2 {
   fill: var(--series-2);
 }
+/* Gasto neto negativo (más devoluciones que gastos): baja del cero, con borde discontinuo + nota de texto. */
+.bars__bar--negative {
+  fill-opacity: 0.55;
+  stroke: var(--series-2);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 2;
+}
+.bars__note {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin: 6px 0 0;
+}
 .bars__tip {
   margin: 4px 0 0;
   font-size: var(--text-sm);

@@ -3226,4 +3226,5 @@ export const fr: Record<keyof typeof es, string> = {
   'review.effectAvailableSame': 'Disponible : inchangé (utilise ce qui était déjà réservé)',
   'review.plannedIncome': 'Date future : enregistré comme revenu prévu ; il ne s\'ajoute pas au disponible avant d\'être reçu',
   'review.plannedExpense': 'Date future : enregistré comme dépense prévue ; le solde d\'aujourd\'hui ne change pas',
+  'stats.netNegative': 'Dépenses nettes négatives : les remboursements ont dépassé les dépenses de la période, la barre passe donc sous zéro (le tableau affiche le même montant).',
 }
