@@ -72,7 +72,10 @@ function sanitize(remote: unknown, fallback: ParsedEntry | undefined, ctx: Parse
   const categoryId = typeof r.categoryId === 'string' && allowed.has(r.categoryId) ? r.categoryId : base.categoryId
   const description = typeof r.description === 'string' && r.description.trim() ? r.description.trim().slice(0, 120) : base.description
   const confidence = typeof r.confidence === 'number' ? Math.max(0.05, Math.min(0.95, r.confidence)) : base.confidence
-  return { ...base, kind, amountMinor: amount, date, ...(categoryId ? { categoryId } : {}), description, confidence }
+  // AS-01: una moneda que el servicio detectó y no es la del presupuesto se conserva (nunca se convierte).
+  const remoteCurrency = typeof r.currency === 'string' && /^[A-Za-z]{3}$/.test(r.currency) ? r.currency.toUpperCase() : undefined
+  const foreignCurrency = base.foreignCurrency ?? (remoteCurrency && remoteCurrency !== ctx.currency ? remoteCurrency : undefined)
+  return { ...base, kind, amountMinor: amount, date, ...(categoryId ? { categoryId } : {}), description, confidence, ...(foreignCurrency ? { foreignCurrency } : {}) }
 }
 
 /**

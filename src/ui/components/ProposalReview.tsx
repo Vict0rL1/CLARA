@@ -20,8 +20,14 @@ export function ProposalReviewView({ review, linked, onLink, returnTo, testId }:
   const today = useToday()
   const dup = review.duplicates[0]
   const match = review.scheduleMatch
+  const written = review.issues.find((i) => i.code === 'writtenCurrency')
   return (
     <div className="review" data-testid={testId}>
+      {written && (
+        <p className="review__line review__line--warning" data-testid="review-currency">
+          <Icon name="alert" size={16} /> {t('issue.writtenCurrency', { found: String(written.params?.found ?? ''), expected: String(written.params?.expected ?? '') })}
+        </p>
+      )}
       {review.alreadySaved && (
         <p className="review__line review__line--info">
           <Icon name="info" size={16} /> {t('review.alreadySaved')}

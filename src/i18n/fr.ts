@@ -3211,4 +3211,7 @@ export const fr: Record<keyof typeof es, string> = {
   'stats.trendExplain': 'Dépenses cumulées jour après jour sur la période par rapport à la précédente, alignées par jour écoulé. La précédente est tracée en entier ; l’actuelle, jusqu’à aujourd’hui.',
   'stats.topExplain': 'Les cinq commerces (ou notes, sans commerce) avec le plus de dépenses nettes sur la période. Sans commerce ni note, non compté.',
   'data.preMigration.download': 'Télécharger',
+  'issue.writtenCurrency': 'Vous avez écrit {found} ; ce budget utilise {expected} et rien n’est converti. Saisissez le montant en {expected} ou retirez la ligne.',
+  'assistant.currencyBlocked_one': '1 ligne est dans une autre devise. Saisissez son montant en {currency} ou retirez-la pour enregistrer.',
+  'assistant.currencyBlocked_other': '{count} lignes sont dans une autre devise. Saisissez leurs montants en {currency} ou retirez-les pour enregistrer.',
 }

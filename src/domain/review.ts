@@ -32,6 +32,11 @@ export interface Proposal {
   /** Texto con el que se buscan reglas y duplicados (descripción del banco o nota). */
   description?: string
   note?: string
+  /**
+   * Moneda escrita junto al importe (código o símbolo) cuando no es la del presupuesto. Bloquea la
+   * propuesta: nunca se convierte ni se asume la del presupuesto (AS-01, igual que el CSV).
+   */
+  writtenCurrency?: string
 }
 
 export interface ProposalReview {
@@ -75,7 +80,9 @@ export function matchSchedule(candidates: readonly PlanItem[], p: Pick<Proposal,
 function reviewOne(data: AppData, p: Proposal, today: LocalDate, candidates: readonly PlanItem[]): ProposalReview {
   const issues: Issue[] = []
   const amountOk = p.amountMinor !== null && Number.isInteger(p.amountMinor) && p.amountMinor > 0
-  if (p.amountMinor === null) issues.push({ path: 'amountMinor', code: 'required' })
+  const foreign = p.writtenCurrency && p.writtenCurrency !== data.settings.currency ? p.writtenCurrency : undefined
+  if (foreign) issues.push({ path: 'amountMinor', code: 'writtenCurrency', params: { found: foreign, expected: data.settings.currency } })
+  else if (p.amountMinor === null) issues.push({ path: 'amountMinor', code: 'required' })
   const draft: Transaction = {
     id: p.id,
     kind: p.kind,

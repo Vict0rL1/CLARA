@@ -3212,4 +3212,7 @@ export const es = {
   'stats.trendExplain': 'Gasto acumulado día a día del periodo frente al anterior, alineados por día transcurrido. El anterior se dibuja completo; el actual, hasta hoy.',
   'stats.topExplain': 'Los cinco comercios (o notas, si no hay comercio) con más gasto neto en el periodo. Sin comercio ni nota no se cuenta.',
   'data.preMigration.download': 'Descargar',
+  'issue.writtenCurrency': 'Escribiste {found}; este presupuesto usa {expected} y no se convierte. Escribe el importe en {expected} o quita la línea.',
+  'assistant.currencyBlocked_one': '1 línea está en otra moneda. Escribe su importe en {currency} o quítala para poder registrar.',
+  'assistant.currencyBlocked_other': '{count} líneas están en otra moneda. Escribe sus importes en {currency} o quítalas para poder registrar.',
 } as const

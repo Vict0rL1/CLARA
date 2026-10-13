@@ -3213,4 +3213,7 @@ export const en: Record<keyof typeof es, string> = {
   'stats.trendExplain': 'Cumulative spending day by day for the period versus the previous one, aligned by elapsed day. The previous one is drawn in full; the current one, up to today.',
   'stats.topExplain': 'The five merchants (or notes, when there is no merchant) with the most net spending in the period. Without a merchant or note it is not counted.',
   'data.preMigration.download': 'Download',
+  'issue.writtenCurrency': 'You wrote {found}; this budget uses {expected} and nothing is converted. Enter the amount in {expected} or remove the line.',
+  'assistant.currencyBlocked_one': '1 line is in another currency. Enter its amount in {currency} or remove it to record.',
+  'assistant.currencyBlocked_other': '{count} lines are in another currency. Enter their amounts in {currency} or remove them to record.',
 }

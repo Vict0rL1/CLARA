@@ -3211,4 +3211,7 @@ export const pt: Record<keyof typeof es, string> = {
   'stats.trendExplain': 'Gasto acumulado dia a dia do período frente ao anterior, alinhados por dia decorrido. O anterior é desenhado completo; o atual, até hoje.',
   'stats.topExplain': 'Os cinco comércios (ou notas, se não há comércio) com mais gasto líquido no período. Sem comércio nem nota não conta.',
   'data.preMigration.download': 'Baixar',
+  'issue.writtenCurrency': 'Você escreveu {found}; este orçamento usa {expected} e nada é convertido. Escreva o valor em {expected} ou remova a linha.',
+  'assistant.currencyBlocked_one': '1 linha está em outra moeda. Escreva o valor em {currency} ou remova-a para registrar.',
+  'assistant.currencyBlocked_other': '{count} linhas estão em outra moeda. Escreva os valores em {currency} ou remova-as para registrar.',
 }

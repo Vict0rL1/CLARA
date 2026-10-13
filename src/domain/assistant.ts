@@ -23,6 +23,8 @@ export interface ConfirmedEntry {
   /** Vínculo con un pago o ingreso programado abierto (lo eligió la persona en la revisión). */
   scheduleId?: string
   occurrenceDate?: LocalDate
+  /** Moneda escrita por la persona, si la hubo. Distinta de la del presupuesto → no se guarda (AS-01). */
+  writtenCurrency?: string
 }
 
 /** Registra todas las entradas o ninguna. Los errores llevan el índice de la entrada (`entries[i].campo`). */
@@ -32,6 +34,10 @@ export function saveConfirmedEntries(data: AppData, entries: readonly ConfirmedE
   const saved: Transaction[] = []
   const issues: Issue[] = []
   entries.forEach((e, i) => {
+    if (e.writtenCurrency && e.writtenCurrency !== data.settings.currency) {
+      issues.push({ path: `entries[${i}].amountMinor`, code: 'writtenCurrency', params: { found: e.writtenCurrency, expected: data.settings.currency } })
+      return
+    }
     const r = saveTransaction(
       next,
       {
