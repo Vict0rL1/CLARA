@@ -25,10 +25,11 @@ import { ScreenSkeleton } from './ui/components/base'
 import { Home } from './ui/screens/Home'
 import { MovementForm } from './ui/screens/MovementForm'
 import { Movements } from './ui/screens/Movements'
-import { Setup } from './ui/screens/Setup'
 import { logError } from './ui/errorLog'
 
 // Pantallas secundarias: se cargan aparte (el service worker las guarda igual para usarlas sin conexión).
+// Bienvenida: solo la primera vez (y tras borrar los datos). Quien ya usa Clara no la descarga al abrir.
+const Setup = lazy(() => import('./ui/screens/Setup').then((m) => ({ default: m.Setup })))
 const Afford = lazy(() => import('./ui/screens/Afford').then((m) => ({ default: m.Afford })))
 const Insights = lazy(() => import('./ui/screens/Insights').then((m) => ({ default: m.Insights })))
 const Plan = lazy(() => import('./ui/screens/Plan').then((m) => ({ default: m.Plan })))
@@ -111,7 +112,9 @@ export function App() {
         {state.phase === 'ready' && !state.data && (
           <>
             {state.storage === 'memory' && <MemoryWarning />}
-            <Setup language={setupLanguage} onLanguageChange={setSetupLanguage} />
+            <Suspense fallback={<Loading />}>
+              <Setup language={setupLanguage} onLanguageChange={setSetupLanguage} />
+            </Suspense>
           </>
         )}
         {state.phase === 'ready' && state.data && !waitingLanguage && <LockedShell />}

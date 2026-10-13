@@ -435,3 +435,31 @@ test('14 · un deslizamiento rápido (soltar antes de que se pinte el movimiento
   await row.getByRole('button', { name: /^Eliminar «/ }).click({ timeout: 5000 })
   await expect(page.getByText('Movimiento enviado a la papelera')).toBeVisible()
 })
+
+test('15 · el historial de una meta con 120 movimientos enseña cuántos hay y deja llegar al más antiguo', async ({ page }) => {
+  await startDemo(page)
+  const data = JSON.parse((await storedData(page))!) as { goals: { name: string; allocations: { id: string; amountMinor: number; date: string; createdAt: string; reason?: string }[] }[] }
+  const goal = data.goals.find((g) => g.name === 'Fondo de emergencia')!
+  const start = goal.allocations.length
+  // Aportes sintéticos de $1.00, uno por día hacia atrás desde el 27-sep-2026 (el más antiguo, el 31-may-2026).
+  for (let i = 0; i < 120 - start; i++) {
+    const d = new Date(Date.UTC(2026, 8, 27 - i))
+    const date = d.toISOString().slice(0, 10)
+    goal.allocations.push({ id: `hist-${i}`, amountMinor: 100, date, createdAt: `${date}T12:00:00.000Z`, reason: 'contribution' })
+  }
+  await writeStoredData(page, data)
+  await page.reload()
+  await go(page, '/plan/metas')
+  const card = page.locator('article.goal', { hasText: 'Fondo de emergencia' })
+  await card.locator('.goal__history summary').click()
+  const list = card.getByTestId('goal-history').locator('li')
+  await expect(list).toHaveCount(50)
+  await expect(card.getByTestId('goal-history-count')).toHaveText('Mostrando 50 de 120 aportes y liberaciones, del más reciente al más antiguo')
+  await card.getByTestId('goal-history-more').click()
+  await expect(list).toHaveCount(100)
+  await expect(card.getByTestId('goal-history-more')).toHaveText('Mostrar más (20 restantes)')
+  await card.getByTestId('goal-history-more').click()
+  await expect(list).toHaveCount(120)
+  await expect(card.getByTestId('goal-history-count')).toContainText('Mostrando 120 de 120')
+  await expect(card.getByTestId('goal-history-more')).toHaveCount(0)
+})

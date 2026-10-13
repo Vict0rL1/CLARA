@@ -3238,4 +3238,5 @@ export const es = {
   'bankImport.omittedAfter_other': '{count} filas del archivo quedaron fuera',
   'bankImport.tooManyRows': 'El archivo tiene {total} filas y Clara analiza como máximo {max} por vez: las filas {from} a {to} ({omitted}) no se muestran ni se importarán.',
   'bankImport.possibleNote': 'Los posibles duplicados coinciden en importe y tipo con un movimiento que registraste a mano (a 3 días o menos) o con uno importado antes el mismo día cuya descripción empieza igual. Quedan desmarcados: márcalos solo si son movimientos distintos.',
+  'goals.historyShowing': 'Mostrando {shown} de {total} aportes y liberaciones, del más reciente al más antiguo',
 } as const

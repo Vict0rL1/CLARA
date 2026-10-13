@@ -3237,4 +3237,5 @@ export const pt: Record<keyof typeof es, string> = {
   'bankImport.omittedAfter_other': '{count} linhas do arquivo ficaram de fora',
   'bankImport.tooManyRows': 'O arquivo tem {total} linhas e a Clara analisa no máximo {max} por vez: as linhas {from} a {to} ({omitted}) não são mostradas nem serão importadas.',
   'bankImport.possibleNote': 'Os possíveis duplicados coincidem em valor e tipo com um movimento que você registrou à mão (a 3 dias ou menos) ou com um importado antes no mesmo dia cuja descrição começa igual. Ficam desmarcados: marque-os só se forem movimentos diferentes.',
+  'goals.historyShowing': 'Mostrando {shown} de {total} aportes e liberações, do mais recente ao mais antigo',
 }

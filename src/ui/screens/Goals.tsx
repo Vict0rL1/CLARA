@@ -349,10 +349,14 @@ function RegularGoalForm({ existing, editId, returnTo }: { existing: Goal | unde
 }
 
 /* Etapa 3: historial de aportes (apartados virtuales) con su motivo; solo muestra. */
+/** Aportes que se muestran de cada vez; los anteriores se cargan con «Mostrar más» (punto 15). */
+const GOAL_HISTORY_PAGE = 50
+
 function GoalHistory({ goal }: { goal: Goal }) {
   const { t } = useT()
   const fmt = useFormat()
   const today = useToday()
+  const [limit, setLimit] = useState(GOAL_HISTORY_PAGE)
   const rows = [...goal.allocations].sort((a, b) => (a.date === b.date ? b.createdAt.localeCompare(a.createdAt) : b.date.localeCompare(a.date)))
   const reasonOf = (a: Goal['allocations'][number]): AllocationReason => a.reason ?? (a.amountMinor < 0 ? 'release' : 'contribution')
   return (
@@ -365,7 +369,7 @@ function GoalHistory({ goal }: { goal: Goal }) {
         <p className="note">{t('goals.historyEmpty')}</p>
       ) : (
         <ul className="item-list" data-testid="goal-history">
-          {rows.slice(0, 50).map((a) => (
+          {rows.slice(0, limit).map((a) => (
             <li key={a.id} className="item">
               <span className="item__main">
                 <span className="item__title">{t(`goals.reason.${reasonOf(a)}`)}</span>
@@ -375,6 +379,16 @@ function GoalHistory({ goal }: { goal: Goal }) {
             </li>
           ))}
         </ul>
+      )}
+      {rows.length > GOAL_HISTORY_PAGE && (
+        <p className="note" data-testid="goal-history-count">
+          {t('goals.historyShowing', { shown: Math.min(limit, rows.length), total: rows.length })}
+        </p>
+      )}
+      {rows.length > limit && (
+        <button type="button" className="btn btn--secondary btn--small" onClick={() => setLimit(limit + GOAL_HISTORY_PAGE)} data-testid="goal-history-more">
+          {t('movements.showMore', { count: rows.length - limit })}
+        </button>
       )}
     </details>
   )

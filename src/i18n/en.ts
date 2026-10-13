@@ -3239,4 +3239,5 @@ export const en: Record<keyof typeof es, string> = {
   'bankImport.omittedAfter_other': '{count} rows of the file were left out',
   'bankImport.tooManyRows': 'The file has {total} rows and Clara reviews at most {max} at a time: rows {from} to {to} ({omitted}) aren’t shown and won’t be imported.',
   'bankImport.possibleNote': 'Possible duplicates match the amount and type of a transaction you entered by hand (3 days apart or less) or of one imported before on the same day whose description starts the same way. They are unchecked: check them only if they are different transactions.',
+  'goals.historyShowing': 'Showing {shown} of {total} contributions and releases, newest first',
 }

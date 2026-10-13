@@ -3237,4 +3237,5 @@ export const fr: Record<keyof typeof es, string> = {
   'bankImport.omittedAfter_other': '{count} lignes du fichier n’ont pas été importées',
   'bankImport.tooManyRows': 'Le fichier compte {total} lignes et Clara en analyse {max} au maximum à la fois : les lignes {from} à {to} ({omitted}) ne sont ni affichées ni importées.',
   'bankImport.possibleNote': 'Les doublons possibles correspondent au montant et au type d’une opération saisie à la main (à 3 jours ou moins) ou d’une opération importée le même jour dont le libellé commence de la même façon. Ils restent décochés : cochez-les seulement s’il s’agit d’opérations différentes.',
+  'goals.historyShowing': 'Affichage de {shown} sur {total} versements et libérations, du plus récent au plus ancien',
 }
