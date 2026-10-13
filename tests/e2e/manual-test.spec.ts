@@ -159,6 +159,9 @@ test('prueba manual: configuración, Inicio, registro, historial, planes, estad�
   await expect(page.getByRole('heading', { name: 'Dos tipos de planes' })).toBeVisible()
   await page.getByRole('button', { name: 'Omitir' }).click()
   await expect(page.getByTestId('plans-onboarding')).toHaveCount(0)
+  // La preferencia se guarda en IndexedDB de forma asíncrona: esperar a que esté escrita antes de recargar
+  // (en CI, a 320 px, la recarga llegaba antes que el guardado y la introducción volvía a salir).
+  await expect.poll(async () => /"toursSeen":\[[^\]]*"plans"/.test((await storedData(page)) ?? ''), { timeout: 10_000 }).toBe(true)
   await page.reload()
   await expect(page.locator('#page-title')).toBeVisible()
   await expect(page.getByTestId('plans-onboarding')).toHaveCount(0)
