@@ -1116,3 +1116,38 @@ compactos ni se redondean para calcular.
   con signo (`-12.50`) para que las sumas de la hoja funcionen. El contenido numérico no cambia.
 - Fidelidad: una nota que empiece por «-» o «+» se verá con el apóstrofo delante en la hoja; es el
   coste de no ejecutar nada. Las copias de seguridad (JSON) no se tocan: no son hojas de cálculo.
+
+## 36. Revisión única de propuestas, reglas explicadas, programados e historial (etapa 2)
+
+- **Revisión única** (`domain/review.ts`): toda propuesta de registro —fila de CSV, línea de texto o
+  voz del asistente, foto de recibo— pasa por las mismas comprobaciones antes de guardarse:
+  validación del formulario (`validateTransaction` + cuenta archivada), posibles duplicados
+  (`similarTransactions`, ±3 días, mismo tipo, cuenta e importe), coincidencia con un pago o ingreso
+  programado abierto (misma regla que el formulario: importe igual, o misma categoría y fecha; ventana
+  14 días hacia delante y 45 hacia atrás; solo para propuestas realizadas), efecto sobre lo
+  disponible (`txEffectOnBudgetPool`) y, si la categoría viene de una regla, cuál y por qué. Nada se
+  guarda desde aquí. **Vincular** una propuesta con la ocurrencia es decisión de la persona (casilla
+  desmarcada): al guardarse lleva `scheduleId` + `occurrenceDate` y la ocurrencia cuenta como
+  movimiento, no como reserva (§5). **Reintentos**: los ids se generan al abrir la vista previa y
+  `saveTransaction` es idempotente por id, así que confirmar dos veces no duplica; una propuesta cuyo
+  id ya está guardado se marca «ya registrado». Nada ambiguo se guarda solo: sin importe no hay
+  registro, y una línea que parece transferencia sigue bloqueada hasta cambiar el tipo (§32).
+- **Reglas explicadas** (`domain/rules.ts`): `explainRuleMatch` da la misma decisión que
+  `matchCategoryRule` con el porqué (`only`, `longest`, `oldest`) y las reglas que perdieron;
+  `ruleConflicts` lista pares del mismo tipo con categorías distintas cuyos patrones se contienen o
+  son iguales (gana el más largo; a igualdad, la más antigua) y se muestran en Ajustes › Reglas sin
+  corregirse solos; `previewRule` cuenta los movimientos ya registrados cuya nota o comercio contiene
+  el patrón y cuántos tienen otra categoría: **una regla nunca recategoriza lo existente**, solo
+  propone en registros nuevos. Detectar un patrón repetido nunca crea un programado.
+- **Programados** (`domain/scheduledJobs.ts`): `endSchedule` fija `endDate` (≥ `startDate`); no hay
+  ocurrencias después, las pagadas y sus movimientos se conservan y **las vencidas sin marcar siguen
+  pendientes** (terminar no borra una deuda en silencio). `scheduleSummary` da próximas fechas (sin
+  pausadas, omitidas ni pagadas), historial de ocurrencias liquidadas (con «parcial»), recuentos y
+  vencidas; es lo que enseña la hoja de detalle del calendario con marcar, pausar/reanudar, terminar
+  y editar la serie (editar cambia todas las próximas; para una sola, marcar con otro importe u omitir).
+- **Historial** (`domain/history.ts`): `historyOfRecord` lista, para un registro, lo que el historial
+  local guardó (creado, campos que cambiaron sin `updatedAt`, enviado a la papelera), lo más reciente
+  primero. Solo cubre desde que el dispositivo empezó a guardar historial o desde el último corte:
+  nunca inventa un «antes». En Movimientos, el orden (fecha o importe, ascendente o descendente) y el
+  **neto del día** (ingresos y devoluciones suman, gastos restan, ajustes según su sentido,
+  transferencias no cuentan) son presentación: no cambian ningún saldo.

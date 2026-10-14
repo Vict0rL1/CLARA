@@ -17,7 +17,8 @@ import { markOccurrence, saveTransaction, type OpContext } from '../../domain/op
 import { periodsProposedFor, setTransactionPeriods } from '../../domain/periodBudgets'
 import { inferRefundSplit, refundableByCategory, suggestSplitFromHistory, txCategoryIds } from '../../domain/splits'
 import { openItemsUntil } from '../../domain/planItems'
-import { matchCategoryRule } from '../../domain/rules'
+import { explainRuleMatch } from '../../domain/rules'
+import { historyOfRecord } from '../../domain/history'
 import { similarTransactions } from '../../domain/duplicates'
 import { readMovementLink, suggestCategoryForMerchant } from '../../domain/shortcutLink'
 import { lastUsedAccount, recentCategories } from '../../domain/quickEntry'
@@ -226,6 +227,7 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
   // Regla de categoría: solo propone mientras la persona no elija la categoría a mano.
   const [categoryTouched, setCategoryTouched] = useState(() => !!existing || !!duplicateOf || !!q.get('category') || !!prefill)
   const [ruleApplied, setRuleApplied] = useState<CategoryRule | undefined>(undefined)
+  const [ruleCompetitors, setRuleCompetitors] = useState(0)
   // Vínculo con un pago o ingreso previsto (solo movimientos nuevos): evita contarlo dos veces.
   const [linkKey, setLinkKey] = useState('')
   const [expectRemainder, setExpectRemainder] = useState(false)
@@ -296,13 +298,15 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
     setNote(value)
     // Una regla de categoría nunca sobrescribe una división manual.
     if (categoryTouched || kind === 'transfer' || splitDrafts) return
-    const rule = matchCategoryRule(value, kind, data.categoryRules, data.categories)
-    if (rule) {
-      setCategoryId(rule.categoryId)
-      setRuleApplied(rule)
+    const match = explainRuleMatch(value, kind, data.categoryRules, data.categories, data.categoryPrefs)
+    if (match) {
+      setCategoryId(match.rule.categoryId)
+      setRuleApplied(match.rule)
+      setRuleCompetitors(match.competitors.length)
     } else if (ruleApplied) {
       setCategoryId(kind === 'income' ? 'salary' : 'other_expense')
       setRuleApplied(undefined)
+      setRuleCompetitors(0)
     }
   }
 
@@ -573,6 +577,7 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
               {t('movementForm.scopeThisOnly', { name: schedule.name })} <a href={href(`/plan/programado/editar/${schedule.id}`)}>{t('movementForm.editSchedule')}</a>
             </p>
           )}
+          <RecordHistory id={existing.id} />
         </section>
       )}
 
@@ -824,7 +829,7 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
             error={fieldError(t, fmt, issues, 'categoryId')}
             hint={
               ruleApplied
-                ? t('movementForm.ruleHint', { pattern: ruleApplied.pattern })
+                ? `${t('movementForm.ruleHint', { pattern: ruleApplied.pattern })}${ruleCompetitors > 0 ? ` ${t('movementForm.ruleCompetitors', { count: ruleCompetitors })}` : ''}`
                 : merchantSuggestion && categoryId === merchantSuggestion && link?.merchant
                   ? t('movementForm.merchantCategoryHint', { merchant: link.merchant })
                   : kind === 'refund'
@@ -1162,5 +1167,51 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
         />
       )}
     </div>
+  )
+}
+
+const HISTORY_FIELD_KEY: Record<string, MessageKey> = {
+  amountMinor: 'fields.amount',
+  date: 'fields.date',
+  categoryId: 'fields.category',
+  accountId: 'fields.account',
+  toAccountId: 'fields.toAccount',
+  note: 'fields.noteOptional',
+  kind: 'fields.kind',
+  status: 'fields.status',
+  tagIds: 'fields.tags',
+  merchant: 'fields.merchant',
+}
+
+/** Historial local de cambios de este movimiento (etapa 2): honesto sobre su alcance, plegado por defecto. */
+function RecordHistory({ id }: { id: string }) {
+  const { t } = useT()
+  const fmt = useFormat()
+  const data = useData()
+  const items = useMemo(() => historyOfRecord(data, 'transactions', id), [data, id])
+  return (
+    <details className="explain" data-testid="movement-history">
+      <summary>
+        <Icon name="clock" size={16} />
+        {t('movementForm.historyTitle')}
+      </summary>
+      <p className="note">{t('movementForm.historyNote')}</p>
+      {items.length === 0 ? (
+        <p className="note">{t('movementForm.historyEmpty')}</p>
+      ) : (
+        <ul className="bullets">
+          {items.map((i) => (
+            <li key={i.entryId}>
+              {fmt.timestamp(i.at)} ·{' '}
+              {i.kind === 'created'
+                ? t('movementForm.historyCreated')
+                : i.kind === 'deleted'
+                  ? t('movementForm.historyDeleted')
+                  : t('movementForm.historyUpdated', { fields: i.fields.map((f) => (HISTORY_FIELD_KEY[f] ? t(HISTORY_FIELD_KEY[f]!) : f)).join(', ') })}
+            </li>
+          ))}
+        </ul>
+      )}
+    </details>
   )
 }

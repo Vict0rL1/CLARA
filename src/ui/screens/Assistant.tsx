@@ -30,6 +30,9 @@ import { Icon } from '../components/Icon'
 import { useToast } from '../components/toastContext'
 import { useFormat } from '../format'
 import { accountOptions, issueMessage } from '../labels'
+import { reviewProposals } from '../../domain/review'
+import { ProposalReviewView } from '../components/ProposalReview'
+import { signedMoney } from '../signedMoney'
 import { moneyErrorMessage } from '../moneyText'
 import { href, useNavigateIfStillHere, withQuery, type Route } from '../router'
 
@@ -48,6 +51,8 @@ interface Line {
   note: string
   /** Foto del recibo (data URL) cuando la línea viene de una foto. */
   receiptUri?: string
+  /** La persona decidió vincularla con el pago programado que coincide (revisión). */
+  linked?: boolean
 }
 
 type SpeechCtor = new () => { lang: string; interimResults: boolean; continuous: boolean; onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onend: (() => void) | null; onerror: (() => void) | null; start: () => void; stop: () => void }
@@ -171,6 +176,30 @@ export function Assistant({ route }: { route: Route }) {
 
   const update = (id: string, patch: Partial<Line>) => setLines((ls) => ls?.map((l) => (l.id === id ? { ...l, ...patch } : l)) ?? null)
 
+  // Revisión única (etapa 2): las mismas comprobaciones que el CSV y el formulario, línea por línea.
+  const reviewed = useMemo(() => {
+    if (!lines) return null
+    return reviewProposals(
+      data,
+      lines.map((l) => {
+        const parsed = parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale)
+        return {
+          id: l.id,
+          source: l.receiptUri ? ('ai_photo' as const) : ('ai_text' as const),
+          kind: l.kind,
+          amountMinor: parsed.ok ? parsed.minor : null,
+          date: l.date,
+          accountId,
+          categoryId: l.categoryId,
+          description: l.entry.description,
+          note: l.note.trim() || undefined,
+        }
+      }),
+      today,
+    )
+  }, [lines, data, accountId, today])
+  const reviewOf = (id: string) => reviewed?.reviews.find((r) => r.id === id)
+
   const transferRows = lines?.filter((l) => l.review === 'transfer').length ?? 0
   const availableMinor = useMemo(() => computeBudget(data, today).availableMinor, [data, today])
   const implausibleTimes = (l: Line): number | null | false => {
@@ -190,7 +219,8 @@ export function Assistant({ route }: { route: Route }) {
         errs.push({ path: `entries[${i}].amountMinor`, code: 'invalidAmount' })
         return
       }
-      entries.push({ id: l.id, kind: l.kind, amountMinor: parsed.minor, date: l.date, accountId, categoryId: l.categoryId, note: l.note.trim() || undefined, merchant: l.entry.merchant, ...(l.receiptUri ? { receiptUri: l.receiptUri, source: 'photo' as const } : { source: fromShortcut ? ('shortcut' as const) : ('ai_text' as const) }) })
+      const match = l.linked ? reviewOf(l.id)?.scheduleMatch : undefined
+      entries.push({ id: l.id, kind: l.kind, amountMinor: parsed.minor, date: l.date, accountId, categoryId: l.categoryId, note: l.note.trim() || undefined, merchant: l.entry.merchant, ...(match ? { scheduleId: match.sourceId, occurrenceDate: match.date } : {}), ...(l.receiptUri ? { receiptUri: l.receiptUri, source: 'photo' as const } : { source: fromShortcut ? ('shortcut' as const) : ('ai_text' as const) }) })
     })
     if (errs.length) {
       setIssues(errs)
@@ -369,6 +399,13 @@ export function Assistant({ route }: { route: Route }) {
             {t('assistant.preview', { count: lines.length })}
           </h2>
           <p className="note">{t('assistant.previewHint')}</p>
+          {reviewed && (
+            <p className="note" data-testid="review-summary">
+              {t('review.summary', { amount: signedMoney(fmt, reviewed.totalEffectMinor) })}
+              {reviewed.counts.duplicates > 0 ? ` · ${tn('review.duplicatesCount', reviewed.counts.duplicates)}` : ''}
+              {reviewed.counts.scheduleMatches > 0 ? ` · ${tn('review.scheduleCount', reviewed.counts.scheduleMatches)}` : ''}
+            </p>
+          )}
           {activeAccounts(data.accounts).length > 1 && <SelectField label={t('assistant.account')} value={accountId} onChange={(e) => setAccountId(e.target.value)} options={accountOptions(data.accounts, t)} />}
           <ul className="plain-list assistant__lines" data-testid="assistant-preview">
             {lines.map((l, i) => (
@@ -395,6 +432,7 @@ export function Assistant({ route }: { route: Route }) {
                     <li key={h}>{t(`assistant.hint.${h}` as MessageKey)}</li>
                   ))}
                 </ul>
+                {reviewOf(l.id) && <ProposalReviewView review={reviewOf(l.id)!} linked={!!l.linked} onLink={(v) => update(l.id, { linked: v })} returnTo="/asistente" testId={`review-${i}`} />}
                 <div className="button-row">
                   <a className="btn btn--ghost btn--small" href={href(withQuery('/movimientos/nuevo', { kind: l.kind, amount: parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale).ok ? (parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale) as { minor: number }).minor : undefined, date: l.date, note: l.note, category: l.categoryId, account: accountId, returnTo: '/asistente' }))}>
                     {t('assistant.openForm')}

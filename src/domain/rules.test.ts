@@ -85,3 +85,51 @@ describe('operaciones de reglas', () => {
     expect(del.ok && del.data.categoryRules).toEqual([])
   })
 })
+
+describe('reglas explicadas (etapa 2)', () => {
+  const rule = (id: string, pattern: string, categoryId: string, createdAt = '2026-09-01T00:00:00.000Z', kind: 'expense' | 'income' = 'expense') => ({ id, pattern, kind, categoryId, createdAt, updatedAt: createdAt })
+
+  it('explica por qué gana una regla: única, la más larga o la más antigua', async () => {
+    const { explainRuleMatch } = await import('./rules')
+    const uber = rule('a', 'uber', 'transport')
+    const eats = rule('b', 'uber eats', 'dining')
+    const eats2 = rule('c', 'Uber Eats', 'groceries', '2026-09-02T00:00:00.000Z')
+    expect(explainRuleMatch('viaje en uber', 'expense', [uber, eats])).toMatchObject({ rule: { id: 'a' }, reason: 'only', competitors: [] })
+    expect(explainRuleMatch('pedido uber eats', 'expense', [uber, eats])).toMatchObject({ rule: { id: 'b' }, reason: 'longest', competitors: [{ id: 'a' }] })
+    expect(explainRuleMatch('pedido uber eats', 'expense', [eats2, eats, uber])).toMatchObject({ rule: { id: 'b' }, reason: 'oldest' })
+    expect(explainRuleMatch('taxi', 'expense', [uber, eats])).toBeUndefined()
+  })
+
+  it('lista los conflictos (patrón contenido o igual con otra categoría) y quién gana', async () => {
+    const { ruleConflicts } = await import('./rules')
+    const uber = rule('a', 'uber', 'transport')
+    const eats = rule('b', 'uber eats', 'dining')
+    const same = rule('c', 'UBER', 'groceries', '2026-09-05T00:00:00.000Z')
+    const income = rule('d', 'uber', 'salary', '2026-09-01T00:00:00.000Z', 'income')
+    const conflicts = ruleConflicts([uber, eats, same, income])
+    expect(conflicts.map((c) => [c.winner.id, c.loser.id, c.reason])).toEqual([
+      ['a', 'c', 'older'],
+      ['b', 'a', 'longer'],
+      ['b', 'c', 'longer'],
+    ])
+    // Misma categoría: no es conflicto.
+    expect(ruleConflicts([uber, rule('e', 'uber eats', 'transport')])).toEqual([])
+  })
+
+  it('previsualiza una regla sobre lo ya registrado sin cambiarlo', async () => {
+    const { previewRule } = await import('./rules')
+    const { baseData, tx } = await import('../test/fixtures')
+    const d = baseData({
+      transactions: [
+        tx({ id: 't1', kind: 'expense', note: 'Uber al trabajo', categoryId: 'transport', date: '2026-09-20' }),
+        tx({ id: 't2', kind: 'expense', merchant: 'Uber Eats', categoryId: 'dining', date: '2026-09-25' }),
+        tx({ id: 't3', kind: 'income', note: 'uber', categoryId: 'salary', date: '2026-09-26' }),
+      ],
+    })
+    const p = previewRule(d, 'uber', 'expense', 'transport')
+    expect(p).toMatchObject({ total: 2, withOtherCategory: 1 })
+    expect(p.sample.map((t) => t.id)).toEqual(['t2', 't1'])
+    expect(previewRule(d, 'u', 'expense', 'transport').total).toBe(0)
+    expect(d.transactions.map((t) => t.categoryId)).toEqual(['transport', 'dining', 'salary'])
+  })
+})

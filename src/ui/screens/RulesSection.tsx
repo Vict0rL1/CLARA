@@ -1,15 +1,15 @@
 /** Ajustes › Reglas de categoría: «si la descripción contiene…, usar esta categoría». */
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { categoriesForKind } from '../../domain/categories'
 import { newId } from '../../domain/ids'
 import { deleteCategoryRule, restoreCategoryRule, saveCategoryRule } from '../../domain/operations'
-import { RULE_PATTERN_MAX } from '../../domain/rules'
+import { previewRule, RULE_PATTERN_MAX, ruleConflicts } from '../../domain/rules'
 import type { CategoryRule } from '../../domain/types'
 import type { Issue } from '../../domain/validation'
 import { useT } from '../../i18n'
 import { useRun } from '../../state/hooks'
 import { useData } from '../../state/store'
-import { Card, EmptyState } from '../components/common'
+import { Alert, Card, EmptyState } from '../components/common'
 import { Dialog } from '../components/Dialog'
 import { Segmented, TextField } from '../components/fields'
 import { Icon } from '../components/Icon'
@@ -19,13 +19,14 @@ import { categoryLabel, fieldError, withCurrent } from '../labels'
 import { CategoryPicker } from '../components/CategoryPicker'
 
 export function RulesSection() {
-  const { t } = useT()
+  const { t, tn } = useT()
   const data = useData()
   const run = useRun()
   const toast = useToast()
   const [editing, setEditing] = useState<CategoryRule | 'new' | null>(null)
 
   const rules = [...data.categoryRules].sort((a, b) => a.pattern.localeCompare(b.pattern))
+  const conflicts = ruleConflicts(data.categoryRules)
 
   const remove = async (rule: CategoryRule) => {
     const { saved } = await run((d, c) => deleteCategoryRule(d, rule.id, c))
@@ -42,6 +43,15 @@ export function RulesSection() {
         <span id="rules-title">{t('rules.title')}</span>
       </h2>
       <p className="note">{t('rules.text')}</p>
+      {conflicts.length > 0 && (
+        <Alert tone="warning" icon="alert" title={t('rules.conflictsTitle')}>
+          <ul className="bullets" data-testid="rule-conflicts">
+            {conflicts.map((c) => (
+              <li key={`${c.winner.id}-${c.loser.id}`}>{t(c.reason === 'longer' ? 'rules.conflictLonger' : 'rules.conflictOlder', { winner: c.winner.pattern, loser: c.loser.pattern })}</li>
+            ))}
+          </ul>
+        </Alert>
+      )}
       {rules.length === 0 ? (
         <EmptyState compact icon="sparkles" title={t('rules.empty')} />
       ) : (
@@ -49,7 +59,9 @@ export function RulesSection() {
           {rules.map((r) => (
             <li key={r.id} className="item item--stacked">
               <p className="item__title">{t('rules.summary', { pattern: r.pattern, category: categoryLabel(t, r.categoryId) })}</p>
-              <p className="item__meta">{t(r.kind === 'income' ? 'rules.forIncome' : 'rules.forExpenses')}</p>
+              <p className="item__meta">
+                {t(r.kind === 'income' ? 'rules.forIncome' : 'rules.forExpenses')} · {tn('rules.previewCount', previewRule(data, r.pattern, r.kind, r.categoryId).total)}
+              </p>
               <div className="item__actions">
                 <button type="button" className="btn btn--small btn--ghost" onClick={() => setEditing(r)}>
                   <Icon name="edit" size={16} />
@@ -85,7 +97,7 @@ export function RuleDialog({
   /** Para crear una regla desde otra pantalla (por ejemplo, la importación). */
   initial?: Pick<CategoryRule, 'pattern' | 'kind' | 'categoryId'>
 }) {
-  const { t } = useT()
+  const { t, tn } = useT()
   const fmt = useFormat()
   const data = useData()
   const run = useRun()
@@ -98,6 +110,8 @@ export function RuleDialog({
   const [issues, setIssues] = useState<Issue[]>([])
 
   const options = withCurrent(categoriesForKind(kind, data.categories, { prefs: data.categoryPrefs }), rule?.kind === kind ? rule.categoryId : undefined)
+  // Probar antes de guardar: qué movimientos ya registrados coinciden (la regla no los cambia).
+  const preview = useMemo(() => previewRule(data, pattern, kind, categoryId), [data, pattern, kind, categoryId])
 
   const submit = async () => {
     const { result, saved } = await run((d, c) => saveCategoryRule(d, { id, pattern, kind, categoryId }, c))
@@ -136,6 +150,20 @@ export function RuleDialog({
         required
         autoFocus
       />
+      <p className="note" data-testid="rule-preview">
+        {preview.total === 0
+          ? t('rules.previewNone')
+          : `${tn('rules.previewCount', preview.total)}${preview.withOtherCategory > 0 ? ` · ${t('rules.previewOther', { count: preview.withOtherCategory })}` : ''}`}
+      </p>
+      {preview.sample.length > 0 && (
+        <ul className="bullets">
+          {preview.sample.slice(0, 3).map((x) => (
+            <li key={x.id}>
+              {fmt.date(x.date, { compact: true })} · {fmt.money(x.amountMinor)} · {x.note || x.merchant} · {categoryLabel(t, x.categoryId)}
+            </li>
+          ))}
+        </ul>
+      )}
       <Segmented
         legend={t('rules.kind')}
         name="rulekind"

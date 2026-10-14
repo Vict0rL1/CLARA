@@ -204,3 +204,34 @@ export function applyEntries(data: AppData, entries: HistoryEntry[]): AppData {
 export function applyEntry(data: AppData, entry: HistoryEntry): AppData {
   return applyEntries(data, [entry])
 }
+
+export interface RecordHistoryItem {
+  entryId: string
+  at: string
+  source: HistorySource
+  kind: 'created' | 'updated' | 'deleted'
+  /** Campos que cambiaron (sin `updatedAt`), para decir «cambió: importe, categoría». */
+  fields: string[]
+}
+
+/**
+ * Lo que el historial local guarda sobre UN registro, lo más reciente primero. Es honesto por
+ * construcción: solo cubre desde que este dispositivo empezó a guardar historial (o desde el último
+ * corte `replace`), y nunca inventa un «antes» que no se vio.
+ */
+export function historyOfRecord(data: Pick<AppData, 'history'>, collection: HistoryCollection, id: string): RecordHistoryItem[] {
+  const out: RecordHistoryItem[] = []
+  for (const entry of data.history) {
+    for (const change of entry.changes) {
+      if (change.collection !== collection || change.id !== id) continue
+      const before = (change.before ?? null) as Record<string, unknown> | null
+      const after = (change.after ?? null) as Record<string, unknown> | null
+      const kind = before === null ? 'created' : after === null ? 'deleted' : 'updated'
+      const keys = new Set([...Object.keys(before ?? {}), ...Object.keys(after ?? {})])
+      keys.delete('updatedAt')
+      const fields = kind === 'updated' ? [...keys].filter((k) => !same(before?.[k], after?.[k])).sort() : []
+      out.push({ entryId: entry.id, at: entry.at, source: entry.source, kind, fields })
+    }
+  }
+  return out.sort((a, b) => (a.at > b.at ? -1 : a.at < b.at ? 1 : 0))
+}

@@ -191,3 +191,31 @@ describe('confirmación automática con cobros o pagos parciales (QA-02)', () =>
     expect(overstatedAutoConfirms(baseData({ schedules: [schedule], transactions: [wrongFinal] }))).toEqual([])
   })
 })
+
+describe('terminar un programado y su ficha (etapa 2)', () => {
+  it('terminar conserva lo pagado y quita lo futuro; la ficha resume próximas, pagadas y vencidas', async () => {
+    const { endSchedule, scheduleSummary } = await import('./scheduledJobs')
+    const { markOccurrence } = await import('./operations')
+    const { planItems } = await import('./planItems')
+    const { baseData, bill, ctx, TODAY } = await import('../test/fixtures')
+    const d0 = baseData({ schedules: [bill('2026-09-01', 10000, { id: 's', name: 'Luz', frequency: 'monthly' })] })
+    const paid = markOccurrence(d0, { scheduleId: 's', occurrenceDate: '2026-09-01', amountMinor: 10000, date: '2026-09-01', accountId: 'main' }, ctx)
+    expect(paid.ok).toBe(true)
+    if (!paid.ok) return
+    const before = scheduleSummary(paid.data, 's', TODAY)!
+    expect(before.paid).toMatchObject([{ occurrenceDate: '2026-09-01', amountMinor: 10000, partial: false }])
+    expect(before.paidCount).toBe(1)
+    expect(before.next).toEqual(['2026-10-01', '2026-11-01', '2026-12-01'])
+    expect(before.overdue).toEqual([])
+    const ended = endSchedule(paid.data, 's', TODAY, ctx)
+    expect(ended.ok).toBe(true)
+    if (!ended.ok) return
+    expect(ended.data.schedules[0]!.endDate).toBe(TODAY)
+    expect(ended.data.transactions).toEqual(paid.data.transactions)
+    expect(planItems(ended.data, { today: TODAY, from: TODAY, to: '2026-12-31' }).filter((i) => i.sourceId === 's')).toEqual([])
+    expect(scheduleSummary(ended.data, 's', TODAY)!.next).toEqual([])
+    expect(endSchedule(paid.data, 's', '2026-08-01', ctx)).toMatchObject({ ok: false, issues: [{ path: 'endDate', code: 'endBeforeStart' }] })
+    expect(endSchedule(paid.data, 'nope', TODAY, ctx)).toMatchObject({ ok: false })
+    expect(scheduleSummary(paid.data, 'nope', TODAY)).toBeNull()
+  })
+})

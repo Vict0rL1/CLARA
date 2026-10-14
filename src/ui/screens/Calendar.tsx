@@ -16,6 +16,7 @@ import { MarkPaidDialog } from '../dialogs'
 import { useFormat } from '../format'
 import { frequencyLabel, planItemName } from '../labels'
 import { href } from '../router'
+import { ScheduleSheet } from './ScheduleSheet'
 
 const STATE_TONE: Record<PlanItem['state'], Tone> = { pending: 'info', overdue: 'warning', paid: 'good', skipped: 'neutral' }
 
@@ -29,6 +30,7 @@ export function Calendar() {
   const [month, setMonth] = useState(() => startOfMonth(today))
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [payItem, setPayItem] = useState<PlanItem | null>(null)
+  const [sheetFor, setSheetFor] = useState<string | null>(null)
   const restore = useRestoreFromTrash()
 
   const monthEnd = endOfMonth(month)
@@ -156,6 +158,12 @@ export function Calendar() {
                 <span className="sr-only">: {name}</span>
               </button>
             </>
+          )}
+          {i.source === 'schedule' && (
+            <button type="button" className="btn btn--small btn--ghost" aria-label={`${t('calendar.details')}: ${name}`} onClick={() => setSheetFor(i.sourceId)}>
+              <Icon name="list" size={16} />
+              {t('calendar.details')}
+            </button>
           )}
           <a
             className="btn btn--small btn--ghost"
@@ -300,6 +308,8 @@ export function Calendar() {
       </Card>
 
       {payItem && <MarkPaidDialog key={payItem.key} item={payItem} onClose={() => setPayItem(null)} />}
+
+      {sheetFor && <ScheduleSheet scheduleId={sheetFor} onClose={() => setSheetFor(null)} onPay={(item) => { setSheetFor(null); setPayItem(item) }} />}
     </div>
   )
 }

@@ -8,6 +8,16 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
 
 ### Novedades
 
+- **Revisión antes de registrar** (etapa 2 del programa): el asistente y la importación de CSV muestran lo mismo por cada
+  propuesta: posible duplicado (con enlace al existente), «¿Es el pago programado «X»?» con casilla para vincular, efecto en lo
+  disponible, la regla que dio la categoría y «ya registrado» si se reintenta. Nada se vincula ni se guarda solo.
+- **Reglas de categoría explicadas**: Ajustes › Reglas avisa de reglas que se solapan y dice cuál gana; al crear una regla se
+  ve con cuántos movimientos ya registrados coincide (no los cambia); cada regla muestra su recuento; el formulario explica
+  cuando otras reglas coincidían.
+- **Programados**: «Detalles» en el calendario abre la ficha (importe, cuenta, frecuencia, aviso, próximas fechas, historial
+  de pagos y vencidas) con marcar, pausar/reanudar, terminar (conserva lo pagado; las vencidas siguen pendientes) y editar.
+- **Historial**: orden por fecha o importe, neto de cada día en el encabezado y, en el detalle de un movimiento, su historial
+  de cambios local (creado, qué campos cambiaron, papelera) con su alcance dicho.
 - **Cuentas** (etapa 1 del programa; esquema 11): archivar una cuenta conserva su saldo y su historial, la saca de los
   selectores y del disponible y se puede restaurar; no se archiva la última del presupuesto ni una con pagos programados
   activos. Las cuentas se ordenan (Subir/Bajar) y ese orden vale en todas las listas. Ajustes › Cuentas muestra el

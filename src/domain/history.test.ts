@@ -159,3 +159,33 @@ describe('historial: aplicar en bloque', () => {
     }
   })
 })
+
+describe('historial de un registro (etapa 2)', () => {
+  it('lista creado, cambios por campo y eliminación, lo más reciente primero, solo con lo que vio', async () => {
+    const { historyOfRecord, recordHistory } = await import('./history')
+    const { saveTransaction, trashTransactions } = await import('./operations')
+    const { baseData, ctx, TODAY } = await import('../test/fixtures')
+    const d0 = baseData()
+    const c1 = saveTransaction(d0, { id: 'x', kind: 'expense', status: 'realized', amountMinor: 1000, date: TODAY, accountId: 'main', categoryId: 'groceries' }, ctx)
+    expect(c1.ok).toBe(true)
+    if (!c1.ok) return
+    const d1 = recordHistory(d0, c1.data, '2026-09-28T16:00:00.000Z')
+    const c2 = saveTransaction(d1, { id: 'x', kind: 'expense', status: 'realized', amountMinor: 1200, date: TODAY, accountId: 'main', categoryId: 'dining' }, ctx)
+    expect(c2.ok).toBe(true)
+    if (!c2.ok) return
+    const d2 = recordHistory(d1, c2.data, '2026-09-28T16:05:00.000Z')
+    const c3 = trashTransactions(d2, ['x'], ctx)
+    expect(c3.ok).toBe(true)
+    if (!c3.ok) return
+    const d3 = recordHistory(d2, c3.data, '2026-09-28T16:10:00.000Z')
+    const items = historyOfRecord(d3, 'transactions', 'x')
+    expect(items.map((i) => [i.kind, i.fields, i.at])).toEqual([
+      ['deleted', [], '2026-09-28T16:10:00.000Z'],
+      ['updated', ['amountMinor', 'categoryId'], '2026-09-28T16:05:00.000Z'],
+      ['created', [], '2026-09-28T16:00:00.000Z'],
+    ])
+    expect(historyOfRecord(d3, 'transactions', 'other')).toEqual([])
+    // Sin historial previo no se inventa nada: un registro que ya existía antes no tiene «creado».
+    expect(historyOfRecord(baseData({ transactions: c1.data.transactions }), 'transactions', 'x')).toEqual([])
+  })
+})

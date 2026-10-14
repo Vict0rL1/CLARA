@@ -378,7 +378,7 @@ export function realizePlanned(
 
 export interface ImportInput {
   /** Ids generados al abrir la vista previa: confirmar dos veces no duplica. */
-  items: (Pick<Transaction, 'id' | 'kind' | 'amountMinor' | 'date' | 'accountId' | 'categoryId' | 'note'> & { importRef: string })[]
+  items: (Pick<Transaction, 'id' | 'kind' | 'amountMinor' | 'date' | 'accountId' | 'categoryId' | 'note' | 'scheduleId' | 'occurrenceDate'> & { importRef: string })[]
   /** Filas del mismo día que el saldo de referencia: ¿ya estaban incluidas en él? */
   sameDayAlreadyInBalance: boolean
 }

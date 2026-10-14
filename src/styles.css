@@ -1014,6 +1014,83 @@ html {
   gap: 2px;
 }
 
+/* Revisión de propuestas (etapa 2): mismas líneas en el asistente y en la importación. */
+.review {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.review__line {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--font-body-sm);
+}
+
+.review__line > p {
+  margin: 0;
+}
+
+.review__line--info {
+  flex-direction: column;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.review__line--warning {
+  color: var(--warning-text, var(--ink));
+}
+
+.review__line--muted {
+  color: var(--ink-2);
+  font-size: var(--font-caption);
+}
+
+/* Encabezado de grupo del historial: fecha y neto del día. */
+.tx-group__date {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.tx-group__total {
+  font-weight: 600;
+  font-size: var(--font-caption);
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Hoja de detalle de un programado. */
+.sched-sheet__amount {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.sched-sheet__title {
+  margin: 8px 0 4px;
+  font-size: var(--font-body-sm);
+  font-weight: 650;
+  color: var(--ink-2);
+}
+
+.sched-sheet__paid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .net-position__parts dt {
   color: var(--ink-2);
 }

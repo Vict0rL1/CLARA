@@ -9,6 +9,9 @@
 import type { SourceGroup } from '../domain/txFilters'
 import type { TxKind, TxStatus } from '../domain/types'
 
+export type TxSort = 'dateDesc' | 'dateAsc' | 'amountDesc' | 'amountAsc'
+export const TX_SORTS: readonly TxSort[] = ['dateDesc', 'dateAsc', 'amountDesc', 'amountAsc']
+
 export interface SavedListView {
   query: string
   kind: 'all' | TxKind
@@ -23,6 +26,8 @@ export interface SavedListView {
   source: 'all' | SourceGroup
   limit: number
   scrollY: number
+  /** Orden de la lista de realizados (etapa 2); ausente = más recientes primero. */
+  sort?: TxSort
   /** `true` entre abrir una fila y volver; cualquier guardado o eliminación lo apaga. */
   returning?: boolean
 }

@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useState, useEffect, useRef } from 'react'
-import { sortedAccounts, txAppliesToAccount } from '../../domain/balances'
+import { adjustmentSign, sortedAccounts, txAppliesToAccount } from '../../domain/balances'
 import { sumMinor } from '../../domain/money'
 import { txCategoryIds } from '../../domain/splits'
 import { transactionsToCsv } from '../../domain/csvExport'
@@ -16,7 +16,7 @@ import type { Transaction, TxKind, TxStatus } from '../../domain/types'
 import { useT, type MessageKey } from '../../i18n'
 import { useToday } from '../../state/hooks'
 import { useData } from '../../state/store'
-import { takeListView, writeListView } from '../listView'
+import { takeListView, TX_SORTS, writeListView, type TxSort } from '../listView'
 import { Badge, EmptyState, PageHeader, Why } from '../components/common'
 import { MoneyField, TextField } from '../components/fields'
 import { CategoryPicker } from '../components/CategoryPicker'
@@ -59,11 +59,12 @@ export function Movements({ route }: { route?: Route }) {
   const [bulkCategoryId, setBulkCategoryId] = useState('')
   const [bulkTagIds, setBulkTagIds] = useState<string[]>([])
   const [limit, setLimit] = useState(saved?.limit ?? PAGE)
+  const [sort, setSort] = useState<TxSort>(saved?.sort ?? 'dateDesc')
   const scrollYRef = useRef(saved?.scrollY ?? 0)
   // Cada cambio de filtros se recuerda; la posición se anota al abrir una fila (ver `rememberScroll`).
   useEffect(() => {
-    writeListView(data.budgetId, { query, kind, status, accountId, categoryIds, tagIds, from, to, amountMin, amountMax, source, limit, scrollY: scrollYRef.current })
-  }, [data.budgetId, query, kind, status, accountId, categoryIds, tagIds, from, to, amountMin, amountMax, source, limit])
+    writeListView(data.budgetId, { query, kind, status, accountId, categoryIds, tagIds, from, to, amountMin, amountMax, source, limit, sort, scrollY: scrollYRef.current })
+  }, [data.budgetId, query, kind, status, accountId, categoryIds, tagIds, from, to, amountMin, amountMax, source, limit, sort])
   // Al volver: la app lleva cada pantalla arriba en el primer cuadro; después se recupera la posición.
   useEffect(() => {
     const y = saved?.scrollY ?? 0
@@ -79,7 +80,7 @@ export function Movements({ route }: { route?: Route }) {
   const rememberScroll = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!(e.target instanceof Element) || !e.target.closest('a')) return
     scrollYRef.current = window.scrollY
-    writeListView(data.budgetId, { query, kind, status, accountId, categoryIds, tagIds, from, to, amountMin, amountMax, source, limit, scrollY: window.scrollY, returning: true })
+    writeListView(data.budgetId, { query, kind, status, accountId, categoryIds, tagIds, from, to, amountMin, amountMax, source, limit, sort, scrollY: window.scrollY, returning: true })
   }
   const [selecting, setSelecting] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
@@ -126,9 +127,12 @@ export function Movements({ route }: { route?: Route }) {
   })()
 
   const planned = filtered.filter((tx) => tx.status === 'planned').sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+  const byDateDesc = (a: Transaction, b: Transaction) => (a.date === b.date ? (b.createdAt > a.createdAt ? 1 : -1) : a.date < b.date ? 1 : -1)
   const realized = filtered
     .filter((tx) => tx.status === 'realized')
-    .sort((a, b) => (a.date === b.date ? (b.createdAt > a.createdAt ? 1 : -1) : a.date < b.date ? 1 : -1))
+    .sort((a, b) =>
+      sort === 'dateAsc' ? -byDateDesc(a, b) : sort === 'amountDesc' ? b.amountMinor - a.amountMinor || byDateDesc(a, b) : sort === 'amountAsc' ? a.amountMinor - b.amountMinor || byDateDesc(a, b) : byDateDesc(a, b),
+    )
   const shownRealized = realized.slice(0, limit)
 
   const incomeTotal = sumMinor(realized.filter((tx) => tx.kind === 'income').map((tx) => tx.amountMinor))
@@ -355,6 +359,7 @@ export function Movements({ route }: { route?: Route }) {
                 <MoneyField label={t('filters.amountMin')} value={amountMin} onChange={setAmountMin} fmt={fmt} error={minParsed && !minParsed.ok ? moneyErrorMessage(t, minParsed) : null} />
                 <MoneyField label={t('filters.amountMax')} value={amountMax} onChange={setAmountMax} fmt={fmt} error={maxParsed && !maxParsed.ok ? moneyErrorMessage(t, maxParsed) : null} />
               </div>
+              <ChipGroup legend={t('filters.sort')} value={sort} onChange={(v) => setSort(v as TxSort)} options={TX_SORTS.map((s) => ({ value: s, label: t(`filters.sort${s[0]!.toUpperCase()}${s.slice(1)}` as MessageKey) }))} />
               <ChipGroup legend={t('filters.source')} value={source} onChange={(v) => setSource(v as typeof source)} options={[{ value: 'all', label: t('filters.allSources') }, ...SOURCE_GROUPS.map((g) => ({ value: g, label: t(`source.${g}` as MessageKey) }))]} />
               <div className="form-row">
                 <TextField label={t('filters.from')} type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} />
@@ -463,7 +468,7 @@ export function Movements({ route }: { route?: Route }) {
                 {t('movements.realizedSection')}
               </h2>
               <div onClickCapture={rememberScroll}>
-                <TxList txs={shownRealized} today={today} groupByDate selecting={selecting} selected={selected} onToggle={toggleSelected} />
+                <TxList txs={shownRealized} today={today} groupByDate={sort === 'dateDesc' || sort === 'dateAsc'} selecting={selecting} selected={selected} onToggle={toggleSelected} />
               </div>
               {realized.length > shownRealized.length && (
                 <button type="button" className="btn btn--secondary" onClick={() => setLimit((l) => l + PAGE)}>
@@ -483,9 +488,19 @@ export function Movements({ route }: { route?: Route }) {
   )
 }
 
+/** Neto del grupo: ingresos y devoluciones suman, gastos restan, ajustes según su sentido, transferencias no cuentan. */
+function netOf(items: Transaction[]): number {
+  return sumMinor(items.map((tx) => (tx.kind === 'income' || tx.kind === 'refund' ? tx.amountMinor : tx.kind === 'expense' ? -tx.amountMinor : tx.kind === 'adjustment' ? adjustmentSign(tx) * tx.amountMinor : 0)))
+}
+
 function TxList({ txs, today, groupByDate, selecting, selected, onToggle }: { txs: Transaction[]; today: string; groupByDate?: boolean; selecting?: boolean; selected?: Set<string>; onToggle?: (id: string) => void }) {
   const fmt = useFormat()
+  const { t } = useT()
   const data = useData()
+  const signedNet = (items: Transaction[]) => {
+    const net = netOf(items)
+    return net < 0 ? `−${fmt.money(-net)}` : net > 0 ? `+${fmt.money(net)}` : fmt.money(0)
+  }
   // E1: el icono y el tinte de cada categoría; el mismo objeto por id para que la fila memorizada no se repinte.
   const visuals = useMemo(() => categoryVisuals(data), [data])
   const groups: { date: string; items: Transaction[] }[] = []
@@ -499,7 +514,12 @@ function TxList({ txs, today, groupByDate, selecting, selected, onToggle }: { tx
     <div className="tx-groups">
       {groups.map((g, gi) => (
         <div key={`${g.date}-${gi}`} className="tx-group">
-          {groupByDate && <h3 className="tx-group__date">{fmt.date(g.date, { weekday: true, compact: true, today })}</h3>}
+          {groupByDate && (
+            <h3 className="tx-group__date">
+              <span>{fmt.date(g.date, { weekday: true, compact: true, today })}</span>
+              <span className="tx-group__total" data-testid="group-total">{t('movements.groupTotal', { amount: signedNet(g.items) })}</span>
+            </h3>
+          )}
           <ul className="item-list">
             {g.items.map((tx) => (
               <TxRow key={tx.id} tx={tx} today={today} showDate={!groupByDate} selecting={!!selecting} isSelected={selected?.has(tx.id) ?? false} onToggle={onToggle} visual={tx.kind === 'transfer' || tx.kind === 'adjustment' ? undefined : categoryVisual(visuals, tx.categoryId)} />
