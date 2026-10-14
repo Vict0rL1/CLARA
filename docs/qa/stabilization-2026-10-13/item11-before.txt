@@ -1,0 +1,11 @@
+     × cada motivo de rechazo tiene un texto para el registro de compilación (sin la clave) 7ms
+     × 11 · usuario y contraseña en la URL, o un parámetro con forma de credencial, se rechazan 10ms
+     × 11 · un punto final en el host (FQDN) no salta la lista de proveedores; el endpoint aceptado sale sin él 4ms
+     × 11 · solo orígenes que quien despliega declara: sin lista, o con otro origen u otro puerto, no hay proveedor remoto 9ms
+     × una clave de proveedor, un endpoint directo a un proveedor, http o una variable suelta detienen la compilación con el motivo 7ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: https://user:pass@clara-ai.example.com/parse: expected { ok: true, …(3) } to deeply equal { ok: false, …(1) }
+AssertionError: api.openai.com.: expected false to be true // Object.is equality
+AssertionError: expected { ok: true, …(3) } to deeply equal { ok: false, …(1) }
+AssertionError: expected [Function] to throw an error
+      Tests  5 failed | 10 passed (15)

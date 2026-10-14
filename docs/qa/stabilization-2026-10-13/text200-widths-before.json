@@ -1,0 +1,32 @@
+{
+  "viewport": {
+    "width": 320,
+    "height": 640
+  },
+  "widths": {
+    "es": {
+      "cuentas": 449,
+      "metas": 468,
+      "datos": 338,
+      "calendario": 324
+    },
+    "en": {
+      "cuentas": 379,
+      "metas": 499,
+      "datos": 320,
+      "calendario": 320
+    },
+    "pt": {
+      "cuentas": 405,
+      "metas": 470,
+      "datos": 323,
+      "calendario": 320
+    },
+    "fr": {
+      "cuentas": 392,
+      "metas": 499,
+      "datos": 327,
+      "calendario": 320
+    }
+  }
+}

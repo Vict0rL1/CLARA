@@ -1,0 +1,14 @@
+{
+  "total": {
+    "fill": "rgb(241, 245, 249)",
+    "background": "rgb(18, 26, 42)",
+    "ratio": 15.88,
+    "fontSize": "11px"
+  },
+  "sub": {
+    "fill": "rgb(148, 163, 184)",
+    "background": "rgb(18, 26, 42)",
+    "ratio": 6.79,
+    "fontSize": "9px"
+  }
+}

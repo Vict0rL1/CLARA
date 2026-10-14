@@ -1,0 +1,10 @@
+     × un ingreso y un pago el mismo día se muestran en bruto (+100 y −150), no neteados (0 y −50) 45ms
+     × si el saldo de hoy ya es negativo, el aviso dice ese saldo negativo aunque hoy entre un ingreso 5ms
+     × límite superado: límite − gastado = restante (negativo), con los operandos en ese orden 5ms
+     × conciliar: el pago del mismo día de una ocurrencia es para esa ocurrencia, aunque otra anterior también esté en la ventana 2ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected { startBalance: 3000, …(3) } to deeply equal { startBalance: 3000, …(3) }
+AssertionError: expected { date: '2026-09-28', amount: 5000 } to match object { date: '2026-09-28', amount: -5000 }
+AssertionError: expected [ [ 'spent', 12000, '' ], …(2) ] to deeply equal [ [ 'limit', 10000, '' ], …(2) ]
+AssertionError: expected [ [ 'early', 'pay', 2 ] ] to deeply equal [ [ 'exact', 'pay', +0 ] ]
+      Tests  4 failed | 1 passed | 24 skipped (29)

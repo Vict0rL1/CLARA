@@ -1,0 +1,4 @@
+https://api.openai.com./v1/chat/completions allowed=[https://api.openai.com.] exit=1 :: mal configurado (providerHost)
+https://user:pass@clara-ai.example.com/parse allowed=[https://clara-ai.example.com] exit=1 :: mal configurado (credentialsInUrl)
+https://clara-ai.example.com/parse allowed=[] exit=1 :: mal configurado (originNotAllowed)
+valid config exit=0

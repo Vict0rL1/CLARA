@@ -1,0 +1,65 @@
+{
+  "rects": [
+    {
+      "cls": "bars__bar series-3",
+      "y": "85.23391414192048",
+      "height": "0"
+    },
+    {
+      "cls": "bars__bar series-2",
+      "y": "85.23391414192048",
+      "height": "0"
+    },
+    {
+      "cls": "bars__bar series-3",
+      "y": "85.23391414192048",
+      "height": "0"
+    },
+    {
+      "cls": "bars__bar series-2",
+      "y": "85.23391414192048",
+      "height": "0"
+    },
+    {
+      "cls": "bars__bar series-3",
+      "y": "85.23391414192048",
+      "height": "0"
+    },
+    {
+      "cls": "bars__bar series-2",
+      "y": "85.23391414192048",
+      "height": "0"
+    },
+    {
+      "cls": "bars__bar series-3",
+      "y": "85.23391414192048",
+      "height": "0"
+    },
+    {
+      "cls": "bars__bar series-2",
+      "y": "85.23391414192048",
+      "height": "0"
+    },
+    {
+      "cls": "bars__bar series-3",
+      "y": "85.23391414192048",
+      "height": "0"
+    },
+    {
+      "cls": "bars__bar series-2",
+      "y": "85.23391414192048",
+      "height": "0"
+    },
+    {
+      "cls": "bars__bar series-3",
+      "y": "12",
+      "height": "73.23391414192048"
+    },
+    {
+      "cls": "bars__bar series-2 bars__bar--negative",
+      "y": "85.23391414192048",
+      "height": "44.76608585807952"
+    }
+  ],
+  "tooltip": "septiembre de 2026 — Ingresos $1,238.10 · Gastos -$756.82"
+}

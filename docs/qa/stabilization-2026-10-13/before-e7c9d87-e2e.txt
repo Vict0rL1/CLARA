@@ -1,0 +1,145 @@
+  ✓   1 [celular] › tests/e2e/accounts.spec.ts:10:1 › cuentas: patrimonio neto cuadrado y explicado; el orden se recuerda y llega a los selectores
+  ✓   2 [celular] › tests/e2e/accounts.spec.ts:39:1 › cuentas: archivar conserva historial y saldo, saca la cuenta de los selectores y del disponible; restaurar la devuelve
+  ✓   3 [celular] › tests/e2e/accounts.spec.ts:92:1 › cuentas: no se archiva una cuenta con pagos programados activos; archivar «Efectivo» descuenta justo su saldo
+  ✓   5 [celular] › tests/e2e/stabilization.spec.ts:40:1 › AS-01 · la misma moneda sigue funcionando: «café 10 CAD» se registra sin aviso
+  ✘   4 [celular] › tests/e2e/stabilization.spec.ts:12:1 › AS-01 · «café USD 10» en un presupuesto CAD se bloquea con el motivo; al escribirlo en CAD se guarda y sobrevive a recargar
+  ✘   6 [celular] › tests/e2e/stabilization.spec.ts:52:1 › FIN-01 · vincular un pago del día del saldo, ya incluido en él, no vuelve a restarlo (antes, después y tras recargar)
+  ✘   7 [celular] › tests/e2e/stabilization.spec.ts:74:1 › FIN-02 · bajar un límite por debajo de lo arrastrado avisa antes de guardar, quita el arrastre y las renovaciones siguen siendo válidas
+  ✘   8 [celular] › tests/e2e/stabilization.spec.ts:114:1 › REC-01 · importar una copia, registrar algo y pulsar «Deshacer»: se niega, explica dónde está lo anterior y el registro sobrevive a recargar
+  ✓   9 [celular] › tests/e2e/stabilization.spec.ts:141:1 › REC-01 · sin cambios posteriores, «Deshacer» la importación sí vuelve a lo anterior
+  ✘  10 [celular] › tests/e2e/stabilization.spec.ts:178:1 › REC-02 · una copia con «exportedAt» inválido muestra un error del archivo al importar y al verificar; nada se guarda y todo carga tras recargar
+  ✘  11 [celular] › tests/e2e/stabilization.spec.ts:156:1 › REC-01 · restaurar una copia local, registrar algo y pulsar «Deshacer»: se niega y el registro sobrevive a recargar
+  ✘  13 [celular] › tests/e2e/stabilization.spec.ts:220:1 › 7 · con «uber» y «uber eats» el asistente elige la regla más específica; lo disponible que anuncia la revisión es el que queda al registrar
+  ✘  14 [celular] › tests/e2e/stabilization.spec.ts:255:1 › 8 · con más devoluciones que gastos, la barra de gasto baja del cero (ninguna altura negativa) y gráfico, aviso y tabla dicen lo mismo
+  ✘  15 [celular] › tests/e2e/stabilization.spec.ts:281:1 › 9 · un día más allá de los 400 días de proyección dice que no hay saldo calculado; antes del límite sí da la cifra
+  ✘  12 [celular] › tests/e2e/stabilization.spec.ts:198:1 › 6 · un gasto recién guardado se puede revertir después de recargar, y el disponible vuelve al de antes
+  ✘  16 [celular] › tests/e2e/stabilization.spec.ts:305:1 › 10 · CSV: dos descripciones largas que empiezan igual no se omiten; un archivo de 5,003 filas dice cuáles quedan fuera y exige reconocerlo
+  ✘  17 [celular] › tests/e2e/stabilization.spec.ts:360:3 › 12 · el total y el subtítulo del donut cumplen contraste AA en tema claro (axe no mide el texto SVG)
+  -  19 [celular] › tests/e2e/stabilization.spec.ts:372:1 › 13 · texto al 200 % en 320 px: Cuentas, Metas, Datos y Calendario sin desplazamiento horizontal en es/en/pt/fr; la barra inferior entera, nada tapado y el foco visible
+  ✘  18 [celular] › tests/e2e/stabilization.spec.ts:360:3 › 12 · el total y el subtítulo del donut cumplen contraste AA en tema oscuro (axe no mide el texto SVG)
+  ✘  20 [celular] › tests/e2e/stabilization.spec.ts:419:1 › 14 · un deslizamiento rápido (soltar antes de que se pinte el movimiento) abre la fila y su botón recibe el toque
+  ✘  21 [celular] › tests/e2e/stabilization.spec.ts:439:1 › 15 · el historial de una meta con 120 movimientos enseña cuántos hay y deja llegar al más antiguo
+  ✓  22 [celular-pequeno] › tests/e2e/accounts.spec.ts:10:1 › cuentas: patrimonio neto cuadrado y explicado; el orden se recuerda y llega a los selectores
+  ✓  23 [celular-pequeno] › tests/e2e/accounts.spec.ts:92:1 › cuentas: no se archiva una cuenta con pagos programados activos; archivar «Efectivo» descuenta justo su saldo
+  ✓  24 [celular-pequeno] › tests/e2e/accounts.spec.ts:39:1 › cuentas: archivar conserva historial y saldo, saca la cuenta de los selectores y del disponible; restaurar la devuelve
+  ✓  26 [celular-pequeno] › tests/e2e/stabilization.spec.ts:40:1 › AS-01 · la misma moneda sigue funcionando: «café 10 CAD» se registra sin aviso
+  ✘  25 [celular-pequeno] › tests/e2e/stabilization.spec.ts:12:1 › AS-01 · «café USD 10» en un presupuesto CAD se bloquea con el motivo; al escribirlo en CAD se guarda y sobrevive a recargar
+  ✘  27 [celular-pequeno] › tests/e2e/stabilization.spec.ts:52:1 › FIN-01 · vincular un pago del día del saldo, ya incluido en él, no vuelve a restarlo (antes, después y tras recargar)
+  ✘  28 [celular-pequeno] › tests/e2e/stabilization.spec.ts:74:1 › FIN-02 · bajar un límite por debajo de lo arrastrado avisa antes de guardar, quita el arrastre y las renovaciones siguen siendo válidas
+  ✓  30 [celular-pequeno] › tests/e2e/stabilization.spec.ts:141:1 › REC-01 · sin cambios posteriores, «Deshacer» la importación sí vuelve a lo anterior
+  ✘  29 [celular-pequeno] › tests/e2e/stabilization.spec.ts:114:1 › REC-01 · importar una copia, registrar algo y pulsar «Deshacer»: se niega, explica dónde está lo anterior y el registro sobrevive a recargar
+  ✘  31 [celular-pequeno] › tests/e2e/stabilization.spec.ts:156:1 › REC-01 · restaurar una copia local, registrar algo y pulsar «Deshacer»: se niega y el registro sobrevive a recargar
+  ✘  32 [celular-pequeno] › tests/e2e/stabilization.spec.ts:178:1 › REC-02 · una copia con «exportedAt» inválido muestra un error del archivo al importar y al verificar; nada se guarda y todo carga tras recargar
+  ✘  34 [celular-pequeno] › tests/e2e/stabilization.spec.ts:220:1 › 7 · con «uber» y «uber eats» el asistente elige la regla más específica; lo disponible que anuncia la revisión es el que queda al registrar
+  ✘  35 [celular-pequeno] › tests/e2e/stabilization.spec.ts:255:1 › 8 · con más devoluciones que gastos, la barra de gasto baja del cero (ninguna altura negativa) y gráfico, aviso y tabla dicen lo mismo
+  ✘  36 [celular-pequeno] › tests/e2e/stabilization.spec.ts:281:1 › 9 · un día más allá de los 400 días de proyección dice que no hay saldo calculado; antes del límite sí da la cifra
+  ✘  33 [celular-pequeno] › tests/e2e/stabilization.spec.ts:198:1 › 6 · un gasto recién guardado se puede revertir después de recargar, y el disponible vuelve al de antes
+  ✘  37 [celular-pequeno] › tests/e2e/stabilization.spec.ts:305:1 › 10 · CSV: dos descripciones largas que empiezan igual no se omiten; un archivo de 5,003 filas dice cuáles quedan fuera y exige reconocerlo
+  ✘  38 [celular-pequeno] › tests/e2e/stabilization.spec.ts:360:3 › 12 · el total y el subtítulo del donut cumplen contraste AA en tema claro (axe no mide el texto SVG)
+  ✘  39 [celular-pequeno] › tests/e2e/stabilization.spec.ts:360:3 › 12 · el total y el subtítulo del donut cumplen contraste AA en tema oscuro (axe no mide el texto SVG)
+  ✘  40 [celular-pequeno] › tests/e2e/stabilization.spec.ts:372:1 › 13 · texto al 200 % en 320 px: Cuentas, Metas, Datos y Calendario sin desplazamiento horizontal en es/en/pt/fr; la barra inferior entera, nada tapado y el foco visible
+  ✘  41 [celular-pequeno] › tests/e2e/stabilization.spec.ts:419:1 › 14 · un deslizamiento rápido (soltar antes de que se pinte el movimiento) abre la fila y su botón recibe el toque
+  ✓  42 [escritorio] › tests/e2e/accounts.spec.ts:10:1 › cuentas: patrimonio neto cuadrado y explicado; el orden se recuerda y llega a los selectores
+  ✓  44 [escritorio] › tests/e2e/accounts.spec.ts:39:1 › cuentas: archivar conserva historial y saldo, saca la cuenta de los selectores y del disponible; restaurar la devuelve
+  ✘  43 [celular-pequeno] › tests/e2e/stabilization.spec.ts:439:1 › 15 · el historial de una meta con 120 movimientos enseña cuántos hay y deja llegar al más antiguo
+  ✓  45 [escritorio] › tests/e2e/accounts.spec.ts:92:1 › cuentas: no se archiva una cuenta con pagos programados activos; archivar «Efectivo» descuenta justo su saldo
+  ✓  47 [escritorio] › tests/e2e/stabilization.spec.ts:40:1 › AS-01 · la misma moneda sigue funcionando: «café 10 CAD» se registra sin aviso
+  ✘  46 [escritorio] › tests/e2e/stabilization.spec.ts:12:1 › AS-01 · «café USD 10» en un presupuesto CAD se bloquea con el motivo; al escribirlo en CAD se guarda y sobrevive a recargar
+  ✘  48 [escritorio] › tests/e2e/stabilization.spec.ts:52:1 › FIN-01 · vincular un pago del día del saldo, ya incluido en él, no vuelve a restarlo (antes, después y tras recargar)
+  ✘  49 [escritorio] › tests/e2e/stabilization.spec.ts:74:1 › FIN-02 · bajar un límite por debajo de lo arrastrado avisa antes de guardar, quita el arrastre y las renovaciones siguen siendo válidas
+  ✘  50 [escritorio] › tests/e2e/stabilization.spec.ts:114:1 › REC-01 · importar una copia, registrar algo y pulsar «Deshacer»: se niega, explica dónde está lo anterior y el registro sobrevive a recargar
+  ✓  51 [escritorio] › tests/e2e/stabilization.spec.ts:141:1 › REC-01 · sin cambios posteriores, «Deshacer» la importación sí vuelve a lo anterior
+  ✘  52 [escritorio] › tests/e2e/stabilization.spec.ts:178:1 › REC-02 · una copia con «exportedAt» inválido muestra un error del archivo al importar y al verificar; nada se guarda y todo carga tras recargar
+  ✘  53 [escritorio] › tests/e2e/stabilization.spec.ts:156:1 › REC-01 · restaurar una copia local, registrar algo y pulsar «Deshacer»: se niega y el registro sobrevive a recargar
+  ✘  55 [escritorio] › tests/e2e/stabilization.spec.ts:220:1 › 7 · con «uber» y «uber eats» el asistente elige la regla más específica; lo disponible que anuncia la revisión es el que queda al registrar
+  ✘  56 [escritorio] › tests/e2e/stabilization.spec.ts:255:1 › 8 · con más devoluciones que gastos, la barra de gasto baja del cero (ninguna altura negativa) y gráfico, aviso y tabla dicen lo mismo
+  ✘  57 [escritorio] › tests/e2e/stabilization.spec.ts:281:1 › 9 · un día más allá de los 400 días de proyección dice que no hay saldo calculado; antes del límite sí da la cifra
+  ✘  54 [escritorio] › tests/e2e/stabilization.spec.ts:198:1 › 6 · un gasto recién guardado se puede revertir después de recargar, y el disponible vuelve al de antes
+  ✘  58 [escritorio] › tests/e2e/stabilization.spec.ts:305:1 › 10 · CSV: dos descripciones largas que empiezan igual no se omiten; un archivo de 5,003 filas dice cuáles quedan fuera y exige reconocerlo
+  ✘  59 [escritorio] › tests/e2e/stabilization.spec.ts:360:3 › 12 · el total y el subtítulo del donut cumplen contraste AA en tema claro (axe no mide el texto SVG)
+  -  61 [escritorio] › tests/e2e/stabilization.spec.ts:372:1 › 13 · texto al 200 % en 320 px: Cuentas, Metas, Datos y Calendario sin desplazamiento horizontal en es/en/pt/fr; la barra inferior entera, nada tapado y el foco visible
+  ✘  60 [escritorio] › tests/e2e/stabilization.spec.ts:360:3 › 12 · el total y el subtítulo del donut cumplen contraste AA en tema oscuro (axe no mide el texto SVG)
+  -  62 [escritorio] › tests/e2e/stabilization.spec.ts:419:1 › 14 · un deslizamiento rápido (soltar antes de que se pinte el movimiento) abre la fila y su botón recibe el toque
+  ✘  63 [escritorio] › tests/e2e/stabilization.spec.ts:439:1 › 15 · el historial de una meta con 120 movimientos enseña cuántos hay y deja llegar al más antiguo
+      - Expect "toHaveValue" getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+           - unexpected value "10.00"
+      - Expect "toHaveText" getByTestId('net-worth') with timeout 5000ms
+      - waiting for getByTestId('net-worth')
+           - unexpected value "$1,258.77"
+      - Expect "toContainText" getByTestId('plan-carry-note') with timeout 5000ms
+      - waiting for getByTestId('plan-carry-note')
+      - Expect "toBeVisible" getByText('No se deshizo: guardaste cambios después y se perderían.').first() with timeout 5000ms
+      - waiting for getByText('No se deshizo: guardaste cambios después y se perderían.').first()
+      - Expect "toBeVisible" getByText('No se deshizo: guardaste cambios después y se perderían.').first() with timeout 5000ms
+      - waiting for getByText('No se deshizo: guardaste cambios después y se perderían.').first()
+      - Expect "toBeVisible" getByText('No se importó el archivo') with timeout 5000ms
+      - waiting for getByText('No se importó el archivo')
+      - waiting for locator('.history-entry').first().getByRole('button', { name: 'Revertir' })
+      - Expect "toHaveAttribute" getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Categoría') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Categoría')
+           - unexpected value "transport"
+      - Expect "toContainText" getByTestId('calendar-beyond-note') with timeout 5000ms
+      - waiting for getByTestId('calendar-beyond-note')
+      - Expect "toBeVisible" getByText('1 posible duplicado') with timeout 5000ms
+      - waiting for getByText('1 posible duplicado')
+      - Expect "toHaveClass" locator('.swipe').first() with timeout 5000ms
+      - waiting for locator('.swipe').first()
+           - unexpected value "swipe"
+      - Expect "toHaveText" locator('article.goal').filter({ hasText: 'Fondo de emergencia' }).getByTestId('goal-history-count') with timeout 5000ms
+      - waiting for locator('article.goal').filter({ hasText: 'Fondo de emergencia' }).getByTestId('goal-history-count')
+      - Expect "toHaveValue" getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+           - unexpected value "10.00"
+      - Expect "toHaveText" getByTestId('net-worth') with timeout 5000ms
+      - waiting for getByTestId('net-worth')
+           - unexpected value "$1,258.77"
+      - Expect "toContainText" getByTestId('plan-carry-note') with timeout 5000ms
+      - waiting for getByTestId('plan-carry-note')
+      - Expect "toBeVisible" getByText('No se deshizo: guardaste cambios después y se perderían.').first() with timeout 5000ms
+      - waiting for getByText('No se deshizo: guardaste cambios después y se perderían.').first()
+      - Expect "toBeVisible" getByText('No se deshizo: guardaste cambios después y se perderían.').first() with timeout 5000ms
+      - waiting for getByText('No se deshizo: guardaste cambios después y se perderían.').first()
+      - Expect "toBeVisible" getByText('No se importó el archivo') with timeout 5000ms
+      - waiting for getByText('No se importó el archivo')
+      - waiting for locator('.history-entry').first().getByRole('button', { name: 'Revertir' })
+      - Expect "toHaveAttribute" getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Categoría') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Categoría')
+           - unexpected value "transport"
+      - Expect "toContainText" getByTestId('calendar-beyond-note') with timeout 5000ms
+      - waiting for getByTestId('calendar-beyond-note')
+      - Expect "toBeVisible" getByText('1 posible duplicado') with timeout 5000ms
+      - waiting for getByText('1 posible duplicado')
+    - Timeout 5000ms exceeded while waiting on the predicate
+      - Expect "toHaveClass" locator('.swipe').first() with timeout 5000ms
+      - waiting for locator('.swipe').first()
+           - unexpected value "swipe"
+      - Expect "toHaveText" locator('article.goal').filter({ hasText: 'Fondo de emergencia' }).getByTestId('goal-history-count') with timeout 5000ms
+      - waiting for locator('article.goal').filter({ hasText: 'Fondo de emergencia' }).getByTestId('goal-history-count')
+      - Expect "toHaveValue" getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+           - unexpected value "10.00"
+      - Expect "toHaveText" getByTestId('net-worth') with timeout 5000ms
+      - waiting for getByTestId('net-worth')
+           - unexpected value "$1,258.77"
+      - Expect "toContainText" getByTestId('plan-carry-note') with timeout 5000ms
+      - waiting for getByTestId('plan-carry-note')
+      - Expect "toBeVisible" getByText('No se deshizo: guardaste cambios después y se perderían.').first() with timeout 5000ms
+      - waiting for getByText('No se deshizo: guardaste cambios después y se perderían.').first()
+      - Expect "toBeVisible" getByText('No se deshizo: guardaste cambios después y se perderían.').first() with timeout 5000ms
+      - waiting for getByText('No se deshizo: guardaste cambios después y se perderían.').first()
+      - Expect "toBeVisible" getByText('No se importó el archivo') with timeout 5000ms
+      - waiting for getByText('No se importó el archivo')
+      - waiting for locator('.history-entry').first().getByRole('button', { name: 'Revertir' })
+      - Expect "toHaveAttribute" getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Categoría') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Categoría')
+           - unexpected value "transport"
+      - Expect "toContainText" getByTestId('calendar-beyond-note') with timeout 5000ms
+      - waiting for getByTestId('calendar-beyond-note')
+      - Expect "toBeVisible" getByText('1 posible duplicado') with timeout 5000ms
+      - waiting for getByText('1 posible duplicado')
+      - Expect "toHaveText" locator('article.goal').filter({ hasText: 'Fondo de emergencia' }).getByTestId('goal-history-count') with timeout 5000ms
+      - waiting for locator('article.goal').filter({ hasText: 'Fondo de emergencia' }).getByTestId('goal-history-count')
+    [escritorio] › tests/e2e/stabilization.spec.ts:439:1 › 15 · el historial de una meta con 120 movimientos enseña cuántos hay y deja llegar al más antiguo 
+  3 skipped
+  15 passed (4.1m)
