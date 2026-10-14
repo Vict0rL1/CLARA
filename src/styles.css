@@ -714,18 +714,20 @@ html {
 .banner--demo {
   background: #3b2f86;
   color: #ffffff;
-  flex-wrap: nowrap;
+  /* Una línea en celular con el tamaño normal; con texto al 200 % el botón baja a otra línea en vez de
+     estrujar el texto hasta partir cada palabra. */
+  flex-wrap: wrap;
   padding-top: 6px;
   padding-bottom: 6px;
 }
 .banner--demo .banner__text {
-  flex: 1 1 auto;
+  flex: 1 1 4rem;
   min-width: 0;
   line-height: 1.3;
 }
 .banner--demo .banner__action {
-  flex: 0 0 auto;
-  white-space: nowrap;
+  flex: 0 1 auto;
+  max-width: 100%;
 }
 /* En celular el aviso cabe en una línea: el detalle queda para lectores de pantalla. */
 @media (max-width: 599px) {

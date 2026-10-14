@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { START, available, go, openDetails, pickCategory, setLanguage, startDemo, storedData, writeStoredData, type UiLanguage } from './helpers'
+import { START, available, expectNoMidWordBreaks, go, openDetails, pickCategory, setLanguage, startDemo, storedData, writeStoredData, type UiLanguage } from './helpers'
 
 /**
  * Regresiones de navegador de la auditoría posterior (2026-10-12/13) sobre `e7c9d87`. Cada prueba
@@ -401,6 +401,8 @@ test('13 · texto al 200 % en 320 px: Cuentas, Metas, Datos y Calendario sin des
       }
       // El relleno inferior del contenido cubre el alto real de la barra (una o dos filas).
       expect(layout.padding, where).toBeGreaterThanOrEqual(layout.navHeight)
+      // El aviso de demostración se lee entero: el botón baja de línea en vez de partir cada palabra.
+      await expectNoMidWordBreaks(page.locator('.banner--demo .banner__text'), where)
     }
   }
   // Teclado: el elemento enfocado se ve (contorno o sombra) y queda dentro de la pantalla.
