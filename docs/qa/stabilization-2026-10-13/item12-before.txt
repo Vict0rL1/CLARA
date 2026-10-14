@@ -1,0 +1,8 @@
+     × cada `var(--x)` sin respaldo usa una propiedad definida (12: `--text` y `--danger` no existían) 14ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
++ Received
++ [
++   "--danger",
++   "--text",
++ ]
+      Tests  1 failed | 1 passed (2)

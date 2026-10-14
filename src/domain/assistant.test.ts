@@ -44,10 +44,12 @@ describe('asistente: registro todo o nada y contador de uso', () => {
 })
 
 describe('proveedor de IA', () => {
-  it('sin credenciales siempre es local; con credenciales, remoto', async () => {
+  it('sin credenciales siempre es local; con credenciales y origen declarado, remoto', async () => {
     expect(createAiProvider({}).id).toBe('local')
     expect(createAiProvider({ VITE_AI_ENDPOINT: 'https://x', VITE_AI_KEY: '' }).id).toBe('local')
-    expect(createAiProvider({ VITE_AI_ENDPOINT: 'https://x', VITE_AI_KEY: 'k' }).id).toBe('remote')
+    // Punto 11: el origen tiene que estar declarado como servicio propio; sin la lista, local.
+    expect(createAiProvider({ VITE_AI_ENDPOINT: 'https://x', VITE_AI_KEY: 'k' }).id).toBe('local')
+    expect(createAiProvider({ VITE_AI_ENDPOINT: 'https://x', VITE_AI_KEY: 'k', VITE_AI_ALLOWED_ORIGINS: 'https://x' }).id).toBe('remote')
     const local = await new LocalProvider().parseText('café 45', pctx)
     expect(local[0]).toMatchObject({ amountMinor: 4500, categoryId: 'dining' })
   })

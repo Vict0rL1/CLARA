@@ -280,6 +280,9 @@ body {
   /* Inter: «1» con base y ceros sin barra; mejor lectura de importes. */
   font-feature-settings: 'cv05', 'ss03';
   font-optical-sizing: auto;
+  /* Texto al 200 % en 320 px: una palabra que no cabe en su línea se parte en vez de salirse de la
+     pantalla. No cambia el tamaño mínimo de nada ni parte palabras que caben. */
+  overflow-wrap: break-word;
 }
 
 h1,
@@ -292,6 +295,9 @@ p {
 h1 {
   font-size: 1.6rem;
   line-height: 1.2;
+  /* Con texto al 200 % una palabra larga («recuperación») puede no caber en 320 px: se parte solo
+     entonces (con el tamaño normal las palabras caben y no se parten). */
+  overflow-wrap: anywhere;
   font-weight: 750;
   letter-spacing: -0.02em;
 }
@@ -596,8 +602,10 @@ html {
   left: 0;
   right: 0;
   bottom: 0;
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  /* Una fila de seis huecos iguales; si no caben (texto al 200 %), pasan a otra fila en vez de salirse
+     de la pantalla (`useNavHeightVar` ajusta el relleno del contenido al alto real). */
+  display: flex;
+  flex-wrap: wrap;
   background: var(--surface);
   border-top: 1px solid var(--border);
   padding: 4px max(4px, env(safe-area-inset-right)) calc(4px + var(--safe-bottom)) max(4px, env(safe-area-inset-left));
@@ -616,6 +624,8 @@ html {
   justify-content: center;
   gap: 2px;
   min-height: 56px;
+  flex: 1 1 0;
+  min-width: min-content;
   padding: 4px 2px;
   border-radius: var(--radius-md);
   color: var(--muted);
@@ -704,18 +714,20 @@ html {
 .banner--demo {
   background: #3b2f86;
   color: #ffffff;
-  flex-wrap: nowrap;
+  /* Una línea en celular con el tamaño normal; con texto al 200 % el botón baja a otra línea en vez de
+     estrujar el texto hasta partir cada palabra. */
+  flex-wrap: wrap;
   padding-top: 6px;
   padding-bottom: 6px;
 }
 .banner--demo .banner__text {
-  flex: 1 1 auto;
+  flex: 1 1 4rem;
   min-width: 0;
   line-height: 1.3;
 }
 .banner--demo .banner__action {
-  flex: 0 0 auto;
-  white-space: nowrap;
+  flex: 0 1 auto;
+  max-width: 100%;
 }
 /* En celular el aviso cabe en una línea: el detalle queda para lectores de pantalla. */
 @media (max-width: 599px) {
@@ -992,16 +1004,17 @@ html {
 
 .net-position__parts {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 2px;
   margin: 0;
 }
 
 .net-position__parts > div {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: baseline;
-  gap: 12px;
+  gap: 0 12px;
   font-size: var(--font-body-sm);
 }
 
@@ -1096,7 +1109,7 @@ html {
 }
 
 .net-position__parts dd {
-  margin: 0;
+  margin: 0 0 0 auto;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -2041,7 +2054,8 @@ fieldset.bill-row {
   background: var(--surface-2);
   color: var(--ink-2);
   vertical-align: middle;
-  white-space: nowrap;
+  /* Con texto grande una etiqueta larga pasa a otra línea (entre palabras) en vez de salirse. */
+  max-width: 100%;
 }
 
 .badge--info {
@@ -2260,11 +2274,14 @@ fieldset.bill-row {
 .goal-list {
   list-style: none;
   display: grid;
+  /* La columna nunca es más ancha que la pantalla: el contenido de la tarjeta se ajusta dentro. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
 }
 
 .goal__head {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 8px;
@@ -2825,12 +2842,12 @@ fieldset.bill-row {
 
 .tabs {
   display: flex;
-  flex-wrap: nowrap;
+  /* Si no caben (texto al 200 %, francés en 320 px), pasan a otra fila: ninguna queda fuera de la vista. */
+  flex-wrap: wrap;
   gap: 4px;
   background: var(--surface-2);
   padding: 4px;
   border-radius: var(--radius-control);
-  /* En celular las pestañas se desplazan en horizontal en vez de partirse en dos filas. */
   overflow-x: auto;
   scroll-snap-type: x proximity;
   scrollbar-width: none;
@@ -2906,6 +2923,8 @@ fieldset.bill-row {
 .month-nav__title {
   font-size: 1.1rem;
   text-align: center;
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .cal-grid {
@@ -3194,7 +3213,8 @@ fieldset.bill-row {
 
 .toast__message {
   /* Con una acción larga en pantallas estrechas, la acción baja de línea y el texto se ve. */
-  flex: 1 1 9rem;
+  /* Nunca más ancho que el aviso, aunque 9rem crezca con el texto al 200 %. */
+  flex: 1 1 min(9rem, 100%);
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -3274,6 +3294,8 @@ fieldset.bill-row {
   }
 
   .nav__item {
+    flex: none;
+    min-width: 0;
     flex-direction: row;
     justify-content: flex-start;
     gap: 12px;
@@ -5001,7 +5023,7 @@ li.is-selected > .item--select {
   margin: 8px 0;
 }
 .pace-chart__limit {
-  stroke: var(--danger);
+  stroke: var(--critical-mark);
   stroke-width: 1.5;
   stroke-dasharray: 4 4;
 }
@@ -5023,7 +5045,7 @@ li.is-selected > .item--select {
   background: var(--text-muted);
 }
 .legend__swatch--limit {
-  background: var(--danger);
+  background: var(--critical-mark);
 }
 
 /* ---- Estadísticas (§7.6) ---- */
@@ -5048,7 +5070,7 @@ li.is-selected > .item--select {
   color: var(--good-text);
 }
 .stat__delta--bad {
-  color: var(--danger);
+  color: var(--critical-text);
 }
 .stat__delta--neutral {
   color: var(--text-muted);
@@ -5072,14 +5094,15 @@ li.is-selected > .item--select {
 .donut__slice {
   stroke: var(--cat-color);
 }
+/* SVG: `fill` con tokens que existen en claro y oscuro (antes `--text`, sin definir → negro en oscuro). */
 .donut__total {
   font-size: 11px;
   font-weight: 700;
-  fill: var(--text);
+  fill: var(--text-primary);
 }
 .donut__sub {
-  font-size: 8px;
-  fill: var(--text-muted);
+  font-size: 9px;
+  fill: var(--text-secondary);
 }
 .donut__list {
   list-style: none;
@@ -5154,7 +5177,7 @@ li.is-selected > .item--select {
   stroke-width: 1;
 }
 .chart__axis--zero {
-  stroke: var(--danger);
+  stroke: var(--critical-mark);
   stroke-dasharray: 3 3;
 }
 .stats-axis {
@@ -5178,7 +5201,7 @@ li.is-selected > .item--select {
   stroke-width: 2;
 }
 .bars__group.is-active .bars__bar {
-  stroke: var(--text);
+  stroke: var(--text-primary);
   stroke-width: 1;
 }
 .bars__bar.series-3 {
@@ -5186,6 +5209,19 @@ li.is-selected > .item--select {
 }
 .bars__bar.series-2 {
   fill: var(--series-2);
+}
+/* Gasto neto negativo (más devoluciones que gastos): baja del cero, con borde discontinuo + nota de texto. */
+.bars__bar--negative {
+  fill-opacity: 0.55;
+  stroke: var(--series-2);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 2;
+}
+.bars__note {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin: 6px 0 0;
 }
 .bars__tip {
   margin: 4px 0 0;

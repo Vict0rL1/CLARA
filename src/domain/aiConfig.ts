@@ -11,7 +11,15 @@
  * compilación falla) y en la app (`createAiProvider`, se usa el análisis local). Nunca se simula un
  * proveedor remoto que no exista.
  */
-export type RemoteAiEnv = { VITE_AI_ENDPOINT?: string; VITE_AI_KEY?: string }
+export type RemoteAiEnv = {
+  VITE_AI_ENDPOINT?: string
+  VITE_AI_KEY?: string
+  /**
+   * Orígenes https del servicio PROPIO (separados por comas o espacios). Obligatorio para activar el
+   * proveedor remoto: el endpoint tiene que estar en esta lista, que decide quien despliega.
+   */
+  VITE_AI_ALLOWED_ORIGINS?: string
+}
 
 export type RemoteAiReason =
   /** Ni endpoint ni clave: análisis local, sin más. */
@@ -20,6 +28,10 @@ export type RemoteAiReason =
   | 'incomplete'
   /** El endpoint no es una URL https. */
   | 'insecureEndpoint'
+  /** La URL lleva usuario/contraseña (`https://u:p@host`) o un parámetro con forma de credencial (`?key=`). */
+  | 'credentialsInUrl'
+  /** El origen del endpoint no está en `VITE_AI_ALLOWED_ORIGINS` (o la lista falta). */
+  | 'originNotAllowed'
   /** El endpoint apunta directo a un proveedor de IA: la clave sería su credencial. */
   | 'providerHost'
   /** La clave tiene la forma de un secreto de proveedor. */
@@ -70,8 +82,42 @@ export const PROVIDER_SECRET_PATTERNS: readonly RegExp[] = [
   /^xox[abprs]-/, // Slack
 ]
 
+/**
+ * Host canónico para comparar: minúsculas y sin puntos finales. `api.openai.com.` (FQDN con punto)
+ * resuelve al mismo sitio que `api.openai.com` y no puede saltarse la lista de proveedores.
+ */
+export function canonicalHost(host: string): string {
+  return host.toLowerCase().replace(/\.+$/, '')
+}
+
+/** Parámetros de consulta que suelen llevar credenciales: no pueden ir en una URL pública. */
+const CREDENTIAL_PARAMS = /^(key|api[-_]?key|apikey|token|access[-_]?token|auth|authorization|secret|client[-_]?secret|password|sig|signature)$/i
+
+/** Origen https canónico (`https://host[:puerto]`) o `null` si la URL no sirve como origen propio. */
+function canonicalOrigin(url: URL): string | null {
+  const host = canonicalHost(url.hostname)
+  if (url.protocol !== 'https:' || !host || url.username || url.password) return null
+  return `https://${host}${url.port ? `:${url.port}` : ''}`
+}
+
+/** Lista de orígenes permitidos (la decide quien despliega). Entradas no https, con credenciales o de proveedores se ignoran. */
+export function allowedOrigins(value: string | undefined): string[] {
+  const out: string[] = []
+  for (const entry of (value ?? '').split(/[\s,]+/).filter(Boolean)) {
+    let url: URL
+    try {
+      url = new URL(entry)
+    } catch {
+      continue
+    }
+    const origin = canonicalOrigin(url)
+    if (origin && !isProviderHost(url.hostname) && !out.includes(origin)) out.push(origin)
+  }
+  return out
+}
+
 export function isProviderHost(host: string): boolean {
-  const h = host.toLowerCase()
+  const h = canonicalHost(host)
   return PROVIDER_API_HOSTS.some((p) => (p.startsWith('.') ? h.endsWith(p) || h === p.slice(1) : h === p))
 }
 
@@ -90,16 +136,26 @@ export function checkRemoteAiConfig(env: RemoteAiEnv = {}): RemoteAiCheck {
   } catch {
     return { ok: false, reason: 'insecureEndpoint' }
   }
+  // Credenciales en la URL: viajarían en el paquete igual que la clave (y en registros de servidores).
+  if (url.username || url.password || [...url.searchParams.keys()].some((k) => CREDENTIAL_PARAMS.test(k))) return { ok: false, reason: 'credentialsInUrl' }
   if (url.protocol !== 'https:') return { ok: false, reason: 'insecureEndpoint' }
-  if (isProviderHost(url.hostname)) return { ok: false, reason: 'providerHost' }
+  const host = canonicalHost(url.hostname)
+  if (!host) return { ok: false, reason: 'insecureEndpoint' }
+  if (isProviderHost(host)) return { ok: false, reason: 'providerHost' }
   if (looksLikeProviderSecret(key)) return { ok: false, reason: 'secretKey' }
-  return { ok: true, endpoint, origin: url.origin, host: url.host }
+  // Solo orígenes del servicio propio que quien despliega declara explícitamente.
+  url.hostname = host
+  const origin = canonicalOrigin(url)
+  if (!origin || !allowedOrigins(env.VITE_AI_ALLOWED_ORIGINS).includes(origin)) return { ok: false, reason: 'originNotAllowed' }
+  return { ok: true, endpoint: url.toString(), origin, host: url.host }
 }
 
 /** Texto para el error de compilación (en el registro de CI, no en la interfaz). */
 export const REMOTE_AI_REASON_TEXT: Record<Exclude<RemoteAiReason, 'none'>, string> = {
   incomplete: 'VITE_AI_ENDPOINT y VITE_AI_KEY van juntos: define los dos o ninguno (una clave sin endpoint también viajaría en el paquete).',
   insecureEndpoint: 'VITE_AI_ENDPOINT debe ser una URL https.',
+  credentialsInUrl: 'VITE_AI_ENDPOINT no puede llevar usuario, contraseña ni parámetros con credenciales (key, token, secret…): todo lo que empieza por VITE_ es público.',
+  originNotAllowed: 'El origen de VITE_AI_ENDPOINT debe figurar en VITE_AI_ALLOWED_ORIGINS (orígenes https de tu propio servicio, separados por comas). Sin esa lista no se activa el proveedor remoto.',
   providerHost: 'VITE_AI_ENDPOINT apunta directo a un proveedor de IA: la clave sería su credencial y cualquiera que abra la app la vería. Usa un servicio propio que guarde la credencial real.',
   secretKey: 'VITE_AI_KEY tiene la forma de una clave secreta de proveedor. Todo lo que empieza por VITE_ es público: usa un token de alcance limitado para un servicio propio.',
 }

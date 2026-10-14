@@ -91,8 +91,11 @@ export function analysisItems(data: AppData, today: LocalDate): AnalysisItem[] {
   const projection = projectBalance(data, today, { days: ANALYSIS_HORIZON_DAYS })
   const flowBecause = (until: LocalDate): Because[] => {
     const days = projection.days.filter((d) => d.date <= until)
-    const outflows = sumMinor(days.map((d) => Math.min(0, d.eventsMinor)))
-    const inflows = sumMinor(days.map((d) => Math.max(0, d.eventsMinor)))
+    // Bruto: cada ingreso y cada pago por separado. +100 y −150 el mismo día son «+100» y «−150», no
+    // «0» y «−50» (antes se neteaba por día y la explicación no coincidía con lo que ocurre).
+    const effects = days.flatMap((d) => d.events.map((e) => e.budgetEffectMinor))
+    const inflows = sumMinor(effects.filter((v) => v > 0))
+    const outflows = sumMinor([...effects.filter((v) => v < 0), ...days.map((d) => d.extraMinor - d.dailySpendMinor)])
     const end = days[days.length - 1]?.endMinor ?? projection.startMinor
     return [
       { id: 'startBalance', kind: 'money', value: projection.startMinor },
@@ -101,24 +104,33 @@ export function analysisItems(data: AppData, today: LocalDate): AnalysisItem[] {
       { id: 'balanceOn', kind: 'money', value: end, op: '=' },
     ]
   }
+  // El punto del aviso: si el saldo de hoy ya está por debajo (antes de cualquier previsto), la cifra es
+  // ese saldo y no el cierre del día (que podría ser positivo si hoy entra un ingreso).
+  const pointOf = (date: LocalDate, below: (minor: number) => boolean): { amount: number; because: Because[] } => {
+    if (date === projection.today && below(projection.startMinor)) {
+      return { amount: projection.startMinor, because: [{ id: 'startBalance', kind: 'money', value: projection.startMinor, op: '=' }] }
+    }
+    const day = projection.days.find((d) => d.date === date)
+    return { amount: day?.endMinor ?? projection.startMinor, because: flowBecause(date) }
+  }
   if (projection.firstNegativeDate) {
-    const day = projection.days.find((d) => d.date === projection.firstNegativeDate)
+    const point = pointOf(projection.firstNegativeDate, (m) => m < 0)
     out.push({
       key: 'shortfall',
       id: 'shortfall',
       severity: 'critical',
-      params: { date: projection.firstNegativeDate, amount: day?.endMinor ?? 0 },
-      because: flowBecause(projection.firstNegativeDate),
+      params: { date: projection.firstNegativeDate, amount: point.amount },
+      because: point.because,
       href: '/plan/calendario',
     })
   } else if (projection.firstBelowGoalsDate && projection.goalsReservedMinor > 0) {
-    const day = projection.days.find((d) => d.date === projection.firstBelowGoalsDate)
+    const point = pointOf(projection.firstBelowGoalsDate, (m) => m < projection.goalsReservedMinor)
     out.push({
       key: 'belowReserves',
       id: 'belowReserves',
       severity: 'warning',
-      params: { date: projection.firstBelowGoalsDate, amount: day?.endMinor ?? 0, reserved: projection.goalsReservedMinor },
-      because: [...flowBecause(projection.firstBelowGoalsDate), { id: 'reserved', kind: 'money', value: projection.goalsReservedMinor }],
+      params: { date: projection.firstBelowGoalsDate, amount: point.amount, reserved: projection.goalsReservedMinor },
+      because: [...point.because, { id: 'reserved', kind: 'money', value: projection.goalsReservedMinor }],
       href: '/plan/proyeccion',
     })
   }
@@ -133,9 +145,10 @@ export function analysisItems(data: AppData, today: LocalDate): AnalysisItem[] {
       id: p.state === 'over' ? 'limitOver' : 'limitNear',
       severity: p.state === 'over' ? 'warning' : 'info',
       params: { planId: plan.id, name: plan.name, spent: p.spentMinor, limit: p.limitMinor, remaining: Math.abs(p.remainingMinor), percent: p.percent },
+      // Límite − gastado = restante (negativo = superado): la ecuación cuadra con sus operandos.
       because: [
-        { id: 'spent', kind: 'money', value: p.spentMinor },
-        { id: 'limit', kind: 'money', value: p.limitMinor, op: '−' },
+        { id: 'limit', kind: 'money', value: p.limitMinor },
+        { id: 'spent', kind: 'money', value: p.spentMinor, op: '−' },
         { id: 'remaining', kind: 'money', value: p.remainingMinor, op: '=' },
       ],
       href: `/plan/planes/${plan.id}`,

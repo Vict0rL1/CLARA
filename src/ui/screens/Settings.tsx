@@ -51,7 +51,8 @@ import { SafeToSpendSection } from './settings/SafeToSpendSection'
 import { ScheduledSection } from './settings/ScheduledSection'
 import { TagsSection } from './settings/TagsSection'
 import { useLockState } from '../lock/lockContext'
-import { localBackups } from '../useAutoBackup'
+import { keepCopyBeforeReplace, localBackups } from '../useAutoBackup'
+import { replaceWithUndo, type UndoReplaceResult } from '../../state/replaceUndo'
 import { currencyName } from '../../domain/formatters'
 import { getPeriod } from '../../domain/periods'
 import { periodLabel } from '../periodLabel'
@@ -203,25 +204,35 @@ export function Settings({ route }: { route: Route }) {
 
   const applyImport = async () => {
     if (!importState || !('data' in importState)) return
-    // Se conserva en memoria lo que había para poder deshacer la importación.
-    const previous = getStore().data
-    const ok = await getStore().commit(importState.data, { source: 'replace' })
+    const next = importState.data
     setImportState(null)
+    // REC-01: copia local de lo actual antes de reemplazarlo (camino de recuperación si «Deshacer» ya no es seguro).
+    const copy = await keepCopyBeforeReplace(getStore().data)
+    if (copy === 'failed') {
+      toast({ message: t('localBackup.failed'), tone: 'critical' })
+      return
+    }
+    const keptCopy = copy === 'kept'
+    const { ok, undo } = await replaceWithUndo(next)
     toast({
       message: ok ? t('settings.backup.imported') : t('save.error.generic'),
       tone: ok ? 'good' : 'critical',
-      ...(ok && previous
-        ? {
-            action: {
-              label: t('common.undo'),
-              onClick: async () => {
-                const undone = await getStore().commit(previous, { source: 'replace' })
-                toast({ message: undone ? t('settings.backup.importUndone') : t('save.error.generic'), tone: undone ? 'good' : 'critical' })
-              },
-            },
-          }
-        : {}),
+      ...(ok ? { action: { label: t('common.undo'), onClick: () => void undoReplaceToast(undo, keptCopy, 'settings.backup.importUndone') } } : {}),
     })
+  }
+
+  /** Deshacer un reemplazo solo si nada cambió después (REC-01); si no, se explica y se ofrece la copia local. */
+  const undoReplaceToast = async (undo: () => Promise<UndoReplaceResult>, keptCopy: boolean, doneKey: MessageKey) => {
+    const r = await undo()
+    if (r === 'undone') toast({ message: t(doneKey), tone: 'good' })
+    else if (r === 'stale')
+      toast({
+        message: t(keptCopy ? 'replace.undoStale' : 'replace.undoStaleNoCopy'),
+        tone: 'critical',
+        durationMs: 12_000,
+        ...(keptCopy ? { action: { label: t('replace.openLocalCopies'), onClick: () => navigate('/ajustes/copias-locales') } } : {}),
+      })
+    else toast({ message: t('save.error.generic'), tone: 'critical' })
   }
 
   const resetDemo = async () => {

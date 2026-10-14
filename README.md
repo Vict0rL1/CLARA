@@ -215,6 +215,9 @@ La demostración muestra un aviso morado permanente: **todos sus datos son ficti
 
 ## 5. Pruebas
 
+> Guía corta en inglés para agentes (Codex) y para probar a mano las correcciones del 2026-10-13:
+> [`AGENTS.md`](AGENTS.md). Informe y evidencia: [`docs/STABILIZATION-2026-10-13.md`](docs/STABILIZATION-2026-10-13.md).
+
 ### Pruebas de la lógica financiera (rápidas)
 
 ```bash

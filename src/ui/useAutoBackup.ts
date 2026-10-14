@@ -4,6 +4,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { isAutoBackupDue, LocalBackups, type LocalBackupMeta } from '../storage/autoBackup'
+import type { AppData } from '../domain/types'
 import { useData } from '../state/store'
 import { APP_VERSION } from './backupActions'
 
@@ -74,3 +75,18 @@ export function useLocalBackupList(): { list: LocalBackupMeta[] | null; refresh:
   return { list, refresh, available }
 }
 
+
+/**
+ * Copia local «Antes de restaurar» de los datos actuales, antes de reemplazarlos (importar o
+ * restaurar). Es el camino de recuperación cuando «Deshacer» ya no es seguro (REC-01).
+ */
+export async function keepCopyBeforeReplace(data: AppData | null): Promise<'kept' | 'unavailable' | 'failed'> {
+  const backups = localBackups()
+  if (!backups || !data) return 'unavailable'
+  try {
+    await backups.save(data, 'beforeRestore', new Date(), APP_VERSION)
+    return 'kept'
+  } catch {
+    return 'failed'
+  }
+}

@@ -5,7 +5,8 @@
  *
  * Regla de coincidencia: mismo sentido (gasto ↔ pago, ingreso ↔ cobro), mismo importe, fecha a
  * ±`MATCH_WINDOW_DAYS` de la ocurrencia, movimiento realizado sin `scheduleId`. Cada movimiento se
- * propone para una sola ocurrencia (la más cercana en fecha) y cada ocurrencia recibe un candidato.
+ * propone para una sola ocurrencia y cada ocurrencia recibe un candidato: se ordenan TODAS las parejas
+ * posibles por cercanía antes de asignar (la coincidencia exacta de fecha gana siempre).
  */
 import { addDays, daysBetween } from './dates'
 import { saveTransaction, type OpContext, type OpResult } from './operations'
@@ -27,23 +28,33 @@ export function unlinkedSettlements(data: AppData, today: LocalDate): UnlinkedSe
   const since = addDays(today, -LOOKBACK_DAYS)
   const open = openItemsUntil(data, today, addDays(today, LOOKAHEAD_DAYS)).filter((i) => i.source === 'schedule' && i.date >= since && (i.state === 'pending' || i.state === 'overdue'))
   const candidates = data.transactions.filter((tx) => tx.status === 'realized' && !tx.scheduleId && (tx.kind === 'expense' || tx.kind === 'income'))
-  const used = new Set<string>()
-  const out: UnlinkedSettlement[] = []
-  for (const item of open) {
+  // Todas las parejas posibles, ordenadas por cercanía ANTES de asignar: un pago del mismo día de una
+  // ocurrencia nunca se lo queda otra ocurrencia anterior que solo estaba más arriba en la lista.
+  const pairs: { item: PlanItem; index: number; tx: Transaction; distance: number }[] = []
+  open.forEach((item, index) => {
     const wanted = item.direction === 'income' ? 'income' : 'expense'
-    let best: { tx: Transaction; distance: number } | null = null
     for (const tx of candidates) {
-      if (used.has(tx.id) || tx.kind !== wanted || tx.amountMinor !== item.amountMinor) continue
+      if (tx.kind !== wanted || tx.amountMinor !== item.amountMinor) continue
       const distance = Math.abs(daysBetween(tx.date, item.date))
-      if (distance > MATCH_WINDOW_DAYS) continue
-      if (!best || distance < best.distance || (distance === best.distance && tx.date > best.tx.date)) best = { tx, distance }
+      if (distance <= MATCH_WINDOW_DAYS) pairs.push({ item, index, tx, distance })
     }
-    if (best) {
-      used.add(best.tx.id)
-      out.push({ item, transaction: best.tx, distanceDays: best.distance })
-    }
+  })
+  // A igual distancia: el movimiento más reciente, luego la ocurrencia más antigua; ids para un orden estable.
+  pairs.sort((a, b) => a.distance - b.distance || cmp(b.tx.date, a.tx.date) || cmp(a.item.date, b.item.date) || cmp(a.tx.id, b.tx.id) || a.index - b.index)
+  const usedTx = new Set<string>()
+  const usedItem = new Set<number>()
+  const out: (UnlinkedSettlement & { index: number })[] = []
+  for (const p of pairs) {
+    if (usedTx.has(p.tx.id) || usedItem.has(p.index)) continue
+    usedTx.add(p.tx.id)
+    usedItem.add(p.index)
+    out.push({ item: p.item, transaction: p.tx, distanceDays: p.distance, index: p.index })
   }
-  return out
+  return out.sort((a, b) => a.index - b.index).map(({ index: _index, ...rest }) => rest)
+}
+
+function cmp(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0
 }
 
 /** Vincula un movimiento existente con la ocurrencia: a partir de ahí cuenta como movimiento, no como reserva. */

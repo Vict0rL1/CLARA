@@ -52,8 +52,8 @@ describe('J2 · cabeceras de Cloudflare Pages (dist/_headers)', () => {
 describe('R-01 · la compilación falla con una configuración insegura del proveedor remoto', () => {
   it('sin variables no hay origen remoto; con un servicio propio seguro se usa ese endpoint', () => {
     expect(safeRemoteEndpoint({})).toBeUndefined()
-    expect(safeRemoteEndpoint({ VITE_AI_ENDPOINT: 'https://clara-ai.example.com/parse', VITE_AI_KEY: 'pub_token' })).toBe('https://clara-ai.example.com/parse')
-    expect(buildCsp(safeRemoteEndpoint({ VITE_AI_ENDPOINT: 'https://clara-ai.example.com/parse', VITE_AI_KEY: 'pub_token' }))).toContain("connect-src 'self' https://clara-ai.example.com;")
+    expect(safeRemoteEndpoint({ VITE_AI_ENDPOINT: 'https://clara-ai.example.com/parse', VITE_AI_KEY: 'pub_token', VITE_AI_ALLOWED_ORIGINS: 'https://clara-ai.example.com' })).toBe('https://clara-ai.example.com/parse')
+    expect(buildCsp(safeRemoteEndpoint({ VITE_AI_ENDPOINT: 'https://clara-ai.example.com/parse', VITE_AI_KEY: 'pub_token', VITE_AI_ALLOWED_ORIGINS: 'https://clara-ai.example.com' }))).toContain("connect-src 'self' https://clara-ai.example.com;")
   })
 
   it('una clave de proveedor, un endpoint directo a un proveedor, http o una variable suelta detienen la compilación con el motivo', () => {
@@ -61,6 +61,10 @@ describe('R-01 · la compilación falla con una configuración insegura del prov
     expect(() => safeRemoteEndpoint({ VITE_AI_ENDPOINT: 'https://api.openai.com/v1/chat/completions', VITE_AI_KEY: 'pub_token' })).toThrow(/providerHost/)
     expect(() => safeRemoteEndpoint({ VITE_AI_ENDPOINT: 'http://clara-ai.example.com/parse', VITE_AI_KEY: 'pub_token' })).toThrow(/insecureEndpoint/)
     expect(() => safeRemoteEndpoint({ VITE_AI_KEY: 'pub_token' })).toThrow(/incomplete/)
+    // 11: punto final en el host, credenciales en la URL y origen no declarado también la detienen.
+    expect(() => safeRemoteEndpoint({ VITE_AI_ENDPOINT: 'https://api.openai.com./v1/chat/completions', VITE_AI_KEY: 'pub_token', VITE_AI_ALLOWED_ORIGINS: 'https://api.openai.com.' })).toThrow(/providerHost/)
+    expect(() => safeRemoteEndpoint({ VITE_AI_ENDPOINT: 'https://u:p@clara-ai.example.com/parse', VITE_AI_KEY: 'pub_token', VITE_AI_ALLOWED_ORIGINS: 'https://clara-ai.example.com' })).toThrow(/credentialsInUrl/)
+    expect(() => safeRemoteEndpoint({ VITE_AI_ENDPOINT: 'https://clara-ai.example.com/parse', VITE_AI_KEY: 'pub_token' })).toThrow(/originNotAllowed/)
     // El mensaje nunca repite la clave.
     try {
       safeRemoteEndpoint({ VITE_AI_ENDPOINT: 'https://clara-ai.example.com/parse', VITE_AI_KEY: 'sk-ant-api03-ficticia' })

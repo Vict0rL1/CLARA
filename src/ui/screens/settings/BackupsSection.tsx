@@ -8,7 +8,8 @@ import { parseBackup } from '../../../storage/backup'
 import type { LocalBackupMeta } from '../../../storage/autoBackup'
 import type { AppData } from '../../../domain/types'
 import { useT, type MessageKey } from '../../../i18n'
-import { getStore, useData } from '../../../state/store'
+import { useData } from '../../../state/store'
+import { replaceWithUndo } from '../../../state/replaceUndo'
 import { APP_VERSION, downloadText } from '../../backupActions'
 import { Alert, Card } from '../../components/common'
 import { ConfirmDialog } from '../../components/Dialog'
@@ -69,13 +70,29 @@ export function BackupsSection() {
       toast({ message: t('localBackup.failed'), tone: 'critical' })
       return
     }
-    const previous = getStore().data
-    const ok = await getStore().commit(target.data, { source: 'replace' })
+    const { ok, undo } = await replaceWithUndo(target.data)
     refresh()
     toast({
       message: ok ? t('localBackup.restored') : t('save.error.generic'),
       tone: ok ? 'good' : 'critical',
-      ...(ok && previous ? { action: { label: t('common.undo'), onClick: () => void getStore().commit(previous, { source: 'replace' }) } } : {}),
+      ...(ok
+        ? {
+            action: {
+              label: t('common.undo'),
+              onClick: async () => {
+                // REC-01: deshacer solo si nada cambió desde la restauración; lo anterior sigue en «Antes de restaurar».
+                const r = await undo()
+                toast(
+                  r === 'undone'
+                    ? { message: t('localBackup.restoreUndone'), tone: 'good' }
+                    : r === 'stale'
+                      ? { message: t('replace.undoStale'), tone: 'critical', durationMs: 12_000 }
+                      : { message: t('save.error.generic'), tone: 'critical' },
+                )
+              },
+            },
+          }
+        : {}),
     })
   }
 

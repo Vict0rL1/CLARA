@@ -1,0 +1,65 @@
+{
+  "rects": [
+    {
+      "cls": "bars__bar series-3",
+      "y": "130",
+      "height": "0"
+    },
+    {
+      "cls": "bars__bar series-2",
+      "y": "130",
+      "height": "0"
+    },
+    {
+      "cls": "bars__bar series-3",
+      "y": "130",
+      "height": "0"
+    },
+    {
+      "cls": "bars__bar series-2",
+      "y": "130",
+      "height": "0"
+    },
+    {
+      "cls": "bars__bar series-3",
+      "y": "130",
+      "height": "0"
+    },
+    {
+      "cls": "bars__bar series-2",
+      "y": "130",
+      "height": "0"
+    },
+    {
+      "cls": "bars__bar series-3",
+      "y": "130",
+      "height": "0"
+    },
+    {
+      "cls": "bars__bar series-2",
+      "y": "130",
+      "height": "0"
+    },
+    {
+      "cls": "bars__bar series-3",
+      "y": "130",
+      "height": "0"
+    },
+    {
+      "cls": "bars__bar series-2",
+      "y": "130",
+      "height": "0"
+    },
+    {
+      "cls": "bars__bar series-3",
+      "y": "12",
+      "height": "118"
+    },
+    {
+      "cls": "bars__bar series-2",
+      "y": "202.13049026734512",
+      "height": "-72.13049026734512"
+    }
+  ],
+  "tooltip": "septiembre de 2026 — Ingresos $1,238.10 · Gastos -$756.82"
+}

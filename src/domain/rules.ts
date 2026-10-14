@@ -35,6 +35,27 @@ export function matchCategoryRule(
   return explainRuleMatch(description, kind, rules, custom, prefs)?.rule
 }
 
+/**
+ * Resolutor ÚNICO de reglas (explicación, revisión y asistente): de las reglas candidatas cuyo patrón
+ * normalizado (≥ `RULE_PATTERN_MIN` caracteres) aparece en el texto ya normalizado, devuelve las que
+ * coinciden ordenadas de ganadora a perdedora: patrón más largo primero; a igual longitud, la más
+ * antigua (`createdAt`); sin fecha, se respeta el orden de la lista. Quien llama filtra antes el tipo
+ * y las categorías utilizables.
+ */
+export function rankRuleMatches<R extends { pattern: string; createdAt?: string }>(normalizedText: string, candidates: readonly R[]): R[] {
+  if (!normalizedText) return []
+  return candidates
+    .map((rule, index) => ({ rule, index, pattern: normalizeText(rule.pattern) }))
+    .filter((m) => m.pattern.length >= RULE_PATTERN_MIN && normalizedText.includes(m.pattern))
+    .sort((a, b) => b.pattern.length - a.pattern.length || olderFirst(a.rule.createdAt, b.rule.createdAt) || a.index - b.index)
+    .map((m) => m.rule)
+}
+
+function olderFirst(a: string | undefined, b: string | undefined): number {
+  if (!a || !b || a === b) return 0
+  return a < b ? -1 : 1
+}
+
 /** Por qué ganó una regla: era la única que coincidía, la de patrón más largo, o la más antigua a igual longitud. */
 export type RuleMatchReason = 'only' | 'longest' | 'oldest'
 
@@ -61,13 +82,11 @@ export function explainRuleMatch(
   const text = normalizeText(description)
   if (!text) return undefined
   const usable = categoriesForKind(wanted, custom, { prefs })
-  const matching = rules.filter((rule) => {
-    if (rule.kind !== wanted || !usable.includes(rule.categoryId)) return false
-    const pattern = normalizeText(rule.pattern)
-    return pattern.length >= RULE_PATTERN_MIN && text.includes(pattern)
-  })
-  if (matching.length === 0) return undefined
-  const sorted = [...matching].sort((a, b) => normalizeText(b.pattern).length - normalizeText(a.pattern).length || (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0))
+  const sorted = rankRuleMatches(
+    text,
+    rules.filter((rule) => rule.kind === wanted && usable.includes(rule.categoryId)),
+  )
+  if (sorted.length === 0) return undefined
   const [best, ...competitors] = sorted as [CategoryRule, ...CategoryRule[]]
   const reason: RuleMatchReason =
     competitors.length === 0 ? 'only' : normalizeText(best.pattern).length > normalizeText(competitors[0]!.pattern).length ? 'longest' : 'oldest'

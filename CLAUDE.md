@@ -52,8 +52,11 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
 - Mensuales en 29/30/31 → último día del mes corto.
 - Operaciones idempotentes: el id se genera al abrir el formulario; guardar dos veces
   actualiza el mismo registro.
-- Importación CSV (`domain/bankImport.ts`): huella `importRef` evita reimportar; posibles
-  duplicados desmarcados; todo o nada; el archivo nunca sale del dispositivo.
+- Importación CSV (`domain/bankImport.ts`): huella `importRef` (referencia del banco o descripción
+  COMPLETA; las huellas antiguas de 80 caracteres se siguen reconociendo) evita reimportar; posibles
+  duplicados desmarcados; filas con error visibles y nunca importadas; lo marcado se guarda todo o
+  nada; más de 5000 filas → cuántas y cuáles quedan fuera, y confirmar exige reconocerlo; el archivo
+  nunca sale del dispositivo.
 - Papelera: eliminar saca el movimiento de `transactions` a `trash` (nunca participa en
   cálculos). Restaurar no deja vínculos rotos ni liquida dos veces una ocurrencia; filas
   CSV en la papelera no se reimportan. Sin borrado automático.
@@ -65,7 +68,9 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
 - Favoritos solo rellenan el formulario; nunca registran movimientos.
 - Parser del asistente (`domain/parser.ts`): las pruebas pasan por `parseText` (lo que usa el
   asistente), no solo por `parseEntry`; una coma entre dígitos es parte del importe. El asistente
-  escribe en un `<textarea>` (una línea por movimiento).
+  escribe en un `<textarea>` (una línea por movimiento). Reglas de categoría: un solo resolutor
+  (`rankRuleMatches`: patrón más largo, a igualdad la más antigua) para asistente, revisión y Ajustes.
+  La revisión distingue saldo (solo realizado) de disponible (simulado sobre una copia, nunca deducido).
 - Gastos planificados = metas `kind: 'expense'` (`domain/plannedExpenses.ts`): el plan es
   solo sugerencia; solo lo apartado descuenta. Vinculados a una ocurrencia, esa ocurrencia
   no se reserva dos veces (`reserves.ts`). Pagar = gasto real + liberar reserva en una
@@ -115,8 +120,11 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
 
 ## Interfaz y accesibilidad
 
-- Móvil primero; sin desplazamiento horizontal de 320 px a escritorio; texto ampliable (rem).
-- Estados siempre con icono + texto, nunca solo color. Contraste AA (claro y oscuro).
+- Móvil primero; sin desplazamiento horizontal de 320 px a escritorio; texto ampliable (rem). Con texto al 200 %
+  en 320 px tampoco (es/en/pt/fr): la barra inferior pasa a dos filas (`useNavHeightVar` ajusta `--nav-h`),
+  pestañas y filas se ajustan, y una palabra que no cabe se parte en vez de salirse.
+- Estados siempre con icono + texto, nunca solo color. Contraste AA (claro y oscuro), también en texto SVG
+  (axe no lo mide: prueba de contraste calculado). Solo tokens definidos: `themeTokens.test.ts` falla con un `var(--x)` inexistente.
 - Cada campo con etiqueta, ayuda y error asociados (`FieldShell`). Botones ≥ 40–44 px.
 - Cada cifra principal tiene su explicación ("¿Cómo se calculó?").
 - No mostrar botones de funciones que no existen. No simular notificaciones,
@@ -128,7 +136,10 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   `SETTINGS_SECTIONS` (índice, búsqueda, enlaces antiguos `?seccion=`).
 - Guardas de maquetación (`tests/e2e/layout-guards.spec.ts`): palabras partidas, controles recortados,
   solapamientos y lo que cabe en la primera pantalla; corren en los tres tamaños.
-- Gráficos: seguir la paleta validada (`--series-*`), etiquetas selectivas, tabla alternativa.
+- Gráficos: seguir la paleta validada (`--series-*`), etiquetas selectivas, tabla alternativa. Valores con signo
+  (`signedScale`): el cero dentro del eje, nunca alturas negativas; gráfico y tabla dicen la misma cifra.
+- Calendario: proyecta hasta `CALENDAR_PROJECTION_MAX_DAYS` (400); más allá no hay cifra (`dayBalance` → `beyond`),
+  nunca el saldo del último día calculado.
 - Categorías: un solo dibujo (`CategoryIcon`) y un solo selector (`CategoryPicker`); nada de `<select>` de
   categoría salvo la tabla de la importación CSV. Listas vacías con `EmptyState` (icono, título y una
   línea de texto, ≤ 1 acción). Explicaciones largas: una frase + «¿Por qué?» (`Why`).
@@ -139,7 +150,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
 
 - Ningún secreto, clave o credencial en el código, el navegador o los registros.
   No hace falta `.env` en esta fase.
-- La importación valida TODO el archivo y no aplica nada si hay un error.
+- Restaurar una copia valida TODO el archivo y no aplica nada si hay un error. CSV del banco: cada fila
+  con error se muestra con su motivo y no se importa; las filas marcadas se guardan todo o nada.
 - Cambios de formato de datos: subir `SCHEMA_VERSION` (hoy 12) y añadir migración con prueba.
   Las migraciones solo rellenan campos ausentes; nunca borran datos mal formados.
 - Guardado (`indexedDbRepository.ts`, `localStorageRepository.ts`; ver `docs/STORAGE.md`): nunca sobrescribe lo que otra pestaña u otra
@@ -152,7 +164,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   iteraciones 1–2 000 000, tamaños de sal/IV/datos); «no válida» ≠ «frase incorrecta».
 - Todo lo que empieza por `VITE_` es público. `VITE_AI_KEY` solo puede ser un token de alcance limitado
   para un servicio propio: `checkRemoteAiConfig` (`domain/aiConfig.ts`) hace fallar la compilación con
-  una clave con forma de secreto o un endpoint directo a un proveedor de IA.
+  una clave con forma de secreto, un endpoint directo a un proveedor de IA (host sin puntos finales),
+  credenciales en la URL o un origen que no esté en `VITE_AI_ALLOWED_ORIGINS` (obligatoria).
 - El *service worker* (`pwa/sw.template.js`, generado por `vite.config.ts`) solo cachea
   archivos de la app, nunca datos. Solo se registra en producción y contexto seguro.
   Actualizar solo recarga la pestaña que lo pidió y no se ofrece con un formulario abierto. La versión compilada lleva una CSP

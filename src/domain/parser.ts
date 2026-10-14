@@ -9,8 +9,8 @@
  * categorías en cuatro idiomas más aprendizaje a partir del historial de la persona.
  */
 import { addDays, isValidLocalDate, parseLocalDate, toLocalDate, weekday } from './dates'
-import { currencyDigits } from './money'
-import { normalizeText } from './rules'
+import { currencyDigits, isSupportedCurrency, stripCurrencyMark, symbolMatchesCurrency } from './money'
+import { normalizeText, rankRuleMatches } from './rules'
 import type { AppData, Language, LocalDate, Transaction } from './types'
 
 export interface ParsedEntry {
@@ -28,6 +28,11 @@ export interface ParsedEntry {
   raw: string
   /** Qué se detectó y qué se asumió (claves de i18n `parser.hint.*`). */
   hints: ParserHint[]
+  /**
+   * Moneda escrita junto al importe que NO es la del presupuesto («café USD 10», «10 €» en CAD):
+   * código ISO o el símbolo tal cual. Nunca se convierte; la revisión bloquea la línea (AS-01).
+   */
+  foreignCurrency?: string
 }
 
 export type ParserHint =
@@ -60,7 +65,8 @@ export interface ParseContext {
   /** Palabra normalizada → categoría, aprendido del historial (`learnCategories`). */
   learned?: Record<string, string>
   /** Reglas de categoría de la persona (patrón normalizado → categoría). */
-  rules?: readonly { pattern: string; kind: 'expense' | 'income'; categoryId: string }[]
+  /** Reglas de la persona; `createdAt` desempata patrones de igual longitud (la más antigua gana). */
+  rules?: readonly { pattern: string; kind: 'expense' | 'income'; categoryId: string; createdAt?: string }[]
 }
 
 export const MAX_PARSER_LINES = 200
@@ -156,6 +162,21 @@ interface AmountMatch {
   start: number
   end: number
   hint?: ParserHint
+  /** Texto del importe con su marca de moneda (prefijo o código detrás), para `stripCurrencyMark`. */
+  marked?: string
+}
+
+/** Código de moneda escrito justo detrás del número («10 USD», «10 eur»): solo códigos conocidos. */
+const TRAILING_CODE = /^\s*([A-Za-z]{3})(?![\p{L}\d])/u
+
+/** Moneda escrita que no es la del presupuesto; `undefined` si no hay marca o si es la misma. */
+export function foreignCurrencyOf(marked: string | undefined, currency: string): string | undefined {
+  if (!marked) return undefined
+  const { mark } = stripCurrencyMark(marked)
+  if (!mark) return undefined
+  if ('unknown' in mark) return mark.unknown
+  if ('code' in mark) return mark.code === currency ? undefined : mark.code
+  return symbolMatchesCurrency(mark.symbol, currency) ? undefined : mark.symbol
 }
 
 /** «1.234,56», «1,234.56», «25.000» (miles), «25,50», «25.5», «$25», «25€», «25k», «2.5k», «25 mil». */
@@ -191,7 +212,15 @@ function findAmount(text: string, digits: number): AmountMatch | null {
     // Se prefiere el primer importe con símbolo o decimales; si no, el primero.
     const explicit = /[$€£¥]|r\$|c\$/i.test(m[0]!) || !!sep || !!suffix
     if (!best || (explicit && !best.hint && !/[$€£¥]/.test(text.slice(best.start, best.end)))) {
-      best = { minor, start: m.index!, end: m.index! + m[0]!.length, hint }
+      let end = m.index! + m[0]!.length
+      let marked = m[0]!.trim()
+      // AS-01: «10 USD» también es una moneda escrita; se quita de la descripción y se recuerda.
+      const trailing = TRAILING_CODE.exec(text.slice(end))
+      if (trailing && isSupportedCurrency(trailing[1]!.toUpperCase())) {
+        end += trailing[0].length
+        marked = `${marked} ${trailing[1]}`
+      }
+      best = { minor, start: m.index!, end, hint, marked }
       if (explicit) break
     }
   }
@@ -410,12 +439,14 @@ export function parseEntry(raw: string, ctx: ParseContext): ParsedEntry {
   // Categoría: regla de la persona > aprendizaje > diccionario
   const allowed = new Set(ctx.categories.filter((c) => c.kind === kind).map((c) => c.id))
   let categoryId: string | undefined
-  for (const r of ctx.rules ?? []) {
-    if (r.kind === kind && allowed.has(r.categoryId) && normDesc.includes(normalizeText(r.pattern)) && (!categoryId || r.pattern.length > 0)) {
-      categoryId = r.categoryId
-      hints.push('categoryRule')
-      break
-    }
+  // Mismo resolutor que Ajustes › Reglas y la revisión: el patrón más largo gana, a igualdad la más antigua.
+  const rule = rankRuleMatches(
+    normDesc,
+    (ctx.rules ?? []).filter((r) => r.kind === kind && allowed.has(r.categoryId)),
+  )[0]
+  if (rule) {
+    categoryId = rule.categoryId
+    hints.push('categoryRule')
   }
   if (!categoryId && ctx.learned) {
     for (const w of significantWords(normDesc)) {
@@ -459,7 +490,8 @@ export function parseEntry(raw: string, ctx: ParseContext): ParsedEntry {
   if (isTransfer) confidence = Math.min(confidence, 0.5)
   confidence = Math.max(0.05, Math.min(0.95, confidence))
 
-  return { kind: isTransfer ? 'transfer' : kind, amountMinor: amount?.minor ?? null, description, ...(merchant ? { merchant } : {}), ...(categoryId ? { categoryId } : {}), date: dateValue, confidence: Math.round(confidence * 100) / 100, raw: raw.trim(), hints }
+  const foreignCurrency = foreignCurrencyOf(amount?.marked, ctx.currency)
+  return { kind: isTransfer ? 'transfer' : kind, amountMinor: amount?.minor ?? null, description, ...(merchant ? { merchant } : {}), ...(categoryId ? { categoryId } : {}), date: dateValue, confidence: Math.round(confidence * 100) / 100, raw: raw.trim(), hints, ...(foreignCurrency ? { foreignCurrency } : {}) }
 }
 
 /** Texto libre → entradas (máximo 200). */

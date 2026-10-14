@@ -1,0 +1,16 @@
+== port 4174
+Inicio con 10k: cifra principal a los 373 / 308 ms
+Inicio con 10k: cifra principal a los 381 / 286 ms
+Inicio con 10k: cifra principal a los 384 / 344 ms
+Inicio con 10k: cifra principal a los 390 / 345 ms
+Inicio con 10k: cifra principal a los 422 / 328 ms
+Inicio con 10k: cifra principal a los 388 / 324 ms
+  6 passed (25.0s)
+== port 4173
+Inicio con 10k: cifra principal a los 366 / 314 ms
+Inicio con 10k: cifra principal a los 345 / 341 ms
+Inicio con 10k: cifra principal a los 388 / 345 ms
+Inicio con 10k: cifra principal a los 372 / 343 ms
+Inicio con 10k: cifra principal a los 343 / 318 ms
+Inicio con 10k: cifra principal a los 394 / 308 ms
+  6 passed (24.6s)

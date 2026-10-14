@@ -27,7 +27,27 @@ const SETTINGS_ID = 'settings'
 
 type WithId = { id: string }
 
-const same = (a: unknown, b: unknown) => a === b || JSON.stringify(a) === JSON.stringify(b)
+/**
+ * Igualdad de valores guardados, sin depender del orden de las claves (al recargar, el
+ * almacenamiento reconstruye cada registro con sus claves en otro orden) y tratando una clave con
+ * `undefined` como ausente, igual que al serializar. Antes se comparaba `JSON.stringify` y un
+ * registro recién guardado parecía «cambiado después» tras recargar (no se podía revertir).
+ */
+export function sameValue(a: unknown, b: unknown): boolean {
+  if (a === b) return true
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false
+  if (Array.isArray(a) !== Array.isArray(b)) return false
+  if (Array.isArray(a)) {
+    const bb = b as unknown[]
+    return a.length === bb.length && a.every((x, i) => sameValue(x, bb[i]))
+  }
+  const ao = a as Record<string, unknown>
+  const bo = b as Record<string, unknown>
+  const ka = Object.keys(ao).filter((k) => ao[k] !== undefined)
+  const kb = Object.keys(bo).filter((k) => bo[k] !== undefined)
+  return ka.length === kb.length && ka.every((k) => Object.prototype.hasOwnProperty.call(bo, k) && sameValue(ao[k], bo[k]))
+}
+const same = sameValue
 
 function financialSettings(s: Settings) {
   return Object.fromEntries(FINANCIAL_SETTINGS.map((k) => [k, s[k] ?? null]))

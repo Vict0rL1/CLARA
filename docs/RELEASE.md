@@ -171,7 +171,13 @@ reglas que la compilación comprueba sola (`npm run build` falla con el motivo; 
   de secreto de proveedor (`sk-…`, `AIza…`, `gsk_…`, `AKIA…`, `ghp_…`) detiene la compilación.
 - `VITE_AI_ENDPOINT` debe ser `https` y **no** el host de un proveedor de IA (OpenAI, Anthropic, Google,
   Mistral, Groq, OpenRouter, Azure, Bedrock…): si fuera directo, la clave sería la credencial de ese
-  proveedor. Las dos variables van juntas o ninguna.
+  proveedor. Las dos variables van juntas o ninguna. El host se compara sin mayúsculas ni puntos finales
+  (`api.openai.com.` es `api.openai.com`), y la URL no puede llevar usuario/contraseña
+  (`https://u:p@…`) ni parámetros con forma de credencial (`?key=`, `?token=`, `?api_key=`…).
+- `VITE_AI_ALLOWED_ORIGINS` (orígenes https **del servicio propio**, separados por comas) es obligatoria:
+  el origen de `VITE_AI_ENDPOINT` tiene que estar en esa lista, que decide quien despliega. Sin lista, con
+  otro origen u otro puerto, la compilación falla (`originNotAllowed`). Una entrada que sea un proveedor de
+  IA, no https o con credenciales se ignora.
 
 La política de seguridad de contenido solo añade ese origen cuando la configuración pasa, y la app usa
 el análisis local en cualquier otro caso sin fingir un proveedor (`src/domain/aiConfig.ts`, decisión 138).
@@ -192,6 +198,12 @@ existe hoy y aquí no se afirma lo contrario):
 5. Se prueba contra la vista previa de Cloudflare con `VITE_AI_ENDPOINT`/`VITE_AI_KEY` definidos como
    **variables de repositorio** (nunca secretos) y se comprueba en el navegador que `connect-src` solo
    añade ese origen.
+
+Estabilización 2026-10-13 (punto 11): la auditoría no tuvo un endpoint real ni secretos, y aquí tampoco.
+Antes de activar la función hay que verificar **en el entorno desplegado**: el alcance real del token
+público (qué puede pedir y a quién), su cuota y ritmo por usuario, su caducidad y rotación, y los controles
+del servidor (autorización, registros sin texto financiero, errores que no filtran la credencial). Las
+comprobaciones de este repositorio son de forma y no sustituyen esa verificación.
 
 Hasta entonces la beta compila sin proveedor: no hay ningún servicio activado, contratado ni probado.
 

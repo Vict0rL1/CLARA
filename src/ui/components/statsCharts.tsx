@@ -12,6 +12,7 @@ import type { CategoryColor } from '../../domain/types'
 import { useT } from '../../i18n'
 import type { Formatter } from '../format'
 import { Icon } from './Icon'
+import { signedScale } from '../chartScale'
 
 function HiddenChart() {
   const { t } = useT()
@@ -96,10 +97,12 @@ export function IncomeExpenseBars({ series, fmt, label, axisLabel, currentStart,
   const W = 320
   const H = 156
   const pad = { l: 8, r: 8, t: 12, b: 26 }
-  const max = Math.max(1, ...series.map((p) => Math.max(p.incomeMinor, p.expensesMinor)))
+  // Eje con signo: el gasto neto (gastos − devoluciones) puede ser negativo; su barra baja del cero en
+  // lugar de tener una altura negativa (que el navegador no dibuja) y la tabla muestra la misma cifra.
+  const { y, bar } = signedScale(series.flatMap((p) => [p.incomeMinor, p.expensesMinor]), pad.t, H - pad.b)
+  const anyNegative = series.some((p) => p.expensesMinor < 0 || p.incomeMinor < 0)
   const group = (W - pad.l - pad.r) / Math.max(1, series.length)
   const bw = Math.max(6, Math.min(22, group * 0.32))
-  const y = (v: number) => pad.t + (H - pad.t - pad.b) * (1 - v / max)
   const sel = active !== null ? series[active] : undefined
   return (
     <div className="bars">
@@ -109,8 +112,8 @@ export function IncomeExpenseBars({ series, fmt, label, axisLabel, currentStart,
           const cx = pad.l + group * i + group / 2
           return (
             <g key={p.range.start} className={`bars__group${active === i ? ' is-active' : ''}`}>
-              <rect x={cx - bw - 1} y={y(p.incomeMinor)} width={bw} height={y(0) - y(p.incomeMinor)} className="bars__bar series-3" rx="2" />
-              <rect x={cx + 1} y={y(p.expensesMinor)} width={bw} height={y(0) - y(p.expensesMinor)} className="bars__bar series-2" rx="2" />
+              <rect x={cx - bw - 1} {...bar(p.incomeMinor)} width={bw} className="bars__bar series-3" rx="2" />
+              <rect x={cx + 1} {...bar(p.expensesMinor)} width={bw} className={`bars__bar series-2${p.expensesMinor < 0 ? ' bars__bar--negative' : ''}`} rx="2" data-value={p.expensesMinor} />
               <text x={cx} y={H - 7} textAnchor="middle" className="stats-axis">
                 {(axisLabel ?? label)(p)}
               </text>
@@ -120,6 +123,11 @@ export function IncomeExpenseBars({ series, fmt, label, axisLabel, currentStart,
           )
         })}
       </svg>
+      {anyNegative && (
+        <p className="note bars__note" data-testid="bars-negative-note">
+          <Icon name="info" size={14} /> {t('stats.netNegative')}
+        </p>
+      )}
       <p className="bars__tip" id={`${id}-tip`} aria-live="polite" data-testid="bars-tooltip">
         {sel ? `${label(sel)} — ${t('stats.income')} ${fmt.money(sel.incomeMinor)} · ${t('stats.expenses')} ${fmt.money(sel.expensesMinor)}` : ''}
       </p>
@@ -171,15 +179,17 @@ export function TrendLines({ trend, fmt, today }: { trend: TrendPoint[]; fmt: Fo
   const W = 320
   const H = 140
   const pad = { l: 8, r: 8, t: 10, b: 18 }
-  const max = Math.max(1, ...trend.map((p) => Math.max(p.currentMinor ?? 0, p.previousMinor ?? 0)))
+  // Acumulado neto: con devoluciones puede bajar de cero; el eje lo incluye para no dibujar fuera.
+  const { y } = signedScale(trend.flatMap((p) => [p.currentMinor ?? 0, p.previousMinor ?? 0]), pad.t, H - pad.b)
   const x = (i: number) => pad.l + (trend.length === 1 ? 0 : (i * (W - pad.l - pad.r)) / (trend.length - 1))
-  const y = (v: number) => pad.t + (H - pad.t - pad.b) * (1 - v / max)
+  const negative = trend.some((p) => (p.currentMinor ?? 0) < 0 || (p.previousMinor ?? 0) < 0)
   const line = (pick: (p: TrendPoint) => number | null) => trend.map((p, i) => (pick(p) === null ? null : `${x(i).toFixed(1)},${y(pick(p)!).toFixed(1)}`)).filter((s) => s !== null).join(' ')
   const lastCur = [...trend].reverse().find((p) => p.currentMinor !== null)
   const lastPrev = [...trend].reverse().find((p) => p.previousMinor !== null)
   return (
     <div className="trend">
       <svg viewBox={`0 0 ${W} ${H}`} className="trend__svg" role="img" aria-label={t('stats.trendAria', { current: fmt.money(lastCur?.currentMinor ?? 0), previous: fmt.money(lastPrev?.previousMinor ?? 0) })}>
+        {negative && <line x1={pad.l} x2={W - pad.r} y1={y(0)} y2={y(0)} className="chart__axis" />}
         <polyline points={line((p) => p.previousMinor)} fill="none" className="trend__prev" />
         <polyline points={line((p) => p.currentMinor)} fill="none" className="trend__cur" />
       </svg>

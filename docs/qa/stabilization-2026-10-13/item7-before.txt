@@ -1,0 +1,28 @@
+ ❯ src/domain/stabilization.test.ts (24 tests | 5 failed | 19 skipped) 70ms
+     × «uber» y después «uber eats»: el asistente y la explicación eligen comida (el patrón más largo) 20ms
+     × a igual longitud gana la más antigua en los dos sitios, aunque la lista venga en otro orden 5ms
+     × cero, negativo y con decimales en unidades menores: la revisión los marca inválidos, igual que al guardar 33ms
+     × un pago vinculado a un recibo ya reservado baja el saldo pero no lo disponible; sin vincular, sí 7ms
+     × un ingreso con fecha futura no cambia el saldo de hoy ni sube lo disponible 3ms
+ FAIL  src/domain/stabilization.test.ts > 7 · reglas y revisión del asistente: una sola regla y efectos exactos > «uber» y después «uber eats»: el asistente y la explicación eligen comida (el patrón más largo)
+AssertionError: expected { kind: 'expense', …(7) } to match object { categoryId: 'dining', …(1) }
+- Expected
++ Received
+ FAIL  src/domain/stabilization.test.ts > 7 · reglas y revisión del asistente: una sola regla y efectos exactos > a igual longitud gana la más antigua en los dos sitios, aunque la lista venga en otro orden
+AssertionError: expected 'groceries' to be 'dining' // Object.is equality
+Expected: "dining"
+Received: "groceries"
+ FAIL  src/domain/stabilization.test.ts > 7 · reglas y revisión del asistente: una sola regla y efectos exactos > cero, negativo y con decimales en unidades menores: la revisión los marca inválidos, igual que al guardar
+AssertionError: 0: expected true to be false // Object.is equality
+- Expected
++ Received
+ FAIL  src/domain/stabilization.test.ts > 7 · reglas y revisión del asistente: una sola regla y efectos exactos > un pago vinculado a un recibo ya reservado baja el saldo pero no lo disponible; sin vincular, sí
+AssertionError: expected { id: 'luz', ok: true, …(5) } to match object { ok: true, effectMinor: -4280, …(1) }
+- Expected
++ Received
+ FAIL  src/domain/stabilization.test.ts > 7 · reglas y revisión del asistente: una sola regla y efectos exactos > un ingreso con fecha futura no cambia el saldo de hoy ni sube lo disponible
+AssertionError: expected { id: 'bonus', ok: true, …(4) } to match object { ok: true, planned: true, …(1) }
+- Expected
++ Received
+ Test Files  1 failed (1)
+      Tests  5 failed | 19 skipped (24)

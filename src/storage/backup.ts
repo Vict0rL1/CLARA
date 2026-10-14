@@ -105,7 +105,7 @@ export function backupText(data: AppData, now: Date, appVersion: string, options
   return JSON.stringify(createBackup(data, now, appVersion, options), options.withoutReceipts ? dropReceipts : undefined, indent)
 }
 
-export type BackupIssueCode = 'invalidJson' | 'notABackup' | 'schemaTooNew' | 'tooLarge' | 'tooManyRecords' | 'noAccounts' | 'migrationFailed'
+export type BackupIssueCode = 'invalidJson' | 'notABackup' | 'schemaTooNew' | 'tooLarge' | 'tooManyRecords' | 'noAccounts' | 'migrationFailed' | 'invalidExportDate'
 
 export type ImportIssue = Issue | { path: string; code: BackupIssueCode; params?: Record<string, string | number> }
 
@@ -476,6 +476,14 @@ export function parseBackup(text: string): ImportResult {
   }
   if (typeof raw.formatVersion !== 'number' || raw.formatVersion > BACKUP_FORMAT_VERSION) {
     return { ok: false, issues: [{ path: 'formatVersion', code: 'schemaTooNew', params: { version: String(raw.formatVersion) } }] }
+  }
+  // REC-02: los metadatos del archivo también se validan antes de dar la copia por buena. Una copia
+  // antigua sin fecha (o con `null`) sigue valiendo; una fecha que no es fecha es un archivo dañado.
+  if (raw.exportedAt !== undefined && raw.exportedAt !== null && !isValidTimestamp(raw.exportedAt)) {
+    return { ok: false, issues: [{ path: 'exportedAt', code: 'invalidExportDate', params: { found: String(raw.exportedAt).slice(0, 40) } }] }
+  }
+  if (raw.omitted !== undefined && !(Array.isArray(raw.omitted) && raw.omitted.every((x) => typeof x === 'string'))) {
+    return { ok: false, issues: [{ path: 'omitted', code: 'notABackup' }] }
   }
   const result = validateAppData(raw.data)
   if (!result.ok) return result

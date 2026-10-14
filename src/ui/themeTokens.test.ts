@@ -30,3 +30,13 @@ describe('tokens del tema oscuro', () => {
     expect(forced).toEqual(system)
   })
 })
+
+describe('tokens usados', () => {
+  it('cada `var(--x)` sin respaldo usa una propiedad definida (12: `--text` y `--danger` no existían)', () => {
+    const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8')
+    const defined = new Set([...css.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1]!))
+    // `var(--x)` o `var(--x, …)`: solo las que no tienen valor de respaldo deben existir.
+    const undefinedUses = [...css.matchAll(/var\((--[a-z0-9-]+)\s*\)/g)].map((m) => m[1]!).filter((name) => !defined.has(name))
+    expect([...new Set(undefinedUses)]).toEqual([])
+  })
+})

@@ -394,6 +394,9 @@ export function SwipeRow({
 }) {
   const startX = useRef<number | null>(null)
   const [offset, setOffset] = useState(0)
+  // Desplazamiento en vivo: un gesto rápido puede soltar antes de que React pinte el último movimiento;
+  // decidir con el estado de ese render dejaba la fila cerrada (y su botón tapado por el contenido).
+  const liveOffset = useRef(0)
   // 'focus' (teclado o lector de pantalla) muestra las acciones sin desplazar la fila.
   const [open, setOpen] = useState<false | 'left' | 'right' | 'focus'>(false)
   const WIDTH = 88
@@ -418,17 +421,21 @@ export function SwipeRow({
           if (startX.current === null) return
           const dx = e.clientX - startX.current
           const base = open === 'left' ? dx - WIDTH : open === 'right' ? dx + WIDTH : dx
-          setOffset(Math.max(-WIDTH, Math.min(secondary ? WIDTH : 0, base)))
+          liveOffset.current = Math.max(-WIDTH, Math.min(secondary ? WIDTH : 0, base))
+          setOffset(liveOffset.current)
         }}
         onPointerUp={() => {
-          if (Math.abs(offset) > WIDTH / 2) haptic('tick')
+          const final = liveOffset.current
+          if (Math.abs(final) > WIDTH / 2) haptic('tick')
           if (startX.current === null) return
           startX.current = null
-          setOpen(offset < -WIDTH / 2 ? 'left' : secondary && offset > WIDTH / 2 ? 'right' : false)
+          liveOffset.current = 0
+          setOpen(final < -WIDTH / 2 ? 'left' : secondary && final > WIDTH / 2 ? 'right' : false)
           setOffset(0)
         }}
         onPointerCancel={() => {
           startX.current = null
+          liveOffset.current = 0
           setOffset(0)
         }}
       >

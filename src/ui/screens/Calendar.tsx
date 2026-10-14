@@ -6,7 +6,7 @@ import { nextPendingOccurrence } from '../../domain/repeat'
 import { categoryVisual, categoryVisuals } from '../../domain/categories'
 import { CategoryIcon } from '../components/CategoryIcon'
 import { planItems, type PlanItem } from '../../domain/planItems'
-import { projectBalance, type ProjectionDay } from '../../domain/projection'
+import { CALENDAR_PROJECTION_MAX_DAYS, dayBalance, projectBalance, type ProjectionDay } from '../../domain/projection'
 import { linkSettlement, unlinkedSettlements } from '../../domain/reconcileSchedules'
 import { useT, type MessageKey } from '../../i18n'
 import { useRun, useToday } from '../../state/hooks'
@@ -52,7 +52,7 @@ export function Calendar() {
   // hasta el final del mes visible y como mínimo 60 días, para que una simulación muestre el faltante
   // aunque caiga en el mes siguiente. Los días pasados no se proyectan: el saldo real vive en Cuentas.
   const projectionEnd = maxDate(monthEnd, addDays(today, MIN_PROJECTION_DAYS - 1))
-  const projectionDays = Math.min(400, daysBetween(today, projectionEnd) + 1)
+  const projectionDays = Math.min(CALENDAR_PROJECTION_MAX_DAYS, daysBetween(today, projectionEnd) + 1)
   const projection = useMemo(() => projectBalance(data, today, { days: projectionDays }), [data, today, projectionDays])
   const byDate = useMemo(() => new Map<string, ProjectionDay>(projection.days.map((d) => [d.date, d])), [projection])
   const lastProjected = projection.days[projection.days.length - 1]?.date ?? today
@@ -64,6 +64,10 @@ export function Calendar() {
   // Un mes de proyección es barato: se recalcula al escribir, sin memorizar.
   const simulated = simMinor > 0 ? projectBalance(data, today, { days: projectionDays, extraOutflows: [{ date: simDay, amountMinor: simMinor }] }) : null
   const simDayResult = simulated?.days.find((d) => d.date === simDay)
+  // Más allá de la proyección no hay cifra: se dice, no se muestra la del último día calculado.
+  const simBeyond = simMinor > 0 && simDay > lastProjected
+  const selectedBalance = selectedDay ? dayBalance(projection, selectedDay) : null
+  const monthBeyond = monthEnd > lastProjected
   const simNegative = simulated?.firstNegativeDate ? simulated.days.find((d) => d.date === simulated.firstNegativeDate) : undefined
   // Conciliación: movimientos ya registrados que parecen una ocurrencia abierta sin vincular.
   const unlinked = useMemo(() => unlinkedSettlements(data, today), [data, today])
@@ -348,6 +352,11 @@ export function Calendar() {
             ))}
           </tbody>
         </table>
+        {monthBeyond && (
+          <p className="note" data-testid="calendar-beyond-note">
+            <Icon name="info" size={14} /> {t('calendar.flow.beyondNote', { date: fmt.date(lastProjected, { compact: true, today }) })}
+          </p>
+        )}
       </Card>
 
       <Card labelledBy="agenda-title">
@@ -360,8 +369,12 @@ export function Calendar() {
           </button>
         )}
         {selectedDay && (
-          <p className="item__meta" data-testid="day-balance">
-            {selectedDay < today ? t('calendar.flow.past') : t('calendar.flow.dayBalance', { amount: fmt.money(byDate.get(selectedDay)?.endMinor ?? projection.endMinor) })}
+          <p className="item__meta" data-testid="day-balance" data-state={selectedBalance?.state}>
+            {selectedBalance?.state === 'projected'
+              ? t('calendar.flow.dayBalance', { amount: fmt.money(selectedBalance.endMinor) })
+              : selectedBalance?.state === 'beyond'
+                ? t('calendar.flow.beyond', { date: fmt.date(selectedBalance.lastDate, { compact: true, today }), days: CALENDAR_PROJECTION_MAX_DAYS })
+                : t('calendar.flow.past')}
           </p>
         )}
         {listed.length === 0 ? <EmptyState compact icon="calendar" title={t('calendar.empty')} /> : <ul className="item-list">{listed.map(renderItem)}</ul>}
@@ -374,6 +387,12 @@ export function Calendar() {
         </h2>
         <p className="note">{t('calendar.sim.hint')}</p>
         <MoneyField label={t('calendar.sim.amount')} hint={fmt.date(simDay, { weekday: true, compact: true, today })} value={simText} onChange={setSimText} error={simParsed ? moneyErrorMessage(t, simParsed) : null} fmt={fmt} name="simulate" />
+        {simBeyond && (
+          <p className="flow-line" data-testid="sim-beyond" aria-live="polite">
+            <Icon name="info" size={16} />
+            {t('calendar.sim.beyond', { date: fmt.date(lastProjected, { compact: true, today }) })}
+          </p>
+        )}
         {simulated && simDayResult && (
           <>
             <p className={simNegative ? 'flow-line flow-line--negative' : 'flow-line'} data-testid="sim-result" aria-live="polite">

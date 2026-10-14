@@ -1,0 +1,10 @@
+     × dos filas distintas que comparten los 80 primeros caracteres ya no chocan: la segunda es «posible duplicado», nunca se omite en silencio 38ms
+     × las huellas antiguas (80 caracteres) se siguen reconociendo: misma nota → duplicado; nota editada → posible duplicado; en la papelera → papelera 3ms
+     × con referencia del banco: filas idénticas con referencias distintas son distintas, y reimportar con o sin la columna no duplica 3ms
+     × más de 5,000 filas: número exacto de filas fuera y sus líneas; ninguna de ellas aparece en la vista previa 366ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected [ 'duplicate' ] to deeply equal [ 'possibleDuplicate' ]
+AssertionError: expected [ 'duplicate' ] to deeply equal [ 'possibleDuplicate' ]
+AssertionError: expected [ …(2) ] to deeply equal [ …(2) ]
+AssertionError: expected { rows: [ …(5000) ], …(2) } to match object { tooManyRows: true, …(3) }
+      Tests  4 failed | 1 passed | 30 skipped (35)

@@ -20,7 +20,7 @@ import { implausibilityRatio, isImplausibleAmount } from '../../domain/plausibil
 import { lastUsedAccount } from '../../domain/quickEntry'
 import type { Issue } from '../../domain/validation'
 import { useT, type MessageKey } from '../../i18n'
-import { useRun, useToday } from '../../state/hooks'
+import { makeContext, useRun, useToday } from '../../state/hooks'
 import { useData } from '../../state/store'
 import { PrimaryButton, SecondaryButton, TextButton } from '../components/base'
 import { Alert, Badge, Card, PageHeader } from '../components/common'
@@ -32,7 +32,6 @@ import { useFormat } from '../format'
 import { accountOptions, issueMessage } from '../labels'
 import { reviewProposals } from '../../domain/review'
 import { ProposalReviewView } from '../components/ProposalReview'
-import { signedMoney } from '../signedMoney'
 import { moneyErrorMessage } from '../moneyText'
 import { href, useNavigateIfStillHere, withQuery, type Route } from '../router'
 
@@ -53,6 +52,22 @@ interface Line {
   receiptUri?: string
   /** La persona decidió vincularla con el pago programado que coincide (revisión). */
   linked?: boolean
+}
+
+/**
+ * Texto inicial del importe. Si la persona escribió otra moneda («café USD 10» en CAD), se deja
+ * escrita en el campo: así el campo explica el error y nada se guarda en la moneda equivocada (AS-01).
+ */
+function initialAmountText(entry: ParsedEntry, fmt: { moneyInput: (minor: number) => string }): string {
+  if (entry.amountMinor === null) return ''
+  const amount = fmt.moneyInput(entry.amountMinor)
+  if (!entry.foreignCurrency) return amount
+  return /^[A-Za-z]{3}$/.test(entry.foreignCurrency) ? `${amount} ${entry.foreignCurrency}` : `${entry.foreignCurrency}${amount}`
+}
+
+/** Moneda escrita en el campo que no es la del presupuesto (o `undefined`). */
+function writtenCurrencyOf(result: ReturnType<typeof parseMoney>): string | undefined {
+  return !result.ok && (result.error === 'currencyMismatch' || result.error === 'unknownCurrency') ? result.found : undefined
 }
 
 type SpeechCtor = new () => { lang: string; interimResults: boolean; continuous: boolean; onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onend: (() => void) | null; onerror: (() => void) | null; start: () => void; stop: () => void }
@@ -157,7 +172,7 @@ export function Assistant({ route }: { route: Route }) {
         entry,
         kind: entry.kind === 'transfer' ? 'expense' : entry.kind,
         ...(entry.kind === 'transfer' ? { review: 'transfer' as const } : {}),
-        amountText: entry.amountMinor === null ? '' : fmt.moneyInput(entry.amountMinor),
+        amountText: initialAmountText(entry, fmt),
         categoryId: entry.categoryId ?? (entry.kind === 'income' ? 'salary' : 'other_expense'),
         date: entry.date,
         note: entry.description,
@@ -183,24 +198,31 @@ export function Assistant({ route }: { route: Route }) {
       data,
       lines.map((l) => {
         const parsed = parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale)
+        const written = writtenCurrencyOf(parsed)
         return {
           id: l.id,
           source: l.receiptUri ? ('ai_photo' as const) : ('ai_text' as const),
           kind: l.kind,
           amountMinor: parsed.ok ? parsed.minor : null,
+          ...(written ? { writtenCurrency: written } : {}),
           date: l.date,
           accountId,
           categoryId: l.categoryId,
           description: l.entry.description,
           note: l.note.trim() || undefined,
+          linkToSchedule: !!l.linked,
         }
       }),
       today,
+      // Lo disponible antes/después se simula con la misma operación que al registrar.
+      { now: makeContext(data.settings.timeZone).now },
     )
   }, [lines, data, accountId, today])
   const reviewOf = (id: string) => reviewed?.reviews.find((r) => r.id === id)
 
   const transferRows = lines?.filter((l) => l.review === 'transfer').length ?? 0
+  // AS-01: una línea con otra moneda escrita no se registra (ni se convierte) hasta corregir el importe.
+  const foreignRows = lines?.filter((l) => !!writtenCurrencyOf(parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale))).length ?? 0
   const availableMinor = useMemo(() => computeBudget(data, today).availableMinor, [data, today])
   const implausibleTimes = (l: Line): number | null | false => {
     if (l.kind !== 'expense') return false
@@ -210,13 +232,14 @@ export function Assistant({ route }: { route: Route }) {
   }
 
   const confirm = async () => {
-    if (!lines?.length || busy || transferRows > 0) return
+    if (!lines?.length || busy || transferRows > 0 || foreignRows > 0) return
     const entries: ConfirmedEntry[] = []
     const errs: Issue[] = []
     lines.forEach((l, i) => {
       const parsed = parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale)
       if (!parsed.ok) {
-        errs.push({ path: `entries[${i}].amountMinor`, code: 'invalidAmount' })
+        const written = writtenCurrencyOf(parsed)
+        errs.push(written ? { path: `entries[${i}].amountMinor`, code: 'writtenCurrency', params: { found: written, expected: data.settings.currency } } : { path: `entries[${i}].amountMinor`, code: 'invalidAmount' })
         return
       }
       const match = l.linked ? reviewOf(l.id)?.scheduleMatch : undefined
@@ -401,7 +424,9 @@ export function Assistant({ route }: { route: Route }) {
           <p className="note">{t('assistant.previewHint')}</p>
           {reviewed && (
             <p className="note" data-testid="review-summary">
-              {t('review.summary', { amount: signedMoney(fmt, reviewed.totalEffectMinor) })}
+              {reviewed.available && reviewed.available.afterMinor !== reviewed.available.beforeMinor
+                ? t('review.summary', { before: fmt.money(reviewed.available.beforeMinor), after: fmt.money(reviewed.available.afterMinor) })
+                : t('review.summarySame', { amount: fmt.money(reviewed.available?.beforeMinor ?? availableMinor) })}
               {reviewed.counts.duplicates > 0 ? ` · ${tn('review.duplicatesCount', reviewed.counts.duplicates)}` : ''}
               {reviewed.counts.scheduleMatches > 0 ? ` · ${tn('review.scheduleCount', reviewed.counts.scheduleMatches)}` : ''}
             </p>
@@ -418,7 +443,7 @@ export function Assistant({ route }: { route: Route }) {
                   </Badge>
                 </div>
                 <Segmented legend={t('fields.kind')} name={`kind-${l.id}`} value={l.kind} onChange={(k) => update(l.id, { kind: k, review: undefined, categoryId: k === 'income' ? 'salary' : 'other_expense' })} options={[{ value: 'expense', label: t('txKind.expense') }, { value: 'income', label: t('txKind.income') }]} />
-                <MoneyField label={t('fields.amount')} value={l.amountText} onChange={(v) => update(l.id, { amountText: v })} fmt={fmt} error={lineError(i, 'amountMinor') ? (moneyErrorMessage(t, parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale)) ?? t('issue.invalidAmount')) : null} />
+                <MoneyField label={t('fields.amount')} value={l.amountText} onChange={(v) => update(l.id, { amountText: v })} fmt={fmt} error={lineError(i, 'amountMinor') || writtenCurrencyOf(parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale)) ? (moneyErrorMessage(t, parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale)) ?? t('issue.invalidAmount')) : null} />
                 <CategoryPicker label={t('fields.category')} kind={l.kind} data={data} value={l.categoryId} onChange={(id) => update(l.id, { categoryId: id })} keep={l.categoryId} allowNew />
                 <TextField label={t('fields.date')} type="date" value={l.date} max={today} onChange={(e) => update(l.id, { date: e.target.value })} error={lineError(i, 'date') ? issueMessage(t, fmt, lineError(i, 'date')!) : undefined} />
                 <TextField label={t('fields.noteOptional')} value={l.note} maxLength={120} onChange={(e) => update(l.id, { note: e.target.value })} />
@@ -463,7 +488,12 @@ export function Assistant({ route }: { route: Route }) {
               {t('assistant.transferBlocked')}
             </p>
           )}
-          <PrimaryButton large icon="check" onClick={() => void confirm()} disabled={busy || lines.length === 0 || transferRows > 0}>
+          {foreignRows > 0 && (
+            <p className="field__error" role="alert" data-testid="assistant-currency-blocked">
+              {tn('assistant.currencyBlocked', foreignRows, { currency: data.settings.currency })}
+            </p>
+          )}
+          <PrimaryButton large icon="check" onClick={() => void confirm()} disabled={busy || lines.length === 0 || transferRows > 0 || foreignRows > 0}>
             {tn('assistant.record', lines.length)}
           </PrimaryButton>
         </Card>

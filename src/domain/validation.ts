@@ -52,6 +52,8 @@ export type IssueCode =
   | 'amountNotPositive'
   | 'amountTooLarge'
   | 'currencyMismatch'
+  /** Moneda escrita junto al importe distinta de la del presupuesto (asistente, AS-01). */
+  | 'writtenCurrency'
   | 'unsupportedCurrency'
   | 'unknownAccount'
   | 'sameAccount'
