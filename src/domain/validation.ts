@@ -66,6 +66,8 @@ export type IssueCode =
   | 'exceedsRemaining'
   | 'exceedsSaved'
   | 'accountInUse'
+  | 'accountArchived'
+  | 'accountHasSchedules'
   | 'lastBudgetAccount'
   | 'lastCategoryOfKind'
   | 'creditKindChange'
@@ -336,6 +338,9 @@ export function validateAccount(a: Account, prefix = ''): Issue[] {
   checkName(a.name, `${prefix}name`, issues, 40)
   if (!isOneOf(ACCOUNT_KINDS, a.kind)) issues.push({ path: `${prefix}kind`, code: 'invalidValue' })
   if (typeof a.includeInBudget !== 'boolean') issues.push({ path: `${prefix}includeInBudget`, code: 'invalidValue' })
+  // v11: opcionales; si vienen, con su tipo (la migración solo rellena lo ausente).
+  if (a.archived !== undefined && typeof a.archived !== 'boolean') issues.push({ path: `${prefix}archived`, code: 'invalidValue' })
+  if (a.order !== undefined && !(Number.isInteger(a.order) && a.order >= 0)) issues.push({ path: `${prefix}order`, code: 'invalidValue' })
   if (!a.anchor || typeof a.anchor !== 'object') {
     issues.push({ path: `${prefix}anchor`, code: 'required' })
   } else {

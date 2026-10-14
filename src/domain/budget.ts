@@ -13,7 +13,7 @@
  * fuera del periodo, pero los pagos de ese mismo día sí se reservan, porque el
  * dinero puede llegar después de que se cobre el pago.
  */
-import { spendableBalance, oldestAnchor, type AccountBalance } from './balances'
+import { isBudgetAccount, oldestAnchor, spendableBalance, type AccountBalance } from './balances'
 import { addDays, daysBetween, localDateInTimeZone } from './dates'
 import { goalReserveLines, scheduleCoverage } from './reserves'
 import { floorDiv, mulDivFloor, sumMinor } from './money'
@@ -139,7 +139,7 @@ export function computeBudget(data: AppData, today: LocalDate): BudgetResult {
   const balanceAgeDays = balanceDate ? Math.max(0, daysBetween(balanceDate, today)) : null
 
   let status: BudgetStatus = 'ok'
-  if (!data.accounts.some((a) => a.includeInBudget)) status = 'noAccounts'
+  if (!data.accounts.some(isBudgetAccount)) status = 'noAccounts'
   else if (!horizon) status = 'needsHorizon'
 
   return {

@@ -11,7 +11,7 @@ import { SCHEMA_VERSION } from '../domain/types'
 
 type Raw = Record<string, unknown>
 
-const MIGRATIONS: Record<number, (raw: Raw) => Raw> = {
+export const MIGRATIONS: Record<number, (raw: Raw) => Raw> = {
   /** v1 → v2: categorías personalizadas (lista vacía). Los datos de tarjeta son opcionales. */
   1: (raw) => ({
     ...raw,
@@ -143,6 +143,22 @@ const MIGRATIONS: Record<number, (raw: Raw) => Raw> = {
       categoryLimits: limits.filter((l) => !ok(l)),
     }
   },
+  // v10 → v11: cuentas con `archived` y `order`. Solo se rellena lo ausente: una cuenta ya
+  // archivada u ordenada no cambia, y una entrada mal formada se conserva tal cual para que
+  // la validación la señale (nunca se borra para resolver un error de esquema).
+  10: (raw) => ({
+    ...raw,
+    schemaVersion: 11,
+    ...(Array.isArray(raw.accounts)
+      ? {
+          accounts: raw.accounts.map((a: unknown, i: number) =>
+            a && typeof a === 'object' && !Array.isArray(a)
+              ? { ...(a as Raw), ...((a as Raw).archived === undefined ? { archived: false } : {}), ...((a as Raw).order === undefined ? { order: i } : {}) }
+              : a,
+          ),
+        }
+      : {}),
+  }),
 }
 
 export function migrate(raw: Raw): Raw {

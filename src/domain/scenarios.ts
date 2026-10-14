@@ -12,6 +12,7 @@
  *  - Ingreso hipotético: ingreso PREVISTO simulado; cambia la proyección, nunca el disponible.
  *  - Cambiar el importe de un gasto programado (subir un pago mensual o reducir un gasto).
  */
+import { isBudgetAccount } from './balances'
 import { computeBudget } from './budget'
 import { projectBalance, type ProjectionOptions } from './projection'
 import type { OpContext, OpResult } from './operations'
@@ -46,7 +47,7 @@ export interface CompareOptions {
 /** Copia de los datos con los cambios del escenario. Los datos reales no se modifican. */
 export function applyChanges(data: AppData, changes: ScenarioChange[], today: LocalDate): { data: AppData; invalid: number[] } {
   const invalid: number[] = []
-  const fallback = data.accounts.find((a) => a.includeInBudget) ?? data.accounts[0]
+  const fallback = data.accounts.find(isBudgetAccount) ?? data.accounts.find((a) => !a.archived) ?? data.accounts[0]
   const simulated: Transaction[] = []
   let schedules = data.schedules
   changes.forEach((c, i) => {

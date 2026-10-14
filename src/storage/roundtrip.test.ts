@@ -113,6 +113,8 @@ describe('copias de versiones anteriores', () => {
       expect(r.data.schemaVersion).toBe(SCHEMA_VERSION)
       for (const key of ['accounts', 'transactions', 'schedules', 'goals', 'settings'] as const) {
         if (key === 'settings') expect(r.data.settings).toMatchObject({ ...d.settings, weeklyReview: true })
+        // v11 rellena `archived` y `order` en las cuentas (solo lo ausente); el resto no cambia.
+        else if (key === 'accounts') expect(r.data.accounts).toEqual(d.accounts.map((a, i) => ({ ...a, archived: false, order: i })))
         else expect(r.data[key]).toEqual(d[key])
       }
       // Lo que no existía se rellena vacío; lo que existía se conserva.

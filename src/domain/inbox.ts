@@ -169,7 +169,7 @@ function duplicates(data: AppData): InboxItem[] {
 
 function balances(data: AppData, today: LocalDate): InboxItem[] {
   const items: InboxItem[] = []
-  for (const account of data.accounts.filter((a) => a.includeInBudget || a.kind === 'credit')) {
+  for (const account of data.accounts.filter((a) => !a.archived && (a.includeInBudget || a.kind === 'credit'))) {
     const lastMovementDate = data.transactions
       .filter((t) => t.status === 'realized' && (t.accountId === account.id || t.toAccountId === account.id))
       .reduce<LocalDate | null>((max, t) => (max === null || t.date > max ? t.date : max), null)

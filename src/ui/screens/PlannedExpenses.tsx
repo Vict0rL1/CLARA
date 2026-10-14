@@ -2,6 +2,7 @@
  * Gastos planificados (anuales o poco frecuentes): tarjeta, formulario y pago.
  * Son metas `kind: 'expense'`; los cálculos viven en `domain/plannedExpenses.ts`.
  */
+import { activeAccounts, isBudgetAccount } from '../../domain/balances'
 import { useMemo, useState } from 'react'
 import { addDays } from '../../domain/dates'
 import { goalProgress } from '../../domain/goals'
@@ -22,7 +23,7 @@ import { Icon, type IconName } from '../components/Icon'
 import { useToast } from '../components/toastContext'
 import { BalanceInclusionControl } from '../dialogs'
 import { useFormat } from '../format'
-import { fieldError, issueMessage, otherIssues, planItemName } from '../labels'
+import { accountOptions, fieldError, issueMessage, otherIssues, planItemName } from '../labels'
 import { moneyErrorMessage, parseMoneyText } from '../moneyText'
 import { href, useNavigateIfStillHere } from '../router'
 
@@ -184,7 +185,7 @@ function PayPlannedDialog({ goal, onClose }: { goal: Goal; onClose: () => void }
   const [txId] = useState(newId)
   const [amountText, setAmountText] = useState(() => fmt.moneyInput(goal.targetMinor))
   const [date, setDate] = useState(today)
-  const [accountId, setAccountId] = useState(() => linkedSchedule?.accountId ?? data.accounts.find((a) => a.includeInBudget)?.id ?? data.accounts[0]!.id)
+  const [accountId, setAccountId] = useState(() => linkedSchedule?.accountId ?? activeAccounts(data.accounts).find(isBudgetAccount)?.id ?? activeAccounts(data.accounts)[0]?.id ?? data.accounts[0]!.id)
   const [surplus, setSurplus] = useState<'release' | 'carry'>('release')
   const [alreadyInBalance, setAlreadyInBalance] = useState(false)
   const [issues, setIssues] = useState<Issue[]>([])
@@ -230,7 +231,7 @@ function PayPlannedDialog({ goal, onClose }: { goal: Goal; onClose: () => void }
       <MoneyField label={t('planned.paidAmount')} value={amountText} onChange={setAmountText} error={amountError ?? fieldError(t, fmt, issues, 'amountMinor')} fmt={fmt} autoFocus />
       <TextField label={t('markPaid.dateExpense')} type="date" value={date} max={today} onChange={(e) => setDate(e.target.value)} required error={fieldError(t, fmt, issues, 'date')} />
       {data.accounts.length > 1 && (
-        <SelectField label={t('fields.account')} value={accountId} onChange={(e) => setAccountId(e.target.value)} options={data.accounts.map((a) => ({ value: a.id, label: a.name }))} />
+        <SelectField label={t('fields.account')} value={accountId} onChange={(e) => setAccountId(e.target.value)} options={accountOptions(data.accounts, t, accountId)} />
       )}
       <BalanceInclusionControl accountId={accountId} date={date} checked={alreadyInBalance} onChange={setAlreadyInBalance} />
       {surplusMinor > 0 &&

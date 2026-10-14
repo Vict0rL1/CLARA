@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { activeAccounts, isBudgetAccount } from '../../domain/balances'
 import { categoriesForKind } from '../../domain/categories'
 import { parseLocalDate } from '../../domain/dates'
 import { newId } from '../../domain/ids'
@@ -15,7 +16,7 @@ import { parseMoneyText, moneyErrorMessage } from '../moneyText'
 import { Icon } from '../components/Icon'
 import { useToast } from '../components/toastContext'
 import { useFormat } from '../format'
-import { fieldError, frequencyLabel, issueMessage, otherIssues } from '../labels'
+import { accountOptions, fieldError, frequencyLabel, issueMessage, otherIssues } from '../labels'
 import { href, type Route, useNavigateIfStillHere } from '../router'
 
 const REMINDER_OPTIONS = [0, 1, 2, 3, 7, 14]
@@ -48,7 +49,7 @@ export function ScheduleForm({ route }: { route: Route }) {
   const [paused, setPaused] = useState(!!existing?.paused)
   const [startDate, setStartDate] = useState(existing?.startDate ?? today)
   const [endDate, setEndDate] = useState(existing?.endDate ?? '')
-  const [accountId, setAccountId] = useState(existing?.accountId ?? (data.accounts.find((a) => a.includeInBudget) ?? data.accounts[0]!).id)
+  const [accountId, setAccountId] = useState(existing?.accountId ?? (activeAccounts(data.accounts).find(isBudgetAccount) ?? activeAccounts(data.accounts)[0] ?? data.accounts[0]!).id)
   const [categoryId, setCategoryId] = useState(existing?.categoryId ?? (queryKind === 'income' ? 'salary' : 'other_expense'))
   const [reminder, setReminder] = useState(existing?.reminderDaysBefore ?? (queryKind === 'income' ? 0 : 2))
   const [note, setNote] = useState(existing?.note ?? '')
@@ -188,7 +189,7 @@ export function ScheduleForm({ route }: { route: Route }) {
         {frequency !== 'once' && (
           <TextField label={t('scheduleForm.endDate')} type="date" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} hint={t('scheduleForm.endDateHint')} error={fieldError(t, fmt, issues, 'endDate')} />
         )}
-        <SelectField label={t('fields.account')} value={accountId} onChange={(e) => setAccountId(e.target.value)} options={data.accounts.map((a) => ({ value: a.id, label: a.name }))} error={fieldError(t, fmt, issues, 'accountId')} />
+        <SelectField label={t('fields.account')} value={accountId} onChange={(e) => setAccountId(e.target.value)} options={accountOptions(data.accounts, t, existing?.accountId)} error={fieldError(t, fmt, issues, 'accountId')} />
         <CategoryPicker label={t('fields.category')} kind={kind === 'income' ? 'income' : 'expense'} data={data} value={categoryId} onChange={setCategoryId} keep={existing?.categoryId} allowNew />
         <SelectField
           label={t('scheduleForm.reminder')}

@@ -8,6 +8,12 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
 
 ### Novedades
 
+- **Cuentas** (etapa 1 del programa; esquema 11): archivar una cuenta conserva su saldo y su historial, la saca de los
+  selectores y del disponible y se puede restaurar; no se archiva la última del presupuesto ni una con pagos programados
+  activos. Las cuentas se ordenan (Subir/Bajar) y ese orden vale en todas las listas. Ajustes › Cuentas muestra el
+  patrimonio neto (lo que tienes − lo que debes, con el subtotal del presupuesto) explicado, y cada cuenta con su tipo,
+  saldo con moneda, última actividad, si cuenta para el presupuesto y un enlace a sus movimientos. «En cuentas» en
+  Inicio lleva allí. La migración solo rellena los campos nuevos; ninguna cifra cambia.
 - **Inicio** (ronda «Lukas como referencia», `docs/BENCHMARK-LUKAS.md`): bajo la cifra principal, «En cuentas», «Reservado»
   y, si difiere, «Base del periodo»; en la vista esencial, una franja con los dos próximos pagos o ingresos; las metas
   muestran un arco de progreso en Inicio y en Plan › Metas.

@@ -12,7 +12,7 @@
  *  - Los apartados de metas no se restan del saldo (siguen en tu cuenta), pero se
  *    señala si el saldo proyectado cae por debajo de ellos.
  */
-import { spendableBalance } from './balances'
+import { isBudgetAccount, spendableBalance } from './balances'
 import { addDays, daysBetween } from './dates'
 import { goalsReservedTotal } from './reserves'
 import { floorDiv, sumMinor } from './money'
@@ -156,7 +156,7 @@ export interface DailySpendEstimate {
  * programados (esos ya están en el plan). Las transferencias no son gasto.
  */
 export function estimateDailySpend(data: AppData, today: LocalDate, lookbackDays = 30): DailySpendEstimate {
-  const included = new Set(data.accounts.filter((a) => a.includeInBudget).map((a) => a.id))
+  const included = new Set(data.accounts.filter(isBudgetAccount).map((a) => a.id))
   const from = addDays(today, -lookbackDays)
   const relevant = data.transactions.filter(
     (tx) =>

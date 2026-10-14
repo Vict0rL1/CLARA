@@ -12,6 +12,24 @@
 import { sumMinor } from './money'
 import type { Account, AppData, Transaction } from './types'
 
+/** Cuenta para «lo que puedo gastar»: incluida en el presupuesto y no archivada. */
+export function isBudgetAccount(a: Pick<Account, 'includeInBudget' | 'archived'>): boolean {
+  return a.includeInBudget && !a.archived
+}
+
+/** Orden de presentación: `order` (v11) y, a igualdad o sin él, la posición en la lista. */
+export function sortedAccounts<T extends Pick<Account, 'order'>>(accounts: readonly T[]): T[] {
+  return accounts
+    .map((a, index) => ({ a, index, key: a.order ?? index }))
+    .sort((x, y) => x.key - y.key || x.index - y.index)
+    .map((x) => x.a)
+}
+
+/** Cuentas que se ofrecen para registrar, programar o filtrar: las no archivadas, en su orden. */
+export function activeAccounts<T extends Pick<Account, 'order' | 'archived'>>(accounts: readonly T[]): T[] {
+  return sortedAccounts(accounts.filter((a) => !a.archived))
+}
+
 export function txAppliesToAccount(tx: Transaction, account: Account): boolean {
   if (tx.status !== 'realized') return false
   const { date, setAt } = account.anchor
@@ -105,8 +123,40 @@ export function spendableBalance(data: Pick<AppData, 'transactions' | 'accounts'
   totalMinor: number
   accounts: AccountBalance[]
 } {
-  const accounts = allAccountBalances(data, data.accounts.filter((a) => a.includeInBudget))
+  const accounts = allAccountBalances(data, data.accounts.filter(isBudgetAccount))
   return { totalMinor: sumMinor(accounts.map((b) => b.balanceMinor)), accounts }
+}
+
+/**
+ * Patrimonio neto a partir de los mismos saldos que Ajustes › Cuentas y la explicación de Inicio.
+ *   activos = Σ saldos positivos de las cuentas no archivadas;
+ *   pasivos = Σ |saldos negativos| (deuda de tarjetas, sobregiros);
+ *   neto = activos − pasivos; presupuesto = Σ saldos de las cuentas que cuentan (§4 de FORMULAS).
+ * Las archivadas no entran en el neto (se informan aparte para que nada quede escondido).
+ * El crédito disponible de una tarjeta nunca es un activo.
+ */
+export interface NetPosition {
+  assetsMinor: number
+  liabilitiesMinor: number
+  netMinor: number
+  budgetMinor: number
+  archivedMinor: number
+  accounts: AccountBalance[]
+}
+
+export function netPosition(data: Pick<AppData, 'transactions' | 'accounts'>): NetPosition {
+  const accounts = allAccountBalances(data, sortedAccounts(data.accounts))
+  const active = accounts.filter((b) => !b.account.archived)
+  const assetsMinor = sumMinor(active.map((b) => (b.balanceMinor > 0 ? b.balanceMinor : 0)))
+  const liabilitiesMinor = sumMinor(active.map((b) => (b.balanceMinor < 0 ? -b.balanceMinor : 0)))
+  return {
+    assetsMinor,
+    liabilitiesMinor,
+    netMinor: assetsMinor - liabilitiesMinor,
+    budgetMinor: sumMinor(active.filter((b) => isBudgetAccount(b.account)).map((b) => b.balanceMinor)),
+    archivedMinor: sumMinor(accounts.filter((b) => b.account.archived).map((b) => b.balanceMinor)),
+    accounts,
+  }
 }
 
 /**
@@ -118,7 +168,7 @@ export function txEffectOnBudgetPool(
   tx: Pick<Transaction, 'kind' | 'amountMinor' | 'accountId' | 'toAccountId' | 'adjustmentDirection'>,
   accounts: Account[],
 ): number {
-  const included = (id: string | undefined) => !!id && accounts.some((a) => a.id === id && a.includeInBudget)
+  const included = (id: string | undefined) => !!id && accounts.some((a) => a.id === id && isBudgetAccount(a))
   switch (tx.kind) {
     case 'income':
     case 'refund':
@@ -138,7 +188,7 @@ export function txEffectOnBudgetPool(
 
 /** Fecha y hora del saldo de referencia más antiguo entre las cuentas del presupuesto. */
 export function oldestAnchor(data: Pick<AppData, 'accounts'>): Account['anchor'] | null {
-  const included = data.accounts.filter((a) => a.includeInBudget)
+  const included = data.accounts.filter(isBudgetAccount)
   if (included.length === 0) return null
   return included.reduce((old, a) => (a.anchor.setAt < old.setAt ? a.anchor : old), included[0]!.anchor)
 }

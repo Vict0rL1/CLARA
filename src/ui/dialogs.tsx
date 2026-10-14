@@ -3,7 +3,7 @@
  * apartar dinero para una meta y elegir horizonte.
  */
 import { useMemo, useState } from 'react'
-import { accountBalance } from '../domain/balances'
+import { accountBalance, activeAccounts, isBudgetAccount } from '../domain/balances'
 import { HORIZON_OPTIONS } from '../domain/budget'
 import { goalProgress } from '../domain/goals'
 import { newId } from '../domain/ids'
@@ -30,7 +30,7 @@ import { Dialog } from './components/Dialog'
 import { Alert } from './components/common'
 import { useToast } from './components/toastContext'
 import { useFormat } from './format'
-import { fieldError, issueMessage, otherIssues, planItemName } from './labels'
+import { accountOptions, fieldError, issueMessage, otherIssues, planItemName } from './labels'
 import { href } from './router'
 
 function IssueList({ issues }: { issues: Issue[] }) {
@@ -154,7 +154,7 @@ export function MarkPaidDialog({ item, onClose }: { item: PlanItem; onClose: () 
     onClose()
   }
 
-  const accounts = data.accounts.map((a) => ({ value: a.id, label: a.name }))
+  const accounts = accountOptions(data.accounts, t, item.sourceId ? data.schedules.find((s) => s.id === item.sourceId)?.accountId : undefined)
   return (
     <Dialog
       open
@@ -216,7 +216,7 @@ export function UpdateBalanceDialog({ onClose, initialAccountId }: { onClose: ()
   const today = useToday()
   const run = useRun()
   const toast = useToast()
-  const firstAccount = initialAccountId ?? data.accounts.find((a) => a.includeInBudget)?.id ?? data.accounts[0]!.id
+  const firstAccount = initialAccountId ?? activeAccounts(data.accounts).find(isBudgetAccount)?.id ?? activeAccounts(data.accounts)[0]?.id ?? data.accounts[0]!.id
   const [accountId, setAccountId] = useState(firstAccount)
   const account = data.accounts.find((a) => a.id === accountId)!
   const current = accountBalance(data, account).balanceMinor
@@ -289,7 +289,7 @@ export function UpdateBalanceDialog({ onClose, initialAccountId }: { onClose: ()
             setAmountText(fmt.moneyInput(shown(acc)))
             setSettleKeys([])
           }}
-          options={data.accounts.map((a) => ({ value: a.id, label: a.name }))}
+          options={accountOptions(data.accounts, t, accountId)}
         />
       )}
       <MoneyField
