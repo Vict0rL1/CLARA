@@ -8,6 +8,27 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
 
 ### Novedades
 
+- **Análisis** (etapa 4 del programa): nuevo destino en la barra (Inicio · Movimientos · + · Plan · Análisis · Ajustes) con
+  señales calculadas con reglas fijas (pagos vencidos, saldo proyectado en negativo o bajo los apartados, límites, metas por
+  detrás, gasto a fecha equivalente, categoría dominante, copia pendiente), cada una con «¿Cómo se calculó?» (regla y cifras), y
+  pestañas a Estadísticas, Revisión semanal y ¿Qué cambió?. Cada gráfico de Estadísticas explica su cálculo. Sin IA ni
+  notificaciones; nada se guarda.
+- **Datos y recuperación** (Ajustes): un solo sitio con el estado de lo que protege tus datos (guardado, copia exportada y
+  verificada, copias locales, copia previa a migración, esquema, registros, papelera, historial, errores, sin conexión), el
+  orden en que recuperar algo si falla, exportar desde ahí y descargar la copia previa a la migración. «Almacenamiento y
+  privacidad» vive ahora dentro de esta sección (el enlace antiguo sigue funcionando). Dice claramente que no hay sincronización
+  ni cuenta. El índice de Ajustes avisa en esa fila solo cuando hay algo que revisar.
+- **Calendario de flujo de caja** (etapa 3 del programa; esquema 12): cada día muestra el saldo proyectado al cerrarlo
+  (misma proyección que Plan › Proyección, al menos 60 días) y el primer día en negativo, con «¿Cómo se calculó?».
+  «Simular un pago» calcula sobre una copia y solo ofrece abrir el formulario como gasto previsto; nada se guarda solo.
+  «Parece que ya pagaste» propone vincular movimientos registrados que coinciden con un pago o ingreso programado
+  abierto; vincular es explícito y nunca liquida dos veces una ocurrencia.
+- **Límites con arrastre**: al crear o editar un límite recurrente se elige si lo no gastado pasa al siguiente ciclo (lo
+  excedido se resta, nunca por debajo de 0); el detalle desglosa «límite base · arrastre», lista lo programado y pendiente
+  del ciclo como compromiso (no como gasto), compara con el ciclo anterior en el mismo punto cuando hay datos y recuerda
+  que un límite no es dinero apartado.
+- **Metas**: cada meta con fecha dice si vas por detrás, al ritmo o por delante y por cuánto, su efecto en lo disponible
+  (apartado del presupuesto o en otra cuenta) y un historial de aportes con motivo.
 - **Revisión antes de registrar** (etapa 2 del programa): el asistente y la importación de CSV muestran lo mismo por cada
   propuesta: posible duplicado (con enlace al existente), «¿Es el pago programado «X»?» con casilla para vincular, efecto en lo
   disponible, la regla que dio la categoría y «ya registrado» si se reintenta. Nada se vincula ni se guarda solo.

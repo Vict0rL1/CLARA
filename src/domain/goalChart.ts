@@ -69,3 +69,28 @@ export function goalEta(goal: Goal, today: LocalDate): GoalEta {
   const days = ceilDiv(progress.remainingMinor * 30, recent)
   return { status: 'ok', date: addDays(today, days), perDayMinor: Math.floor(recent / 30), days }
 }
+
+export type GoalPaceStatus = 'noDate' | 'complete' | 'ahead' | 'onTrack' | 'behind'
+
+export interface GoalPace {
+  status: GoalPaceStatus
+  /** Lo que tocaría llevar hoy siguiendo la recta desde el inicio hasta la fecha objetivo. */
+  idealToDateMinor: number
+  savedMinor: number
+  /** Positivo = por delante del ritmo; negativo = por detrás. */
+  deltaMinor: number
+}
+
+/**
+ * Ritmo frente a la recta ideal (etapa 3): explica «vas por detrás/delante» con cifras. Tolerancia
+ * del 1 % del objetivo (mínimo 1 unidad menor) para no alarmar por redondeos. Sin fecha no hay ritmo.
+ */
+export function goalPace(goal: Goal, today: LocalDate): GoalPace {
+  const progress = goalProgress(goal)
+  if (!goal.targetDate) return { status: 'noDate', idealToDateMinor: 0, savedMinor: progress.savedMinor, deltaMinor: 0 }
+  if (progress.complete) return { status: 'complete', idealToDateMinor: goal.targetMinor, savedMinor: progress.savedMinor, deltaMinor: progress.savedMinor - goal.targetMinor }
+  const ideal = idealAt(goalTrajectory(goal, today), today)
+  const delta = progress.savedMinor - ideal
+  const tolerance = Math.max(1, Math.ceil(goal.targetMinor / 100))
+  return { status: delta < -tolerance ? 'behind' : delta > tolerance ? 'ahead' : 'onTrack', idealToDateMinor: ideal, savedMinor: progress.savedMinor, deltaMinor: delta }
+}

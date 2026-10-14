@@ -82,10 +82,10 @@ test('dos pestañas: la segunda no sobrescribe en silencio lo que guardó la pri
   await expect(other.locator('a.item', { hasText: 'Desde la pestaña B' })).toBeVisible()
 })
 
-test('H4 · datos de una versión más nueva (esquema 12): se explican, sin «Empezar de nuevo», y ningún botón los toca', { tag: '@smoke' }, async ({ page }) => {
+test('H4 · datos de una versión más nueva (esquema 13): se explican, sin «Empezar de nuevo», y ningún botón los toca', { tag: '@smoke' }, async ({ page }) => {
   await startDemo(page)
   const d = JSON.parse((await stored(page))!)
-  d.schemaVersion = 12
+  d.schemaVersion = 13
   await writeStoredData(page, d)
   const future = await stored(page)
   await page.reload()
@@ -163,7 +163,8 @@ test('usuario de una versión anterior: sus datos de localStorage pasan a Indexe
   const origin = await page.evaluate(() => ({ copy: localStorage.getItem('margen.data.pre-idb'), main: localStorage.getItem('margen.data.v1') }))
   expect(JSON.parse(origin.copy!).transactions).toEqual(data.transactions)
   expect(JSON.parse(origin.main!).movedTo).toBe('indexeddb')
-  // Ajustes muestra dónde están los datos y la copia del origen.
+  // Ajustes muestra dónde están los datos y la copia del origen (el enlace antiguo lleva al centro de datos).
   await go(page, '/ajustes/almacenamiento')
+  await expect(page.locator('#page-title')).toHaveText('Datos y recuperación')
   await expect(page.getByText(/IndexedDB/).first()).toBeVisible()
 })

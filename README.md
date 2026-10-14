@@ -195,7 +195,7 @@ npm run preview
    «pendiente de revisión».
 7. **Ajustes:** idioma, formato de números y fechas, zona horaria, cuentas (y tarjetas con
    límite, tasa y fechas), categorías personalizadas, reglas de categoría, copia de seguridad,
-   reinicio de la demo y borrado de datos. **Historial de cambios** (Ajustes › Almacenamiento):
+   reinicio de la demo y borrado de datos. **Historial de cambios** (Ajustes › Datos y recuperación):
    qué cambió, cuándo y los valores anteriores; puedes revertir un cambio si nada lo modificó
    después. Es local y editable, no una auditoría inviolable.
 

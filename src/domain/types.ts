@@ -15,7 +15,7 @@ export type Timestamp = string
 /** Código ISO 4217, por ejemplo 'CAD'. */
 export type CurrencyCode = string
 
-export const SCHEMA_VERSION = 11 as const
+export const SCHEMA_VERSION = 12 as const
 
 /**
  * 'credit' = tarjeta de crédito: su saldo es una DEUDA y se guarda como número
@@ -395,11 +395,21 @@ export interface Plan {
   alertAt80: boolean
   alertAt100: boolean
   result?: PlanResult
+  /**
+   * v12. Arrastre al renovar un plan recurrente: `none` = cada ciclo empieza con el límite base;
+   * `carry` = lo no gastado se suma al límite del ciclo siguiente y lo excedido se resta (nunca
+   * por debajo de 0). Es una regla de presupuesto, no de dinero: no cambia saldos ni el disponible.
+   */
+  rollover?: PlanRollover
+  /** v12. Cuánto aportó el arrastre al límite de este ciclo (positivo o negativo); el límite base = `amountMinor − carriedMinor`. */
+  carriedMinor?: number
   createdAt: Timestamp
   updatedAt: Timestamp
 }
 
 /** Límite mensual de gasto neto para una categoría (informativo: no cambia el disponible). */
+export type PlanRollover = 'none' | 'carry'
+
 export interface CategoryLimit {
   categoryId: string
   monthlyLimitMinor: number

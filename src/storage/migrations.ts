@@ -159,6 +159,15 @@ export const MIGRATIONS: Record<number, (raw: Raw) => Raw> = {
         }
       : {}),
   }),
+  // v11 → v12: planes con `rollover` ('none' = comportamiento de siempre). Solo se rellena lo
+  // ausente; `carriedMinor` queda ausente (ningún plan existente arrastró nada).
+  11: (raw) => ({
+    ...raw,
+    schemaVersion: 12,
+    ...(Array.isArray(raw.plans)
+      ? { plans: raw.plans.map((p: unknown) => (p && typeof p === 'object' && !Array.isArray(p) ? { ...(p as Raw), ...((p as Raw).rollover === undefined ? { rollover: 'none' } : {}) } : p)) }
+      : {}),
+  }),
 }
 
 export function migrate(raw: Raw): Raw {

@@ -10,7 +10,7 @@ Una página. Qué existe hoy, antes de la paridad con Lukas.
 | Dependencias de producto | Solo `react` y `react-dom` | Sin librerías de gráficos, i18n, estado ni persistencia: todo es propio. |
 | Estado | `AppStore` (`src/state/store.ts`) con `useSyncExternalStore` | Datos inmutables; `commit()` aplica resultados de `domain/operations.ts`, registra historial y guarda. |
 | Persistencia | **IndexedDB** (`src/storage/indexedDbRepository.ts`), `localStorage` de respaldo | Transacción atómica datos+revisión, conflicto entre pestañas, migración verificada desde `localStorage`. Equivale a Dexie sin dependencia. |
-| Formato de datos | `AppData` versionado, `SCHEMA_VERSION = 11`, migraciones en `src/storage/migrations.ts` | Copias de seguridad JSON (`backup.ts`) validadas por completo antes de aplicar. |
+| Formato de datos | `AppData` versionado, `SCHEMA_VERSION = 12`, migraciones en `src/storage/migrations.ts` | Copias de seguridad JSON (`backup.ts`) validadas por completo antes de aplicar. |
 | i18n | Propia y tipada: `src/i18n/es.ts` (base), `en.ts`, `pt.ts` y `fr.ts` (el tipo exige todas las claves) | Claves con espacio de nombres (`home.balance…`), plurales `_one/_other` vía `Intl.PluralRules`, fechas/números vía `Intl`. Pseudo-locale (`pseudo.ts`) y detector de literales (`scripts/find-literals.mjs`). |
 | Tema | `clara.theme` en el dispositivo: sistema (por defecto), claro, oscuro | Tokens en `src/styles.css` (`--bg`, `--primary`, `--series-*`…). Paleta clara cálida; **no** son los tokens de §4. |
 | Gráficos | SVG en línea (`src/ui/components/charts.tsx`) | Barra de composición y proyección con tabla alternativa. |
@@ -40,7 +40,7 @@ src/test/      fixtures y datos sintéticos (1k/10k/50k)
 
 ## Navegación (hash router propio, `src/ui/router.ts`)
 
-Pestañas: Inicio · Movimientos · **+ Agregar** · Plan · Ajustes. Rutas: `/`, `/movimientos[/nuevo|editar/:id|importar|papelera|favoritos|plantillas|distribuir/:id]`, `/alcanza[/escenarios|faltante]`, `/plan[/calendario|metas|proyeccion|programado|periodos]`, `/conciliar`, `/revision`, `/cambios`, `/pendientes`, `/buscar`, `/ajustes[/historial]`.
+Pestañas: Inicio · Movimientos · **+ Agregar** · Plan · Análisis · Ajustes. Rutas: `/`, `/movimientos[/nuevo|editar/:id|importar|papelera|favoritos|plantillas|distribuir/:id]`, `/alcanza[/escenarios|faltante]`, `/plan[/calendario|metas|proyeccion|programado|periodos]`, `/conciliar`, `/analisis` (hub con pestañas a `/estadisticas`, `/revision` y `/cambios`), `/pendientes`, `/buscar`, `/ajustes[/datos|historial|...]`.
 
 ## Fórmulas vigentes (`docs/FORMULAS.md`)
 

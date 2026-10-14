@@ -29,13 +29,13 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   { id: 'etiquetas', titleKey: 'tags.title', group: 'expenses', icon: 'tag' },
   { id: 'programados', titleKey: 'scheduled.title', group: 'expenses', icon: 'calendar' },
   { id: 'safe-to-spend', titleKey: 'safe.title', group: 'expenses', icon: 'shield' },
+  { id: 'datos', titleKey: 'settings.toc.data', group: 'data', icon: 'shield' },
   { id: 'copias-locales', titleKey: 'localBackup.title', group: 'data', icon: 'clock' },
   { id: 'copia', titleKey: 'settings.toc.backup', group: 'data', icon: 'download' },
   { id: 'bloqueo', titleKey: 'lock.sectionTitle', group: 'data', icon: 'lock' },
   { id: 'exportar', titleKey: 'export.title', group: 'data', icon: 'upload' },
   { id: 'notificaciones', titleKey: 'settings.notifications.title', group: 'data', icon: 'bell' },
   { id: 'asistente', titleKey: 'assistantSettings.title', group: 'data', icon: 'sparkles' },
-  { id: 'almacenamiento', titleKey: 'settings.storage.title', group: 'data', icon: 'coins' },
   { id: 'reinicio', titleKey: 'settings.toc.reset', group: 'data', icon: 'refund' },
   { id: 'formulas', titleKey: 'settings.toc.formulas', group: 'help', icon: 'info' },
   // Teclado e iPhone en una sola fila: el índice cabe en 3 pantallas a 320 px (C3).
@@ -54,7 +54,8 @@ export const GROUP_TITLE_KEY: Record<SettingsGroup, MessageKey> = {
 }
 
 /** Ids antiguos que siguen en enlaces guardados o marcadores. */
-const LEGACY_IDS: Record<string, string> = { 'reset-title': 'reinicio', 'format-title': 'formato', 'storage-title': 'almacenamiento', 'shortcuts-title': 'atajos', 'atajos-iphone': 'atajos', 'about-title': 'acerca', 'notifications-title': 'notificaciones' }
+// «Almacenamiento» vive dentro de «Datos y recuperación» desde la etapa 4; sus enlaces siguen llegando.
+const LEGACY_IDS: Record<string, string> = { 'reset-title': 'reinicio', 'format-title': 'formato', 'storage-title': 'datos', almacenamiento: 'datos', 'shortcuts-title': 'atajos', 'atajos-iphone': 'atajos', 'about-title': 'acerca', 'notifications-title': 'notificaciones' }
 
 export function settingsSection(id: string | null | undefined): SettingsSection | undefined {
   if (!id) return undefined

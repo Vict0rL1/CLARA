@@ -8,7 +8,7 @@ import { resolveCategories } from '../../domain/categories'
 import { goalPlan, goalProgress } from '../../domain/goals'
 import { newId } from '../../domain/ids'
 import { updateSettings } from '../../domain/operations'
-import { cycleFor, deletePlan, planCategoryOptions, planDailySeries, planProgress, plansSummary, planTransactions, repeatPlan, restorePlan, savePlan, setPlanStatus, type PlanProgress, type PlanSeriesPoint } from '../../domain/plans'
+import { cycleFor, deletePlan, planBaseMinor, planCategoryOptions, planComparison, planDailySeries, planProgress, plansSummary, planTransactions, planUpcoming, repeatPlan, restorePlan, savePlan, setPlanStatus, type PlanProgress, type PlanSeriesPoint } from '../../domain/plans'
 import type { BudgetPeriodType, Goal } from '../../domain/types'
 import { BUDGET_PERIOD_TYPES, LIMITS, type Issue } from '../../domain/validation'
 import { useT, type MessageKey } from '../../i18n'
@@ -22,7 +22,7 @@ import { MoneyField, Segmented, SelectField, TextField } from '../components/fie
 import { Icon } from '../components/Icon'
 import { useToast } from '../components/toastContext'
 import { useFormat, type Formatter } from '../format'
-import { categoryLabel, fieldError, issueMessage, otherIssues, planTitle, transactionTitle } from '../labels'
+import { categoryLabel, fieldError, issueMessage, otherIssues, planItemName, planTitle, transactionTitle } from '../labels'
 import { parseMoneyText, moneyErrorMessage } from '../moneyText'
 import { href, useNavigateIfStillHere, withQuery, type Route } from '../router'
 
@@ -269,6 +269,7 @@ export function PlanForm({ route }: { route: Route }) {
   const [startDate, setStartDate] = useState(existing?.periodType === 'custom' ? (existing.startDate ?? '') : '')
   const [endDate, setEndDate] = useState(existing?.periodType === 'custom' ? (existing.endDate ?? '') : '')
   const [recurring, setRecurring] = useState(existing?.recurring ?? true)
+  const [rollover, setRollover] = useState(existing?.rollover === 'carry')
   const [alertAt80, setAlert80] = useState(existing?.alertAt80 ?? true)
   const [alertAt100, setAlert100] = useState(existing?.alertAt100 ?? true)
   const [issues, setIssues] = useState<Issue[]>([])
@@ -292,7 +293,7 @@ export function PlanForm({ route }: { route: Route }) {
     if (!parsed.ok || busy) return
     setBusy(true)
     const { result, saved } = await run((d, c) =>
-      savePlan(d, { id, name, categoryIds, amountMinor: parsed.minor, periodType, ...(periodType === 'custom' ? { startDate: startDate || undefined, endDate: endDate || undefined } : {}), recurring, alertAt80, alertAt100 }, c),
+      savePlan(d, { id, name, categoryIds, amountMinor: parsed.minor, periodType, ...(periodType === 'custom' ? { startDate: startDate || undefined, endDate: endDate || undefined } : {}), recurring, rollover: periodType !== 'custom' && recurring && rollover ? 'carry' : 'none', alertAt80, alertAt100 }, c),
     )
     setBusy(false)
     if (!result.ok) {
@@ -345,6 +346,7 @@ export function PlanForm({ route }: { route: Route }) {
           </div>
         )}
         {periodType !== 'custom' && <Toggle checked={recurring} onChange={setRecurring} label={t('plans.form.recurring')} hint={t('plans.form.recurringHint')} />}
+        {periodType !== 'custom' && recurring && <Toggle checked={rollover} onChange={setRollover} label={t('plans.rollover.label')} hint={t('plans.rollover.hint')} />}
         <Toggle checked={alertAt80} onChange={setAlert80} label={t('plans.form.alert80')} />
         <Toggle checked={alertAt100} onChange={setAlert100} label={t('plans.form.alert100')} hint={!data.settings.notifications.planAlerts ? t('plans.form.alertsOff') : undefined} />
         {unknown.length > 0 && (
@@ -387,6 +389,9 @@ export function PlanDetail({ route }: { route: Route }) {
   const progress = useMemo(() => (plan ? planProgress(data, plan, today) : null), [data, plan, today])
   const txs = useMemo(() => (plan && progress?.cycle ? planTransactions(data, plan, progress.cycle) : []), [data, plan, progress])
   const series = useMemo(() => (plan && progress?.cycle ? planDailySeries(data, plan, progress.cycle, today) : []), [data, plan, progress, today])
+  // Etapa 3: compromisos programados del ciclo (no son gasto) y comparación con el ciclo anterior en el mismo punto.
+  const upcoming = useMemo(() => (plan && progress?.cycle && plan.status === 'active' ? planUpcoming(data, plan, progress.cycle, today) : null), [data, plan, progress, today])
+  const comparison = useMemo(() => (plan && progress?.cycle && plan.status === 'active' ? planComparison(data, plan, today) : null), [data, plan, progress, today])
 
   if (!plan || !progress) {
     return (
@@ -434,6 +439,11 @@ export function PlanDetail({ route }: { route: Route }) {
         <p className="stat__value" data-testid="plan-spent">
           {fmt.money(progress.spentMinor)} <span className="muted">/ {fmt.money(progress.limitMinor)}</span>
         </p>
+        {plan.carriedMinor !== undefined && plan.carriedMinor !== 0 && (
+          <p className="item__meta" data-testid="plan-limit-breakdown">
+            {t('plans.limitBreakdown', { base: fmt.money(planBaseMinor(plan)), carried: fmt.money(plan.carriedMinor, { sign: true }), limit: fmt.money(plan.amountMinor) })}
+          </p>
+        )}
         <ProgressBar
           fraction={Math.min(1, progress.fraction)}
           state={stateFor(progress)}
@@ -447,7 +457,39 @@ export function PlanDetail({ route }: { route: Route }) {
           </p>
         )}
         <p className="item__meta">{plan.categoryIds.length === 0 ? t('plans.allCategories') : plan.categoryIds.map((cid) => categoryLabel(t, cid)).join(', ')}</p>
+        {plan.status === 'active' && progress.cycle && (
+          <p className="item__meta" data-testid="plan-compare">
+            {comparison
+              ? `${t('plans.compare', { date: fmt.date(comparison.equivalentDate, { compact: true, today }), previous: fmt.money(comparison.previousToDateMinor), current: fmt.money(comparison.currentToDateMinor), delta: fmt.money(comparison.deltaMinor, { sign: true }) })} ${t('plans.compareTotal', { total: fmt.money(comparison.previousTotalMinor) })}`
+              : t('plans.compareNone')}
+          </p>
+        )}
+        <p className="note">{t('plans.allocationNote')}</p>
       </Card>
+
+      {upcoming && (
+        <Card labelledBy="plan-upcoming-title">
+          <h2 id="plan-upcoming-title" className="section-title">
+            {t('plans.upcomingTitle')}
+          </h2>
+          {upcoming.items.length === 0 ? (
+            <p className="note">{t('plans.upcomingNone')}</p>
+          ) : (
+            <>
+              <ul className="item-list" data-testid="plan-upcoming">
+                {upcoming.items.map((i) => (
+                  <li key={i.key}>
+                    <ListRow title={planItemName(i, t)} subtitle={`${fmt.date(i.date, { compact: true, today })} · ${t(i.state === 'overdue' ? 'state.overdue' : 'state.pending')}`} value={fmt.money(i.amountMinor)} />
+                  </li>
+                ))}
+              </ul>
+              <p className="item__meta" data-testid="plan-upcoming-total">
+                {t('plans.upcomingTotal', { total: fmt.money(upcoming.totalMinor), remaining: fmt.money(upcoming.remainingAfterMinor) })}
+              </p>
+            </>
+          )}
+        </Card>
+      )}
 
       {plan.status === 'completed' && plan.result && (
         <Alert tone={plan.result.achieved ? 'good' : 'warning'} icon={plan.result.achieved ? 'checkCircle' : 'alert'} title={plan.result.achieved ? t('plans.result.within') : t('plans.result.exceeded')} actions={<SecondaryButton onClick={() => void repeat()}>{t('plans.repeat')}</SecondaryButton>}>

@@ -312,7 +312,11 @@ export function validatePlan(plan: Plan, ctx: { data: Pick<AppData, 'settings'> 
   if (!Array.isArray(plan.categoryIds) || plan.categoryIds.length > 50 || !plan.categoryIds.every((c: unknown) => typeof c === 'string' && valid.includes(c))) {
     issues.push({ path: `${p}categoryIds`, code: 'invalidCategory' })
   }
-  checkPositiveAmount(plan.amountMinor, `${p}amountMinor`, issues)
+  // Un plan que arrastró un exceso puede quedar en 0 este ciclo; sin arrastre el límite es positivo.
+  if (plan.carriedMinor === undefined) checkPositiveAmount(plan.amountMinor, `${p}amountMinor`, issues)
+  else if (!isMinorAmount(plan.amountMinor) || plan.amountMinor < 0 || plan.amountMinor > MAX_AMOUNT_MINOR) issues.push({ path: `${p}amountMinor`, code: 'invalidAmount' })
+  if (plan.rollover !== undefined && !isOneOf(['none', 'carry'] as const, plan.rollover)) issues.push({ path: `${p}rollover`, code: 'invalidValue' })
+  if (plan.carriedMinor !== undefined && (!isMinorAmount(plan.carriedMinor) || Math.abs(plan.carriedMinor) > MAX_AMOUNT_MINOR)) issues.push({ path: `${p}carriedMinor`, code: 'invalidAmount' })
   if (plan.currency !== ctx.data.settings.currency) issues.push({ path: `${p}currency`, code: 'currencyMismatch', params: { expected: ctx.data.settings.currency } })
   if (!isOneOf(BUDGET_PERIOD_TYPES, plan.periodType) || plan.periodType === 'untilIncome') issues.push({ path: `${p}periodType`, code: 'invalidValue' })
   if (plan.startDate !== undefined) checkDate(plan.startDate, `${p}startDate`, issues)

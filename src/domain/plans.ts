@@ -9,17 +9,18 @@
  * Un plan nunca mueve dinero ni cambia el disponible: solo compara y avisa. Las metas de
  * ahorro siguen siendo `Goal` (apartados virtuales).
  */
+import { planItems, type PlanItem } from './planItems'
 import { categoriesForKind } from './categories'
 import { addDays, daysBetween, isValidLocalDate } from './dates'
 import { newId } from './ids'
-import { mulDivFloor } from './money'
+import { mulDivFloor, sumMinor } from './money'
 import { getPeriod } from './periods'
 import { categoryAllocations } from './splits'
 import type { OpContext, OpResult } from './operations'
-import type { AppData, BudgetPeriodType, LocalDate, Plan, PlanResult, Settings, Transaction } from './types'
+import type { AppData, BudgetPeriodType, LocalDate, Plan, PlanResult, PlanRollover, Settings, Transaction } from './types'
 import { validatePlan, type Issue } from './validation'
 
-export type PlanDraft = Pick<Plan, 'id' | 'name' | 'categoryIds' | 'amountMinor' | 'periodType' | 'recurring' | 'alertAt80' | 'alertAt100'> & { startDate?: LocalDate; endDate?: LocalDate }
+export type PlanDraft = Pick<Plan, 'id' | 'name' | 'categoryIds' | 'amountMinor' | 'periodType' | 'recurring' | 'alertAt80' | 'alertAt100'> & { startDate?: LocalDate; endDate?: LocalDate; rollover?: PlanRollover }
 
 export interface PlanCycle {
   start: LocalDate
@@ -175,6 +176,9 @@ function buildPlan(data: AppData, draft: PlanDraft, ctx: OpContext, existing?: P
     alertAt80: draft.alertAt80,
     alertAt100: draft.alertAt100,
     ...(existing?.result ? { result: existing.result } : {}),
+    // v12: el arrastre se elige al crear o editar; lo que este ciclo ya recibió del anterior no cambia al editar.
+    rollover: draft.rollover ?? existing?.rollover ?? 'none',
+    ...(existing?.carriedMinor !== undefined ? { carriedMinor: existing.carriedMinor } : {}),
     createdAt: existing?.createdAt ?? ctx.now,
     updatedAt: ctx.now,
   }
@@ -255,9 +259,14 @@ export function closeDuePlans(data: AppData, ctx: OpContext): OpResult<ClosePlan
     if (plan.recurring) {
       const next = cycleFor(plan.periodType, data.settings, ctx.today)
       if (!next) continue
+      // Arrastre (v12): el ciclo nuevo parte del límite base más lo que sobró (o menos lo excedido), nunca por debajo de 0.
+      const carry = plan.rollover === 'carry'
+      const carried = carry ? done.result!.deltaMinor : 0
+      const nextAmount = carry ? Math.max(0, planBaseMinor(plan) + carried) : planBaseMinor(plan)
       const fresh: Plan = {
         ...plan,
         id: newId(),
+        amountMinor: nextAmount,
         startDate: next.start,
         endDate: next.end,
         status: 'active',
@@ -266,12 +275,89 @@ export function closeDuePlans(data: AppData, ctx: OpContext): OpResult<ClosePlan
         updatedAt: ctx.now,
       }
       delete fresh.result
+      if (carry) fresh.carriedMinor = nextAmount - planBaseMinor(plan)
+      else delete fresh.carriedMinor
       plans = [...plans, fresh]
       renewed.push(fresh)
     }
   }
   if (!changed) return { ok: true, data, value: { closed, renewed }, unchanged: true }
   return { ok: true, data: touch({ ...data, plans }, ctx.now), value: { closed, renewed } }
+}
+
+/** Límite base de un plan: lo elegido por la persona, sin el arrastre del ciclo anterior. */
+export function planBaseMinor(plan: Pick<Plan, 'amountMinor' | 'carriedMinor'>): number {
+  return plan.amountMinor - (plan.carriedMinor ?? 0)
+}
+
+export interface PlanUpcoming {
+  items: PlanItem[]
+  /** Σ de lo programado y aún no pagado del ciclo en las categorías del plan. */
+  totalMinor: number
+  /** Restante del límite una vez descontado lo programado (puede ser negativo). */
+  remainingAfterMinor: number
+}
+
+/**
+ * Lo que queda por pagar del ciclo según el calendario (pagos programados pendientes o vencidos en
+ * las categorías del plan). Es compromiso previsto, no gasto: no cambia «gastado» ni el disponible.
+ */
+export function planUpcoming(data: AppData, plan: Plan, cycle: PlanCycle, today: LocalDate): PlanUpcoming {
+  const categories = planCategories(plan)
+  const to = cycle.end < today ? today : cycle.end
+  const items = planItems(data, { today, from: cycle.start, to, includeOverdueBefore: true }).filter(
+    (i) =>
+      i.direction === 'expense' &&
+      (i.state === 'pending' || i.state === 'overdue') &&
+      i.date >= cycle.start &&
+      i.date <= cycle.end &&
+      (!categories || (!!i.categoryId && categories.has(i.categoryId))),
+  )
+  const totalMinor = sumMinor(items.map((i) => i.amountMinor))
+  return { items, totalMinor, remainingAfterMinor: plan.amountMinor - planSpent(data, plan, cycle) - totalMinor }
+}
+
+export interface PlanComparison {
+  previous: PlanCycle
+  /** Día equivalente del ciclo anterior (mismo número de días transcurridos). */
+  equivalentDate: LocalDate
+  previousToDateMinor: number
+  previousTotalMinor: number
+  currentToDateMinor: number
+  /** Positivo = este ciclo lleva más gastado que el anterior en el mismo punto. */
+  deltaMinor: number
+}
+
+/**
+ * Comparación con el ciclo anterior en el mismo punto (días transcurridos), para que «vas mejor o
+ * peor» tenga base. `null` cuando no hay ciclo anterior o no hay ningún movimiento anterior al ciclo
+ * actual en esas categorías (sin datos no hay comparación; nunca se asume 0).
+ */
+export function planComparison(data: AppData, plan: Plan, today: LocalDate): PlanComparison | null {
+  const cycle = planCycle(plan, data.settings, today)
+  if (!cycle) return null
+  const length = daysBetween(cycle.start, cycle.end) + 1
+  const previous =
+    plan.periodType === 'custom'
+      ? { start: addDays(cycle.start, -length), end: addDays(cycle.start, -1) }
+      : cycleFor(plan.periodType, data.settings, addDays(cycle.start, -1))
+  if (!previous || previous.end >= cycle.start) return null
+  const categories = planCategories(plan)
+  const hasEarlier = data.transactions.some((tx) => tx.date < cycle.start && matchesPlan(tx, categories))
+  if (!hasEarlier) return null
+  const elapsed = Math.max(1, Math.min(length, today < cycle.start ? 1 : daysBetween(cycle.start, today) + 1))
+  const prevLength = daysBetween(previous.start, previous.end) + 1
+  const equivalentDate = addDays(previous.start, Math.min(elapsed, prevLength) - 1)
+  const currentToDateMinor = planSpent(data, plan, cycle, today < cycle.end ? today : cycle.end)
+  const previousToDateMinor = planSpent(data, plan, previous, equivalentDate)
+  return {
+    previous,
+    equivalentDate,
+    previousToDateMinor,
+    previousTotalMinor: planSpent(data, plan, previous),
+    currentToDateMinor,
+    deltaMinor: currentToDateMinor - previousToDateMinor,
+  }
 }
 
 /** «Repetir»: nuevo plan activo con los mismos ajustes en el ciclo que contiene hoy. */
