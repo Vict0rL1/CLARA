@@ -8,6 +8,15 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
 
 ### Novedades
 
+- **Inicio** (ronda «Lukas como referencia», `docs/BENCHMARK-LUKAS.md`): bajo la cifra principal, «En cuentas», «Reservado»
+  y, si difiere, «Base del periodo»; en la vista esencial, una franja con los dos próximos pagos o ingresos; las metas
+  muestran un arco de progreso en Inicio y en Plan › Metas.
+- **Registro**: aviso de posible duplicado antes de guardar (con el existente a la vista; no bloquea) y, si el importe
+  coincide con un pago programado abierto, «¿Es el pago programado «X»?» con «Sí, vincularlo» / «No, es otro».
+- **Detalle del movimiento**: al editar, un resumen con importe y moneda, fecha, categoría, cuenta, origen, recurrencia y
+  el alcance de la edición cuando viene del calendario (solo este movimiento; enlace al programado).
+- **Historial**: al volver de un detalle («Volver» o atrás) se conservan los filtros, la búsqueda, las filas mostradas y la
+  posición; tras guardar o eliminar, o al entrar desde la barra, la lista abre limpia como siempre.
 - **Copia de seguridad por la hoja Compartir**: en el iPhone (y donde el navegador lo permita),
   «Exportar copia» abre Compartir para **Guardar en Archivos**; cancelar no es un error.
 - **Ajustes › Instalar Clara**: explica solo lo que ese navegador permite (botón de instalar, los pasos
@@ -27,6 +36,11 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
 
 ### Cambios
 
+- **Pulido visual** (auditoría 2026-10-12): una sola escala de radios (botones y campos a 12 px, tarjetas a 16,
+  píldoras solo en chips e insignias), tres niveles de sombra con valores propios del tema oscuro, movimiento
+  entre 120 y 220 ms, bordes de campo con contraste 3:1 en ambos temas, extremos redondeados y trazo
+  discontinuo para «periodo anterior» en los gráficos. La cifra principal muestra el importe final de inmediato
+  (antes contaba durante medio segundo). Sin cambios de maquetación ni de cálculo.
 - **Importar CSV**: una fila que parece el pago de una tarjeta («PAGO TARJETA VISA» en el banco, «PAYMENT -
   THANK YOU» en la tarjeta) se señala y queda desmarcada, con la explicación de que se registra como
   transferencia para no contar la compra y el pago como dos gastos.
@@ -72,6 +86,14 @@ forman parte de `npm run check`):
 - Fichas de categoría de la configuración repartidas según el ancho real: ninguna palabra se parte ni se
   sale; sin guiones automáticos en las pestañas. En francés, «Aides publiques».
 - Contraste suficiente en el botón secundario de la guía al pasar el puntero.
+
+Auditoría del 11–12 de octubre de 2026 (`docs/AUDIT-2026-10-12.md`):
+
+- **Resumen de la configuración (UX-02):** con periodo mensual y sin fecha de ingreso, el resumen decía
+  «se usa un periodo de 14 días» mientras calculaba con los 21 días que quedaban del mes. Ahora explica el
+  horizonte que de verdad usó (el periodo y su último día, o los días elegidos y su fecha final), el paso
+  «Tu próximo ingreso» solo pide un número de días con «hasta mi próximo ingreso» y ese valor no se guarda
+  si no se pidió. Las cifras no cambian.
 
 ## [1.0.0-beta.1] — primera beta pública
 

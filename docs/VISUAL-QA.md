@@ -81,3 +81,51 @@ existe; los estados nuevos (hoja abierta, periodo anterior) no tenían captura p
 | Selector de categoría (D5) | `before/celular-dark-formulario-movimiento.png` (`<select>`) | `after/celular-dark-selector-categoria.png` | Hoja con búsqueda, «Recientes», grupos con color e iconos y «+ Nueva categoría». |
 | Hoja de filtros (D4) | `before/celular-dark-movimientos.png` | `after/celular-dark-filtros-hoja.png` | Varias categorías y etiquetas, importe mínimo/máximo y origen del registro; las fichas activas resumen el filtro. |
 | Plan › Metas con gráfico (D7) | `before/celular-dark-plan-metas.png` | `after/celular-dark-plan-metas-grafico-full.jpg` | Curva de lo apartado frente a la recta ideal, marca de «hoy» y fecha estimada bajo la meta. |
+
+## Pulido visual (12 de octubre de 2026, antes / después)
+
+Capturas de `npm run shots -- --label=v3-before` sobre `main` (`d4827de`) y `--label=v3-after` sobre la
+rama del pulido (decisión 141), con los mismos datos de demostración, fecha (28-sep-2026), idioma, tema y
+tamaños. En el repositorio quedan las de Pixel 7 en ambos temas (`docs/screenshots/v3-before/` y
+`v3-after/`); el resto se regenera con el mismo comando. Las guardas (`layout-guards`, `layout-a11y`)
+pasan en los tres tamaños antes y después; ninguna cifra cambia.
+
+| Pantalla | Antes (Pixel 7, oscuro) | Después | Qué cambió |
+|---|---|---|---|
+| Inicio (demo) | `v3-before/celular-dark-inicio-demo.png` | `v3-after/celular-dark-inicio-demo.png` | Botones «¿Me alcanza?» y «¿Cómo?» a 12 px (las tarjetas siguen a 16); la cifra aparece ya con su valor final, sin conteo. |
+| Inicio (primer uso) | `v3-before/celular-dark-inicio-primer-uso.png` | `v3-after/celular-dark-inicio-primer-uso.png` | Mismo radio de control en botones y chips de acción; nada se oculta. |
+| Hoja «¿Qué quieres registrar?» | `v3-before/celular-dark-hoja-agregar.png` | `v3-after/celular-dark-hoja-agregar.png` | Sombra `lg` de la hoja con valor propio del tema oscuro. |
+| Formulario de movimiento | `v3-before/celular-dark-formulario-movimiento.png` | `v3-after/celular-dark-formulario-movimiento.png` | Campos y opciones segmentadas con radio 12 y borde `--border-input` (3,7:1 en oscuro, 3,6:1 en claro; antes 2,3:1 y 2,6:1). |
+| Asistente (vista previa) | `v3-before/celular-dark-asistente-vista-previa.png` | `v3-after/celular-dark-asistente-vista-previa.png` | Idem campos; botones a 12 px. |
+| Movimientos | `v3-before/celular-dark-movimientos.png` | `v3-after/celular-dark-movimientos.png` | Pestañas 12/10 anidadas (antes 14/10); la búsqueda sigue en píldora, ahora por el token `pill`. |
+| Plan › Proyección | `v3-before/celular-dark-plan-proyeccion.png` | `v3-after/celular-dark-plan-proyeccion.png` | Globo del gráfico con sombra `md` (antes sin sombra en oscuro); trazos con extremos redondeados. |
+| Estadísticas | `v3-before/celular-dark-estadisticas.png` | `v3-after/celular-dark-estadisticas.png` | «Periodo anterior» con trazo discontinuo y extremos redondeados; barras y leyendas con la escala `mark`/`xs`. |
+| Ajustes (índice) | `v3-before/celular-dark-ajustes.png` | `v3-after/celular-dark-ajustes.png` | Iconos de fila a 10 px (escala `sm`); interruptores en píldora. |
+| Categorías (configuración) | `v3-before/celular-dark-setup-categorias.png` | `v3-after/celular-dark-setup-categorias.png` | Botones a 12 px; fichas sin cambios. |
+
+Las mismas pantallas en tema claro: `celular-light-*.png` en las dos carpetas.
+
+## Ronda «Lukas como referencia» (12 de octubre de 2026, antes / después)
+
+Capturas de `npm run shots -- --label=v4-before` sobre `15756ef` (final de la auditoría del 12-oct) y
+`--label=v4-after` sobre la rama `feat/pulido-lukas-benchmark`, con los mismos datos de demostración, fecha
+(28-sep-2026), idioma, tema y tamaños. En el repositorio quedan las de Pixel 7 en ambos temas de las
+pantallas que cambiaron (`docs/screenshots/v4-before/` y `v4-after/`). Las guardas pasan antes y después; las
+cifras no cambian (`tests/e2e/lukas-round.spec.ts` las comprueba con la demo).
+
+| Pantalla | Antes (Pixel 7, oscuro) | Después | Qué cambió |
+|---|---|---|---|
+| Inicio (demo, esencial) | `v4-before/celular-dark-inicio-demo.png` | `v4-after/celular-dark-inicio-demo.png` | Línea «En cuentas $901.57 · Reservado −$764.79» bajo la cifra; franja «Próximos pagos e ingresos» con dos ítems y «2 más en el calendario». |
+| Inicio (primer uso) | `v4-before/celular-dark-inicio-primer-uso.png` | `v4-after/celular-dark-inicio-primer-uso.png` | Misma línea de composición; sin pagos programados no hay franja. |
+| Plan › Metas | `v4-before/celular-dark-plan-metas.png` | `v4-after/celular-dark-plan-metas.png` | Arco de progreso con el porcentaje en el centro en lugar de la barra; mismas cifras. |
+| Formulario de movimiento (edición, demo) | — (sin captura previa de la edición) | `v4-after/celular-dark-movimiento-detalle.png` | Resumen del movimiento (importe con moneda, fecha, categoría, cuenta, origen, recurrencia y alcance). |
+| Formulario con posible duplicado | — | `v4-after/celular-dark-movimiento-duplicado.png` | Aviso ámbar con el existente y «Ver el existente»; Guardar sigue activo. |
+| Formulario con sugerencia de vínculo | — | `v4-after/celular-dark-movimiento-vinculo.png` | «¿Es el pago programado «Renta de habitación» del 1 oct?» con «Sí, vincularlo» / «No, es otro». |
+
+Las mismas pantallas en tema claro: `celular-light-*.png` en las dos carpetas.
+
+A 320 × 640 (`celular-pequeno`) la suite completa encontró dos cosas que las capturas de Pixel 7 no mostraban: la insignia
+«programado · frecuencia» del resumen del movimiento desbordaba la pantalla (347 px) y la vista esencial de la demo subía a
+2,77 pantallas. Las insignias del resumen se parten, la franja de próximos pagos lleva el título corto y el enlace en la
+misma fila, y la línea «En cuentas · Reservado» cabe en una sola línea; la guarda C1 queda en ≤ 2,75 pantallas a 320 px
+para la vista esencial (decisión 146).

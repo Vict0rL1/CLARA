@@ -1,0 +1,11 @@
+Paso 3 de 6
+
+Tu próximo ingreso
+¿Sabes cuándo recibirás dinero?
+Sí, tengo una fecha
+No tengo fecha
+
+Con el periodo «Mensual», tu dinero se reparte entre los días que quedan del periodo; no hace falta elegir un número de días. Puedes agregar un ingreso más adelante en Plan › Calendario.
+
+Volver
+Continuar

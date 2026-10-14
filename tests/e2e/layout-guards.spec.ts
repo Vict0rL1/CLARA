@@ -131,8 +131,10 @@ test.describe('C1 · Inicio: la cifra principal primero y cabe en pocas pantalla
   test('demo: ≤ 2 pantallas en «Esencial» y ≤ 3 en «Completa»', async ({ page }, info) => {
     await presetView(page, 'essential')
     await startDemo(page)
-    // A 320 × 640 el aviso, los favoritos y «Más herramientas» ocupan más alto: hasta 2,5 (DECISIONS).
-    expect(await pageHeightInScreens(page), 'vista esencial').toBeLessThanOrEqual(info.project.name === 'celular-pequeno' ? 2.5 : 2)
+    // A 320 × 640 el aviso, los favoritos y «Más herramientas» ocupan más alto, y desde la ronda Lukas
+    // la vista esencial suma la línea «En cuentas · Reservado» y la franja de próximos pagos: hasta 2,75
+    // (decisión 146; la vista completa sigue en ≤ 3).
+    expect(await pageHeightInScreens(page), 'vista esencial').toBeLessThanOrEqual(info.project.name === 'celular-pequeno' ? 2.75 : 2)
   })
   test('demo: ≤ 3 pantallas en «Completa»', async ({ page }) => {
     await presetView(page, 'full')

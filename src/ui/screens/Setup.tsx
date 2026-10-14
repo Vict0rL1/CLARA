@@ -81,6 +81,19 @@ export function Setup({ language, onLanguageChange }: { language: Language; onLa
   const fmt = createFormatter(settings)
   const money = (text: string, opts: { allowNegative?: boolean; allowZero?: boolean } = {}) => parseMoney(text, currency, numberLocale, opts)
 
+  /**
+   * UX-02: aviso del resumen sin fecha de ingreso. Describe el horizonte que `computeBudget` usó de
+   * verdad (periodo de calendario o días elegidos), nunca un valor del formulario que no participó.
+   */
+  const provisionalIncomeNote = (b: BudgetResult): string | null => {
+    if (hasIncome !== 'no' || !b.horizon) return null
+    if (b.horizon.source === 'period' && b.period) {
+      return t('setup.summary.provisionalPeriod', { label: periodLabel(t, fmt, b.period), date: fmt.date(b.period.end, { weekday: true }), days: tn('home.periodDays', b.period.daysLeft) })
+    }
+    if (b.horizon.source === 'fallback') return t('setup.summary.provisionalIncome', { days: b.horizon.days, date: fmt.date(b.horizon.endDate, { weekday: true }) })
+    return null
+  }
+
   /** Valida el paso actual y construye la entrada de configuración si todo está bien. */
   const buildInput = (upTo: number): { input: SetupInput | null; errs: Record<string, string> } => {
     const errs: Record<string, string> = {}
@@ -128,7 +141,9 @@ export function Setup({ language, onLanguageChange }: { language: Language; onLa
         balanceMinor: bal.minor,
         balanceDate,
         income,
-        fallbackHorizonDays: hasIncome === 'no' ? Number(horizon) : null,
+        // UX-02: el horizonte en días solo existe con el periodo «hasta mi próximo ingreso»; con un periodo de
+        // calendario no se muestra el selector y no se guarda un valor que la persona nunca eligió.
+        fallbackHorizonDays: hasIncome === 'no' && periodType === 'untilIncome' ? Number(horizon) : null,
         bills: billInputs,
         reserve: reserveInput,
         categoryIds,
@@ -386,16 +401,20 @@ export function Setup({ language, onLanguageChange }: { language: Language; onLa
                     <TextField label={t('setup.income.date')} type="date" value={incomeDate} min={today} onChange={(e) => setIncomeDate(e.target.value)} error={errors.incomeDate} hint={incomeDate && incomeDate <= today ? t('setup.income.dateToday') : t('setup.income.dateHint')} />
                     <SelectField label={t('fields.frequency')} value={incomeFrequency} onChange={(e) => setIncomeFrequency(e.target.value as Frequency)} options={FREQUENCIES.map((f) => ({ value: f, label: frequencyLabel(t, f) }))} />
                   </>
+                ) : periodType === 'untilIncome' ? (
+                  <SelectField
+                    label={t('setup.income.horizon')}
+                    value={horizon}
+                    onChange={(e) => setHorizon(e.target.value)}
+                    options={['7', '14', '30'].map((d) => ({ value: d, label: t('horizon.option', { days: d }) }))}
+                    hint={t('setup.income.horizonHint')}
+                  />
                 ) : (
-                  <>
-                    <SelectField
-                      label={t('setup.income.horizon')}
-                      value={horizon}
-                      onChange={(e) => setHorizon(e.target.value)}
-                      options={['7', '14', '30'].map((d) => ({ value: d, label: t('horizon.option', { days: d }) }))}
-                      hint={t('setup.income.horizonHint')}
-                    />
-                  </>
+                  // UX-02: con un periodo de calendario el reparto usa los días que quedan del periodo; el
+                  // selector de días no aplica y no se muestra.
+                  <p className="note" data-testid="setup-period-instead">
+                    {t('setup.income.periodInstead', { period: t(`period.type.${periodType}` as MessageKey) })}
+                  </p>
                 )}
                 {nav()}
               </>
@@ -474,11 +493,11 @@ export function Setup({ language, onLanguageChange }: { language: Language; onLa
               </div>
               {preview.budget.availableMinor < 0 && <Alert tone="warning" title={t('home.negativeTitle', { amount: fmt.money(-preview.budget.availableMinor) })}>{t('home.negativeText')}</Alert>}
               {preview.budget.overdueIncomes.length > 0 && <Alert tone="warning" title={t('setup.summary.incomePast')} />}
-              {(bills.length === 0 || hasIncome === 'no') && (
+              {(bills.length === 0 || provisionalIncomeNote(preview.budget)) && (
                 <Alert tone="info" title={t('setup.summary.provisionalTitle')}>
                   <ul className="bullets">
                     {bills.length === 0 && <li>{t('setup.summary.provisionalBills')}</li>}
-                    {hasIncome === 'no' && <li>{t('setup.summary.provisionalIncome', { days: Number(horizon) })}</li>}
+                    {provisionalIncomeNote(preview.budget) && <li data-testid="setup-provisional-income">{provisionalIncomeNote(preview.budget)}</li>}
                   </ul>
                 </Alert>
               )}

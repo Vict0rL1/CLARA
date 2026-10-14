@@ -465,3 +465,61 @@ describe('sin arrastre, el disponible nunca supera el saldo real (QA-03)', () =>
     expect(d.transactions).toHaveLength(1)
   })
 })
+
+describe('UX-02 · el horizonte explicado es el que usó el cálculo', () => {
+  // Reproducción del informe (auditoría 2026-10-12): 11-oct-2026 en America/Vancouver, saldo 2 000,
+  // sin ingreso programado, sin pagos y un apartado de 300 dentro del presupuesto.
+  const TODAY_V = '2026-10-11'
+  const vancouver = (period: 'month' | 'quarter' | 'untilIncome', extra: { fallbackHorizonDays?: number | null; schedules?: ReturnType<typeof income>[] } = {}) =>
+    baseData({
+      settings: { ...baseData().settings, timeZone: 'America/Vancouver', budgetPeriod: { type: period, weekStartsOn: 1 }, fallbackHorizonDays: extra.fallbackHorizonDays ?? null },
+      accounts: [account({ id: 'main', anchor: { amountMinor: 200000, date: TODAY_V, setAt: '2026-10-11T19:00:00.000Z' } })],
+      goals: [goal({ allocations: [{ id: 'r', amountMinor: 30000, date: TODAY_V, createdAt: '2026-10-11T19:00:00.000Z' }] })],
+      schedules: extra.schedules ?? [],
+    })
+
+  it('periodo mensual sin fecha de ingreso: 1 700 en los 21 días que quedan de octubre (80,95 por día), aunque haya un valor de respaldo guardado', () => {
+    const b = computeBudget(vancouver('month'), TODAY_V)
+    expect(b.status).toBe('ok')
+    expect(b.horizon).toEqual({ source: 'period', endDate: '2026-10-31', days: 21 })
+    expect(b.availableMinor).toBe(170000)
+    expect(b.dailyMinor).toBe(8095)
+    // Un horizonte en días guardado antes no participa: el periodo de calendario manda.
+    const stale = computeBudget(vancouver('month', { fallbackHorizonDays: 14 }), TODAY_V)
+    expect(stale.horizon).toEqual(b.horizon)
+    expect(stale.dailyMinor).toBe(8095)
+  })
+
+  it('«hasta mi próximo ingreso» sin fecha: ahí sí rigen los 14 días elegidos (121,42 por día, truncado)', () => {
+    const b = computeBudget(vancouver('untilIncome', { fallbackHorizonDays: 14 }), TODAY_V)
+    expect(b.horizon).toEqual({ source: 'fallback', endDate: '2026-10-25', days: 14 })
+    expect(b.availableMinor).toBe(170000)
+    expect(b.dailyMinor).toBe(12142)
+  })
+
+  it('con fecha de ingreso conocida: el periodo «hasta mi próximo ingreso» termina ese día y el mensual sigue el calendario', () => {
+    const pay = income('2026-10-24', 50000, { id: 'pay' })
+    const untilIncome = computeBudget(vancouver('untilIncome', { schedules: [pay] }), TODAY_V)
+    expect(untilIncome.horizon).toMatchObject({ source: 'income', endDate: '2026-10-24', days: 13 })
+    expect(untilIncome.availableMinor).toBe(170000) // el ingreso futuro no se suma
+    expect(untilIncome.dailyMinor).toBe(13076)
+    const monthly = computeBudget(vancouver('month', { schedules: [pay] }), TODAY_V)
+    expect(monthly.horizon).toEqual({ source: 'period', endDate: '2026-10-31', days: 21 })
+    expect(monthly.dailyMinor).toBe(8095)
+  })
+
+  it('cambio de día y fin de mes: el último día cuenta 1 y al día siguiente empieza el periodo nuevo', () => {
+    const lastDay = computeBudget(vancouver('month'), '2026-10-31')
+    expect(lastDay.horizon).toEqual({ source: 'period', endDate: '2026-10-31', days: 1 })
+    expect(lastDay.dailyMinor).toBe(170000)
+    const firstDay = computeBudget(vancouver('month'), '2026-11-01')
+    expect(firstDay.horizon).toEqual({ source: 'period', endDate: '2026-11-30', days: 30 })
+    expect(firstDay.dailyMinor).toBe(5666)
+  })
+
+  it('otro periodo de calendario (trimestral): los días que quedan son los del trimestre', () => {
+    const b = computeBudget(vancouver('quarter'), TODAY_V)
+    expect(b.horizon).toEqual({ source: 'period', endDate: '2026-12-31', days: 82 })
+    expect(b.dailyMinor).toBe(2073)
+  })
+})

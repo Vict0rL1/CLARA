@@ -1,0 +1,15 @@
+Paso 3 de 6
+
+Tu próximo ingreso
+¿Sabes cuándo recibirás dinero?
+Sí, tengo una fecha
+No tengo fecha
+¿Para cuántos días quieres repartir tu dinero?
+7 días
+14 días
+30 días
+
+Puedes cambiarlo o agregar un ingreso más adelante.
+
+Volver
+Continuar
