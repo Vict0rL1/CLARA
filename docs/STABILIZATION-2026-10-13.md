@@ -1,9 +1,10 @@
 # Estabilización de la versión candidata (auditoría posterior 2026-10-12/13)
 
 Rama `fix/release-stabilization-2026-10` sobre el candidato auditado `e7c9d87`
-(`feat/etapa3-flujo-presupuestos`); PR en borrador Vict0rL1/CLARA#14. Nada se ha fusionado, desplegado
-ni activado; no se usó ningún dato financiero real ni ningún servicio remoto: solo la demostración y
-datos sintéticos.
+(`feat/etapa3-flujo-presupuestos`); PR Vict0rL1/CLARA#14. Durante este trabajo no se fusionó, desplegó
+ni activó nada; no se usó ningún dato financiero real ni ningún servicio remoto: solo la demostración y
+datos sintéticos. La fusión posterior en `main` (con la publicación que CI hace al fusionar) la pidió
+después la persona responsable del repositorio; no cambia ninguna cifra de este informe.
 
 ## Cómo se trabajó
 
