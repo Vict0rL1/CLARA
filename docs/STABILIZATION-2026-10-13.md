@@ -105,9 +105,21 @@ pruebas que se mantienen. Registros en `docs/qa/retest-2026-10-15/`.
 
 ## Verificación final
 
-Los resultados de la verificación sobre el commit final (check, compilación, tamaño, auditoría de
-dependencias y matriz completa de Playwright) están en la descripción del PR: escribirlos aquí cambiaría el
-commit verificado.
+Comprobación de RT-01/02/03 sobre `efd2fa2` (el último commit de esta estabilización; se anota aquí en un
+commit posterior para no cambiar el verificado). Registro: `docs/qa/retest-2026-10-15/verification-efd2fa2.txt`.
+
+| Comando | Resultado |
+|---|---|
+| `npm run check` | exit 0 · Vitest: 90 archivos, 903 pruebas pasadas, 1 omitida |
+| `npm run build` | exit 0 |
+| `npm run size` | exit 0 · JS inicial 820.3 KB (gzip 245.4 KB), límite 844.6 KB |
+| `npm audit` | 0 vulnerabilidades |
+| Playwright, 3 proyectos, `--workers=2` | 945 pasadas, 4 omitidas, 2 fallidas: `performance-10k` en celular (669 / 601 ms) y escritorio (753 / 702 ms) frente a 500 ms, con la máquina cargada (carga ≈ 9 en 4 núcleos) |
+| `performance-10k` sola, misma compilación, `--workers=1` | 3/3 pasan: mejor de dos cargas 328, 354 y 332 ms. El límite de 500 ms no se cambió |
+| CI de GitHub en `efd2fa2` | check y e2e (celular, celular-pequeno, escritorio): success; vista previa desplegada |
+
+Lo que vino después en la misma rama (Clara 2.0 fase 1, esquema 13) tiene su propia verificación en
+`docs/CLARA-2.0.md` §8.
 
 ## Límites y lo que no se verificó
 
