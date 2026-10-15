@@ -193,7 +193,11 @@ Decisiones:
   resta del disponible (y, en un periodo de calendario, de `committedFor`, aunque no se resten
   programados ni metas), pero **no es un gasto, no mueve dinero y no cambia ningún saldo**. Con
   C = 0 las cifras son exactamente las de antes. Se explica en «¿Cómo se calculó?» y en la barra
-  de composición (segmento neutro, con texto, nunca solo color).
+  de composición (segmento neutro, con texto, nunca solo color). Si el disponible es negativo pero
+  Disponible + C ≥ 0, pagos y apartados están cubiertos: Inicio muestra un **aviso** («Estás usando X
+  de tu colchón de C»), no la alarma de faltante; la alarma solo aparece si Disponible + C < 0 y su
+  importe es −(Disponible + C). El historial registra `settings.safeToSpend` como ajuste financiero,
+  así «¿Qué cambió?» atribuye un cambio del colchón al paso «ajustes» y se puede revertir.
 - **Redondeo hacia abajo** en «por día» y «por semana»: así nunca se sugiere gastar
   más de lo disponible.
 - **Saldo negativo:** se permite (sobregiro). El disponible puede ser negativo; en ese
