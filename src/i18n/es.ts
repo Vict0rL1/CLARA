@@ -3258,4 +3258,7 @@ export const es = {
   'accountKind.investment': 'Inversión',
   'settings.accounts.institution': 'Banco o emisor (opcional)',
   'settings.accounts.institutionHint': 'Solo para reconocerla. Clara no se conecta a tu banco.',
+  'plans.form.alertAt': 'Avisar al {percent} %',
+  'plans.form.alertsHint': 'Un aviso por umbral y periodo: si el gasto salta varios umbrales de golpe, solo se avisa el más alto.',
+  'notify.planLevel.title': '«{name}» va por el {percent} % del límite',
 } as const

@@ -9,7 +9,7 @@ import { goalPlan, goalProgress } from '../../domain/goals'
 import { newId } from '../../domain/ids'
 import { updateSettings } from '../../domain/operations'
 import { carryAfterEdit, cycleFor, deletePlan, planBaseMinor, planCategoryOptions, planComparison, planDailySeries, planProgress, plansSummary, planTransactions, planUpcoming, repeatPlan, restorePlan, savePlan, setPlanStatus, type PlanProgress, type PlanSeriesPoint } from '../../domain/plans'
-import type { BudgetPeriodType, Goal } from '../../domain/types'
+import type { BudgetPeriodType, Goal, PlanEarlyAlertLevel } from '../../domain/types'
 import { BUDGET_PERIOD_TYPES, LIMITS, type Issue } from '../../domain/validation'
 import { useT, type MessageKey } from '../../i18n'
 import { useRun, useToday } from '../../state/hooks'
@@ -272,6 +272,9 @@ export function PlanForm({ route }: { route: Route }) {
   const [rollover, setRollover] = useState(existing?.rollover === 'carry')
   const [alertAt80, setAlert80] = useState(existing?.alertAt80 ?? true)
   const [alertAt100, setAlert100] = useState(existing?.alertAt100 ?? true)
+  // v13: avisos tempranos opcionales (50/75/90), apagados por defecto.
+  const [alertLevels, setAlertLevels] = useState<PlanEarlyAlertLevel[]>(existing?.alertLevels ?? [])
+  const toggleLevel = (level: PlanEarlyAlertLevel, on: boolean) => setAlertLevels((list) => (on ? [...new Set([...list, level])] : list.filter((l) => l !== level)))
   const [issues, setIssues] = useState<Issue[]>([])
   const [amountError, setAmountError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -293,7 +296,7 @@ export function PlanForm({ route }: { route: Route }) {
     if (!parsed.ok || busy) return
     setBusy(true)
     const { result, saved } = await run((d, c) =>
-      savePlan(d, { id, name, categoryIds, amountMinor: parsed.minor, periodType, ...(periodType === 'custom' ? { startDate: startDate || undefined, endDate: endDate || undefined } : {}), recurring, rollover: periodType !== 'custom' && recurring && rollover ? 'carry' : 'none', alertAt80, alertAt100 }, c),
+      savePlan(d, { id, name, categoryIds, amountMinor: parsed.minor, periodType, ...(periodType === 'custom' ? { startDate: startDate || undefined, endDate: endDate || undefined } : {}), recurring, rollover: periodType !== 'custom' && recurring && rollover ? 'carry' : 'none', alertAt80, alertAt100, alertLevels }, c),
     )
     setBusy(false)
     if (!result.ok) {
@@ -359,8 +362,11 @@ export function PlanForm({ route }: { route: Route }) {
         )}
         {periodType !== 'custom' && <Toggle checked={recurring} onChange={setRecurring} label={t('plans.form.recurring')} hint={t('plans.form.recurringHint')} />}
         {periodType !== 'custom' && recurring && <Toggle checked={rollover} onChange={setRollover} label={t('plans.rollover.label')} hint={t('plans.rollover.hint')} />}
+        <Toggle checked={alertLevels.includes(50)} onChange={(on) => toggleLevel(50, on)} label={t('plans.form.alertAt', { percent: 50 })} />
+        <Toggle checked={alertLevels.includes(75)} onChange={(on) => toggleLevel(75, on)} label={t('plans.form.alertAt', { percent: 75 })} />
         <Toggle checked={alertAt80} onChange={setAlert80} label={t('plans.form.alert80')} />
-        <Toggle checked={alertAt100} onChange={setAlert100} label={t('plans.form.alert100')} hint={!data.settings.notifications.planAlerts ? t('plans.form.alertsOff') : undefined} />
+        <Toggle checked={alertLevels.includes(90)} onChange={(on) => toggleLevel(90, on)} label={t('plans.form.alertAt', { percent: 90 })} />
+        <Toggle checked={alertAt100} onChange={setAlert100} label={t('plans.form.alert100')} hint={!data.settings.notifications.planAlerts ? t('plans.form.alertsOff') : t('plans.form.alertsHint')} />
         {unknown.length > 0 && (
           <Alert tone="critical" title={t('common.fixErrors')} role="alert">
             <ul>

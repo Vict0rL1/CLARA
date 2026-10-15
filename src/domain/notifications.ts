@@ -11,7 +11,7 @@ import type { AppData, ClockTime, LocalDate, NotificationSettings, Plan } from '
 export interface LocalNotice {
   /** Estable por día: sirve para no repetir el mismo aviso. */
   key: string
-  kind: 'scheduledDue' | 'scheduledOverdue' | 'dailyReminder' | 'dailySummary' | 'plan80' | 'plan100'
+  kind: 'scheduledDue' | 'scheduledOverdue' | 'dailyReminder' | 'dailySummary' | 'plan80' | 'plan100' | 'planLevel'
   /** Claves de i18n y parámetros; la UI traduce. */
   titleKey: string
   bodyKey: string
@@ -79,10 +79,11 @@ export function dueNotices(data: AppData, input: NoticeInput, options: { amount:
       const name = options.planName ? options.planName(a.plan) : a.plan.name
       out.push({
         key: `plan${a.level}:${a.plan.id}:${cycle}`,
-        kind: a.level === 100 ? 'plan100' : 'plan80',
-        titleKey: a.level === 100 ? 'notify.plan100.title' : 'notify.plan80.title',
+        // 50/75/90 (v13) comparten un texto con el porcentaje; 80 y 100 conservan los suyos.
+        kind: a.level === 100 ? 'plan100' : a.level === 80 ? 'plan80' : 'planLevel',
+        titleKey: a.level === 100 ? 'notify.plan100.title' : a.level === 80 ? 'notify.plan80.title' : 'notify.planLevel.title',
         bodyKey: a.level === 100 ? 'notify.plan100.body' : 'notify.plan80.body',
-        params: { name, spent: options.amount(a.progress.spentMinor), limit: options.amount(a.progress.limitMinor), over: options.amount(Math.max(0, -a.progress.remainingMinor)) },
+        params: { name, percent: String(a.level), spent: options.amount(a.progress.spentMinor), limit: options.amount(a.progress.limitMinor), over: options.amount(Math.max(0, -a.progress.remainingMinor)) },
         href: `/plan/planes/${a.plan.id}`,
         at: '00:00',
       })

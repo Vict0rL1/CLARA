@@ -8,13 +8,16 @@ import { computeBudget } from './budget'
 import { committedFor, safeToSpend } from './periods'
 import { saveAccount, saveSchedule, saveTransaction, updateSettings } from './operations'
 import { allAccountBalances } from './balances'
+import { DEFAULT_NOTIFICATIONS } from './defaults'
+import { dueNotices } from './notifications'
+import { closeDuePlans, planAlertLevels, planAlerts, savePlan } from './plans'
 import { defaultSecondDay, nthOccurrence, occurrencesBetween, scanOccurrences } from './recurrence'
 import type { AppData, Schedule } from './types'
 import { validateSchedule } from './validation'
 import { SCHEMA_VERSION } from './types'
 import { createBackup, parseBackup, validateAppData } from '../storage/backup'
 import { MIGRATIONS, migrate } from '../storage/migrations'
-import { account, baseData, bill, ctx, goal, income, schedule } from '../test/fixtures'
+import { account, baseData, bill, ctx, goal, income, schedule, tx } from '../test/fixtures'
 
 const withBuffer = (d: AppData, bufferMinor: number): AppData => ({ ...d, settings: { ...d.settings, safeToSpend: { ...d.settings.safeToSpend, bufferMinor } } })
 
@@ -262,5 +265,75 @@ describe('Clara 2.0 §2 · tipos de cuenta (monedero, prepagada, inversión) e i
     if (!r.ok) throw new Error('acc')
     const r2 = saveAccount(r.data, { ...opening('wallet', true), kind: 'credit' }, ctx)
     expect(r2.ok).toBe(false)
+  })
+})
+
+describe('Clara 2.0 §11 · avisos de límites al 50/75/90/100 %', () => {
+  const draft = { id: 'p1', name: 'Comer fuera', categoryIds: ['dining'], amountMinor: 20000, periodType: 'month' as const, recurring: true, alertAt80: true, alertAt100: true }
+  const spending = (amountMinor: number) => baseData({ transactions: amountMinor > 0 ? [tx({ id: 'a', categoryId: 'dining', amountMinor })] : [] })
+  const withPlan = (amountMinor: number, extra: Partial<typeof draft> & { alertLevels?: (50 | 75 | 90)[] } = {}) => {
+    const r = savePlan(spending(amountMinor), { ...draft, ...extra }, ctx)
+    if (!r.ok) throw new Error(JSON.stringify(r.issues))
+    return r.data
+  }
+  const levelAt = (amountMinor: number, extra: Parameters<typeof withPlan>[1] = {}) => planAlerts(withPlan(amountMinor, extra), ctx.today).map((a) => a.level)
+
+  it('sin avisos tempranos todo sigue igual que antes (80 y 100)', () => {
+    expect(levelAt(9_999)).toEqual([])
+    expect(levelAt(15_999)).toEqual([])
+    expect(levelAt(16_000)).toEqual([80])
+    expect(levelAt(19_999)).toEqual([80])
+    expect(levelAt(20_000)).toEqual([100])
+    expect(levelAt(25_000, { alertAt100: false })).toEqual([80])
+  })
+
+  it('con 50/75/90 activados avisa del umbral más alto alcanzado, exacto en el límite (enteros)', () => {
+    const levels = { alertLevels: [90, 50, 75] as (50 | 75 | 90)[] }
+    expect(levelAt(9_999, levels)).toEqual([])
+    expect(levelAt(10_000, levels)).toEqual([50])
+    expect(levelAt(14_999, levels)).toEqual([50])
+    expect(levelAt(15_000, levels)).toEqual([75])
+    expect(levelAt(16_000, levels)).toEqual([80])
+    expect(levelAt(18_000, levels)).toEqual([90])
+    expect(levelAt(20_000, levels)).toEqual([100])
+    // Un salto del 40 % al 95 % avisa una sola vez, del umbral más alto.
+    expect(levelAt(19_000, { ...levels, alertAt80: false })).toEqual([90])
+    // Se guardan ordenados y sin repetir.
+    const saved = withPlan(0, { alertLevels: [90, 50, 90] as (50 | 75 | 90)[] })
+    expect(saved.plans[0]!.alertLevels).toEqual([50, 90])
+    expect(planAlertLevels(saved.plans[0]!)).toEqual([50, 80, 90, 100])
+  })
+
+  it('una notificación por umbral y ciclo, con el porcentaje en el texto; apagadas en Ajustes no hay nada', () => {
+    const d = withPlan(15_500, { alertLevels: [50, 75] })
+    const fmt = { amount: (m: number) => String(m), name: () => 'x', planName: (p: { name: string }) => p.name }
+    const settings = { ...DEFAULT_NOTIFICATIONS, planAlerts: true }
+    expect(dueNotices(d, { today: ctx.today, now: '08:00', settings }, fmt)).toMatchObject([
+      { key: 'plan75:p1:2026-09-01', kind: 'planLevel', titleKey: 'notify.planLevel.title', params: { name: 'Comer fuera', percent: '75', spent: '15500', limit: '20000' } },
+    ])
+    expect(dueNotices(d, { today: ctx.today, now: '08:00', settings: DEFAULT_NOTIFICATIONS }, fmt)).toEqual([])
+  })
+
+  it('editar sin tocar los avisos los conserva; una lista vacía los quita; la renovación los hereda', () => {
+    const d = withPlan(0, { alertLevels: [75] })
+    const edited = savePlan(d, { ...draft, amountMinor: 30000 }, ctx)
+    expect(edited.ok && edited.value.alertLevels).toEqual([75])
+    const cleared = savePlan(d, { ...draft, alertLevels: [] }, ctx)
+    expect(cleared.ok && cleared.value.alertLevels).toBeUndefined()
+    const closed = closeDuePlans(d, { today: '2026-10-01', now: '2026-10-01T12:00:00.000Z' })
+    expect(closed.ok && closed.value.renewed[0]!.alertLevels).toEqual([75])
+  })
+
+  it('validación: solo 50/75/90, sin repetir; datos v12 sin `alertLevels` siguen siendo válidos', () => {
+    const d = withPlan(0)
+    expect(d.plans[0]!.alertLevels).toBeUndefined()
+    expect(validateAppData(JSON.parse(JSON.stringify(d))).ok).toBe(true)
+    for (const bad of [[80], [60], [50, 50], '50', [Number.NaN]]) {
+      const broken = JSON.parse(JSON.stringify({ ...d, plans: [{ ...d.plans[0], alertLevels: bad }] }))
+      expect(validateAppData(broken).ok, JSON.stringify(bad)).toBe(false)
+    }
+    const good = withPlan(0, { alertLevels: [50, 90] })
+    const parsed = parseBackup(JSON.stringify(createBackup(good, new Date(ctx.now), '1.0.0')))
+    expect(parsed.ok && parsed.data.plans[0]!.alertLevels).toEqual([50, 90])
   })
 })

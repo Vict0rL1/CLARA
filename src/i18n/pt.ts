@@ -3257,4 +3257,7 @@ export const pt: Record<keyof typeof es, string> = {
   'accountKind.investment': 'Investimento',
   'settings.accounts.institution': 'Banco ou emissor (opcional)',
   'settings.accounts.institutionHint': 'Só para reconhecê-la. A Clara não se conecta ao seu banco.',
+  'plans.form.alertAt': 'Avisar aos {percent} %',
+  'plans.form.alertsHint': 'Um aviso por limite e período: se o gasto ultrapassar vários limites de uma vez, só o mais alto é avisado.',
+  'notify.planLevel.title': '«{name}» chegou a {percent} % do limite',
 }

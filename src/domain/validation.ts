@@ -121,6 +121,7 @@ export const LIMITS = {
 export const TX_KINDS = ['income', 'expense', 'transfer', 'refund', 'adjustment'] as const
 export const TX_STATUSES = ['planned', 'realized'] as const
 export const ACCOUNT_KINDS = ['bank', 'cash', 'savings', 'credit', 'wallet', 'prepaid', 'investment', 'other'] as const
+export const PLAN_EARLY_ALERT_LEVELS = [50, 75, 90] as const
 export const FREQUENCIES = ['once', 'daily', 'weekly', 'biweekly', 'semimonthly', 'monthly', 'quarterly', 'yearly', 'custom'] as const
 export const NUMBER_LOCALES = ['es-MX', 'es-ES', 'es-CO', 'en-CA', 'en-US', 'fr-CA', 'fr-FR', 'pt-BR'] as const
 export const DATE_STYLES = ['short', 'medium', 'iso'] as const
@@ -331,6 +332,10 @@ export function validatePlan(plan: Plan, ctx: { data: Pick<AppData, 'settings'> 
   if (typeof plan.recurring !== 'boolean') issues.push({ path: `${p}recurring`, code: 'invalidValue' })
   if (!isOneOf(['active', 'completed', 'paused'] as const, plan.status)) issues.push({ path: `${p}status`, code: 'invalidValue' })
   for (const k of ['alertAt80', 'alertAt100'] as const) if (typeof plan[k] !== 'boolean') issues.push({ path: `${p}${k}`, code: 'invalidValue' })
+  // v13: avisos tempranos opcionales; si vienen, solo 50/75/90 y sin repetir.
+  if (plan.alertLevels !== undefined && (!Array.isArray(plan.alertLevels) || plan.alertLevels.some((l) => !(PLAN_EARLY_ALERT_LEVELS as readonly unknown[]).includes(l)) || new Set(plan.alertLevels).size !== plan.alertLevels.length)) {
+    issues.push({ path: `${p}alertLevels`, code: 'invalidValue' })
+  }
   if (plan.result !== undefined) {
     const r = plan.result
     if (!r || typeof r !== 'object' || !isMinorAmount(r.spentMinor) || typeof r.achieved !== 'boolean' || !isMinorAmount(r.deltaMinor) || !isValidTimestamp(r.closedAt)) {

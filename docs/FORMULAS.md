@@ -554,7 +554,7 @@ Diferencia = saldo observado − saldo calculado
   respeta y unos ajustes mal formados se conservan tal cual para que la validación los señale). Con 0
   el disponible es idéntico al de v12. Son opcionales y no necesitan migración: `schedules[].secondDay`
   (solo con `frequency: 'semimonthly'`), los tipos de cuenta `wallet`, `prepaid` e `investment` y
-  `accounts[].institution` (texto, nunca una conexión). Una versión v12 no sabe leer esos valores, por
+  `accounts[].institution` (texto, nunca una conexión) y `plans[].alertLevels` (avisos 50/75/90). Una versión v12 no sabe leer esos valores, por
   eso el número sube y no se vuelve atrás (`docs/ROLLBACK.md`). Pruebas: `clara2.test.ts`,
   `ledger.property.test.ts`, `tests/e2e/clara2.spec.ts`.
 - Antes de guardar por primera vez datos migrados, se conserva el texto original en
@@ -1021,7 +1021,12 @@ Pruebas: `ui/preferences.test.ts` y e2e `personalize.spec.ts`.
 - **Repetir** = plan nuevo con los mismos ajustes en el ciclo de hoy (los personalizados conservan su
   duración a partir de hoy).
 - **Alertas**: con `alertAt80`/`alertAt100` y el ajuste «Alertas de planes» activo, se avisa una vez
-  por ciclo y umbral (clave `plan80|plan100:<id>:<inicio del ciclo>`); respetan las horas de silencio.
+  por ciclo y umbral (clave `plan<umbral>:<id>:<inicio del ciclo>`); respetan las horas de silencio.
+  v13 (Clara 2.0 §11): `alertLevels` opcional añade 50, 75 y/o 90 (apagados por defecto; sin repetir,
+  guardados en orden). Se avisa solo del umbral activado **más alto** ya alcanzado
+  (`gastado × 100 ≥ límite × umbral`, en enteros): si el gasto salta del 40 % al 95 % hay un único
+  aviso, el del 90 %. Editar sin enviar `alertLevels` los conserva, una lista vacía los quita y la
+  renovación de un plan recurrente los hereda. Sin `alertLevels` todo es como en v12.
 - **Metas**: `contribution` (importe + frecuencia) es un recordatorio; «Aportar ahora» solo propone el
   importe. Sugerencia diaria de una meta = ⌈restante / días hasta la fecha⌉.
 - Un plan nunca mueve dinero ni cambia el disponible; los límites mensuales anteriores

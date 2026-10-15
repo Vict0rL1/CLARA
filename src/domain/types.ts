@@ -168,6 +168,8 @@ export interface IncomeRange {
 
 export type IncomeScenario = 'min' | 'expected' | 'extra'
 
+export type PlanEarlyAlertLevel = 50 | 75 | 90
+
 /** v13: `semimonthly` = dos veces al mes (el día de `startDate` y `secondDay`). */
 export type Frequency = 'once' | 'daily' | 'weekly' | 'biweekly' | 'semimonthly' | 'monthly' | 'quarterly' | 'yearly' | 'custom'
 export type ScheduleKind = 'income' | 'expense'
@@ -400,6 +402,8 @@ export interface Plan {
   previousPlanId?: string
   alertAt80: boolean
   alertAt100: boolean
+  /** v13 · Avisos tempranos además de 80/100 (Clara 2.0 §11): solo 50, 75 y 90, sin repetir. Ausente = ninguno. */
+  alertLevels?: PlanEarlyAlertLevel[]
   result?: PlanResult
   /**
    * v12. Arrastre al renovar un plan recurrente: `none` = cada ciclo empieza con el límite base;

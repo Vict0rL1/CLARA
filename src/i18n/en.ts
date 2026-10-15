@@ -3259,4 +3259,7 @@ export const en: Record<keyof typeof es, string> = {
   'accountKind.investment': 'Investment',
   'settings.accounts.institution': 'Bank or issuer (optional)',
   'settings.accounts.institutionHint': 'Only to help you recognize it. Clara doesn\'t connect to your bank.',
+  'plans.form.alertAt': 'Alert at {percent} %',
+  'plans.form.alertsHint': 'One alert per threshold and period: if spending jumps past several thresholds at once, only the highest one is sent.',
+  'notify.planLevel.title': '"{name}" is at {percent} % of its limit',
 }

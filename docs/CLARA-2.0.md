@@ -38,7 +38,7 @@ cannot provide by itself (a server, credentials, a paid provider, a native app o
 | 8 | Bank notification parsing, detection inbox with states | ❌🔒 | `inbox.ts` is computed notices (pending items), not a received-events queue | Android notification access needs a native app 🔒. A persistent "received events" queue fed by Shortcuts links is Phase 5 |
 | 9 | Duplicate detection | 🟡 | `duplicates.ts` (form warning), `inbox.possibleDuplicates`, CSV `importRef` + bank reference + possible-duplicate review, idempotent ids | One engine shared by every source + idempotency keys for received events: Phase 5 |
 | 10 | Safe-to-Spend: available, daily, weekly, until payday, reserved bills and goals, explanation | ✅ | `budget.ts`, `heroFigures.ts`, "¿Cómo se calculó?" | **Safety buffer** (`settings.safeToSpend.bufferMinor`, v13): done this session — subtracted from available/daily/weekly and calendar-period Safe-to-Spend, explained, shown in the composition bar, «Solo alcanza usando tu colchón» verdict. Credit limits never counted ✅; expected income never counted ✅ |
-| 11 | Budgets weekly…yearly/custom, category & overall, pause, history, projection | ✅ | `plans.ts` (`BudgetPeriodType`), `periodBudgets.ts`, `Plans.tsx` | Alerts at 50/75/90/100 %: today 80/100 only → configurable thresholds planned for phase 1, not done yet |
+| 11 | Budgets weekly…yearly/custom, category & overall, pause, history, projection | ✅ | `plans.ts` (`BudgetPeriodType`), `periodBudgets.ts`, `Plans.tsx` | **Alerts at 50/75/90/100 %** (`plans[].alertLevels`, v13): done this session — early levels off by default, one notice per level and cycle, only the highest reached level is sent |
 | 11 | Budget recommendations from history | ❌ | — | Phase 3 (deterministic suggestion; AI only for wording) |
 | 12 | Recurring rules separate from occurrences; reconcile; never double count; pause; skip; month-end clamping | ✅ | `recurrence.ts`, `planItems.ts`, `reconcileSchedules.ts`, `ScheduleSheet.tsx` | **Twice monthly** (`semimonthly` + `secondDay`, v13): done this session in the schedule form (Setup and «Repetir» keep the previous list). Subscription overview + monthly total, recurring-payment suggestions, future-only edits: Phase 3 |
 | 13 | Goals: target, date, contributions, virtual allocations, progress, projections | ✅ | `goals.ts`, `goalChart.ts`, `Goals.tsx` | Milestone notifications: Phase 3 |
@@ -65,7 +65,7 @@ cannot provide by itself (a server, credentials, a paid provider, a native app o
   erasing edits made while a write was pending; CSV acknowledgment surviving a file change.
 - Safe-to-Spend had no safety buffer, so the headline figure could reach 0 with nothing kept aside
   (§10 asks for it explicitly) → added.
-- Budget alerts only at 80/100 % → configurable 50/75/90/100 with one notice per level and period (open).
+- Budget alerts only at 80/100 % → configurable 50/75/90/100 with one notice per level and period (done).
 - Recurrence lacked "twice a month" (common for salaries) → added with month-end clamping.
 - `docs/GAP-ANALYSIS.md` (v2 kickoff) is historical; this document supersedes it for 2.0.
 - No server exists: every section that needs one is marked 🔒 and is **not** shown as available in the UI
@@ -82,8 +82,8 @@ cannot provide by itself (a server, credentials, a paid provider, a native app o
 ## 5. Migration and rollback strategy (schema 12 → 13)
 
 - Additive only: new optional fields and new enum values. The 12 → 13 migration fills only
-  `settings.safeToSpend.bufferMinor = 0` when absent (same figures as v12); `secondDay`, `institution` and
-  the new account kinds are optional and need no migration. It never deletes or rewrites existing records
+  `settings.safeToSpend.bufferMinor = 0` when absent (same figures as v12); `secondDay`, `institution`,
+  `alertLevels` and the new account kinds are optional and need no migration. It never deletes or rewrites existing records
   (a malformed `settings` is kept as is so validation reports it).
 - Before converting, the app keeps the original as a local copy (`margen.data.before-v13`, existing mechanism).
 - Validation rejects malformed new fields; older data still validates after migration (tests).
@@ -93,7 +93,7 @@ cannot provide by itself (a server, credentials, a paid provider, a native app o
 ## 6. Phase plan (dependency order)
 
 1. **Foundation (this session):** audit ✅; ledger property tests ✅; schema 13 with safety buffer ✅, account
-   kinds ✅ and twice-monthly schedules ✅. Still open in this phase: budget alert thresholds; offering to
+   kinds ✅, twice-monthly schedules ✅ and budget alert thresholds ✅. Still open in this phase: offering to
    remember a category correction.
 2. Merchant intelligence: aliases, normalization table, rule priorities, preferred account per merchant.
 3. Planning: subscriptions overview and monthly total, recurring-payment suggestions from history,

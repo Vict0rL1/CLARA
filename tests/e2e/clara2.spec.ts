@@ -99,3 +99,24 @@ test('tipos de cuenta: un monedero digital con su emisor y una inversión que no
   await go(page, '/')
   await expect(page.getByTestId('available')).toHaveText('$425.00')
 })
+
+test('avisos de un límite al 50/75/90 %: apagados por defecto, se guardan y se ven al editar', async ({ page }) => {
+  await setupFirstUse(page)
+  await go(page, '/plan/planes/nuevo')
+  await page.getByLabel('Límite máximo').fill('300')
+  await page.getByLabel('Nombre (opcional)').fill('Salidas')
+  for (const p of [50, 75, 90]) await expect(page.getByRole('switch', { name: `Avisar al ${p} %` })).toHaveAttribute('aria-checked', 'false')
+  await expect(page.getByRole('switch', { name: 'Avisar al 80 %' })).toHaveAttribute('aria-checked', 'true')
+  await page.getByRole('switch', { name: 'Avisar al 50 %' }).click()
+  await page.getByRole('switch', { name: 'Avisar al 90 %' }).click()
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect(page.getByText('Plan guardado').first()).toBeVisible()
+  const plan = (JSON.parse((await storedData(page)) ?? '{}') as { plans: { id: string; name: string; alertLevels?: number[]; alertAt80: boolean; alertAt100: boolean }[] }).plans.find((p) => p.name === 'Salidas')!
+  expect(plan).toMatchObject({ alertLevels: [50, 90], alertAt80: true, alertAt100: true })
+
+  await page.reload()
+  await go(page, `/plan/planes/editar/${plan.id}`)
+  await expect(page.getByRole('switch', { name: 'Avisar al 50 %' })).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByRole('switch', { name: 'Avisar al 75 %' })).toHaveAttribute('aria-checked', 'false')
+  await expect(page.getByRole('switch', { name: 'Avisar al 90 %' })).toHaveAttribute('aria-checked', 'true')
+})
