@@ -71,7 +71,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   asistente), no solo por `parseEntry`; una coma entre dígitos es parte del importe. El asistente
   escribe en un `<textarea>` (una línea por movimiento). Moneda escrita (RT-01): un solo lector en
   `money.ts` (`currencyMarksAround`, `currencyMarksIn`, `stripCurrencyMark`) para códigos delante o
-  detrás (también pegados), símbolos, nombres e importes en palabras; si no es la del presupuesto o
+  detrás (también pegados), símbolos, nombres, signos locales con letras («kr», «Ft») e importes en
+  palabras; si no es la del presupuesto o
   queda sin resolver, el campo la conserva (`withCurrencyMark`) y la línea no se registra. Nunca se convierte. Reglas de categoría: un solo resolutor
   (`rankRuleMatches`: patrón más largo, a igualdad la más antigua) para asistente, revisión y Ajustes.
   La revisión distingue saldo (solo realizado) de disponible (simulado sobre una copia, nunca deducido).
