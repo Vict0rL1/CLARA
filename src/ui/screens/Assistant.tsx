@@ -13,7 +13,7 @@ import { parseReceiptText } from '../../domain/receipt'
 import { compressReceipt, ocrAvailable, recognizeText } from '../ocr'
 import { resolveCategories } from '../../domain/categories'
 import { newId } from '../../domain/ids'
-import { parseMoney } from '../../domain/money'
+import { parseMoney, withCurrencyMark } from '../../domain/money'
 import { countEntries, learnCategories, MAX_PARSER_LINES, type ParsedEntry } from '../../domain/parser'
 import { computeBudget } from '../../domain/budget'
 import { implausibilityRatio, isImplausibleAmount } from '../../domain/plausibility'
@@ -55,14 +55,14 @@ interface Line {
 }
 
 /**
- * Texto inicial del importe. Si la persona escribió otra moneda («café USD 10» en CAD), se deja
- * escrita en el campo: así el campo explica el error y nada se guarda en la moneda equivocada (AS-01).
+ * Texto inicial del importe. Si la persona escribió otra moneda («café USD 10», «coffee 10€»,
+ * «EUR ten» en CAD) o el recibo la trae impresa, se deja escrita en el campo con la misma marca que
+ * lee `parseMoney`: así el campo explica el error y nada se guarda en la moneda equivocada (AS-01, RT-01).
  */
 function initialAmountText(entry: ParsedEntry, fmt: { moneyInput: (minor: number) => string }): string {
   if (entry.amountMinor === null) return ''
   const amount = fmt.moneyInput(entry.amountMinor)
-  if (!entry.foreignCurrency) return amount
-  return /^[A-Za-z]{3}$/.test(entry.foreignCurrency) ? `${amount} ${entry.foreignCurrency}` : `${entry.foreignCurrency}${amount}`
+  return entry.foreignCurrency ? withCurrencyMark(amount, entry.foreignCurrency) : amount
 }
 
 /** Moneda escrita en el campo que no es la del presupuesto (o `undefined`). */
@@ -138,8 +138,9 @@ export function Assistant({ route }: { route: Route }) {
         confidence: receipt?.confidence ?? 0,
         raw: t('assistant.photoRaw', { name: file.name || 'foto' }),
         hints,
+        ...(receipt?.foreignCurrency ? { foreignCurrency: receipt.foreignCurrency } : {}),
       }
-      const line: Line = { id: newId(), entry, kind: 'expense', amountText: entry.amountMinor === null ? '' : fmt.moneyInput(entry.amountMinor), categoryId: entry.categoryId ?? 'other_expense', date: entry.date, note: entry.description, receiptUri }
+      const line: Line = { id: newId(), entry, kind: 'expense', amountText: initialAmountText(entry, fmt), categoryId: entry.categoryId ?? 'other_expense', date: entry.date, note: entry.description, receiptUri }
       setLines((ls) => [...(ls ?? []), line])
       setIssues([])
     } catch {
