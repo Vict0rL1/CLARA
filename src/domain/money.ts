@@ -408,12 +408,17 @@ export function currencyMarksIn(text: string, options: TextMarkOptions = {}): Te
     const mark = m[1] === m[1]!.toUpperCase() ? codeMark(m[1]!, options) : null
     if (mark && 'code' in mark) out.push({ mark, start: m.index!, end: m.index! + 3 })
   }
-  for (const m of text.matchAll(/(?<![\p{L}\p{N}])\p{L}+(?:\s+\p{L}+)?/gu)) {
-    const two = nameMark(m[0])
-    const first = /^\p{L}+/u.exec(m[0])![0]
-    const one = two ? undefined : nameMark(first)
-    const found = two ?? one
-    if (found?.far) out.push({ mark: found.mark, start: m.index!, end: m.index! + (two ? m[0].length : first.length) })
+  // Cada palabra, sola y junto a la siguiente («pounds sterling»): ninguna queda sin mirar.
+  const words = [...text.matchAll(/(?<![\p{L}\p{N}])\p{L}+/gu)]
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i]!
+    const next = words[i + 1]
+    const pairEnd = next && /^\s+$/.test(text.slice(word.index! + word[0].length, next.index!)) ? next.index! + next[0].length : null
+    const two = pairEnd === null ? undefined : nameMark(text.slice(word.index!, pairEnd))
+    const found = two ?? nameMark(word[0])
+    if (!found?.far) continue
+    out.push({ mark: found.mark, start: word.index!, end: two ? pairEnd! : word.index! + word[0].length })
+    if (two) i++
   }
   return out.sort((a, b) => a.start - b.start)
 }

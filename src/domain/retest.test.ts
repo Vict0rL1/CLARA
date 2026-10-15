@@ -69,6 +69,8 @@ describe('RT-01 · ninguna moneda escrita distinta se convierte en la del presup
   const FAR: readonly (readonly [string, number, string])[] = [
     ['coffee (USD) 10', 1000, 'USD'],
     ['paid in euros coffee 10', 1000, 'EUR'],
+    ['paid euros coffee 10', 1000, 'EUR'],
+    ['coffee 10 paid in pounds sterling', 1000, 'GBP'],
     ['one coffee EUR five', 100, 'EUR'],
   ]
   // Importes en palabras de cada idioma.
