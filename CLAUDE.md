@@ -55,8 +55,9 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
 - Importación CSV (`domain/bankImport.ts`): huella `importRef` (referencia del banco o descripción
   COMPLETA; las huellas antiguas de 80 caracteres se siguen reconociendo) evita reimportar; posibles
   duplicados desmarcados; filas con error visibles y nunca importadas; lo marcado se guarda todo o
-  nada; más de 5000 filas → cuántas y cuáles quedan fuera, y confirmar exige reconocerlo; el archivo
-  nunca sale del dispositivo.
+  nada; más de 5000 filas → cuántas y cuáles quedan fuera, y confirmar exige reconocerlo (solo para ESA
+  vista previa: archivo elegido + `omissionSignature`; otro archivo, otro contenido o leer la cabecera de
+  otra forma lo piden de nuevo, RT-03); el archivo nunca sale del dispositivo.
 - Papelera: eliminar saca el movimiento de `transactions` a `trash` (nunca participa en
   cálculos). Restaurar no deja vínculos rotos ni liquida dos veces una ocurrencia; filas
   CSV en la papelera no se reimportan. Sin borrado automático.

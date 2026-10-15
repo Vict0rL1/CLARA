@@ -5,11 +5,13 @@
  * Datos sintéticos; cada bloque fija el contrato y falla sobre a23b135.
  */
 import { describe, expect, it } from 'vitest'
+import { omissionSignature, previewImport, type ImportOptions } from './bankImport'
 import { parseText, type ParseContext } from './parser'
 import { parseReceiptText } from './receipt'
 import { parseMoney, stripCurrencyMark, withCurrencyMark } from './money'
 import { parseShortcutAmount } from './shortcutLink'
 import type { Language } from './types'
+import { account, baseData } from '../test/fixtures'
 
 const LANGUAGES: readonly Language[] = ['es', 'en', 'pt', 'fr']
 const ctx = (language: Language, currency = 'CAD'): ParseContext => ({
@@ -164,5 +166,25 @@ describe('RT-01 · ninguna moneda escrita distinta se convierte en la del presup
     expect(parseShortcutAmount('$10', 'EUR', 'fr-FR')).toEqual({ ok: true, minor: 1000, foreignCurrency: '$' })
     expect(parseShortcutAmount('10 pesos', 'CAD', 'en-CA')).toEqual({ ok: true, minor: 1000, foreignCurrency: 'pesos' })
     expect(parseShortcutAmount('$10', 'CAD', 'en-CA')).toEqual({ ok: true, minor: 1000 })
+  })
+})
+
+describe('RT-03 · reconocer las filas omitidas de un CSV vale solo para esa vista previa', () => {
+  const opts = (hasHeader = true): ImportOptions => ({ accountId: 'bank', mapping: { date: 0, description: 1, amount: 2 }, hasHeader, dateFormat: 'ymd', invertSign: false, locale: 'en-CA', today: '2026-09-28', fileCurrency: 'CAD' })
+  const data = baseData({ accounts: [account({ id: 'bank', name: 'Banco' })] })
+  const table = (n: number, label = 'Fila') => [['Date', 'Description', 'Amount'], ...Array.from({ length: n }, (_, i) => ['2026-09-27', `${label} ${i + 1}`, '-1.00'])]
+
+  it('cambia con otro archivo más grande y al leer la primera fila de otra forma; no existe si caben todas', () => {
+    const a = omissionSignature(previewImport(table(5003), data, opts()))
+    const b = omissionSignature(previewImport(table(6000), data, opts()))
+    const noHeader = omissionSignature(previewImport(table(5003), data, opts(false)))
+    expect(a).not.toBeNull()
+    expect(new Set([a, b, noHeader]).size).toBe(3)
+    expect(omissionSignature(previewImport(table(3), data, opts()))).toBeNull()
+    expect(omissionSignature(previewImport(table(5000), data, opts()))).toBeNull()
+  })
+
+  it('con las mismas cuentas de filas la firma coincide: por eso la pantalla la une además al archivo elegido', () => {
+    expect(omissionSignature(previewImport(table(5003, 'Otra'), data, opts()))).toBe(omissionSignature(previewImport(table(5003), data, opts())))
   })
 })

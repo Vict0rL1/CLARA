@@ -303,6 +303,16 @@ export interface ImportPreview {
   omittedLines?: { from: number; to: number }
 }
 
+/**
+ * Qué filas quedan fuera de una vista previa (cuántas y cuáles), o `null` si caben todas. Reconocer
+ * las filas omitidas vale solo para esta firma: otro archivo, otro contenido o leer la primera fila
+ * de otra forma la cambian y hay que reconocerlo de nuevo (RT-03).
+ */
+export function omissionSignature(preview: Pick<ImportPreview, 'totalRows' | 'omittedRows' | 'omittedLines'>): string | null {
+  if (preview.omittedRows <= 0) return null
+  return `${preview.totalRows}:${preview.omittedRows}:${preview.omittedLines?.from ?? ''}-${preview.omittedLines?.to ?? ''}`
+}
+
 /** Descripción normalizada de las huellas anteriores (80 caracteres como máximo). */
 export function normalizeDescription(value: string): string {
   return normalizeText(value).slice(0, LEGACY_DESCRIPTION_CHARS)

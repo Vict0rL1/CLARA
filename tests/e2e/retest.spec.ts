@@ -135,3 +135,65 @@ test('RT-02 · restaurar una copia local que dispara un registro automático: «
   await page.getByRole('dialog', { name: '¿Restaurar esta copia?' }).getByRole('button', { name: 'Restaurar' }).click()
   await expectUndoRefusedAndAutoBillKept(page, 'Copia restaurada')
 })
+
+/* RT-03: «Entiendo que N filas quedan fuera» es de la vista previa que se reconoció. */
+const csv = (n: number, label = 'Fila') => ['Date,Description,Amount', ...Array.from({ length: n }, (_, i) => `2026-09-27,${label} ${i + 1},-1.00`)].join('\n')
+
+async function openImport(page: Page, name: string, text: string) {
+  await page.getByTestId('bank-file').setInputFiles({ name, mimeType: 'text/csv', buffer: Buffer.from(text) })
+  await expect(page.getByRole('heading', { name: '3. Revisa y confirma' })).toBeVisible()
+}
+
+const importButton = (page: Page) => page.getByRole('button', { name: /^Importar [\d,]+ movimientos?$/ })
+
+test('RT-03 · reconocer las filas omitidas de un archivo y elegir otro más grande: hay que reconocerlo de nuevo', async ({ page }) => {
+  await startDemo(page)
+  await go(page, '/movimientos/importar')
+  await openImport(page, 'banco-a.csv', csv(5003))
+  await page.getByLabel('Entiendo que 3 filas del archivo quedan fuera de esta importación').check()
+  await expect(importButton(page)).toBeEnabled()
+  await shot(page, 'rt03-a-acknowledged')
+  // «Elegir otro archivo» en la misma pantalla: 6,000 filas, 1,000 fuera.
+  await openImport(page, 'banco-b.csv', csv(6000, 'Otra'))
+  await expect(page.getByText('las filas 5,002 a 6,001 (1,000) no se muestran ni se importarán')).toBeVisible()
+  const ack = page.getByLabel('Entiendo que 1000 filas del archivo quedan fuera de esta importación')
+  await expect(ack).not.toBeChecked()
+  await expect(importButton(page)).toBeDisabled()
+  await shot(page, 'rt03-b-needs-ack')
+  await ack.check()
+  await expect(importButton(page)).toBeEnabled()
+})
+
+test('RT-03 · el mismo nombre con otro contenido, o leer la primera fila de otra forma, también piden reconocerlo de nuevo', async ({ page }) => {
+  await startDemo(page)
+  await go(page, '/movimientos/importar')
+  await openImport(page, 'banco.csv', csv(5003))
+  await page.getByLabel('Entiendo que 3 filas del archivo quedan fuera de esta importación').check()
+  // Mismo nombre y mismas cuentas de filas, otro contenido.
+  await openImport(page, 'banco.csv', csv(5003, 'Distinta'))
+  await expect(page.getByLabel('Entiendo que 3 filas del archivo quedan fuera de esta importación')).not.toBeChecked()
+  await expect(importButton(page)).toBeDisabled()
+  await page.getByLabel('Entiendo que 3 filas del archivo quedan fuera de esta importación').check()
+  // La primera fila deja de leerse como encabezado: cambian las filas que quedan fuera.
+  await page.getByLabel('La primera fila tiene los nombres de las columnas').uncheck()
+  await expect(page.getByLabel('Entiendo que 4 filas del archivo quedan fuera de esta importación')).not.toBeChecked()
+  await expect(importButton(page)).toBeDisabled()
+})
+
+test('RT-03 · cancelar el selector de archivos deja la misma vista previa con su reconocimiento; un archivo pequeño no pide nada', async ({ page }) => {
+  await startDemo(page)
+  await go(page, '/movimientos/importar')
+  await openImport(page, 'banco-a.csv', csv(5003))
+  const ack = page.getByLabel('Entiendo que 3 filas del archivo quedan fuera de esta importación')
+  await ack.check()
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByText('Elegir otro archivo').click()])
+  await chooser.setFiles([])
+  await expect(page.getByText('las filas 5,002 a 5,004 (3) no se muestran ni se importarán')).toBeVisible()
+  await expect(ack).toBeChecked()
+  await expect(importButton(page)).toBeEnabled()
+
+  await openImport(page, 'pequeno.csv', csv(3, 'Pequeña'))
+  await expect(page.getByLabel(/quedan? fuera de esta importación/)).toHaveCount(0)
+  await page.getByRole('button', { name: 'Importar 3 movimientos' }).click()
+  await expect(page.getByText('3 movimientos importados').first()).toBeVisible()
+})
