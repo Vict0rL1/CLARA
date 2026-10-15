@@ -63,6 +63,12 @@ describe('RT-01 · ninguna moneda escrita distinta se convierte en la del presup
     ['coffee 10 pesos', 1000, 'pesos'],
     ['coffee 2000 yen', 200000, 'JPY'],
     ['coffee 10 pounds sterling', 1000, 'GBP'],
+    // Signos locales escritos con letras.
+    ['coffee 10 kr', 1000, 'kr'],
+    ['coffee 1000 Ft', 100000, 'HUF'],
+    ['coffee Rp 1000', 100000, 'IDR'],
+    ['coffee 10 zł', 1000, 'PLN'],
+    ['coffee Rs 100', 10000, 'Rs'],
   ]
   // Moneda escrita en la frase pero no pegada al importe: sin resolver, nunca la del presupuesto
   // (la descripción queda como se escribió).
@@ -122,6 +128,8 @@ describe('RT-01 · ninguna moneda escrita distinta se convierte en la del presup
         ['GST 10', 1000],
         ['IVA 10', 1000],
         ['AMD GPU 10', 1000],
+        // «ft» en minúsculas son pies, no forintos.
+        ['rope 10 ft', 1000],
       ] as const) {
         const { entry, field, parsed } = fieldOf(text, language)
         expect(entry.foreignCurrency, `${language}: ${text}`).toBeUndefined()
@@ -138,10 +146,12 @@ describe('RT-01 · ninguna moneda escrita distinta se convierte en la del presup
     expect(fieldOf('café 10 dollars', 'fr', 'EUR').entry.foreignCurrency).toBe('$')
     expect(fieldOf('tacos 100 pesos', 'es', 'MXN').entry.foreignCurrency).toBeUndefined()
     expect(fieldOf('tacos 100 pesos', 'es', 'USD').entry.foreignCurrency).toBe('pesos')
+    expect(fieldOf('kaffe 10 kr', 'en', 'SEK').entry.foreignCurrency).toBeUndefined()
+    expect(fieldOf('kaffe 10 kr', 'en', 'EUR').entry.foreignCurrency).toBe('kr')
   })
 
   it('la marca va y vuelve por el campo: lo que el asistente escribe siempre se lee como la misma moneda', () => {
-    for (const mark of ['USD', 'EUR', 'GBP', 'RUB', '€', '£', '¥', '₽', '$', 'pesos', 'XY$']) {
+    for (const mark of ['USD', 'EUR', 'GBP', 'RUB', '€', '£', '¥', '₽', '$', 'pesos', 'kr', 'Rs', 'XY$']) {
       const text = withCurrencyMark('10.00', mark)
       const back = stripCurrencyMark(text)
       expect(back.text, mark).toBe('10.00')

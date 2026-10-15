@@ -303,6 +303,19 @@ const CURRENCY_NAMES: ReadonlyMap<string, { mark: CurrencyMark; far: boolean }> 
   return map
 })()
 
+/**
+ * Signos locales escritos con letras, tal cual (distinguen mayúsculas: «Ft» es el forinto y «ft» son
+ * pies). Solo cuentan pegados al importe («10 kr», «1000 Ft», «Rp 1000»).
+ */
+const LOCAL_SIGNS: ReadonlyMap<string, CurrencyMark> = (() => {
+  const map = new Map<string, CurrencyMark>()
+  for (const w of ['kr', 'Kr', 'KR']) map.set(w, { name: 'kr', codes: ['SEK', 'NOK', 'DKK', 'ISK'] })
+  for (const w of ['Rs', 'RS']) map.set(w, { name: 'Rs', codes: ['INR', 'PKR'] })
+  const codes: Record<string, string> = { zł: 'PLN', Zł: 'PLN', Kč: 'CZK', Ft: 'HUF', lei: 'RON', Lei: 'RON', лв: 'BGN', TL: 'TRY', Bs: 'BOB', Rp: 'IDR', RM: 'MYR' }
+  for (const [w, code] of Object.entries(codes)) map.set(w, { code })
+  return map
+})()
+
 function nameKey(words: string): string {
   return words
     .normalize('NFD')
@@ -353,7 +366,8 @@ function codeMark(raw: string, options: TextMarkOptions): CurrencyMark | null {
 }
 
 function nameMark(words: string): { mark: CurrencyMark; far: boolean } | undefined {
-  return CURRENCY_NAMES.get(nameKey(words))
+  const local = LOCAL_SIGNS.get(words.trim())
+  return CURRENCY_NAMES.get(nameKey(words)) ?? (local ? { mark: local, far: false } : undefined)
 }
 
 /**
