@@ -399,7 +399,7 @@ export function Setup({ language, onLanguageChange }: { language: Language; onLa
                       hint={t('setup.income.variableHint')}
                     />
                     <TextField label={t('setup.income.date')} type="date" value={incomeDate} min={today} onChange={(e) => setIncomeDate(e.target.value)} error={errors.incomeDate} hint={incomeDate && incomeDate <= today ? t('setup.income.dateToday') : t('setup.income.dateHint')} />
-                    <SelectField label={t('fields.frequency')} value={incomeFrequency} onChange={(e) => setIncomeFrequency(e.target.value as Frequency)} options={FREQUENCIES.map((f) => ({ value: f, label: frequencyLabel(t, f) }))} />
+                    <SelectField label={t('fields.frequency')} value={incomeFrequency} onChange={(e) => setIncomeFrequency(e.target.value as Frequency)} options={FREQUENCIES.filter((f) => f !== 'semimonthly').map((f) => ({ value: f, label: frequencyLabel(t, f) }))} />
                   </>
                 ) : periodType === 'untilIncome' ? (
                   <SelectField
@@ -431,7 +431,7 @@ export function Setup({ language, onLanguageChange }: { language: Language; onLa
                     <TextField label={t('fields.name')} value={b.name} maxLength={60} onChange={(e) => setBills((list) => list.map((x) => (x.key === b.key ? { ...x, name: e.target.value } : x)))} error={errors[`bill-${b.key}-name`]} placeholder={t('setup.bills.namePlaceholder')} />
                     <MoneyField label={t('fields.amount')} value={b.amount} onChange={(v) => setBills((list) => list.map((x) => (x.key === b.key ? { ...x, amount: v } : x)))} error={errors[`bill-${b.key}-amount`]} fmt={fmt} />
                     <TextField label={t('setup.bills.date')} type="date" value={b.date} onChange={(e) => setBills((list) => list.map((x) => (x.key === b.key ? { ...x, date: e.target.value } : x)))} error={errors[`bill-${b.key}-date`]} />
-                    <SelectField label={t('fields.frequency')} value={b.frequency} onChange={(e) => setBills((list) => list.map((x) => (x.key === b.key ? { ...x, frequency: e.target.value as Frequency } : x)))} options={FREQUENCIES.map((f) => ({ value: f, label: frequencyLabel(t, f) }))} />
+                    <SelectField label={t('fields.frequency')} value={b.frequency} onChange={(e) => setBills((list) => list.map((x) => (x.key === b.key ? { ...x, frequency: e.target.value as Frequency } : x)))} options={FREQUENCIES.filter((f) => f !== 'semimonthly').map((f) => ({ value: f, label: frequencyLabel(t, f) }))} />
                     <button type="button" className="btn btn--danger-ghost btn--small" onClick={() => setBills((list) => list.filter((x) => x.key !== b.key))}>
                       <Icon name="trash" size={16} />
                       {t('setup.bills.remove')}
@@ -488,6 +488,7 @@ export function Setup({ language, onLanguageChange }: { language: Language; onLa
                 <CalcRow label={t('explain.balance')} value={fmt.money(preview.budget.spendableMinor)} />
                 <CalcRow op="−" label={tn('explain.reserved', preview.budget.reservedItems.length)} value={fmt.money(preview.budget.reservedTotalMinor)} />
                 <CalcRow op="−" label={t('explain.goals')} value={fmt.money(preview.budget.goalsReservedMinor)} />
+                {preview.budget.safetyBufferMinor > 0 && <CalcRow op="−" label={t('explain.buffer')} value={fmt.money(preview.budget.safetyBufferMinor)} />}
                 <CalcRow op="=" label={t('explain.available')} value={fmt.money(preview.budget.availableMinor)} strong />
                 {preview.budget.dailyMinor !== null && <CalcRow label={t('home.daily')} value={fmt.money(preview.budget.dailyMinor)} />}
               </div>

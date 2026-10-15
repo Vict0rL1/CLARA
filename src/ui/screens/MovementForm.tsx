@@ -843,7 +843,7 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
             <Toggle checked={repeat} onChange={setRepeat} label={t('movementForm.repeat')} hint={repeat ? t('movementForm.repeatHint') : undefined} />
             {repeat && (
               <div className="form-row">
-                <SelectField label={t('fields.frequency')} value={repeatFrequency} onChange={(e) => setRepeatFrequency(e.target.value as Frequency)} options={FREQUENCIES.filter((f) => f !== 'once' && f !== 'custom').map((f) => ({ value: f, label: frequencyLabel(t, f) }))} />
+                <SelectField label={t('fields.frequency')} value={repeatFrequency} onChange={(e) => setRepeatFrequency(e.target.value as Frequency)} options={FREQUENCIES.filter((f) => f !== 'once' && f !== 'custom' && f !== 'semimonthly').map((f) => ({ value: f, label: frequencyLabel(t, f) }))} />
                 <TextField label={t('scheduleForm.endDate')} type="date" value={repeatEnd} min={date} onChange={(e) => setRepeatEnd(e.target.value)} />
               </div>
             )}

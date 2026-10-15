@@ -112,8 +112,11 @@ Efecto de cada tipo sobre una cuenta:
 
 Hay dos fuentes de elementos previstos:
 
-1. **Programados** (calendario): únicos o recurrentes (semanal, cada 2 semanas,
-   mensual, anual).
+1. **Programados** (calendario): únicos o recurrentes (diaria, semanal, cada 2 semanas,
+   dos veces al mes, mensual, trimestral, anual o cada N días). «Dos veces al mes» (v13) usa el
+   día de `startDate` y `secondDay` (1–31, a 7 días o más del primero); un día que el mes no tiene
+   pasa al último (15 y 31 → 15 y 28 de febrero, 29 en bisiesto) y el mes siguiente vuelve al
+   original. Sin `secondDay`, `saveSchedule` usa 15 días después (o antes, si no cabe).
 2. **Movimientos con estado «previsto»**.
 
 Cada ocurrencia tiene un estado:
@@ -158,7 +161,8 @@ Próximo ingreso (I) = primera ocurrencia PROGRAMADA de ingreso, pendiente, con 
 Días del periodo (D) = días desde hoy (incluido) hasta I (EXCLUIDO)      → D ≥ 1
 Pagos reservados (P) = Σ pagos pendientes y vencidos con fecha ≤ I      (incluye el día I)
 Apartados (A)        = Σ dinero apartado en metas que se descuentan del presupuesto
-Disponible           = S − P − A
+Colchón (C)          = settings.safeToSpend.bufferMinor (v13; 0 por defecto)
+Disponible           = S − P − A − C
 Por día              = floor(Disponible / D)                (0 si Disponible ≤ 0)
 Por semana           = floor(Disponible × min(7, D) / D)    (0 si Disponible ≤ 0)
 ```
@@ -185,6 +189,11 @@ Decisiones:
   (`horizon.source`: `income`, `fallback` o `period`), nunca un valor del formulario que no
   participó en el cálculo; el selector de días solo se muestra con «hasta mi próximo ingreso»
   y `fallbackHorizonDays` solo se guarda si se mostró (UX-02, decisión 140).
+- **Colchón de seguridad (C, Clara 2.0 §10):** dinero que la persona quiere conservar siempre. Se
+  resta del disponible (y, en un periodo de calendario, de `committedFor`, aunque no se resten
+  programados ni metas), pero **no es un gasto, no mueve dinero y no cambia ningún saldo**. Con
+  C = 0 las cifras son exactamente las de antes. Se explica en «¿Cómo se calculó?» y en la barra
+  de composición (segmento neutro, con texto, nunca solo color).
 - **Redondeo hacia abajo** en «por día» y «por semana»: así nunca se sugiere gastar
   más de lo disponible.
 - **Saldo negativo:** se permite (sobregiro). El disponible puede ser negativo; en ese
@@ -232,7 +241,8 @@ Por día después    = floor(Disponible después / D)   (0 si ≤ 0)
 |---|---|
 | Sí, te alcanza | Disponible después ≥ la mitad del disponible actual **y** la proyección a 30 días no baja de cero |
 | Te alcanza, pero queda justo | Disponible después ≥ 0, pero usa más de la mitad o la proyección a 30 días baja de cero |
-| Solo alcanza usando dinero apartado | Disponible después < 0 pero Disponible después + apartados ≥ 0 |
+| Solo alcanza usando tu colchón | (v13) Colchón > 0, Disponible después < 0 pero Disponible después + colchón ≥ 0 |
+| Solo alcanza usando dinero apartado | Disponible después (+ colchón) < 0 pero Disponible después + colchón + apartados ≥ 0 |
 | No te alcanza por ahora | Ni con los apartados alcanza |
 
 Si la proyección ya bajaba de cero **antes** de la compra, se dice explícitamente
@@ -522,7 +532,7 @@ Diferencia = saldo observado − saldo calculado
 
 ## 17. Formato de datos y migraciones
 
-- Versión actual: **7**. Migraciones encadenadas v1 → v2 → v3 → v4 → v5 → v6 → v7 en
+- Versión actual: **13**. Migraciones encadenadas v1 → … → v13 en
   `src/storage/migrations.ts`, con pruebas.
 - v4 → v5 añade `trash`, `purgedImportRefs`, `favorites`, `reconciliations` y `backup`
   solo si **faltan**; si existen con un formato incorrecto se conservan para que la
@@ -540,8 +550,15 @@ Diferencia = saldo observado − saldo calculado
 - v11 → v12 añade a cada límite (`plans[]`) `rollover: 'none'` solo si **falta**; `carriedMinor` es
   opcional y solo lo escribe la renovación de un límite con arrastre. Ningún importe, fecha ni
   movimiento se toca (`stage3.test.ts`, `migration-main.spec.ts`).
+- v12 → v13 añade `settings.safeToSpend.bufferMinor = 0` solo si **falta** (un valor ya guardado se
+  respeta y unos ajustes mal formados se conservan tal cual para que la validación los señale). Con 0
+  el disponible es idéntico al de v12. Son opcionales y no necesitan migración: `schedules[].secondDay`
+  (solo con `frequency: 'semimonthly'`), los tipos de cuenta `wallet`, `prepaid` e `investment` y
+  `accounts[].institution` (texto, nunca una conexión). Una versión v12 no sabe leer esos valores, por
+  eso el número sube y no se vuelve atrás (`docs/ROLLBACK.md`). Pruebas: `clara2.test.ts`,
+  `ledger.property.test.ts`, `tests/e2e/clara2.spec.ts`.
 - Antes de guardar por primera vez datos migrados, se conserva el texto original en
-  `localStorage` (`margen.data.before-v<versión nueva>`, hoy `before-v12`).
+  `localStorage` (`margen.data.before-v<versión nueva>`, hoy `before-v13`).
 - Datos o copias de una versión futura se rechazan (`schemaTooNew`) sin tocar los datos
   actuales; si una migración falla, se informa (`migrationFailed`) y no se modifica nada.
 - Copias, importación y «Borrar todos los datos» incluyen las entidades nuevas

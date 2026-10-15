@@ -13,7 +13,7 @@ const fixture = JSON.parse(readFileSync(new URL('./fixtures/main-schema8.json', 
   data: { schemaVersion: number; transactions: unknown[] }
 }
 
-test('H3 · datos de main (esquema 8): mismas cifras, copia previa y esquema 12 tras guardar', async ({ page }) => {
+test('H3 · datos de main (esquema 8): mismas cifras, copia previa y esquema 13 tras guardar', async ({ page }) => {
   expect(fixture.data.schemaVersion).toBe(8)
   await openApp(page)
   await expect(page.getByRole('heading', { name: 'Hola, esto es Clara' })).toBeVisible()
@@ -25,7 +25,7 @@ test('H3 · datos de main (esquema 8): mismas cifras, copia previa y esquema 12 
   expect(await movementCount(page)).toBe(fixture.expected.transactions)
 
   // Copia íntegra de los datos de main antes de migrar.
-  const before = (await storedRecord(page, 'margen.data.before-v12')) as { fromVersion: number; raw: string } | null
+  const before = (await storedRecord(page, 'margen.data.before-v13')) as { fromVersion: number; raw: string } | null
   expect(before).not.toBeNull()
   expect(before!.fromVersion).toBe(8)
   expect(JSON.parse(before!.raw)).toEqual(fixture.data)
@@ -36,6 +36,6 @@ test('H3 · datos de main (esquema 8): mismas cifras, copia previa y esquema 12 
   await page.getByRole('button', { name: 'Guardar', exact: true }).click()
   await expect(page.getByText('Movimiento guardado').first()).toBeVisible()
   const saved = JSON.parse((await storedData(page))!) as { schemaVersion: number; transactions: unknown[] }
-  expect(saved.schemaVersion).toBe(12)
+  expect(saved.schemaVersion).toBe(13)
   expect(saved.transactions).toHaveLength(fixture.expected.transactions + 1)
 })

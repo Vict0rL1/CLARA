@@ -15,14 +15,15 @@ export type Timestamp = string
 /** Código ISO 4217, por ejemplo 'CAD'. */
 export type CurrencyCode = string
 
-export const SCHEMA_VERSION = 12 as const
+export const SCHEMA_VERSION = 13 as const
 
 /**
  * 'credit' = tarjeta de crédito: su saldo es una DEUDA y se guarda como número
  * negativo. Las compras son gastos de esa cuenta; el pago de la tarjeta es una
  * transferencia desde otra cuenta (nunca un gasto), así nada se cuenta dos veces.
  */
-export type AccountKind = 'bank' | 'cash' | 'savings' | 'credit' | 'other'
+/** v13: `wallet` (monedero digital), `prepaid` (tarjeta prepagada) e `investment` (saldo de inversión escrito a mano; sin cotizaciones). */
+export type AccountKind = 'bank' | 'cash' | 'savings' | 'credit' | 'wallet' | 'prepaid' | 'investment' | 'other'
 
 /**
  * Saldo de referencia que el usuario escribe (por ejemplo, copiado de su banco).
@@ -63,6 +64,8 @@ export interface Account {
   anchor: BalanceAnchor
   /** Solo tarjetas de crédito. */
   card?: CardDetails
+  /** v13 · Banco o emisor, solo como texto para reconocerla (nunca se conecta a nada). */
+  institution?: string
   /**
    * v11. Archivada: conserva su historial y su saldo, pero no se ofrece para registrar ni
    * programar, y no cuenta para el presupuesto ni para el patrimonio. Se puede restaurar.
@@ -165,7 +168,8 @@ export interface IncomeRange {
 
 export type IncomeScenario = 'min' | 'expected' | 'extra'
 
-export type Frequency = 'once' | 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly' | 'custom'
+/** v13: `semimonthly` = dos veces al mes (el día de `startDate` y `secondDay`). */
+export type Frequency = 'once' | 'daily' | 'weekly' | 'biweekly' | 'semimonthly' | 'monthly' | 'quarterly' | 'yearly' | 'custom'
 export type ScheduleKind = 'income' | 'expense'
 
 /** Pago o ingreso programado (único o recurrente). */
@@ -192,6 +196,8 @@ export interface Schedule {
   /* ---- v9 (opcionales) ---- */
   /** Solo `frequency: 'custom'`: cada N días. */
   intervalDays?: number
+  /** v13 · Solo `frequency: 'semimonthly'`: el otro día del mes (1–31, a ≥ 7 días del de `startDate`). */
+  secondDay?: number
   /**
    * `true`: la ocurrencia se registra sola al llegar su fecha (al abrir la app o a medianoche).
    * Ausente o `false`: queda «por confirmar» (nunca se registra sin confirmación).
@@ -532,6 +538,11 @@ export interface SafeToSpendSettings {
   granularity: 'day' | 'week' | 'period'
   subtractScheduled: boolean
   subtractGoalContributions: boolean
+  /**
+   * v13. Colchón de seguridad (unidades menores, ≥ 0): dinero que la persona quiere dejar siempre sin
+   * gastar. Se resta del disponible y del *safe to spend*; no es un gasto ni mueve dinero. 0 = sin colchón.
+   */
+  bufferMinor: number
 }
 
 /** Hora local `HH:MM`. */

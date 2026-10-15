@@ -3,6 +3,7 @@ import { activeAccounts, isBudgetAccount } from '../../domain/balances'
 import { categoriesForKind } from '../../domain/categories'
 import { parseLocalDate } from '../../domain/dates'
 import { newId } from '../../domain/ids'
+import { defaultSecondDay } from '../../domain/recurrence'
 import { deleteSchedule, restoreSchedule, saveSchedule } from '../../domain/operations'
 import type { Frequency, ScheduleKind } from '../../domain/types'
 import { FREQUENCIES, LIMITS, type Issue } from '../../domain/validation'
@@ -45,6 +46,8 @@ export function ScheduleForm({ route }: { route: Route }) {
   const [rangeErrors, setRangeErrors] = useState<{ min: string | null; extra: string | null }>({ min: null, extra: null })
   const [frequency, setFrequency] = useState<Frequency>(existing?.frequency ?? 'monthly')
   const [intervalDays, setIntervalDays] = useState(String(existing?.intervalDays ?? 30))
+  // Dos veces al mes: vacío = 15 días después (o antes) del primer día; se dice en la ayuda.
+  const [secondDayText, setSecondDayText] = useState(existing?.secondDay ? String(existing.secondDay) : '')
   const [autoConfirm, setAutoConfirm] = useState(!!existing?.autoConfirm)
   const [paused, setPaused] = useState(!!existing?.paused)
   const [startDate, setStartDate] = useState(existing?.startDate ?? today)
@@ -98,6 +101,7 @@ export function ScheduleForm({ route }: { route: Route }) {
           categoryId,
           frequency,
           ...(frequency === 'custom' ? { intervalDays: Number(intervalDays) } : {}),
+          ...(frequency === 'semimonthly' ? { secondDay: secondDay } : {}),
           startDate,
           endDate: endDate || undefined,
           reminderDaysBefore: reminder,
@@ -131,7 +135,8 @@ export function ScheduleForm({ route }: { route: Route }) {
   }
 
   const day = startDate ? parseLocalDate(startDate).day : 0
-  const unknown = otherIssues(issues, ['name', 'amountMinor', 'startDate', 'endDate', 'accountId', 'categoryId', 'range.minMinor', 'range.extraMinor'])
+  const secondDay = secondDayText.trim() === '' ? (startDate ? defaultSecondDay(startDate) : 0) : Number(secondDayText)
+  const unknown = otherIssues(issues, ['name', 'amountMinor', 'startDate', 'endDate', 'accountId', 'categoryId', 'range.minMinor', 'range.extraMinor', 'secondDay'])
 
   return (
     <div className="stack">
@@ -186,6 +191,21 @@ export function ScheduleForm({ route }: { route: Route }) {
           error={fieldError(t, fmt, issues, 'startDate')}
           required
         />
+        {frequency === 'semimonthly' && (
+          <TextField
+            label={t('scheduleForm.secondDay')}
+            name="second-day"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={31}
+            value={secondDayText}
+            placeholder={startDate ? String(defaultSecondDay(startDate)) : undefined}
+            onChange={(e) => setSecondDayText(e.target.value)}
+            hint={day > 0 && Number.isInteger(secondDay) && secondDay >= 1 && secondDay <= 31 ? t('scheduleForm.secondDayHint', { first: Math.min(day, secondDay), second: Math.max(day, secondDay) }) : undefined}
+            error={fieldError(t, fmt, issues, 'secondDay')}
+          />
+        )}
         {frequency !== 'once' && (
           <TextField label={t('scheduleForm.endDate')} type="date" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} hint={t('scheduleForm.endDateHint')} error={fieldError(t, fmt, issues, 'endDate')} />
         )}

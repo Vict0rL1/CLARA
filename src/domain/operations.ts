@@ -15,6 +15,7 @@ import { canChangeCurrency } from './currencyChange'
 import { isSupportedCurrency, sumMinor } from './money'
 import { findSettlement } from './planItems'
 import { balanceAtDate, reconciliationFingerprint } from './reconcile'
+import { defaultSecondDay } from './recurrence'
 import type {
   Account,
   AllocationReason,
@@ -454,6 +455,8 @@ export function saveSchedule(data: AppData, draft: ScheduleDraft, ctx: OpContext
     frequency: draft.frequency,
     // v9: intervalo personalizado, confirmación automática y pausa (el formulario los manda explícitos).
     ...(draft.frequency === 'custom' && draft.intervalDays !== undefined ? { intervalDays: draft.intervalDays } : {}),
+    // v13: dos veces al mes; sin segundo día explícito, 15 días después (o antes) del primero.
+    ...(draft.frequency === 'semimonthly' ? { secondDay: draft.secondDay ?? defaultSecondDay(draft.startDate) } : {}),
     ...(draft.autoConfirm ? { autoConfirm: true } : {}),
     ...(draft.paused ? { paused: true } : {}),
     startDate: draft.startDate,
@@ -748,7 +751,7 @@ export function updateAccountBalance(
   return { ok: true, data: touch(next, ctx.now), value: updated }
 }
 
-export type AccountDraft = Pick<Account, 'id' | 'name' | 'kind' | 'includeInBudget' | 'card'> & {
+export type AccountDraft = Pick<Account, 'id' | 'name' | 'kind' | 'includeInBudget' | 'card' | 'institution'> & {
   /** Solo al crear. */
   openingBalanceMinor?: number
   openingDate?: LocalDate
@@ -762,6 +765,7 @@ export function saveAccount(data: AppData, draft: AccountDraft, ctx: OpContext):
     kind: draft.kind,
     includeInBudget: draft.includeInBudget,
     ...(draft.kind === 'credit' && draft.card ? { card: cleanCard(draft.card) } : {}),
+    ...(cleanText(draft.institution) ? { institution: cleanText(draft.institution) } : {}),
     anchor: existing?.anchor ?? { amountMinor: draft.openingBalanceMinor ?? 0, date: draft.openingDate ?? ctx.today, setAt: ctx.now },
     // v11: archivar y ordenar tienen sus propias operaciones; editar conserva ambos. Una cuenta nueva va al final.
     ...(existing?.archived ? { archived: true } : {}),

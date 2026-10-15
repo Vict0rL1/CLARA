@@ -77,6 +77,8 @@ export type IssueCode =
   | 'categoryInUse'
   | 'duplicateRule'
   | 'splitMismatch'
+  /** Pago dos veces al mes con días a menos de 7 de distancia (o fuera de 1–31). */
+  | 'semimonthlyDays'
   | 'splitTooFew'
   | 'distributionExceeds'
   | 'distributionConflict'
@@ -118,8 +120,8 @@ export const LIMITS = {
 
 export const TX_KINDS = ['income', 'expense', 'transfer', 'refund', 'adjustment'] as const
 export const TX_STATUSES = ['planned', 'realized'] as const
-export const ACCOUNT_KINDS = ['bank', 'cash', 'savings', 'credit', 'other'] as const
-export const FREQUENCIES = ['once', 'daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly', 'custom'] as const
+export const ACCOUNT_KINDS = ['bank', 'cash', 'savings', 'credit', 'wallet', 'prepaid', 'investment', 'other'] as const
+export const FREQUENCIES = ['once', 'daily', 'weekly', 'biweekly', 'semimonthly', 'monthly', 'quarterly', 'yearly', 'custom'] as const
 export const NUMBER_LOCALES = ['es-MX', 'es-ES', 'es-CO', 'en-CA', 'en-US', 'fr-CA', 'fr-FR', 'pt-BR'] as const
 export const DATE_STYLES = ['short', 'medium', 'iso'] as const
 export const LANGUAGES = ['es', 'en', 'pt', 'fr'] as const
@@ -200,6 +202,7 @@ export function validateSettings(s: Settings, prefix = ''): Issue[] {
       if (typeof sts[k] !== 'boolean') issues.push({ path: `${prefix}safeToSpend.${k}`, code: 'invalidValue' })
     }
     if (!isOneOf(['day', 'week', 'period'] as const, sts.granularity)) issues.push({ path: `${prefix}safeToSpend.granularity`, code: 'invalidValue' })
+    if (!Number.isSafeInteger(sts.bufferMinor) || (sts.bufferMinor as number) < 0 || (sts.bufferMinor as number) > MAX_AMOUNT_MINOR) issues.push({ path: `${prefix}safeToSpend.bufferMinor`, code: 'invalidAmount' })
   }
   const n = s.notifications
   if (!n || typeof n !== 'object') issues.push({ path: `${prefix}notifications`, code: 'required' })
@@ -346,6 +349,8 @@ export function validateAccount(a: Account, prefix = ''): Issue[] {
   if (typeof a.includeInBudget !== 'boolean') issues.push({ path: `${prefix}includeInBudget`, code: 'invalidValue' })
   // v11: opcionales; si vienen, con su tipo (la migración solo rellena lo ausente).
   if (a.archived !== undefined && typeof a.archived !== 'boolean') issues.push({ path: `${prefix}archived`, code: 'invalidValue' })
+  // v13: institución opcional; si viene, texto no vacío de hasta 40 caracteres.
+  if (a.institution !== undefined) checkName(a.institution, `${prefix}institution`, issues, 40)
   if (a.order !== undefined && !(Number.isInteger(a.order) && a.order >= 0)) issues.push({ path: `${prefix}order`, code: 'invalidValue' })
   if (!a.anchor || typeof a.anchor !== 'object') {
     issues.push({ path: `${prefix}anchor`, code: 'required' })
@@ -545,6 +550,14 @@ export function validateSchedule(s: Schedule, ctx: ValidationContext): Issue[] {
     issues.push({ path: `${p}intervalDays`, code: 'invalidValue' })
   } else if (s.intervalDays !== undefined && (!Number.isInteger(s.intervalDays) || s.intervalDays < 1)) issues.push({ path: `${p}intervalDays`, code: 'invalidValue' })
   for (const k of ['autoConfirm', 'paused'] as const) if (s[k] !== undefined && typeof s[k] !== 'boolean') issues.push({ path: `${p}${k}`, code: 'invalidValue' })
+  if (s.frequency === 'semimonthly') {
+    // Dos días del mes a ≥ 7 de distancia: aun pasando al último día de un mes corto, nunca coinciden.
+    const first = isValidLocalDate(s.startDate) ? Number(s.startDate.slice(8, 10)) : null
+    const second = s.secondDay
+    if (!Number.isInteger(second) || (second as number) < 1 || (second as number) > 31 || (first !== null && Math.abs((second as number) - first) < 7)) {
+      issues.push({ path: `${p}secondDay`, code: 'semimonthlyDays' })
+    }
+  } else if (s.secondDay !== undefined) issues.push({ path: `${p}secondDay`, code: 'invalidValue' })
   checkDate(s.startDate, `${p}startDate`, issues)
   if (s.endDate !== undefined) {
     checkDate(s.endDate, `${p}endDate`, issues)

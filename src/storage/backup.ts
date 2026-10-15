@@ -163,7 +163,7 @@ const SETTINGS_KEYS = [
   'budgetPeriod', 'carryOverBalance', 'safeToSpend', 'notifications', 'biometricLock', 'onboardingDone', 'toursSeen', 'proStatus', 'aiUsage',
 ] as const
 const BUDGET_PERIOD_KEYS = ['type', 'weekStartsOn', 'customStart', 'customEnd'] as const
-const SAFE_KEYS = ['showOnHome', 'granularity', 'subtractScheduled', 'subtractGoalContributions'] as const
+const SAFE_KEYS = ['showOnHome', 'granularity', 'subtractScheduled', 'subtractGoalContributions', 'bufferMinor'] as const
 const NOTIF_KEYS = ['scheduledAlerts', 'dailyReminder', 'dailyReminderTime', 'dailySummary', 'dailySummaryTime', 'quietHours', 'quietFrom', 'quietTo', 'planAlerts'] as const
 const PRO_KEYS = ['active', 'plan', 'expiresAt'] as const
 const AI_KEYS = ['month', 'count'] as const
@@ -172,7 +172,7 @@ const GROUP_KEYS = ['id', 'nameKey', 'name', 'color', 'sortOrder', 'createdAt', 
 const TAG_KEYS = ['id', 'name', 'color', 'createdAt', 'updatedAt'] as const
 const PREF_KEYS = ['name', 'archived', 'groupId', 'icon', 'color', 'sortOrder'] as const
 const PLAN_LIMIT_KEYS = ['id', 'kind', 'name', 'categoryIds', 'amountMinor', 'currency', 'periodType', 'startDate', 'endDate', 'recurring', 'status', 'previousPlanId', 'alertAt80', 'alertAt100', 'result', 'rollover', 'carriedMinor', 'createdAt', 'updatedAt'] as const
-const ACCOUNT_KEYS = ['id', 'name', 'kind', 'includeInBudget', 'anchor', 'card', 'archived', 'order', 'createdAt', 'updatedAt'] as const
+const ACCOUNT_KEYS = ['id', 'name', 'kind', 'includeInBudget', 'anchor', 'card', 'institution', 'archived', 'order', 'createdAt', 'updatedAt'] as const
 const ANCHOR_KEYS = ['amountMinor', 'date', 'setAt'] as const
 const CARD_KEYS = ['limitMinor', 'aprBps', 'statementDay', 'dueDay', 'minPaymentBps', 'minPaymentFloorMinor'] as const
 const CATEGORY_KEYS = ['id', 'name', 'kind', 'archived', 'groupId', 'icon', 'color', 'sortOrder', 'createdAt', 'updatedAt'] as const
@@ -192,7 +192,7 @@ function pickTx(t: Obj): Transaction {
 }
 const SCHEDULE_KEYS = [
   'id', 'name', 'kind', 'amountMinor', 'amountIsEstimate', 'range', 'currency', 'accountId', 'categoryId', 'frequency',
-  'startDate', 'endDate', 'reminderDaysBefore', 'skippedDates', 'note', 'intervalDays', 'autoConfirm', 'paused', 'createdAt', 'updatedAt',
+  'startDate', 'endDate', 'reminderDaysBefore', 'skippedDates', 'note', 'intervalDays', 'secondDay', 'autoConfirm', 'paused', 'createdAt', 'updatedAt',
 ] as const
 const GOAL_KEYS = ['id', 'name', 'kind', 'targetMinor', 'targetDate', 'currency', 'fundedFrom', 'allocations', 'plan', 'icon', 'color', 'contribution', 'createdAt', 'updatedAt'] as const
 const ALLOCATION_KEYS = ['id', 'amountMinor', 'date', 'createdAt', 'reason', 'distributionId'] as const

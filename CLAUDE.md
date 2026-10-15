@@ -41,7 +41,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
 - Saldo actual = saldo de referencia + movimientos realizados posteriores
   (`txAppliesToAccount`). Los previstos nunca cambian el saldo.
 - Disponible = saldo del presupuesto − pagos pendientes/vencidos hasta el día del próximo
-  ingreso (incluido) − apartados de metas del presupuesto. El día del ingreso NO cuenta
+  ingreso (incluido) − apartados de metas del presupuesto − colchón de seguridad
+  (`settings.safeToSpend.bufferMinor`, 0 por defecto; no es gasto ni mueve dinero). El día del ingreso NO cuenta
   en los días del periodo. Ingresos futuros nunca se suman. Sin ingreso → horizonte;
   nunca dividir entre cero.
 - Una ocurrencia programada está pagada si hay un movimiento realizado con su
@@ -49,7 +50,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
 - Transferencias entre cuentas propias no son ingresos ni gastos.
 - Tarjetas de crédito: cuenta `credit` con saldo negativo (deuda). Compra = gasto de la
   tarjeta; pago = **transferencia** banco → tarjeta, nunca un gasto.
-- Mensuales en 29/30/31 → último día del mes corto.
+- Mensuales en 29/30/31 → último día del mes corto. «Dos veces al mes» (`semimonthly`, v13): día de
+  `startDate` + `secondDay` (1–31, a ≥ 7 días); el que no existe pasa al último día del mes.
 - Operaciones idempotentes: el id se genera al abrir el formulario; guardar dos veces
   actualiza el mismo registro.
 - Importación CSV (`domain/bankImport.ts`): huella `importRef` (referencia del banco o descripción
@@ -160,7 +162,7 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   No hace falta `.env` en esta fase.
 - Restaurar una copia valida TODO el archivo y no aplica nada si hay un error. CSV del banco: cada fila
   con error se muestra con su motivo y no se importa; las filas marcadas se guardan todo o nada.
-- Cambios de formato de datos: subir `SCHEMA_VERSION` (hoy 12) y añadir migración con prueba.
+- Cambios de formato de datos: subir `SCHEMA_VERSION` (hoy 13) y añadir migración con prueba.
   Las migraciones solo rellenan campos ausentes; nunca borran datos mal formados.
 - Guardado (`indexedDbRepository.ts`, `localStorageRepository.ts`; ver `docs/STORAGE.md`): nunca sobrescribe lo que otra pestaña u otra
   versión guardó después de leer (error `conflict`); si guardar falla, se avisa de forma

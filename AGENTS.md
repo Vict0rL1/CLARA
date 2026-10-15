@@ -66,7 +66,7 @@ Notes for reliable runs:
 | Path | What |
 |---|---|
 | `src/domain/` | Pure financial logic (no React, no storage, "today" passed in). All formulas: `docs/FORMULAS.md` |
-| `src/storage/` | IndexedDB / localStorage repository, backups, migrations (schema 12) |
+| `src/storage/` | IndexedDB / localStorage repository, backups, migrations (schema 13) |
 | `src/state/` | In-memory store, undo of import/restore (`replaceUndo.ts`) |
 | `src/ui/` | Screens and components; all text comes from `src/i18n/{es,en,pt,fr}.ts` |
 | `tests/e2e/` | Playwright specs; `stabilization.spec.ts` = one test per audit finding |

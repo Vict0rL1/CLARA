@@ -7,6 +7,9 @@
  *   Si un mes no tiene ese día (29, 30 o 31) se usa el último día de ese mes, y el mes
  *   siguiente se vuelve al día original (31 ene → 28 feb → 31 mar → 30 abr).
  * - Anual: el 29 de febrero pasa al 28 en años no bisiestos.
+ * - Dos veces al mes (Clara 2.0 §12): el día de `startDate` y `secondDay`, cada mes; un día que el
+ *   mes no tiene pasa al último (15 y 31 → 15 y 28 feb). Los dos días distan ≥ 7, así que nunca
+ *   caen en la misma fecha.
  */
 import { addDays, addMonthsClamped, daysBetween, parseLocalDate } from './dates'
 import type { Frequency, LocalDate, Schedule } from './types'
@@ -26,7 +29,20 @@ export interface OccurrenceScan {
   truncated: boolean
 }
 
-export type RecurrenceRule = Pick<Schedule, 'frequency' | 'startDate'> & Partial<Pick<Schedule, 'endDate' | 'intervalDays'>>
+export type RecurrenceRule = Pick<Schedule, 'frequency' | 'startDate'> & Partial<Pick<Schedule, 'endDate' | 'intervalDays' | 'secondDay'>>
+
+/** Segundo día por defecto de un pago quincenal de calendario: 15 días después (o antes, si no cabe). */
+export function defaultSecondDay(startDate: LocalDate): number {
+  const day = parseLocalDate(startDate).day
+  return day <= 16 ? day + 15 : day - 15
+}
+
+/** Días del mes [menor, mayor] de un pago dos veces al mes. */
+function semimonthlyDays(rule: RecurrenceRule): [number, number] {
+  const a = parseLocalDate(rule.startDate).day
+  const b = rule.secondDay ?? defaultSecondDay(rule.startDate)
+  return a < b ? [a, b] : [b, a]
+}
 
 function stepDays(frequency: Frequency, intervalDays: number | undefined): number | null {
   if (frequency === 'daily') return 1
@@ -48,6 +64,12 @@ function stepMonths(frequency: Frequency): number | null {
 export function nthOccurrence(schedule: RecurrenceRule, n: number): LocalDate {
   const { frequency, startDate } = schedule
   if (frequency === 'once') return startDate
+  if (frequency === 'semimonthly') {
+    // n = 0 es `startDate`; si es el día mayor del mes, la siguiente es el menor del mes siguiente.
+    const [low, high] = semimonthlyDays(schedule)
+    const m = n + (parseLocalDate(startDate).day === low ? 0 : 1)
+    return addMonthsClamped(startDate, Math.floor(m / 2), m % 2 === 0 ? low : high)
+  }
   const days = stepDays(frequency, schedule.intervalDays)
   if (days !== null) return addDays(startDate, days * n)
   const months = stepMonths(frequency) ?? 1
@@ -77,7 +99,11 @@ export function scanOccurrences(schedule: RecurrenceRule, from: LocalDate, to: L
   let n = 0
   if (from > schedule.startDate) {
     const days = stepDays(schedule.frequency, schedule.intervalDays)
-    if (days !== null) {
+    if (schedule.frequency === 'semimonthly') {
+      const a = parseLocalDate(schedule.startDate)
+      const b = parseLocalDate(from)
+      n = Math.max(0, ((b.year - a.year) * 12 + (b.month - a.month)) * 2 - 2)
+    } else if (days !== null) {
       n = Math.max(0, Math.floor(daysBetween(schedule.startDate, from) / days))
     } else {
       const months = stepMonths(schedule.frequency) ?? 1

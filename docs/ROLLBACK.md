@@ -1,7 +1,7 @@
 # Volver atrás un despliegue (rollback)
 
 Clara guarda los datos de cada persona en su propio navegador, con un formato que tiene número:
-`SCHEMA_VERSION` (hoy **12**, en `src/domain/types.ts`). Cuando una versión nueva cambia ese número,
+`SCHEMA_VERSION` (hoy **13**, en `src/domain/types.ts`). Cuando una versión nueva cambia ese número,
 al abrirse **convierte** los datos al formato nuevo (antes guarda una copia del original). Por eso
 volver a una versión anterior no siempre es seguro.
 

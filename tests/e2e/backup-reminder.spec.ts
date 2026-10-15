@@ -68,7 +68,7 @@ test('datos v4 del navegador se migran sin perder nada; recordatorio en Inicio, 
 
   // Migración: mismos importes, copia previa guardada y nada eliminado.
   await expect(page.getByTestId('available')).toHaveText('$136.78')
-  const preserved = (await storedRecord(page, 'margen.data.before-v12')) as { fromVersion: number }
+  const preserved = (await storedRecord(page, 'margen.data.before-v13')) as { fromVersion: number }
   expect(preserved.fromVersion).toBe(4)
   await showAllNotices(page)
   await expect(page.getByText('Haz una copia de seguridad')).toBeVisible()

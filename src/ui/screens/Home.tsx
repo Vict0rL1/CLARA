@@ -692,6 +692,11 @@ export function Home() {
                 <span className="hero__ledger-item">
                   <span className="hero__ledger-label">{t('home.ledger.reserved')}</span> <span className="hero__ledger-value">−{fmt.money(budget.reservedTotalMinor + budget.goalsReservedMinor)}</span>
                 </span>
+                {budget.safetyBufferMinor > 0 && (
+                  <span className="hero__ledger-item" data-testid="hero-ledger-buffer">
+                    <span className="hero__ledger-label">{t('home.ledger.buffer')}</span> <span className="hero__ledger-value">−{fmt.money(budget.safetyBufferMinor)}</span>
+                  </span>
+                )}
               </p>
             )}
             {budget.status === 'ok' && (
@@ -769,6 +774,7 @@ export function Home() {
                     spendableMinor={budget.spendableMinor}
                     reservedMinor={budget.reservedTotalMinor}
                     goalsMinor={budget.goalsReservedMinor}
+                    bufferMinor={budget.safetyBufferMinor}
                     availableMinor={budget.availableMinor}
                     fmt={fmt}
                   />
@@ -839,6 +845,7 @@ export function Home() {
                     {g.consumedMinor > 0 ? ` · ${t(g.goal.kind === 'expense' && g.goal.plan?.link ? 'explain.goalPaid' : 'explain.goalConsumed', { amount: fmt.money(g.consumedMinor) })}` : ''}
                   </p>
                 ))}
+                {budget.safetyBufferMinor > 0 && <CalcRow op="−" label={t('explain.buffer')} value={fmt.money(budget.safetyBufferMinor)} />}
                 <CalcRow op="=" label={t('explain.available')} value={fmt.money(budget.availableMinor)} strong />
                 {budget.horizon && budget.dailyMinor !== null && (
                   <>
