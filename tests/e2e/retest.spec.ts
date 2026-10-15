@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
-import { go, startDemo, storedData } from './helpers'
+import { go, openDetails, startDemo, storedData } from './helpers'
 
 /**
  * Regresiones de navegador de la comprobación independiente de `main` a23b135 (2026-10-15):
@@ -136,6 +136,150 @@ test('RT-02 · restaurar una copia local que dispara un registro automático: «
   await expectUndoRefusedAndAutoBillKept(page, 'Copia restaurada')
 })
 
+/**
+ * RT-02 con la escritura retenida en el navegador: las transacciones de escritura de los datos de
+ * Clara (base `clara`, almacén `kv`) quedan en cola, en orden, hasta `releaseWrites`; la pantalla
+ * ya muestra cada cambio (el almacén es optimista). Solo afecta a esta página de prueba.
+ */
+async function holdDataWrites(page: Page) {
+  await page.evaluate(() => {
+    type Handler = ((this: IDBTransaction, ev: Event) => unknown) | null
+    const realTransaction = IDBDatabase.prototype.transaction
+    let open!: () => void
+    const gate = new Promise<void>((resolve) => (open = resolve))
+    const state = { held: true, queue: Promise.resolve() as Promise<unknown> }
+    ;(window as unknown as { __releaseWrites: () => void }).__releaseWrites = () => {
+      state.held = false
+      open()
+    }
+    IDBDatabase.prototype.transaction = function (this: IDBDatabase, names: string | string[], mode?: IDBTransactionMode, options?: IDBTransactionOptions) {
+      const list = typeof names === 'string' ? [names] : [...names]
+      if (!state.held || this.name !== 'clara' || mode !== 'readwrite' || !list.includes('kv')) return realTransaction.call(this, names, mode, options)
+      let real: IDBTransaction | null = null
+      const handlers: Record<'oncomplete' | 'onerror' | 'onabort', Handler> = { oncomplete: null, onerror: null, onabort: null }
+      // La transacción de verdad se crea al soltar la cola, en el mismo orden en que se pidieron.
+      const ready = (state.queue = state.queue.then(() => gate).then(() => {
+        real = realTransaction.call(this, names, mode, options)
+        for (const k of Object.keys(handlers) as (keyof typeof handlers)[]) if (handlers[k]) real[k] = handlers[k]
+      }))
+      const lazy = {
+        get error() {
+          return real ? real.error : null
+        },
+        abort() {
+          void ready.then(() => real!.abort())
+        },
+        objectStore(name: string) {
+          return {
+            get(key: IDBValidKey) {
+              const req: { result: unknown; error: DOMException | null; onsuccess: (() => void) | null; onerror: (() => void) | null } = { result: undefined, error: null, onsuccess: null, onerror: null }
+              void ready.then(() => {
+                const r = real!.objectStore(name).get(key)
+                r.onsuccess = () => {
+                  req.result = r.result
+                  req.onsuccess?.()
+                }
+                r.onerror = () => {
+                  req.error = r.error
+                  req.onerror?.()
+                }
+              })
+              return req
+            },
+            put: (value: unknown, key?: IDBValidKey) => real!.objectStore(name).put(value, key),
+            delete: (key: IDBValidKey) => real!.objectStore(name).delete(key),
+          }
+        },
+      }
+      for (const k of Object.keys(handlers) as (keyof typeof handlers)[]) {
+        Object.defineProperty(lazy, k, {
+          set(f: Handler) {
+            handlers[k] = f
+            if (real) real[k] = f
+          },
+          get: () => handlers[k],
+        })
+      }
+      return lazy as unknown as IDBTransaction
+    }
+  })
+}
+
+/** Navega sin esperar al indicador de guardado (aquí la escritura está retenida a propósito). */
+async function hashTo(page: Page, hash: string) {
+  await page.evaluate((h) => {
+    window.location.hash = h
+  }, hash)
+  await expect(page.locator('#page-title')).toBeVisible()
+}
+
+async function cad9WhileReplacementIsPending(page: Page, toastText: string) {
+  // La pantalla ya muestra los datos nuevos; su escritura sigue retenida. La persona registra CAD 9.
+  await hashTo(page, '/movimientos/nuevo')
+  await page.getByLabel('Importe').fill('9')
+  await openDetails(page)
+  await page.getByLabel('Nota (opcional)').fill('Durante el reemplazo')
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await page.evaluate(() => (window as unknown as { __releaseWrites: () => void }).__releaseWrites())
+  await expect(page.getByText('Movimiento guardado').first()).toBeVisible()
+  await undoOf(page, toastText).first().click()
+  await expect(page.getByText('No se deshizo: guardaste cambios después y se perderían.').first()).toBeVisible()
+  await go(page, '/')
+  await page.reload()
+  await expect(page.getByTestId('available')).toBeVisible()
+  const stored = JSON.parse((await storedData(page)) ?? '{}') as Stored
+  expect(stored.transactions.filter((t) => t.note === 'Durante el reemplazo').map((t) => [t.amountMinor, t.currency])).toEqual([[900, 'CAD']])
+  expect(stored.accounts[0]!.name).toBe('Cuenta reemplazada')
+}
+
+test('RT-02 · importar con la escritura retenida: un gasto de CAD 9 registrado mientras tanto sobrevive a «Deshacer» y a recargar', async ({ page }) => {
+  await startDemo(page)
+  await go(page, '/ajustes/copia')
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Exportar copia' }).click()])
+  const backup = JSON.parse(readFileSync((await download.path())!, 'utf8'))
+  backup.data.accounts[0].name = 'Cuenta reemplazada'
+  await page.getByTestId('import-file').setInputFiles({ name: 'copia.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(backup)) })
+  await holdDataWrites(page)
+  await page.getByRole('dialog', { name: '¿Reemplazar tus datos con esta copia?' }).getByRole('button', { name: 'Reemplazar datos' }).click()
+  await cad9WhileReplacementIsPending(page, 'Copia importada')
+})
+
+test('RT-02 · restaurar una copia local con la escritura retenida: un gasto de CAD 9 registrado mientras tanto sobrevive a «Deshacer» y a recargar', async ({ page }) => {
+  await startDemo(page)
+  await go(page, '/ajustes/copias-locales')
+  await page.getByTestId('backup-now').click()
+  await expect(page.getByText('Copia local guardada')).toBeVisible()
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const req = indexedDB.open('clara-backups', 1)
+        req.onsuccess = () => {
+          const tx = req.result.transaction('backups', 'readwrite')
+          const store = tx.objectStore('backups')
+          const all = store.getAll()
+          all.onsuccess = () => {
+            for (const rec of all.result as { json: string }[]) {
+              const file = JSON.parse(rec.json)
+              file.data.accounts[0].name = 'Cuenta reemplazada'
+              store.put({ ...rec, json: JSON.stringify(file) })
+            }
+          }
+          tx.oncomplete = () => {
+            req.result.close()
+            resolve()
+          }
+          tx.onerror = () => reject(tx.error)
+        }
+        req.onerror = () => reject(req.error)
+      }),
+  )
+  await page.reload()
+  await page.getByRole('button', { name: /^Restaurar ?: / }).first().click()
+  await holdDataWrites(page)
+  await page.getByRole('dialog', { name: '¿Restaurar esta copia?' }).getByRole('button', { name: 'Restaurar' }).click()
+  await cad9WhileReplacementIsPending(page, 'Copia restaurada')
+})
+
 /* RT-03: «Entiendo que N filas quedan fuera» es de la vista previa que se reconoció. */
 const csv = (n: number, label = 'Fila') => ['Date,Description,Amount', ...Array.from({ length: n }, (_, i) => `2026-09-27,${label} ${i + 1},-1.00`)].join('\n')
 
@@ -150,6 +294,9 @@ test('RT-03 · reconocer las filas omitidas de un archivo y elegir otro más gra
   await startDemo(page)
   await go(page, '/movimientos/importar')
   await openImport(page, 'banco-a.csv', csv(5003))
+  // Un archivo grande pide reconocerlo desde el principio.
+  await expect(page.getByLabel('Entiendo que 3 filas del archivo quedan fuera de esta importación')).not.toBeChecked()
+  await expect(importButton(page)).toBeDisabled()
   await page.getByLabel('Entiendo que 3 filas del archivo quedan fuera de esta importación').check()
   await expect(importButton(page)).toBeEnabled()
   await shot(page, 'rt03-a-acknowledged')

@@ -230,6 +230,19 @@ for (const [caller, source] of Object.entries(CALLERS)) {
       expect((await reloaded()).budgetId).toBe(before.budgetId)
     })
 
+    it('un cambio posterior cuyo guardado falla también lo invalida: no se pisa lo que se ve ni lo guardado', async () => {
+      const { store, repo } = await gatedStore()
+      repo.hold = false
+      const r = await replaceWithUndo(await source({ ...baseData(), budgetId: 'b_importado' }), store)
+      repo.failNext = true
+      expect(await store.commit(cad9(store))).toBe(false)
+      expect(store.hasUnsavedChanges).toBe(true)
+      expect(await r.undo()).toBe('stale')
+      // Lo que se ve sigue siendo el gasto sin guardar (para reintentar o descargar) y el almacenamiento, el reemplazo.
+      expect(store.data!.transactions.some((t) => t.id === 'tx_cad9')).toBe(true)
+      expect((await reloaded()).budgetId).toBe('b_importado')
+    })
+
     it('si el reemplazo no se pudo guardar, no hay nada que deshacer y no se escribe nada más', async () => {
       const { store, repo } = await gatedStore()
       repo.failNext = true

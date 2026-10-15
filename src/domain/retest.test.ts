@@ -35,9 +35,11 @@ describe('RT-01 · ninguna moneda escrita distinta se convierte en la del presup
     // Casos reproducidos por la comprobación independiente.
     ['coffee 10€', 1000, '€'],
     ['coffee GBP 10', 1000, 'GBP'],
+    ['coffee JPY 10', 1000, 'JPY'],
     ['coffee JPY 1000', 100000, 'JPY'],
     ['coffee CHF 10', 1000, 'CHF'],
     ['coffee 10 €', 1000, '€'],
+    ['coffee 10 £', 1000, '£'],
     ['coffee 10£', 1000, '£'],
     ['coffee EUR ten', 1000, 'EUR'],
     ['coffee ten USD', 1000, 'USD'],
