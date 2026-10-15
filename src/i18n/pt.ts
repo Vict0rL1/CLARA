@@ -3260,4 +3260,8 @@ export const pt: Record<keyof typeof es, string> = {
   'plans.form.alertAt': 'Avisar aos {percent} %',
   'plans.form.alertsHint': 'Um aviso por limite e período: se o gasto ultrapassar vários limites de uma vez, só o mais alto é avisado.',
   'notify.planLevel.title': '«{name}» chegou a {percent} % do limite',
+  'rules.learn.offer': '{saved}. Usar sempre «{category}» quando a descrição incluir «{pattern}»?',
+  'rules.learn.remember': 'Lembrar',
+  'rules.learn.saved': 'Regra salva: «{pattern}» → {category}. Você pode mudá-la em Ajustes › Regras de categoria.',
+  'rules.learn.failed': 'Não foi possível salvar a regra. Você pode criá-la em Ajustes › Regras de categoria.',
 }

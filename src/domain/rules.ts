@@ -142,3 +142,41 @@ export function previewRule(data: Pick<AppData, 'transactions'>, pattern: string
     .sort((a, b) => (a.date > b.date ? -1 : a.date < b.date ? 1 : a.id < b.id ? -1 : 1))
   return { total: matches.length, withOtherCategory: matches.filter((t) => t.categoryId !== categoryId).length, sample: matches.slice(0, sampleSize) }
 }
+
+/** Regla que se PROPONE recordar tras corregir una categoría (Clara 2.0 §7). Nunca se guarda sola. */
+export interface RuleSuggestion {
+  pattern: string
+  kind: 'expense' | 'income'
+  categoryId: string
+}
+
+/**
+ * Tras CORREGIR la categoría de un movimiento con descripción, ¿se puede ofrecer recordarla como regla?
+ *
+ * - Corrección = la categoría final es distinta de la que se proponía (`previousCategoryId`: la de la
+ *   regla que se aplicó al escribir, o la que tenía el movimiento antes de editarlo).
+ * - Texto usable: la descripción entera, con espacios simples, de `RULE_PATTERN_MIN` a
+ *   `RULE_PATTERN_MAX` caracteres normalizados y con al menos una letra (un número suelto no es un comercio).
+ * - Nunca con transferencias, ajustes ni compras divididas (una regla nunca pisa una división).
+ * - La categoría final debe poder usarse (activa) y no debe existir ya una regla con ese mismo texto y tipo.
+ * - La regla nueva tiene que GANAR para ese texto (patrón más largo); si no, ofrecerla sería engañoso.
+ *
+ * Solo devuelve la propuesta; guardarla es una operación aparte (`saveCategoryRule`) que la persona confirma.
+ */
+export function suggestRuleFromCorrection(
+  data: Pick<AppData, 'categoryRules' | 'categories' | 'categoryPrefs'>,
+  input: { note?: string; kind: TxKind; categoryId?: string; previousCategoryId?: string; hasSplits?: boolean },
+): RuleSuggestion | null {
+  if (input.kind !== 'expense' && input.kind !== 'income' && input.kind !== 'refund') return null
+  if (input.hasSplits || !input.categoryId || !input.previousCategoryId || input.categoryId === input.previousCategoryId) return null
+  const pattern = (input.note ?? '').replace(/\s+/g, ' ').trim()
+  const norm = normalizeText(pattern)
+  if (norm.length < RULE_PATTERN_MIN || pattern.length > RULE_PATTERN_MAX || !/\p{L}/u.test(norm)) return null
+  const kind = input.kind === 'income' ? 'income' : 'expense'
+  if (!categoriesForKind(kind, data.categories, { prefs: data.categoryPrefs }).includes(input.categoryId)) return null
+  if (data.categoryRules.some((r) => r.kind === kind && normalizeText(r.pattern) === norm)) return null
+  const candidate = { pattern, kind, categoryId: input.categoryId } as const
+  const usable = categoriesForKind(kind, data.categories, { prefs: data.categoryPrefs })
+  const ranked = rankRuleMatches(norm, [candidate, ...data.categoryRules.filter((r) => r.kind === kind && usable.includes(r.categoryId))])
+  return ranked[0] === candidate ? { ...candidate } : null
+}

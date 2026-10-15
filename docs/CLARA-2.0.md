@@ -33,7 +33,7 @@ cannot provide by itself (a server, credentials, a paid provider, a native app o
 | 4 | Server-side AI provider adapters, schema validation, limits, cost monitoring | 🟡🔒 | `aiProvider.ts` (client contract + validation of every field), `featureGate.ts` (monthly use counter) | Needs an owner-operated server (e.g. a Cloudflare Pages Function with a secret). Not deployed: enabling a remote service needs the owner's authorization and credentials |
 | 5 | Voice entry with transcript review | ✅ (browser) | Web Speech API in `Assistant.tsx`; transcript goes into the editable textarea; no audio stored | Recognition quality/availability depends on the browser; some browsers send audio to their vendor (disclosed in the UI) |
 | 6 | Receipt photo, editable result, keep/delete image | 🟡 | `receipt.ts` (total, date, merchant, currency), `ui/ocr.ts` (on-device `TextDetector` when available), receipt store | Itemized lines, taxes/tips, multi-image: ❌. Cloud OCR 🔒. Never invents a total |
-| 7 | Merchant → category, user rules, longest match, rule management | ✅ | `rules.ts`, `RulesSection.tsx`, dictionary in `parser.ts` | Offer to remember a correction as a rule: phase 1, not done yet. Aliases/priorities beyond longest-match: Phase 2 |
+| 7 | Merchant → category, user rules, longest match, rule management | ✅ | `rules.ts`, `RulesSection.tsx`, dictionary in `parser.ts` | **Offer to remember a correction as a rule** (`suggestRuleFromCorrection`): done this session in the movement form (new and edit); only offered, saved on «Recordar», undoable. Assistant review and CSV import corrections: Phase 2. Aliases/priorities beyond longest-match: Phase 2 |
 | 8 | Apple Pay / Wallet via Shortcuts | 🟡 | `shortcutLink.ts`, `docs/IOS-SHORTCUTS.md`: user-built Shortcut opens Clara prefilled; nothing saved without review | A web app cannot read Wallet. App Intents need a native iOS app 🔒 |
 | 8 | Bank notification parsing, detection inbox with states | ❌🔒 | `inbox.ts` is computed notices (pending items), not a received-events queue | Android notification access needs a native app 🔒. A persistent "received events" queue fed by Shortcuts links is Phase 5 |
 | 9 | Duplicate detection | 🟡 | `duplicates.ts` (form warning), `inbox.possibleDuplicates`, CSV `importRef` + bank reference + possible-duplicate review, idempotent ids | One engine shared by every source + idempotency keys for received events: Phase 5 |
@@ -93,8 +93,8 @@ cannot provide by itself (a server, credentials, a paid provider, a native app o
 ## 6. Phase plan (dependency order)
 
 1. **Foundation (this session):** audit ✅; ledger property tests ✅; schema 13 with safety buffer ✅, account
-   kinds ✅, twice-monthly schedules ✅ and budget alert thresholds ✅. Still open in this phase: offering to
-   remember a category correction.
+   kinds ✅, twice-monthly schedules ✅, budget alert thresholds ✅ and offering to remember a category
+   correction ✅ (movement form).
 2. Merchant intelligence: aliases, normalization table, rule priorities, preferred account per merchant.
 3. Planning: subscriptions overview and monthly total, recurring-payment suggestions from history,
    future-only schedule edits, budget recommendations, goal milestones, explicit user-rate multi-currency.

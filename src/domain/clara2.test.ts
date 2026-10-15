@@ -6,11 +6,12 @@ import { describe, expect, it } from 'vitest'
 import { simulatePurchase } from './affordability'
 import { computeBudget } from './budget'
 import { committedFor, safeToSpend } from './periods'
-import { saveAccount, saveSchedule, saveTransaction, updateSettings } from './operations'
+import { saveAccount, saveCategoryRule, saveSchedule, saveTransaction, updateSettings } from './operations'
 import { allAccountBalances } from './balances'
 import { DEFAULT_NOTIFICATIONS } from './defaults'
 import { dueNotices } from './notifications'
 import { closeDuePlans, planAlertLevels, planAlerts, savePlan } from './plans'
+import { explainRuleMatch, suggestRuleFromCorrection } from './rules'
 import { defaultSecondDay, nthOccurrence, occurrencesBetween, scanOccurrences } from './recurrence'
 import type { AppData, Schedule } from './types'
 import { validateSchedule } from './validation'
@@ -335,5 +336,47 @@ describe('Clara 2.0 §11 · avisos de límites al 50/75/90/100 %', () => {
     const good = withPlan(0, { alertLevels: [50, 90] })
     const parsed = parseBackup(JSON.stringify(createBackup(good, new Date(ctx.now), '1.0.0')))
     expect(parsed.ok && parsed.data.plans[0]!.alertLevels).toEqual([50, 90])
+  })
+})
+
+describe('Clara 2.0 §7 · ofrecer recordar una corrección de categoría como regla', () => {
+  const rule = (id: string, pattern: string, categoryId: string, kind: 'expense' | 'income' = 'expense') => ({ id, pattern, kind, categoryId, createdAt: '2026-09-01T12:00:00.000Z', updatedAt: '2026-09-01T12:00:00.000Z' })
+  const data = () => baseData({ categoryRules: [rule('r1', 'uber', 'transport'), rule('r2', 'cafe central', 'dining')] })
+
+  it('corregir la categoría que proponía una regla ofrece una regla más específica, que gana sin romper la anterior', () => {
+    const d = data()
+    const before = JSON.stringify(d)
+    const s = suggestRuleFromCorrection(d, { note: '  Uber   Eats ', kind: 'expense', categoryId: 'dining', previousCategoryId: 'transport' })
+    expect(s).toEqual({ pattern: 'Uber Eats', kind: 'expense', categoryId: 'dining' })
+    // Solo propone: los datos no cambian.
+    expect(JSON.stringify(d)).toBe(before)
+    const saved = saveCategoryRule(d, { id: 'r3', ...s! }, ctx)
+    if (!saved.ok) throw new Error(JSON.stringify(saved.issues))
+    expect(explainRuleMatch('uber eats pedido', 'expense', saved.data.categoryRules)?.rule.id).toBe('r3')
+    expect(explainRuleMatch('uber al aeropuerto', 'expense', saved.data.categoryRules)?.rule.id).toBe('r1')
+  })
+
+  it('editar un movimiento y cambiar su categoría también cuenta como corrección (ingresos y devoluciones incluidos)', () => {
+    expect(suggestRuleFromCorrection(data(), { note: 'Pago cliente ACME', kind: 'income', categoryId: 'freelance', previousCategoryId: 'salary' })).toEqual({ pattern: 'Pago cliente ACME', kind: 'income', categoryId: 'freelance' })
+    expect(suggestRuleFromCorrection(data(), { note: 'Devolución tienda', kind: 'refund', categoryId: 'shopping', previousCategoryId: 'other_expense' })?.kind).toBe('expense')
+  })
+
+  it('no se ofrece nada si no hubo corrección, sin texto útil, con transferencias, ajustes o divisiones', () => {
+    const d = data()
+    const base = { note: 'Farmacia del barrio', kind: 'expense' as const, categoryId: 'health', previousCategoryId: 'other_expense' }
+    expect(suggestRuleFromCorrection(d, base)).not.toBeNull()
+    expect(suggestRuleFromCorrection(d, { ...base, previousCategoryId: undefined })).toBeNull()
+    expect(suggestRuleFromCorrection(d, { ...base, previousCategoryId: 'health' })).toBeNull()
+    expect(suggestRuleFromCorrection(d, { ...base, kind: 'transfer' })).toBeNull()
+    expect(suggestRuleFromCorrection(d, { ...base, kind: 'adjustment' })).toBeNull()
+    expect(suggestRuleFromCorrection(d, { ...base, hasSplits: true })).toBeNull()
+    for (const note of [undefined, '', ' x ', '1234', '12,50 $', 'a'.repeat(41)]) expect(suggestRuleFromCorrection(d, { ...base, note }), String(note)).toBeNull()
+    expect(suggestRuleFromCorrection(d, { ...base, categoryId: 'no-existe' })).toBeNull()
+  })
+
+  it('si ya hay una regla con ese mismo texto (sin acentos ni mayúsculas) no se ofrece otra', () => {
+    expect(suggestRuleFromCorrection(data(), { note: 'CAFÉ  Central', kind: 'expense', categoryId: 'groceries', previousCategoryId: 'dining' })).toBeNull()
+    // Con el mismo texto pero de otro tipo (ingreso) sí.
+    expect(suggestRuleFromCorrection(data(), { note: 'CAFÉ  Central', kind: 'income', categoryId: 'freelance', previousCategoryId: 'salary' })).not.toBeNull()
   })
 })

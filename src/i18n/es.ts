@@ -3261,4 +3261,8 @@ export const es = {
   'plans.form.alertAt': 'Avisar al {percent} %',
   'plans.form.alertsHint': 'Un aviso por umbral y periodo: si el gasto salta varios umbrales de golpe, solo se avisa el más alto.',
   'notify.planLevel.title': '«{name}» va por el {percent} % del límite',
+  'rules.learn.offer': '{saved}. ¿Usar siempre «{category}» cuando la descripción incluya «{pattern}»?',
+  'rules.learn.remember': 'Recordar',
+  'rules.learn.saved': 'Regla guardada: «{pattern}» → {category}. Puedes cambiarla en Ajustes › Reglas de categoría.',
+  'rules.learn.failed': 'No se pudo guardar la regla. Puedes crearla en Ajustes › Reglas de categoría.',
 } as const

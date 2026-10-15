@@ -3262,4 +3262,8 @@ export const en: Record<keyof typeof es, string> = {
   'plans.form.alertAt': 'Alert at {percent} %',
   'plans.form.alertsHint': 'One alert per threshold and period: if spending jumps past several thresholds at once, only the highest one is sent.',
   'notify.planLevel.title': '"{name}" is at {percent} % of its limit',
+  'rules.learn.offer': '{saved}. Always use “{category}” when the description includes “{pattern}”?',
+  'rules.learn.remember': 'Remember',
+  'rules.learn.saved': 'Rule saved: “{pattern}” → {category}. You can change it in Settings › Category rules.',
+  'rules.learn.failed': 'The rule couldn\'t be saved. You can create it in Settings › Category rules.',
 }

@@ -411,6 +411,12 @@ normalizar = minúsculas, sin acentos, espacios simples
 - Una regla solo **propone**: en la importación CSV (cada fila, cambiable) y en la nota de
   un movimiento nuevo mientras no se elija la categoría a mano. Nunca cambia movimientos
   guardados ni importes. Al eliminar una categoría personalizada se quitan sus reglas.
+- **Aprender de una corrección (Clara 2.0 §7, `suggestRuleFromCorrection`):** si al guardar la
+  categoría final es distinta de la que se proponía (la de la regla aplicada a la nota, o la que
+  tenía el movimiento antes de editarlo), el aviso de «guardado» **ofrece** «Recordar» una regla con
+  la descripción entera (2–40 caracteres, con alguna letra). Nunca se guarda sola: solo al pulsar,
+  con «Deshacer». No se ofrece con transferencias, ajustes ni divisiones, si ya existe una regla con
+  ese texto y tipo, ni si la regla nueva no ganaría para ese texto (patrón más largo).
 
 ## 11. Integridad de datos
 

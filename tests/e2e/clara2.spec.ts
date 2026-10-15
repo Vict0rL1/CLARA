@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { go, openExplain, setupFirstUse, storedData } from './helpers'
+import { go, openDetails, openExplain, pickCategory, setupFirstUse, startDemo, storedData } from './helpers'
 
 /**
  * Clara 2.0 · fase 1 (cimientos), de punta a punta: colchón de seguridad en «Puedes gastar»,
@@ -119,4 +119,43 @@ test('avisos de un límite al 50/75/90 %: apagados por defecto, se guardan y se 
   await expect(page.getByRole('switch', { name: 'Avisar al 50 %' })).toHaveAttribute('aria-checked', 'true')
   await expect(page.getByRole('switch', { name: 'Avisar al 75 %' })).toHaveAttribute('aria-checked', 'false')
   await expect(page.getByRole('switch', { name: 'Avisar al 90 %' })).toHaveAttribute('aria-checked', 'true')
+})
+
+test('corregir la categoría que propone una regla ofrece recordarla; solo se guarda al pulsar «Recordar»', async ({ page }) => {
+  await startDemo(page)
+  const rules = async () => (JSON.parse((await storedData(page)) ?? '{}') as { categoryRules: { pattern: string; categoryId: string }[] }).categoryRules
+  const before = (await rules()).length
+
+  // Sin corrección no se ofrece nada.
+  await go(page, '/movimientos/nuevo')
+  await page.getByLabel('Importe', { exact: true }).fill('3')
+  await openDetails(page)
+  await page.getByLabel('Nota (opcional)').fill('Café con Ana')
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect(page.getByText('Movimiento guardado').first()).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Recordar' })).toHaveCount(0)
+
+  // La regla «café» propone Restaurantes y café; la persona elige Supermercado.
+  await go(page, '/movimientos/nuevo')
+  await page.getByLabel('Importe', { exact: true }).fill('4')
+  await openDetails(page)
+  await page.getByLabel('Nota (opcional)').fill('Café del museo')
+  const category = page.getByLabel('Categoría', { exact: true })
+  await expect(category).toHaveAttribute('data-value', 'dining')
+  await pickCategory(page, category, 'Supermercado')
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect(page.getByText('¿Usar siempre «Supermercado» cuando la descripción incluya «Café del museo»?')).toBeVisible()
+  // Ofrecer no es guardar.
+  expect((await rules()).length).toBe(before)
+  await page.getByRole('button', { name: 'Recordar' }).click()
+  await expect(page.getByText(/Regla guardada: «Café del museo» → Supermercado/)).toBeVisible()
+  expect((await rules()).filter((r) => r.pattern === 'Café del museo')).toEqual([expect.objectContaining({ categoryId: 'groceries' })])
+
+  // La próxima vez la regla nueva (más específica) gana; la anterior sigue para lo demás.
+  await go(page, '/movimientos/nuevo')
+  await openDetails(page)
+  await page.getByLabel('Nota (opcional)').fill('café del museo')
+  await expect(page.getByLabel('Categoría', { exact: true })).toHaveAttribute('data-value', 'groceries')
+  await page.getByLabel('Nota (opcional)').fill('Café con Luis')
+  await expect(page.getByLabel('Categoría', { exact: true })).toHaveAttribute('data-value', 'dining')
 })
