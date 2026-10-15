@@ -1,21 +1,29 @@
-coffee 10€           | amount=1000    | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000 | desc=«coffee»
-coffee GBP 10        | amount=1000    | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000 | desc=«coffee GBP»
-coffee JPY 1000      | amount=100000  | foreign=undefined | field=«1000.00» | SAVEABLE as CAD 100000 | desc=«coffee JPY»
-coffee CHF 10        | amount=1000    | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000 | desc=«coffee CHF»
-coffee 10 €          | amount=1000    | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000 | desc=«coffee»
-coffee 10£           | amount=1000    | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000 | desc=«coffee»
-coffee EUR ten       | amount=1000    | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000 | desc=«coffee EUR»
-coffee ten USD       | amount=1000    | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000 | desc=«coffee USD»
-coffee USD 10        | amount=1000    | foreign=USD       | field=«10.00 USD» | blocked (currencyMismatch USD) | desc=«coffee»
-coffee GBP10         | amount=null    | foreign=undefined | field=«» | blocked (empty ) | desc=«coffee GBP10»
-coffee 10GBP         | amount=null    | foreign=undefined | field=«» | blocked (empty ) | desc=«coffee 10GBP»
-coffee €10           | amount=1000    | foreign=€         | field=«€10.00» | blocked (currencyMismatch €) | desc=«coffee»
-coffee ¥1000         | amount=100000  | foreign=¥         | field=«¥1000.00» | blocked (currencyMismatch ¥) | desc=«coffee»
-coffee 10 ₽          | amount=1000    | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000 | desc=«coffee ₽»
-coffee RUB 10        | amount=1000    | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000 | desc=«coffee RUB»
-coffee 10 euros      | amount=1000    | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000 | desc=«coffee euros»
-coffee ten euros     | amount=1000    | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000 | desc=«coffee euros»
-coffee 10 pesos      | amount=1000    | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000 | desc=«coffee pesos»
-café diez euros      | amount=1000    | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000 | desc=«café euros»
-café dix euros       | amount=1000    | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000 | desc=«café euros»
-coffee (USD) 10      | amount=1000    | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000 | desc=«coffee (USD)»
+coffee 10€         | amount=1000   | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000
+coffee GBP 10      | amount=1000   | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000
+coffee JPY 10      | amount=1000   | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000
+coffee CHF 10      | amount=1000   | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000
+coffee 10 £        | amount=1000   | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000
+coffee EUR ten     | amount=1000   | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000
+coffee ten USD     | amount=1000   | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000
+coffee USD 10      | amount=1000   | foreign=USD       | field=«10.00 USD» | blocked (currencyMismatch USD)
+coffee 10 €        | amount=1000   | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000
+coffee 10£         | amount=1000   | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000
+coffee €10         | amount=1000   | foreign=€         | field=«€10.00» | blocked (currencyMismatch €)
+coffee £10         | amount=1000   | foreign=£         | field=«£10.00» | blocked (currencyMismatch £)
+coffee GBP10       | amount=null   | foreign=undefined | field=«» | blocked (empty )
+coffee 10GBP       | amount=null   | foreign=undefined | field=«» | blocked (empty )
+coffee 10 gbp      | amount=1000   | foreign=GBP       | field=«10.00 GBP» | blocked (currencyMismatch GBP)
+coffee ¥1000       | amount=100000 | foreign=¥         | field=«¥1000.00» | blocked (currencyMismatch ¥)
+coffee 10 ₽        | amount=1000   | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000
+coffee RUB 10      | amount=1000   | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000
+coffee 10 euros    | amount=1000   | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000
+coffee ten euros   | amount=1000   | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000
+coffee 10 pesos    | amount=1000   | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000
+café diez euros    | amount=1000   | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000
+café dez euros     | amount=1000   | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000
+café dix euros     | amount=1000   | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000
+coffee (USD) 10    | amount=1000   | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000
+coffee 10          | amount=1000   | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000
+coffee 10 CAD      | amount=1000   | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000
+coffee $10         | amount=1000   | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000
+coffee ten CAD     | amount=1000   | foreign=undefined | field=«10.00» | SAVEABLE as CAD 1000

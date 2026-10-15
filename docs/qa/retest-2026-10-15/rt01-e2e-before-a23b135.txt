@@ -1,9 +1,9 @@
 
 Running 5 tests using 2 workers
 
-[1/5] [celular] › tests/e2e/retest.spec.ts:27:3 › RT-01 · «coffee 10€» en un presupuesto CAD no se puede registrar como CAD
-[2/5] [celular] › tests/e2e/retest.spec.ts:27:3 › RT-01 · «coffee GBP 10» en un presupuesto CAD no se puede registrar como CAD
-  1) [celular] › tests/e2e/retest.spec.ts:27:3 › RT-01 · «coffee 10€» en un presupuesto CAD no se puede registrar como CAD 
+[1/5] [celular] › tests/e2e/retest.spec.ts:29:3 › RT-01 · «coffee 10€» en un presupuesto CAD no se puede registrar como CAD
+[2/5] [celular] › tests/e2e/retest.spec.ts:29:3 › RT-01 · «coffee GBP 10» en un presupuesto CAD no se puede registrar como CAD
+  1) [celular] › tests/e2e/retest.spec.ts:29:3 › RT-01 · «coffee 10€» en un presupuesto CAD no se puede registrar como CAD 
 
     Error: expect(locator).toHaveValue(expected) failed
 
@@ -15,18 +15,18 @@ Running 5 tests using 2 workers
     Call log:
       - Expect "toHaveValue" getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe') with timeout 5000ms
       - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
-        14 × locator resolved to <input id="_r_6_" value="10.00" autocomplete="off" placeholder="0.00" inputmode="decimal" enterkeyhint="done" class="input money-input__field"/>
+        14 × locator resolved to <input id="_r_5_" value="10.00" autocomplete="off" placeholder="0.00" inputmode="decimal" enterkeyhint="done" class="input money-input__field"/>
            - unexpected value "10.00"
 
 
-      32 |     await page.getByRole('button', { name: 'Analizar' }).click()
-      33 |     const line = page.getByTestId('assistant-preview').locator('.assistant__line').first()
-    > 34 |     await expect(line.getByLabel('Importe')).toHaveValue(field)
+      34 |     await page.getByRole('button', { name: 'Analizar' }).click()
+      35 |     const line = page.getByTestId('assistant-preview').locator('.assistant__line').first()
+    > 36 |     await expect(line.getByLabel('Importe')).toHaveValue(field)
          |                                              ^
-      35 |     await expect(line.getByText(`El importe está en ${found}; este presupuesto usa CAD. No se convierte.`)).toBeVisible()
-      36 |     await expect(line.getByTestId('review-currency')).toContainText(`Escribiste ${found}; este presupuesto usa CAD`)
-      37 |     await expect(page.getByTestId('assistant-currency-blocked')).toBeVisible()
-        at /home/user/ALCANZA/tests/e2e/retest.spec.ts:34:46
+      37 |     await expect(line.getByText(`El importe está en ${found}; este presupuesto usa CAD. No se convierte.`)).toBeVisible()
+      38 |     await expect(line.getByTestId('review-currency')).toContainText(`Escribiste ${found}; este presupuesto usa CAD`)
+      39 |     await expect(page.getByTestId('assistant-currency-blocked')).toBeVisible()
+        at /home/user/ALCANZA/tests/e2e/retest.spec.ts:36:46
 
     Error Context: test-results/retest-RT-01-·-«coffee-10€-27d84-se-puede-registrar-como-CAD-celular/error-context.md
 
@@ -39,7 +39,7 @@ Running 5 tests using 2 workers
     ────────────────────────────────────────────────────────────────────────────────────────────────
 
 
-  2) [celular] › tests/e2e/retest.spec.ts:27:3 › RT-01 · «coffee GBP 10» en un presupuesto CAD no se puede registrar como CAD 
+  2) [celular] › tests/e2e/retest.spec.ts:29:3 › RT-01 · «coffee GBP 10» en un presupuesto CAD no se puede registrar como CAD 
 
     Error: expect(locator).toHaveValue(expected) failed
 
@@ -51,18 +51,18 @@ Running 5 tests using 2 workers
     Call log:
       - Expect "toHaveValue" getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe') with timeout 5000ms
       - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
-        14 × locator resolved to <input id="_r_7_" value="10.00" autocomplete="off" placeholder="0.00" inputmode="decimal" enterkeyhint="done" class="input money-input__field"/>
+        14 × locator resolved to <input id="_r_6_" value="10.00" autocomplete="off" placeholder="0.00" inputmode="decimal" enterkeyhint="done" class="input money-input__field"/>
            - unexpected value "10.00"
 
 
-      32 |     await page.getByRole('button', { name: 'Analizar' }).click()
-      33 |     const line = page.getByTestId('assistant-preview').locator('.assistant__line').first()
-    > 34 |     await expect(line.getByLabel('Importe')).toHaveValue(field)
+      34 |     await page.getByRole('button', { name: 'Analizar' }).click()
+      35 |     const line = page.getByTestId('assistant-preview').locator('.assistant__line').first()
+    > 36 |     await expect(line.getByLabel('Importe')).toHaveValue(field)
          |                                              ^
-      35 |     await expect(line.getByText(`El importe está en ${found}; este presupuesto usa CAD. No se convierte.`)).toBeVisible()
-      36 |     await expect(line.getByTestId('review-currency')).toContainText(`Escribiste ${found}; este presupuesto usa CAD`)
-      37 |     await expect(page.getByTestId('assistant-currency-blocked')).toBeVisible()
-        at /home/user/ALCANZA/tests/e2e/retest.spec.ts:34:46
+      37 |     await expect(line.getByText(`El importe está en ${found}; este presupuesto usa CAD. No se convierte.`)).toBeVisible()
+      38 |     await expect(line.getByTestId('review-currency')).toContainText(`Escribiste ${found}; este presupuesto usa CAD`)
+      39 |     await expect(page.getByTestId('assistant-currency-blocked')).toBeVisible()
+        at /home/user/ALCANZA/tests/e2e/retest.spec.ts:36:46
 
     Error Context: test-results/retest-RT-01-·-«coffee-GBP-9d26a-se-puede-registrar-como-CAD-celular/error-context.md
 
@@ -75,9 +75,9 @@ Running 5 tests using 2 workers
     ────────────────────────────────────────────────────────────────────────────────────────────────
 
 
-[3/5] [celular] › tests/e2e/retest.spec.ts:27:3 › RT-01 · «coffee EUR ten» en un presupuesto CAD no se puede registrar como CAD
-[4/5] [celular] › tests/e2e/retest.spec.ts:27:3 › RT-01 · «coffee ten USD» en un presupuesto CAD no se puede registrar como CAD
-  3) [celular] › tests/e2e/retest.spec.ts:27:3 › RT-01 · «coffee EUR ten» en un presupuesto CAD no se puede registrar como CAD 
+[3/5] [celular] › tests/e2e/retest.spec.ts:29:3 › RT-01 · «coffee EUR ten» en un presupuesto CAD no se puede registrar como CAD
+[4/5] [celular] › tests/e2e/retest.spec.ts:29:3 › RT-01 · «coffee ten USD» en un presupuesto CAD no se puede registrar como CAD
+  3) [celular] › tests/e2e/retest.spec.ts:29:3 › RT-01 · «coffee EUR ten» en un presupuesto CAD no se puede registrar como CAD 
 
     Error: expect(locator).toHaveValue(expected) failed
 
@@ -93,14 +93,14 @@ Running 5 tests using 2 workers
            - unexpected value "10.00"
 
 
-      32 |     await page.getByRole('button', { name: 'Analizar' }).click()
-      33 |     const line = page.getByTestId('assistant-preview').locator('.assistant__line').first()
-    > 34 |     await expect(line.getByLabel('Importe')).toHaveValue(field)
+      34 |     await page.getByRole('button', { name: 'Analizar' }).click()
+      35 |     const line = page.getByTestId('assistant-preview').locator('.assistant__line').first()
+    > 36 |     await expect(line.getByLabel('Importe')).toHaveValue(field)
          |                                              ^
-      35 |     await expect(line.getByText(`El importe está en ${found}; este presupuesto usa CAD. No se convierte.`)).toBeVisible()
-      36 |     await expect(line.getByTestId('review-currency')).toContainText(`Escribiste ${found}; este presupuesto usa CAD`)
-      37 |     await expect(page.getByTestId('assistant-currency-blocked')).toBeVisible()
-        at /home/user/ALCANZA/tests/e2e/retest.spec.ts:34:46
+      37 |     await expect(line.getByText(`El importe está en ${found}; este presupuesto usa CAD. No se convierte.`)).toBeVisible()
+      38 |     await expect(line.getByTestId('review-currency')).toContainText(`Escribiste ${found}; este presupuesto usa CAD`)
+      39 |     await expect(page.getByTestId('assistant-currency-blocked')).toBeVisible()
+        at /home/user/ALCANZA/tests/e2e/retest.spec.ts:36:46
 
     Error Context: test-results/retest-RT-01-·-«coffee-EUR-65edd-se-puede-registrar-como-CAD-celular/error-context.md
 
@@ -113,7 +113,7 @@ Running 5 tests using 2 workers
     ────────────────────────────────────────────────────────────────────────────────────────────────
 
 
-  4) [celular] › tests/e2e/retest.spec.ts:27:3 › RT-01 · «coffee ten USD» en un presupuesto CAD no se puede registrar como CAD 
+  4) [celular] › tests/e2e/retest.spec.ts:29:3 › RT-01 · «coffee ten USD» en un presupuesto CAD no se puede registrar como CAD 
 
     Error: expect(locator).toHaveValue(expected) failed
 
@@ -125,18 +125,18 @@ Running 5 tests using 2 workers
     Call log:
       - Expect "toHaveValue" getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe') with timeout 5000ms
       - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
-        14 × locator resolved to <input id="_r_5_" value="10.00" autocomplete="off" placeholder="0.00" inputmode="decimal" enterkeyhint="done" class="input money-input__field"/>
+        14 × locator resolved to <input id="_r_6_" value="10.00" autocomplete="off" placeholder="0.00" inputmode="decimal" enterkeyhint="done" class="input money-input__field"/>
            - unexpected value "10.00"
 
 
-      32 |     await page.getByRole('button', { name: 'Analizar' }).click()
-      33 |     const line = page.getByTestId('assistant-preview').locator('.assistant__line').first()
-    > 34 |     await expect(line.getByLabel('Importe')).toHaveValue(field)
+      34 |     await page.getByRole('button', { name: 'Analizar' }).click()
+      35 |     const line = page.getByTestId('assistant-preview').locator('.assistant__line').first()
+    > 36 |     await expect(line.getByLabel('Importe')).toHaveValue(field)
          |                                              ^
-      35 |     await expect(line.getByText(`El importe está en ${found}; este presupuesto usa CAD. No se convierte.`)).toBeVisible()
-      36 |     await expect(line.getByTestId('review-currency')).toContainText(`Escribiste ${found}; este presupuesto usa CAD`)
-      37 |     await expect(page.getByTestId('assistant-currency-blocked')).toBeVisible()
-        at /home/user/ALCANZA/tests/e2e/retest.spec.ts:34:46
+      37 |     await expect(line.getByText(`El importe está en ${found}; este presupuesto usa CAD. No se convierte.`)).toBeVisible()
+      38 |     await expect(line.getByTestId('review-currency')).toContainText(`Escribiste ${found}; este presupuesto usa CAD`)
+      39 |     await expect(page.getByTestId('assistant-currency-blocked')).toBeVisible()
+        at /home/user/ALCANZA/tests/e2e/retest.spec.ts:36:46
 
     Error Context: test-results/retest-RT-01-·-«coffee-ten-b3a33-se-puede-registrar-como-CAD-celular/error-context.md
 
@@ -149,10 +149,10 @@ Running 5 tests using 2 workers
     ────────────────────────────────────────────────────────────────────────────────────────────────
 
 
-[5/5] [celular] › tests/e2e/retest.spec.ts:50:1 › RT-01 · control: «coffee 10» y «coffee 10 CAD» se registran en CAD y sobreviven a recargar
+[5/5] [celular] › tests/e2e/retest.spec.ts:53:1 › RT-01 · control: «coffee 10» y «coffee 10 CAD» se registran en CAD y sobreviven a recargar
   4 failed
-    [celular] › tests/e2e/retest.spec.ts:27:3 › RT-01 · «coffee 10€» en un presupuesto CAD no se puede registrar como CAD 
-    [celular] › tests/e2e/retest.spec.ts:27:3 › RT-01 · «coffee GBP 10» en un presupuesto CAD no se puede registrar como CAD 
-    [celular] › tests/e2e/retest.spec.ts:27:3 › RT-01 · «coffee EUR ten» en un presupuesto CAD no se puede registrar como CAD 
-    [celular] › tests/e2e/retest.spec.ts:27:3 › RT-01 · «coffee ten USD» en un presupuesto CAD no se puede registrar como CAD 
-  1 passed (26.7s)
+    [celular] › tests/e2e/retest.spec.ts:29:3 › RT-01 · «coffee 10€» en un presupuesto CAD no se puede registrar como CAD 
+    [celular] › tests/e2e/retest.spec.ts:29:3 › RT-01 · «coffee GBP 10» en un presupuesto CAD no se puede registrar como CAD 
+    [celular] › tests/e2e/retest.spec.ts:29:3 › RT-01 · «coffee EUR ten» en un presupuesto CAD no se puede registrar como CAD 
+    [celular] › tests/e2e/retest.spec.ts:29:3 › RT-01 · «coffee ten USD» en un presupuesto CAD no se puede registrar como CAD 
+  1 passed (22.4s)
