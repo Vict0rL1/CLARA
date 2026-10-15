@@ -99,6 +99,9 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
 - Historial (`domain/history.ts`): `AppStore.commit` registra antes/después de cada registro
   financiero que cambió (máx. 1000 entradas). Revertir solo si nada cambió después y validando
   todo; importar/demo = corte `replace`. Es local, no una auditoría inviolable.
+- Deshacer importar/restaurar (`state/replaceUndo.ts`): ligado a la revisión que fija el propio reemplazo
+  (`AppStore.commitTracked`, antes de esperar al almacenamiento), nunca a lo último guardado. Cualquier
+  cambio posterior —de la persona o automático, aunque su escritura siga pendiente— lo invalida (RT-02).
 - «¿Qué cambió?» (`domain/whatChanged.ts`): Σ pasos + tiempo + sin explicar = diferencia, al
   céntimo. Nunca inventa causas ni compara antes del historial o de un corte.
 - Plantillas (`domain/templates.ts`): solo rellenan formularios; regla de redondeo explícita;
