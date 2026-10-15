@@ -1,0 +1,17 @@
+
+Running 13 tests using 2 workers
+
+[1/13] [celular] › tests/e2e/bank-import.spec.ts:59:1 › importar CSV: deshacer quita lo importado; cargos y abonos separados
+[2/13] [celular] › tests/e2e/bank-import.spec.ts:20:1 › importar CSV: vista previa, posibles duplicados, importar y no duplicar al repetir
+[3/13] [celular] › tests/e2e/bank-import.spec.ts:70:1 › importar CSV: un archivo que no es CSV se rechaza sin cambiar nada
+[4/13] [celular] › tests/e2e/retest.spec.ts:29:3 › RT-01 · «coffee 10€» en un presupuesto CAD no se puede registrar como CAD
+[5/13] [celular] › tests/e2e/retest.spec.ts:29:3 › RT-01 · «coffee GBP 10» en un presupuesto CAD no se puede registrar como CAD
+[6/13] [celular] › tests/e2e/retest.spec.ts:29:3 › RT-01 · «coffee EUR ten» en un presupuesto CAD no se puede registrar como CAD
+[7/13] [celular] › tests/e2e/retest.spec.ts:29:3 › RT-01 · «coffee ten USD» en un presupuesto CAD no se puede registrar como CAD
+[8/13] [celular] › tests/e2e/retest.spec.ts:53:1 › RT-01 · control: «coffee 10» y «coffee 10 CAD» se registran en CAD y sobreviven a recargar
+[9/13] [celular] › tests/e2e/retest.spec.ts:92:1 › RT-02 · importar una copia que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar
+[10/13] [celular] › tests/e2e/retest.spec.ts:102:1 › RT-02 · restaurar una copia local que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar
+[11/13] [celular] › tests/e2e/retest.spec.ts:149:1 › RT-03 · reconocer las filas omitidas de un archivo y elegir otro más grande: hay que reconocerlo de nuevo
+[12/13] [celular] › tests/e2e/retest.spec.ts:167:1 › RT-03 · el mismo nombre con otro contenido, o leer la primera fila de otra forma, también piden reconocerlo de nuevo
+[13/13] [celular] › tests/e2e/retest.spec.ts:183:1 › RT-03 · cancelar el selector de archivos deja la misma vista previa con su reconocimiento; un archivo pequeño no pide nada
+  13 passed (1.4m)

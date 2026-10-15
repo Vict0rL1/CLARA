@@ -1,0 +1,226 @@
+
+Running 6 tests using 2 workers
+
+[1/6] [celular] › tests/e2e/retest.spec.ts:102:1 › RT-02 · restaurar una copia local que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar
+[2/6] [celular] › tests/e2e/retest.spec.ts:92:1 › RT-02 · importar una copia que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar
+  1) [celular] › tests/e2e/retest.spec.ts:92:1 › RT-02 · importar una copia que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText('No se deshizo: guardaste cambios después y se perderían.').first()
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText('No se deshizo: guardaste cambios después y se perderían.').first() with timeout 5000ms
+      - waiting for getByText('No se deshizo: guardaste cambios después y se perderían.').first()
+
+
+      80 |   await expect(page.getByText('1 pago programado se registró solo').first()).toBeVisible()
+      81 |   await undoOf(page, toastText).first().click()
+    > 82 |   await expect(page.getByText('No se deshizo: guardaste cambios después y se perderían.').first()).toBeVisible()
+         |                                                                                                    ^
+      83 |   await go(page, '/')
+      84 |   await page.reload()
+      85 |   await expect(page.getByTestId('available')).toBeVisible()
+        at expectUndoRefusedAndAutoBillKept (/home/user/ALCANZA/tests/e2e/retest.spec.ts:82:100)
+        at /home/user/ALCANZA/tests/e2e/retest.spec.ts:99:3
+
+    Error Context: test-results/retest-RT-02-·-importar-un-7ff06-gistro-sobrevive-a-recargar-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/retest-RT-02-·-importar-un-7ff06-gistro-sobrevive-a-recargar-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/retest-RT-02-·-importar-un-7ff06-gistro-sobrevive-a-recargar-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+  2) [celular] › tests/e2e/retest.spec.ts:102:1 › RT-02 · restaurar una copia local que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText('No se deshizo: guardaste cambios después y se perderían.').first()
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText('No se deshizo: guardaste cambios después y se perderían.').first() with timeout 5000ms
+      - waiting for getByText('No se deshizo: guardaste cambios después y se perderían.').first()
+
+
+      80 |   await expect(page.getByText('1 pago programado se registró solo').first()).toBeVisible()
+      81 |   await undoOf(page, toastText).first().click()
+    > 82 |   await expect(page.getByText('No se deshizo: guardaste cambios después y se perderían.').first()).toBeVisible()
+         |                                                                                                    ^
+      83 |   await go(page, '/')
+      84 |   await page.reload()
+      85 |   await expect(page.getByTestId('available')).toBeVisible()
+        at expectUndoRefusedAndAutoBillKept (/home/user/ALCANZA/tests/e2e/retest.spec.ts:82:100)
+        at /home/user/ALCANZA/tests/e2e/retest.spec.ts:136:3
+
+    Error Context: test-results/retest-RT-02-·-restaurar-u-be1ef-gistro-sobrevive-a-recargar-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/retest-RT-02-·-restaurar-u-be1ef-gistro-sobrevive-a-recargar-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/retest-RT-02-·-restaurar-u-be1ef-gistro-sobrevive-a-recargar-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[3/6] [celular] › tests/e2e/retest.spec.ts:92:1 › RT-02 · importar una copia que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar
+[4/6] [celular] › tests/e2e/retest.spec.ts:102:1 › RT-02 · restaurar una copia local que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar
+  3) [celular] › tests/e2e/retest.spec.ts:92:1 › RT-02 · importar una copia que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText('No se deshizo: guardaste cambios después y se perderían.').first()
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText('No se deshizo: guardaste cambios después y se perderían.').first() with timeout 5000ms
+      - waiting for getByText('No se deshizo: guardaste cambios después y se perderían.').first()
+
+
+      80 |   await expect(page.getByText('1 pago programado se registró solo').first()).toBeVisible()
+      81 |   await undoOf(page, toastText).first().click()
+    > 82 |   await expect(page.getByText('No se deshizo: guardaste cambios después y se perderían.').first()).toBeVisible()
+         |                                                                                                    ^
+      83 |   await go(page, '/')
+      84 |   await page.reload()
+      85 |   await expect(page.getByTestId('available')).toBeVisible()
+        at expectUndoRefusedAndAutoBillKept (/home/user/ALCANZA/tests/e2e/retest.spec.ts:82:100)
+        at /home/user/ALCANZA/tests/e2e/retest.spec.ts:99:3
+
+    Error Context: test-results/retest-RT-02-·-importar-un-7ff06-gistro-sobrevive-a-recargar-celular-repeat1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/retest-RT-02-·-importar-un-7ff06-gistro-sobrevive-a-recargar-celular-repeat1/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/retest-RT-02-·-importar-un-7ff06-gistro-sobrevive-a-recargar-celular-repeat1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[5/6] [celular] › tests/e2e/retest.spec.ts:92:1 › RT-02 · importar una copia que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar
+  4) [celular] › tests/e2e/retest.spec.ts:102:1 › RT-02 · restaurar una copia local que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText('No se deshizo: guardaste cambios después y se perderían.').first()
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText('No se deshizo: guardaste cambios después y se perderían.').first() with timeout 5000ms
+      - waiting for getByText('No se deshizo: guardaste cambios después y se perderían.').first()
+
+
+      80 |   await expect(page.getByText('1 pago programado se registró solo').first()).toBeVisible()
+      81 |   await undoOf(page, toastText).first().click()
+    > 82 |   await expect(page.getByText('No se deshizo: guardaste cambios después y se perderían.').first()).toBeVisible()
+         |                                                                                                    ^
+      83 |   await go(page, '/')
+      84 |   await page.reload()
+      85 |   await expect(page.getByTestId('available')).toBeVisible()
+        at expectUndoRefusedAndAutoBillKept (/home/user/ALCANZA/tests/e2e/retest.spec.ts:82:100)
+        at /home/user/ALCANZA/tests/e2e/retest.spec.ts:136:3
+
+    Error Context: test-results/retest-RT-02-·-restaurar-u-be1ef-gistro-sobrevive-a-recargar-celular-repeat1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/retest-RT-02-·-restaurar-u-be1ef-gistro-sobrevive-a-recargar-celular-repeat1/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/retest-RT-02-·-restaurar-u-be1ef-gistro-sobrevive-a-recargar-celular-repeat1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[6/6] [celular] › tests/e2e/retest.spec.ts:102:1 › RT-02 · restaurar una copia local que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar
+  5) [celular] › tests/e2e/retest.spec.ts:92:1 › RT-02 · importar una copia que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText('No se deshizo: guardaste cambios después y se perderían.').first()
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText('No se deshizo: guardaste cambios después y se perderían.').first() with timeout 5000ms
+      - waiting for getByText('No se deshizo: guardaste cambios después y se perderían.').first()
+
+
+      80 |   await expect(page.getByText('1 pago programado se registró solo').first()).toBeVisible()
+      81 |   await undoOf(page, toastText).first().click()
+    > 82 |   await expect(page.getByText('No se deshizo: guardaste cambios después y se perderían.').first()).toBeVisible()
+         |                                                                                                    ^
+      83 |   await go(page, '/')
+      84 |   await page.reload()
+      85 |   await expect(page.getByTestId('available')).toBeVisible()
+        at expectUndoRefusedAndAutoBillKept (/home/user/ALCANZA/tests/e2e/retest.spec.ts:82:100)
+        at /home/user/ALCANZA/tests/e2e/retest.spec.ts:99:3
+
+    Error Context: test-results/retest-RT-02-·-importar-un-7ff06-gistro-sobrevive-a-recargar-celular-repeat2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/retest-RT-02-·-importar-un-7ff06-gistro-sobrevive-a-recargar-celular-repeat2/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/retest-RT-02-·-importar-un-7ff06-gistro-sobrevive-a-recargar-celular-repeat2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+  6) [celular] › tests/e2e/retest.spec.ts:102:1 › RT-02 · restaurar una copia local que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText('No se deshizo: guardaste cambios después y se perderían.').first()
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText('No se deshizo: guardaste cambios después y se perderían.').first() with timeout 5000ms
+      - waiting for getByText('No se deshizo: guardaste cambios después y se perderían.').first()
+
+
+      80 |   await expect(page.getByText('1 pago programado se registró solo').first()).toBeVisible()
+      81 |   await undoOf(page, toastText).first().click()
+    > 82 |   await expect(page.getByText('No se deshizo: guardaste cambios después y se perderían.').first()).toBeVisible()
+         |                                                                                                    ^
+      83 |   await go(page, '/')
+      84 |   await page.reload()
+      85 |   await expect(page.getByTestId('available')).toBeVisible()
+        at expectUndoRefusedAndAutoBillKept (/home/user/ALCANZA/tests/e2e/retest.spec.ts:82:100)
+        at /home/user/ALCANZA/tests/e2e/retest.spec.ts:136:3
+
+    Error Context: test-results/retest-RT-02-·-restaurar-u-be1ef-gistro-sobrevive-a-recargar-celular-repeat2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/retest-RT-02-·-restaurar-u-be1ef-gistro-sobrevive-a-recargar-celular-repeat2/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/retest-RT-02-·-restaurar-u-be1ef-gistro-sobrevive-a-recargar-celular-repeat2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+  6 failed
+    [celular] › tests/e2e/retest.spec.ts:92:1 › RT-02 · importar una copia que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar 
+    [celular] › tests/e2e/retest.spec.ts:102:1 › RT-02 · restaurar una copia local que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar 
+    [celular] › tests/e2e/retest.spec.ts:92:1 › RT-02 · importar una copia que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar 
+    [celular] › tests/e2e/retest.spec.ts:102:1 › RT-02 · restaurar una copia local que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar 
+    [celular] › tests/e2e/retest.spec.ts:92:1 › RT-02 · importar una copia que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar 
+    [celular] › tests/e2e/retest.spec.ts:102:1 › RT-02 · restaurar una copia local que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar 

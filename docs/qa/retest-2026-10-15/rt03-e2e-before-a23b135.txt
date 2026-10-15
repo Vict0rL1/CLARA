@@ -1,0 +1,82 @@
+
+Running 3 tests using 2 workers
+
+[1/3] [celular] › tests/e2e/retest.spec.ts:149:1 › RT-03 · reconocer las filas omitidas de un archivo y elegir otro más grande: hay que reconocerlo de nuevo
+[2/3] [celular] › tests/e2e/retest.spec.ts:167:1 › RT-03 · el mismo nombre con otro contenido, o leer la primera fila de otra forma, también piden reconocerlo de nuevo
+  1) [celular] › tests/e2e/retest.spec.ts:167:1 › RT-03 · el mismo nombre con otro contenido, o leer la primera fila de otra forma, también piden reconocerlo de nuevo 
+
+    Error: expect(locator).not.toBeChecked() failed
+
+    Locator:  getByLabel('Entiendo que 3 filas del archivo quedan fuera de esta importación')
+    Expected: not checked
+    Received: checked
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "not toBeChecked" getByLabel('Entiendo que 3 filas del archivo quedan fuera de esta importación') with timeout 5000ms
+      - waiting for getByLabel('Entiendo que 3 filas del archivo quedan fuera de esta importación')
+        13 × locator resolved to <input checked id="_r_11_" type="checkbox"/>
+           - unexpected value "checked"
+
+
+      172 |   // Mismo nombre y mismas cuentas de filas, otro contenido.
+      173 |   await openImport(page, 'banco.csv', csv(5003, 'Distinta'))
+    > 174 |   await expect(page.getByLabel('Entiendo que 3 filas del archivo quedan fuera de esta importación')).not.toBeChecked()
+          |                                                                                                          ^
+      175 |   await expect(importButton(page)).toBeDisabled()
+      176 |   await page.getByLabel('Entiendo que 3 filas del archivo quedan fuera de esta importación').check()
+      177 |   // La primera fila deja de leerse como encabezado: cambian las filas que quedan fuera.
+        at /home/user/ALCANZA/tests/e2e/retest.spec.ts:174:106
+
+    Error Context: test-results/retest-RT-03-·-el-mismo-no-1814b--piden-reconocerlo-de-nuevo-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/retest-RT-03-·-el-mismo-no-1814b--piden-reconocerlo-de-nuevo-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/retest-RT-03-·-el-mismo-no-1814b--piden-reconocerlo-de-nuevo-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[3/3] [celular] › tests/e2e/retest.spec.ts:183:1 › RT-03 · cancelar el selector de archivos deja la misma vista previa con su reconocimiento; un archivo pequeño no pide nada
+  2) [celular] › tests/e2e/retest.spec.ts:149:1 › RT-03 · reconocer las filas omitidas de un archivo y elegir otro más grande: hay que reconocerlo de nuevo 
+
+    Error: expect(locator).not.toBeChecked() failed
+
+    Locator:  getByLabel('Entiendo que 1000 filas del archivo quedan fuera de esta importación')
+    Expected: not checked
+    Received: checked
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "not toBeChecked" getByLabel('Entiendo que 1000 filas del archivo quedan fuera de esta importación') with timeout 5000ms
+      - waiting for getByLabel('Entiendo que 1000 filas del archivo quedan fuera de esta importación')
+        13 × locator resolved to <input checked id="_r_10_" type="checkbox"/>
+           - unexpected value "checked"
+
+
+      158 |   await expect(page.getByText('las filas 5,002 a 6,001 (1,000) no se muestran ni se importarán')).toBeVisible()
+      159 |   const ack = page.getByLabel('Entiendo que 1000 filas del archivo quedan fuera de esta importación')
+    > 160 |   await expect(ack).not.toBeChecked()
+          |                         ^
+      161 |   await expect(importButton(page)).toBeDisabled()
+      162 |   await shot(page, 'rt03-b-needs-ack')
+      163 |   await ack.check()
+        at /home/user/ALCANZA/tests/e2e/retest.spec.ts:160:25
+
+    Error Context: test-results/retest-RT-03-·-reconocer-l-7a908-ay-que-reconocerlo-de-nuevo-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/retest-RT-03-·-reconocer-l-7a908-ay-que-reconocerlo-de-nuevo-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/retest-RT-03-·-reconocer-l-7a908-ay-que-reconocerlo-de-nuevo-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+  2 failed
+    [celular] › tests/e2e/retest.spec.ts:149:1 › RT-03 · reconocer las filas omitidas de un archivo y elegir otro más grande: hay que reconocerlo de nuevo 
+    [celular] › tests/e2e/retest.spec.ts:167:1 › RT-03 · el mismo nombre con otro contenido, o leer la primera fila de otra forma, también piden reconocerlo de nuevo 
+  1 passed (21.0s)

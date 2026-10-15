@@ -343,7 +343,9 @@ guarda hasta confirmar la vista previa. Límites: 2 MB y 5000 filas.
   «Moneda», «Currency», «Devise», «Ccy»…, detectada sola o elegida). Un símbolo suelto se
   acepta solo si puede ser el de la moneda del presupuesto: `$` vale para CAD, USD, MXN,
   COP, CLP, ARS, AUD o BRL y no para EUR, GBP, JPY, PEN o CHF; `€` solo para EUR; `¥`
-  para JPY y CNY. Un código que no es una moneda conocida (`XYZ 10`) también es error. La
+  para JPY y CNY. Cualquier otro símbolo de moneda (`₽`, `₹`, `₩`…) se lee igual, y también un
+  nombre sin ambigüedad (`10 euros`, `10 pesos`, `10 pounds sterling`; no «libra» ni «pound» sueltos,
+  que también son pesos). Un código que no es una moneda conocida (`XYZ 10`) también es error. La
   persona puede declarar la **moneda de todo el archivo**: si no es la del presupuesto,
   ninguna fila se importa; si coincide, es como no decirlo. Las columnas de cargo y abono
   siguen la misma regla cada una. Los movimientos importados llevan siempre la moneda del
@@ -371,7 +373,9 @@ guarda hasta confirmar la vista previa. Límites: 2 MB y 5000 filas.
   empareja una sola fila. Se muestra **desmarcado**.
 - **Más de 5000 filas:** se analizan las primeras 5000; la vista previa da el total, cuántas
   quedan fuera y qué líneas (p. ej. «las filas 5,002 a 5,004 (3)»). Importar exige marcar «Entiendo
-  que N filas quedan fuera» y el aviso final lo repite. Las restantes se importan en otro archivo
+  que N filas quedan fuera» y el aviso final lo repite. Lo marcado vale solo para esa vista previa
+  (RT-03): elegir otro archivo —aunque se llame igual— o leer la primera fila de otra forma deja la
+  casilla sin marcar; cancelar el selector no cambia nada. Las restantes se importan en otro archivo
   (lo ya importado se reconoce como duplicado).
 - **Filas con error** (fecha, importe, cero, futura, moneda, demasiado grande): se muestran con su
   motivo y nunca se importan; no impiden importar las demás filas marcadas.
@@ -966,7 +970,8 @@ Pruebas: `ui/preferences.test.ts` y e2e `personalize.spec.ts`.
 ## 32. Asistente de registro (parser local)
 
 - Entradas: líneas, «;», y «,» o conectores («y», «and», «e», «et») solo cuando cada parte tiene un número. Máximo 200.
-- Importe: primer número con símbolo o decimales; si no, el primero. Separadores regionales (`1.234,56`, `1,234.56`, `1 234,56`), «k»/«mil»/«M», números en palabras (es/en/pt/fr). Monedas sin decimales redondean a entero. Sin importe, la entrada lo pide y su confianza queda ≤ 0,25.
+- Importe: primer número con moneda escrita, decimales o «k»; si no, el primero. Separadores regionales (`1.234,56`, `1,234.56`, `1 234,56`), «k»/«mil»/«M», números en palabras (es/en/pt/fr). Monedas sin decimales redondean a entero. Sin importe, la entrada lo pide y su confianza queda ≤ 0,25.
+- Moneda escrita (AS-01, RT-01): se lee con las mismas definiciones que los campos de importe (`money.ts`), pegada al importe delante o detrás —también sin espacio y con importes en palabras—: código ISO (`GBP 10`, `10GBP`, `EUR ten`, `ten USD`), símbolo (`10€`, `£10`, `¥1000`, `10 ₽`), prefijo con dólar (`US$10`) o nombre (`10 euros`, `diez euros`, `10 pesos`). Sin nada pegado, una moneda explícita en la frase (código admitido en MAYÚSCULAS, símbolo o nombre en plural: `coffee (USD) 10`) deja la línea sin resolver. Si no es la del presupuesto, el campo «Importe» la conserva (`10.00 GBP`, `€10.00`) y la línea no se registra hasta escribir el importe en la moneda del presupuesto; nunca se convierte. Un ISO real no admitido (`RUB 10`) también bloquea; en minúsculas no cuentan los códigos que son palabras (`pen`, `ron`, `try`, `mad`, `ils`, `bob`). Lo mismo para el total de una foto de recibo (solo símbolos sueltos y códigos admitidos pegados al importe, porque los recibos van en mayúsculas).
 - Tipo: ingreso si aparece una palabra clave de ingreso en cualquiera de los cuatro idiomas; si no, gasto.
 - Fecha: ISO, `d/m(/a)`, «15 de octubre» / «oct 15» (en inglés manda mes-día), relativas (hoy, ayer, anteayer…) y días de la semana (el más reciente, hoy incluido). Una fecha futura se sustituye por hoy. Sin fecha: hoy.
 - Categoría, por prioridad: regla de la persona → palabra aprendida del historial (≥ 2 veces y mayoría) → diccionario por palabra clave (gana la más larga). Solo categorías activas del tipo detectado; si nada coincide, no se inventa.
