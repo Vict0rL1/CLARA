@@ -3264,4 +3264,6 @@ export const fr: Record<keyof typeof es, string> = {
   'rules.learn.remember': 'Retenir',
   'rules.learn.saved': 'Règle enregistrée : « {pattern} » → {category}. Vous pouvez la modifier dans Réglages › Règles de catégorie.',
   'rules.learn.failed': 'La règle n’a pas pu être enregistrée. Vous pouvez la créer dans Réglages › Règles de catégorie.',
+  'home.bufferInUse': 'Vous utilisez {amount} de votre coussin de sécurité de {buffer}',
+  'home.bufferInUseText': 'Vos paiements et mises de côté sont couverts. Ce que vous dépensez maintenant vient de l’argent que vous avez choisi de garder.',
 }

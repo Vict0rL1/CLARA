@@ -3266,4 +3266,6 @@ export const en: Record<keyof typeof es, string> = {
   'rules.learn.remember': 'Remember',
   'rules.learn.saved': 'Rule saved: “{pattern}” → {category}. You can change it in Settings › Category rules.',
   'rules.learn.failed': 'The rule couldn\'t be saved. You can create it in Settings › Category rules.',
+  'home.bufferInUse': 'You\'re using {amount} of your {buffer} safety buffer',
+  'home.bufferInUseText': 'Your bills and set-asides are covered. What you spend now comes out of the money you chose to keep.',
 }

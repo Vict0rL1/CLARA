@@ -721,8 +721,14 @@ export function Home() {
                 </div>
               </>
             )}
-            {budget.status === 'ok' && budget.availableMinor < 0 && (
-              <Alert tone="critical" title={t('home.negativeTitle', { amount: fmt.money(-budget.availableMinor) })}>
+            {/* v13: si solo se está usando el colchón, pagos y apartados están cubiertos: aviso, no alarma. */}
+            {budget.status === 'ok' && budget.availableMinor < 0 && budget.availableMinor + budget.safetyBufferMinor >= 0 && (
+              <Alert tone="warning" title={t('home.bufferInUse', { amount: fmt.money(-budget.availableMinor), buffer: fmt.money(budget.safetyBufferMinor) })}>
+                {t('home.bufferInUseText')}
+              </Alert>
+            )}
+            {budget.status === 'ok' && budget.availableMinor + budget.safetyBufferMinor < 0 && (
+              <Alert tone="critical" title={t('home.negativeTitle', { amount: fmt.money(-(budget.availableMinor + budget.safetyBufferMinor)) })}>
                 {t('home.negativeText')}{' '}
                 <a href={href('/alcanza/faltante')}>{t('shortfall.open')}</a>
               </Alert>

@@ -30,12 +30,24 @@ test('colchón de seguridad: se resta de «Puedes gastar», se explica, sobreviv
   await go(page, '/')
   await expect(page.getByTestId('available')).toHaveText('$350.00')
 
-  // Vacío = sin colchón: vuelve la cifra de siempre y desaparece la línea de la explicación.
+  // Un colchón mayor que lo que queda: pagos y apartados siguen cubiertos, así que es un aviso
+  // («usando tu colchón»), nunca la alarma de «te faltan … para cubrir pagos».
   await go(page, '/ajustes/safe-to-spend')
   await expect(page.getByLabel('Colchón de seguridad')).toHaveValue('50.00')
+  await page.getByLabel('Colchón de seguridad').fill('450')
+  await page.getByTestId('save-buffer').click()
+  await expect(page.getByText('Colchón guardado').first()).toBeVisible()
+  await go(page, '/')
+  await expect(page.getByTestId('available')).toHaveText('-$50.00')
+  await expect(page.getByText('Estás usando $50.00 de tu colchón de $450.00')).toBeVisible()
+  await expect(page.getByText(/Te faltan .* para cubrir pagos y apartados/)).toHaveCount(0)
+
+  // Vacío = sin colchón: vuelve la cifra de siempre y desaparece la línea de la explicación.
+  await go(page, '/ajustes/safe-to-spend')
+  await expect(page.getByLabel('Colchón de seguridad')).toHaveValue('450.00')
   await page.getByLabel('Colchón de seguridad').fill('')
   await page.getByTestId('save-buffer').click()
-  await expect(page.getByText('Colchón guardado')).toBeVisible()
+  await expect(page.getByText('Colchón guardado').first()).toBeVisible()
   await go(page, '/')
   await expect(page.getByTestId('available')).toHaveText('$400.00')
   await openExplain(page)

@@ -3264,4 +3264,6 @@ export const pt: Record<keyof typeof es, string> = {
   'rules.learn.remember': 'Lembrar',
   'rules.learn.saved': 'Regra salva: «{pattern}» → {category}. Você pode mudá-la em Ajustes › Regras de categoria.',
   'rules.learn.failed': 'Não foi possível salvar a regra. Você pode criá-la em Ajustes › Regras de categoria.',
+  'home.bufferInUse': 'Você está usando {amount} da sua reserva de segurança de {buffer}',
+  'home.bufferInUseText': 'Seus pagamentos e reservas estão cobertos. O que você gastar agora sai do dinheiro que decidiu guardar.',
 }

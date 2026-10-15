@@ -3265,4 +3265,6 @@ export const es = {
   'rules.learn.remember': 'Recordar',
   'rules.learn.saved': 'Regla guardada: «{pattern}» → {category}. Puedes cambiarla en Ajustes › Reglas de categoría.',
   'rules.learn.failed': 'No se pudo guardar la regla. Puedes crearla en Ajustes › Reglas de categoría.',
+  'home.bufferInUse': 'Estás usando {amount} de tu colchón de {buffer}',
+  'home.bufferInUseText': 'Tus pagos y apartados están cubiertos. Lo que gastes ahora sale del dinero que decidiste conservar.',
 } as const

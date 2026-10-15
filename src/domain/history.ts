@@ -22,7 +22,8 @@ export const HISTORY_MAX_ENTRIES = 1000
 type ListCollection = Exclude<HistoryCollection, 'settings'>
 const LISTS: readonly ListCollection[] = ['accounts', 'transactions', 'schedules', 'goals', 'trash', 'reconciliations', 'incomeDistributions', 'periodBudgets']
 /** Ajustes que cambian cifras (el idioma o el formato de fecha no). */
-const FINANCIAL_SETTINGS = ['currency', 'timeZone', 'fallbackHorizonDays'] as const
+// v13: `safeToSpend` lleva el colchón de seguridad, que cambia el disponible: sin registrarlo, «¿Qué cambió?» no lo vería.
+const FINANCIAL_SETTINGS = ['currency', 'timeZone', 'fallbackHorizonDays', 'safeToSpend'] as const
 const SETTINGS_ID = 'settings'
 
 type WithId = { id: string }
@@ -125,9 +126,20 @@ export function setValue(data: AppData, collection: HistoryCollection, id: strin
   return { ...data, [collection]: next }
 }
 
+/**
+ * Valor actual comparable con lo que registró un cambio. En ajustes solo cuentan las claves que la
+ * entrada guardó: una entrada anterior a v13 no tiene `safeToSpend` y sigue pudiendo revertirse.
+ */
+function currentValueFor(data: AppData, c: HistoryChange): unknown {
+  const current = currentValue(data, c.collection, c.id)
+  if (c.collection !== 'settings' || !c.after || typeof c.after !== 'object') return current
+  const all = current as Record<string, unknown>
+  return Object.fromEntries(Object.keys(c.after).map((k) => [k, all[k] ?? null]))
+}
+
 /** Registros de la entrada que cambiaron después (impiden revertir sin pisar otros cambios). */
 export function revertConflicts(data: AppData, entry: HistoryEntry): HistoryChange[] {
-  return entry.changes.filter((c) => !same(currentValue(data, c.collection, c.id), c.after))
+  return entry.changes.filter((c) => !same(currentValueFor(data, c), c.after))
 }
 
 export function canRevert(data: AppData, entry: HistoryEntry): 'ok' | 'notRevertible' | 'alreadyReverted' | 'conflict' {

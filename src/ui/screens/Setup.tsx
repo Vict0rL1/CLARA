@@ -492,7 +492,7 @@ export function Setup({ language, onLanguageChange }: { language: Language; onLa
                 <CalcRow op="=" label={t('explain.available')} value={fmt.money(preview.budget.availableMinor)} strong />
                 {preview.budget.dailyMinor !== null && <CalcRow label={t('home.daily')} value={fmt.money(preview.budget.dailyMinor)} />}
               </div>
-              {preview.budget.availableMinor < 0 && <Alert tone="warning" title={t('home.negativeTitle', { amount: fmt.money(-preview.budget.availableMinor) })}>{t('home.negativeText')}</Alert>}
+              {preview.budget.availableMinor + preview.budget.safetyBufferMinor < 0 && <Alert tone="warning" title={t('home.negativeTitle', { amount: fmt.money(-(preview.budget.availableMinor + preview.budget.safetyBufferMinor)) })}>{t('home.negativeText')}</Alert>}
               {preview.budget.overdueIncomes.length > 0 && <Alert tone="warning" title={t('setup.summary.incomePast')} />}
               {(bills.length === 0 || provisionalIncomeNote(preview.budget)) && (
                 <Alert tone="info" title={t('setup.summary.provisionalTitle')}>

@@ -12,6 +12,8 @@ import { DEFAULT_NOTIFICATIONS } from './defaults'
 import { dueNotices } from './notifications'
 import { closeDuePlans, planAlertLevels, planAlerts, savePlan } from './plans'
 import { explainRuleMatch, suggestRuleFromCorrection } from './rules'
+import { canRevert, recordHistory, revertEntry } from './history'
+import { whatChanged } from './whatChanged'
 import { defaultSecondDay, nthOccurrence, occurrencesBetween, scanOccurrences } from './recurrence'
 import type { AppData, Schedule } from './types'
 import { validateSchedule } from './validation'
@@ -87,6 +89,41 @@ describe('Clara 2.0 §10 · colchón de seguridad en «Puedes gastar»', () => {
       const v = validateAppData(JSON.parse(JSON.stringify(withBuffer(sample(), bad))))
       expect(v.ok, String(bad)).toBe(false)
     }
+  })
+
+  it('«¿Qué cambió?» atribuye el cambio del colchón a «ajustes», sin parte sin explicar, y se puede revertir', () => {
+    const DAY2 = { today: '2026-09-29', now: '2026-09-29T15:00:00.000Z' }
+    const start = { ...sample(), historyStartedAt: '2026-09-20T12:00:00.000Z' }
+    const r = updateSettings(start, { safeToSpend: { ...start.settings.safeToSpend, bufferMinor: 5000 } }, DAY2)
+    if (!r.ok) throw new Error('settings')
+    const d = recordHistory(start, r.data, DAY2.now)
+    const w = whatChanged(d, '2026-09-29', { kind: 'date', date: '2026-09-29' })
+    if (w.status !== 'ok') throw new Error(w.status)
+    expect(w.totalMinor).toBe(-5000)
+    expect(w.steps.map((s) => [s.category, s.deltaMinor])).toEqual([['settings', -5000]])
+    expect(w.unexplainedMinor).toBe(0)
+    const back = revertEntry(d, d.history[d.history.length - 1]!.id, DAY2)
+    if (!back.ok) throw new Error(JSON.stringify(back.issues))
+    expect(back.data.settings.safeToSpend.bufferMinor).toBe(0)
+  })
+
+  it('una entrada de ajustes anterior a v13 (sin `safeToSpend`) se sigue pudiendo revertir', () => {
+    const DAY2 = { today: '2026-09-29', now: '2026-09-29T15:00:00.000Z' }
+    const start = { ...sample(), historyStartedAt: '2026-09-20T12:00:00.000Z' }
+    const r = updateSettings(start, { fallbackHorizonDays: 20 }, DAY2)
+    if (!r.ok) throw new Error('settings')
+    const d = recordHistory(start, r.data, DAY2.now)
+    const entry = d.history[d.history.length - 1]!
+    // Como la guardó la versión 12: solo moneda, zona horaria y horizonte.
+    const old = { ...entry, changes: entry.changes.map((c) => {
+      const strip = (v: unknown) => { const { safeToSpend: _s, ...rest } = v as Record<string, unknown>; return rest }
+      return { ...c, before: strip(c.before), after: strip(c.after) }
+    }) }
+    const legacy = { ...d, history: [...d.history.slice(0, -1), old] }
+    expect(canRevert(legacy, old)).toBe('ok')
+    const back = revertEntry(legacy, old.id, DAY2)
+    expect(back.ok && back.data.settings.fallbackHorizonDays).toBe(10)
+    expect(back.ok && back.data.settings.safeToSpend).toEqual(start.settings.safeToSpend)
   })
 
   it('un gasto nuevo baja el disponible lo mismo con colchón que sin él', () => {
