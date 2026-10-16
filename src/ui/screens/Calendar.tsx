@@ -8,10 +8,11 @@ import { CategoryIcon } from '../components/CategoryIcon'
 import { planItems, type PlanItem } from '../../domain/planItems'
 import { CALENDAR_PROJECTION_MAX_DAYS, dayBalance, projectBalance, type ProjectionDay } from '../../domain/projection'
 import { linkSettlement, unlinkedSettlements } from '../../domain/reconcileSchedules'
+import { recurringCosts } from '../../domain/recurringCosts'
 import { useT, type MessageKey } from '../../i18n'
 import { useRun, useToday } from '../../state/hooks'
 import { useData } from '../../state/store'
-import { Alert, Badge, Card, EmptyState, Explain, Why, type Tone } from '../components/common'
+import { Alert, Badge, CalcRow, Card, EmptyState, Explain, StatTile, Why, type Tone } from '../components/common'
 import { MoneyField } from '../components/fields'
 import { moneyErrorMessage, parseMoneyText } from '../moneyText'
 import { Icon } from '../components/Icon'
@@ -423,6 +424,7 @@ export function Calendar() {
         <h2 id="schedules-title" className="card__title">
           {t('calendar.allSchedules')}
         </h2>
+        <RecurringSummary />
         {data.schedules.length === 0 ? (
           <EmptyState compact icon="calendar" title={t('calendar.noSchedules')} />
         ) : (
@@ -454,6 +456,46 @@ export function Calendar() {
       {payItem && <MarkPaidDialog key={payItem.key} item={payItem} onClose={() => setPayItem(null)} />}
 
       {sheetFor && <ScheduleSheet scheduleId={sheetFor} onClose={() => setSheetFor(null)} onPay={(item) => { setSheetFor(null); setPayItem(item) }} />}
+    </div>
+  )
+}
+
+/**
+ * Clara 2.0 fase 3: cuánto cuestan los pagos recurrentes. Ocurrencias reales de los próximos 12 meses ×
+ * importe (`recurringCosts`), con su explicación; solo informa.
+ */
+function RecurringSummary() {
+  const { t, tn } = useT()
+  const fmt = useFormat()
+  const data = useData()
+  const today = useToday()
+  const expenses = useMemo(() => recurringCosts(data, today, 'expense'), [data, today])
+  const incomes = useMemo(() => recurringCosts(data, today, 'income'), [data, today])
+  if (expenses.items.length === 0 && incomes.items.length === 0) return null
+  const approx = (minor: number, estimate: boolean) => `${estimate ? '≈ ' : ''}${fmt.money(minor)}`
+  const range = { from: fmt.date(expenses.from), to: fmt.date(expenses.to) }
+  return (
+    <div className="stack-sm" data-testid="recurring-summary">
+      <div className="stats">
+        {expenses.items.length > 0 && (
+          <>
+            <StatTile label={t('recurring.monthly')} value={approx(expenses.monthlyMinor, expenses.hasEstimates)} hint={t('recurring.monthlyHint')} />
+            <StatTile label={t('recurring.year')} value={approx(expenses.totalMinor, expenses.hasEstimates)} hint={tn('recurring.payments', expenses.items.reduce((n, i) => n + i.occurrences, 0))} />
+          </>
+        )}
+        {incomes.items.length > 0 && <StatTile label={t('recurring.incomeMonthly')} value={approx(incomes.monthlyMinor, incomes.hasEstimates)} hint={t('recurring.monthlyHint')} />}
+      </div>
+      {expenses.pausedCount > 0 && <p className="note">{tn('recurring.paused', expenses.pausedCount)}</p>}
+      {expenses.items.length > 0 && (
+        <Explain>
+          <p>{t('recurring.explain', range)}</p>
+          {expenses.items.map((i) => (
+            <CalcRow key={i.schedule.id} op="+" label={t('recurring.row', { name: i.schedule.name, count: i.occurrences, amount: approx(i.schedule.amountMinor, i.schedule.amountIsEstimate) })} value={fmt.money(i.totalMinor)} />
+          ))}
+          <CalcRow op="=" label={t('recurring.year')} value={approx(expenses.totalMinor, expenses.hasEstimates)} strong />
+          <CalcRow label={t('recurring.perMonth')} value={approx(expenses.monthlyMinor, expenses.hasEstimates)} />
+        </Explain>
+      )}
     </div>
   )
 }

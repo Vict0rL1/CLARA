@@ -99,7 +99,8 @@ cannot provide by itself (a server, credentials, a paid provider, a native app o
    reference codes; rules match plain text or merchant key, a strict superset; «Top comercios» groups variants;
    proposed rule texts drop the codes). Still open: user-defined aliases (a stored table → schema 14), rule
    priorities, preferred account per merchant.
-3. Planning: subscriptions overview and monthly total, recurring-payment suggestions from history,
+3. Planning: subscriptions overview and monthly total (**done**: `recurringCosts`, exact occurrences in the next
+   12 months, in the calendar), recurring-payment suggestions from history,
    future-only schedule edits, budget recommendations, goal milestones, explicit user-rate multi-currency.
 4. Analytics filters (account/tag/merchant/status), export filters, itemized receipts stored apart from
    the transaction (never one expense per item).

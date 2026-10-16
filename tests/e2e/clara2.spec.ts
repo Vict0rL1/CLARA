@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
-import { go, openApp, openDetails, openExplain, pickCategory, setupFirstUse, startDemo, storedData } from './helpers'
+import { recurringCosts } from '../../src/domain/recurringCosts'
+import { expectNoHorizontalScroll, go, openApp, openDetails, openExplain, pickCategory, setupFirstUse, startDemo, storedData } from './helpers'
 
 /**
  * Clara 2.0 · fase 1 (cimientos), de punta a punta: colchón de seguridad en «Puedes gastar»,
@@ -269,4 +270,24 @@ test('comercios: una regla escrita normal reconoce la forma del extracto («UBER
   const ruleDialog = page.getByRole('dialog', { name: 'Nueva regla de categoría' })
   // Sin el prefijo del procesador ni el código, que cambian en cada compra.
   await expect(ruleDialog.getByLabel('Si la descripción contiene')).toHaveValue('PANADERIA SOL')
+})
+
+test('pagos recurrentes: el calendario dice cuánto cuestan en 12 meses y al mes, igual que el cálculo del dominio', async ({ page }) => {
+  await startDemo(page)
+  await go(page, '/plan/calendario')
+  const summary = page.getByTestId('recurring-summary')
+  await expect(summary).toBeVisible()
+  const data = JSON.parse((await storedData(page))!)
+  const expected = recurringCosts(data, '2026-09-28')
+  expect(expected.items.length).toBeGreaterThan(0)
+  const cents = (text: string | null) => Number((text ?? '').replace(/[^\d]/g, ''))
+  await expect(summary.getByText('Pagos fijos al mes')).toBeVisible()
+  await expect(summary.getByText('Próximos 12 meses').first()).toBeVisible()
+  // La explicación tiene una fila por pago y el total es exactamente el del dominio, al céntimo.
+  await summary.locator('.explain > summary').click()
+  const rows = summary.locator('.calc-row')
+  await expect(rows).toHaveCount(expected.items.length + 2)
+  expect(cents(await rows.nth(expected.items.length).locator('.calc-row__value').textContent())).toBe(expected.totalMinor)
+  expect(cents(await rows.nth(expected.items.length + 1).locator('.calc-row__value').textContent())).toBe(expected.monthlyMinor)
+  await expectNoHorizontalScroll(page, 'calendario con resumen de pagos recurrentes')
 })

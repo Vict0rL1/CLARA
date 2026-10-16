@@ -156,6 +156,20 @@ reservado. Si aun así se alcanza un tope, el resultado se marca **truncado**
 reservado puede estar incompleto, no se sugiere importe por día ni por semana e Inicio avisa.
 Nunca se presenta una cifra incompleta como si estuviera completa.
 
+### 5 b. Cuánto cuestan los pagos recurrentes (Clara 2.0, fase 3)
+
+```
+ventana        = hoy … el día antes de la misma fecha dentro de 12 meses
+ocurrencias(p) = fechas reales del programado p en la ventana (occurrencesBetween), sin omitidas
+total          = Σ ocurrencias(p) × importe(p)        (en enteros; solo recurrentes, sin pausados)
+al mes         = floor(total / 12)
+```
+
+No se usa «semanal × 52 / 12»: una semana empezada hoy cae 53 veces en esos 365 días y se cuenta 53.
+Respeta fecha de fin, «dos veces al mes» y el último día del mes corto. Los importes estimados marcan el
+total con «≈»; los programados en pausa no cuentan y se dice cuántos hay. Solo informa: no reserva, no
+registra y no cambia el disponible (`domain/recurringCosts.ts`, calendario › «Todos los programados»).
+
 ## 6. Disponible hasta el próximo ingreso
 
 ```
