@@ -116,7 +116,9 @@ Hay dos fuentes de elementos previstos:
    dos veces al mes, mensual, trimestral, anual o cada N días). «Dos veces al mes» (v13) usa el
    día de `startDate` y `secondDay` (1–31, a 7 días o más del primero); un día que el mes no tiene
    pasa al último (15 y 31 → 15 y 28 de febrero, 29 en bisiesto) y el mes siguiente vuelve al
-   original. Sin `secondDay`, `saveSchedule` usa 15 días después (o antes, si no cabe).
+   original. Sin `secondDay`, `saveSchedule` usa 15 días después (o antes, si no cabe). El campo
+   «Segundo día del mes» (`SecondDayField`) es el mismo en programados, configuración inicial y «Repetir»,
+   dice siempre los dos días y valida con la misma regla que el dominio (`isValidSecondDay`).
 2. **Movimientos con estado «previsto»**.
 
 Cada ocurrencia tiene un estado:

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { go, openDetails, openExplain, pickCategory, setupFirstUse, startDemo, storedData } from './helpers'
+import { go, openApp, openDetails, openExplain, pickCategory, setupFirstUse, startDemo, storedData } from './helpers'
 
 /**
  * Clara 2.0 · fase 1 (cimientos), de punta a punta: colchón de seguridad en «Puedes gastar»,
@@ -170,4 +170,49 @@ test('corregir la categoría que propone una regla ofrece recordarla; solo se gu
   await expect(page.getByLabel('Categoría', { exact: true })).toHaveAttribute('data-value', 'groceries')
   await page.getByLabel('Nota (opcional)').fill('Café con Luis')
   await expect(page.getByLabel('Categoría', { exact: true })).toHaveAttribute('data-value', 'dining')
+})
+
+test('configuración inicial: un sueldo dos veces al mes con su segundo día, validado antes de seguir', async ({ page }) => {
+  await openApp(page)
+  await page.getByRole('button', { name: 'Configurar con mis datos' }).click()
+  await page.getByRole('button', { name: 'Continuar' }).click()
+  await page.getByLabel('Saldo disponible').fill('1200')
+  await page.getByLabel('Periodo del presupuesto').selectOption({ label: 'Hasta mi próximo ingreso' })
+  await page.getByRole('button', { name: 'Continuar' }).click()
+  await page.getByLabel('Importe esperado').fill('800')
+  await page.getByLabel('Fecha del próximo ingreso').fill('2026-10-08')
+  await page.getByLabel('Frecuencia').selectOption('semimonthly')
+  // Vacío: 15 días después, y la ayuda lo dice antes de seguir.
+  await expect(page.getByText('Se repite el día 8 y el día 23 de cada mes')).toBeVisible()
+  await page.getByLabel('Segundo día del mes').fill('10')
+  await page.getByRole('button', { name: 'Continuar' }).click()
+  await expect(page.getByText('El segundo día debe estar entre 1 y 31 y a 7 días o más del primero.')).toBeVisible()
+  await page.getByLabel('Segundo día del mes').fill('22')
+  await page.getByRole('button', { name: 'Continuar' }).click()
+  await page.getByRole('button', { name: 'Continuar' }).click()
+  await page.getByRole('button', { name: 'Ver resumen' }).click()
+  await page.getByRole('button', { name: 'Empezar a usar Clara' }).click()
+  await expect(page.getByTestId('available')).toBeVisible()
+  const pay = (await stored(page)).schedules.find((s) => s.startDate === '2026-10-08')
+  expect(pay).toMatchObject({ frequency: 'semimonthly', secondDay: 22 })
+})
+
+test('«Repetir» dos veces al mes: el programado guarda el segundo día elegido', async ({ page }) => {
+  await setupFirstUse(page)
+  await go(page, '/movimientos/nuevo')
+  await page.getByLabel('Importe', { exact: true }).fill('5')
+  await openDetails(page)
+  await page.getByLabel('Nota (opcional)').fill('Lavandería')
+  await page.getByRole('switch', { name: 'Repetir' }).click()
+  await page.getByLabel('Frecuencia').selectOption('semimonthly')
+  // Hoy es 28: por defecto, el 13 y el 28.
+  await expect(page.getByText('Se repite el día 13 y el día 28 de cada mes')).toBeVisible()
+  await page.getByLabel('Segundo día del mes').fill('25')
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect(page.getByText('El segundo día debe estar entre 1 y 31 y a 7 días o más del primero.')).toBeVisible()
+  expect((await stored(page)).schedules.some((s) => s.name === 'Lavandería')).toBe(false)
+  await page.getByLabel('Segundo día del mes').fill('14')
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect(page.getByText('Movimiento guardado y programado creado').first()).toBeVisible()
+  expect((await stored(page)).schedules.find((s) => s.name === 'Lavandería')).toMatchObject({ frequency: 'semimonthly', startDate: '2026-09-28', secondDay: 14 })
 })

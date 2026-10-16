@@ -518,6 +518,16 @@ export function validateTransaction(tx: Transaction, ctx: ValidationContext): Is
   return issues
 }
 
+/**
+ * Segundo día de un pago «dos veces al mes»: entero 1–31 y a ≥ 7 días del día de `startDate`, así que
+ * aun pasando al último día de un mes corto nunca coinciden. Lo usan la validación y los formularios.
+ */
+export function isValidSecondDay(startDate: unknown, secondDay: unknown): boolean {
+  if (!Number.isInteger(secondDay) || (secondDay as number) < 1 || (secondDay as number) > 31) return false
+  const first = isValidLocalDate(startDate) ? Number((startDate as string).slice(8, 10)) : null
+  return first === null || Math.abs((secondDay as number) - first) >= 7
+}
+
 export function validateSchedule(s: Schedule, ctx: ValidationContext): Issue[] {
   const p = ctx.prefix ?? ''
   const issues: Issue[] = []
@@ -556,12 +566,7 @@ export function validateSchedule(s: Schedule, ctx: ValidationContext): Issue[] {
   } else if (s.intervalDays !== undefined && (!Number.isInteger(s.intervalDays) || s.intervalDays < 1)) issues.push({ path: `${p}intervalDays`, code: 'invalidValue' })
   for (const k of ['autoConfirm', 'paused'] as const) if (s[k] !== undefined && typeof s[k] !== 'boolean') issues.push({ path: `${p}${k}`, code: 'invalidValue' })
   if (s.frequency === 'semimonthly') {
-    // Dos días del mes a ≥ 7 de distancia: aun pasando al último día de un mes corto, nunca coinciden.
-    const first = isValidLocalDate(s.startDate) ? Number(s.startDate.slice(8, 10)) : null
-    const second = s.secondDay
-    if (!Number.isInteger(second) || (second as number) < 1 || (second as number) > 31 || (first !== null && Math.abs((second as number) - first) < 7)) {
-      issues.push({ path: `${p}secondDay`, code: 'semimonthlyDays' })
-    }
+    if (!isValidSecondDay(s.startDate, s.secondDay)) issues.push({ path: `${p}secondDay`, code: 'semimonthlyDays' })
   } else if (s.secondDay !== undefined) issues.push({ path: `${p}secondDay`, code: 'invalidValue' })
   checkDate(s.startDate, `${p}startDate`, issues)
   if (s.endDate !== undefined) {

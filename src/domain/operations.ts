@@ -1134,11 +1134,11 @@ export interface SetupInput {
   balanceMinor: number
   balanceDate: LocalDate
   income:
-    | { name: string; amountMinor: number; date: LocalDate; frequency: Schedule['frequency']; isEstimate: boolean }
+    | { name: string; amountMinor: number; date: LocalDate; frequency: Schedule['frequency']; isEstimate: boolean; secondDay?: number }
     | null
   /** Si no hay ingreso: horizonte en días. */
   fallbackHorizonDays: number | null
-  bills: { name: string; amountMinor: number; date: LocalDate; frequency: Schedule['frequency'] }[]
+  bills: { name: string; amountMinor: number; date: LocalDate; frequency: Schedule['frequency']; secondDay?: number }[]
   /** `name` llega traducido desde la interfaz (p. ej. «Reserva de emergencia»). */
   reserve: { amountMinor: number; fundedFrom: Goal['fundedFrom']; name: string } | null
   /** Categorías del sistema elegidas en el onboarding (§7.1); si falta, quedan las propuestas por defecto. */
@@ -1220,6 +1220,7 @@ export function createInitialData(input: SetupInput, ctx: OpContext): OpResult<A
         accountId,
         categoryId: 'salary',
         frequency: input.income.frequency,
+        ...(input.income.frequency === 'semimonthly' && input.income.secondDay !== undefined ? { secondDay: input.income.secondDay } : {}),
         startDate: input.income.date,
         reminderDaysBefore: 0,
       },
@@ -1241,6 +1242,7 @@ export function createInitialData(input: SetupInput, ctx: OpContext): OpResult<A
         accountId,
         categoryId: 'other_expense',
         frequency: bill.frequency,
+        ...(bill.frequency === 'semimonthly' && bill.secondDay !== undefined ? { secondDay: bill.secondDay } : {}),
         startDate: bill.date,
         reminderDaysBefore: 2,
       },

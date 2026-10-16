@@ -22,6 +22,8 @@ import { useT, type MessageKey } from '../../i18n'
 import { getStore } from '../../state/store'
 import { Alert, CalcRow, Card } from '../components/common'
 import { MoneyField, Segmented, SelectField, TextField } from '../components/fields'
+import { SecondDayField } from '../components/SecondDayField'
+import { secondDayError, secondDayFrom } from '../secondDay'
 import { moneyErrorMessage } from '../moneyText'
 import { Icon } from '../components/Icon'
 import { WelcomeRestore } from './setup/WelcomeRestore'
@@ -36,6 +38,8 @@ interface BillRow {
   amount: string
   date: string
   frequency: Frequency
+  /** Solo «dos veces al mes»: vacío = 15 días después (o antes) del primero. */
+  secondDay: string
 }
 
 const STEPS = 6
@@ -68,6 +72,7 @@ export function Setup({ language, onLanguageChange }: { language: Language; onLa
   const [incomeAmount, setIncomeAmount] = useState('')
   const [incomeDate, setIncomeDate] = useState('')
   const [incomeFrequency, setIncomeFrequency] = useState<Frequency>('biweekly')
+  const [incomeSecondDay, setIncomeSecondDay] = useState('')
   const [incomeVariable, setIncomeVariable] = useState<'fixed' | 'variable'>('fixed')
   const [horizon, setHorizon] = useState('14')
   const [bills, setBills] = useState<BillRow[]>([])
@@ -109,8 +114,10 @@ export function Setup({ language, onLanguageChange }: { language: Language; onLa
       const amt = money(incomeAmount)
       if (!amt.ok) errs.incomeAmount = moneyErrorMessage(t, amt)!
       if (!incomeDate) errs.incomeDate = t('setup.income.dateRequired')
+      const twice = incomeFrequency === 'semimonthly'
+      if (twice && secondDayError(incomeDate, incomeSecondDay)) errs.incomeSecondDay = t('issue.semimonthlyDays')
       if (amt.ok && incomeDate) {
-        income = { name: incomeName.trim() || t('setup.income.defaultName'), amountMinor: amt.minor, date: incomeDate, frequency: incomeFrequency, isEstimate: incomeVariable === 'variable' }
+        income = { name: incomeName.trim() || t('setup.income.defaultName'), amountMinor: amt.minor, date: incomeDate, frequency: incomeFrequency, isEstimate: incomeVariable === 'variable', ...(twice ? { secondDay: secondDayFrom(incomeDate, incomeSecondDay) } : {}) }
       }
     }
     const billInputs: SetupInput['bills'] = []
@@ -120,7 +127,9 @@ export function Setup({ language, onLanguageChange }: { language: Language; onLa
         if (!b.name.trim()) errs[`bill-${b.key}-name`] = t('issue.required')
         if (!amt.ok) errs[`bill-${b.key}-amount`] = moneyErrorMessage(t, amt)!
         if (!b.date) errs[`bill-${b.key}-date`] = t('issue.invalidDate')
-        if (b.name.trim() && amt.ok && b.date) billInputs.push({ name: b.name.trim(), amountMinor: amt.minor, date: b.date, frequency: b.frequency })
+        const twice = b.frequency === 'semimonthly'
+        if (twice && secondDayError(b.date, b.secondDay)) errs[`bill-${b.key}-secondDay`] = t('issue.semimonthlyDays')
+        if (b.name.trim() && amt.ok && b.date) billInputs.push({ name: b.name.trim(), amountMinor: amt.minor, date: b.date, frequency: b.frequency, ...(twice ? { secondDay: secondDayFrom(b.date, b.secondDay) } : {}) })
       })
     }
     let reserveInput: SetupInput['reserve'] = null
@@ -399,7 +408,8 @@ export function Setup({ language, onLanguageChange }: { language: Language; onLa
                       hint={t('setup.income.variableHint')}
                     />
                     <TextField label={t('setup.income.date')} type="date" value={incomeDate} min={today} onChange={(e) => setIncomeDate(e.target.value)} error={errors.incomeDate} hint={incomeDate && incomeDate <= today ? t('setup.income.dateToday') : t('setup.income.dateHint')} />
-                    <SelectField label={t('fields.frequency')} value={incomeFrequency} onChange={(e) => setIncomeFrequency(e.target.value as Frequency)} options={FREQUENCIES.filter((f) => f !== 'semimonthly').map((f) => ({ value: f, label: frequencyLabel(t, f) }))} />
+                    <SelectField label={t('fields.frequency')} value={incomeFrequency} onChange={(e) => setIncomeFrequency(e.target.value as Frequency)} options={FREQUENCIES.map((f) => ({ value: f, label: frequencyLabel(t, f) }))} />
+                    {incomeFrequency === 'semimonthly' && <SecondDayField startDate={incomeDate} value={incomeSecondDay} onChange={setIncomeSecondDay} error={errors.incomeSecondDay} name="income-second-day" />}
                   </>
                 ) : periodType === 'untilIncome' ? (
                   <SelectField
@@ -431,14 +441,17 @@ export function Setup({ language, onLanguageChange }: { language: Language; onLa
                     <TextField label={t('fields.name')} value={b.name} maxLength={60} onChange={(e) => setBills((list) => list.map((x) => (x.key === b.key ? { ...x, name: e.target.value } : x)))} error={errors[`bill-${b.key}-name`]} placeholder={t('setup.bills.namePlaceholder')} />
                     <MoneyField label={t('fields.amount')} value={b.amount} onChange={(v) => setBills((list) => list.map((x) => (x.key === b.key ? { ...x, amount: v } : x)))} error={errors[`bill-${b.key}-amount`]} fmt={fmt} />
                     <TextField label={t('setup.bills.date')} type="date" value={b.date} onChange={(e) => setBills((list) => list.map((x) => (x.key === b.key ? { ...x, date: e.target.value } : x)))} error={errors[`bill-${b.key}-date`]} />
-                    <SelectField label={t('fields.frequency')} value={b.frequency} onChange={(e) => setBills((list) => list.map((x) => (x.key === b.key ? { ...x, frequency: e.target.value as Frequency } : x)))} options={FREQUENCIES.filter((f) => f !== 'semimonthly').map((f) => ({ value: f, label: frequencyLabel(t, f) }))} />
+                    <SelectField label={t('fields.frequency')} value={b.frequency} onChange={(e) => setBills((list) => list.map((x) => (x.key === b.key ? { ...x, frequency: e.target.value as Frequency } : x)))} options={FREQUENCIES.map((f) => ({ value: f, label: frequencyLabel(t, f) }))} />
+                    {b.frequency === 'semimonthly' && (
+                      <SecondDayField startDate={b.date} value={b.secondDay} onChange={(v) => setBills((list) => list.map((x) => (x.key === b.key ? { ...x, secondDay: v } : x)))} error={errors[`bill-${b.key}-secondDay`]} name={`bill-${b.key}-second-day`} />
+                    )}
                     <button type="button" className="btn btn--danger-ghost btn--small" onClick={() => setBills((list) => list.filter((x) => x.key !== b.key))}>
                       <Icon name="trash" size={16} />
                       {t('setup.bills.remove')}
                     </button>
                   </fieldset>
                 ))}
-                <button type="button" className="btn btn--secondary" onClick={() => setBills((list) => [...list, { key: ++billKey.current, name: '', amount: '', date: '', frequency: 'monthly' }])}>
+                <button type="button" className="btn btn--secondary" onClick={() => setBills((list) => [...list, { key: ++billKey.current, name: '', amount: '', date: '', frequency: 'monthly', secondDay: '' }])}>
                   <Icon name="plus" />
                   {t('setup.bills.add')}
                 </button>

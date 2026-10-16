@@ -9,6 +9,8 @@ import { computeBudget } from '../../domain/budget'
 import { implausibilityRatio, isImplausibleAmount } from '../../domain/plausibility'
 import { ConfirmDialog } from '../components/Dialog'
 import { CategoryPicker } from '../components/CategoryPicker'
+import { SecondDayField } from '../components/SecondDayField'
+import { secondDayError, secondDayFrom } from '../secondDay'
 import { saveTransactionWithSchedule } from '../../domain/repeat'
 import { FREQUENCIES } from '../../domain/validation'
 import { Toggle } from '../components/base'
@@ -218,6 +220,8 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
   const [repeat, setRepeat] = useState(false)
   const [repeatFrequency, setRepeatFrequency] = useState<Frequency>('monthly')
   const [repeatEnd, setRepeatEnd] = useState('')
+  const [repeatSecondDay, setRepeatSecondDay] = useState('')
+  const [repeatSecondDayError, setRepeatSecondDayError] = useState<string | null>(null)
   const [scheduleId] = useState(() => `s_${newId()}`)
   // G5: un gasto desproporcionado pide confirmación una vez por movimiento.
   const [implausible, setImplausible] = useState<number | null | false>(false)
@@ -380,6 +384,10 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
     setAmountError(moneyErrorMessage(t, parsed))
     // Evita un segundo envío por doble clic antes de que React vuelva a pintar.
     if (!parsed.ok || submitting.current) return
+    // «Repetir» dos veces al mes: el segundo día se valida antes de guardar (misma regla que el dominio).
+    const badSecondDay = repeat && canRepeat && repeatFrequency === 'semimonthly' && secondDayError(date, repeatSecondDay)
+    setRepeatSecondDayError(badSecondDay ? t('issue.semimonthlyDays') : null)
+    if (badSecondDay) return
     if (kind === 'expense' && !implausibleOk.current && isImplausibleAmount(parsed.minor, availableMinor, data.settings.currency)) {
       pendingAnother.current = another
       setImplausible(implausibilityRatio(parsed.minor, availableMinor))
@@ -511,7 +519,7 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
     }
     if (repeat && canRepeat && (kind === 'expense' || kind === 'income')) {
       const name = (note.trim() || merchant.trim() || categoryLabel(t, categoryId)).slice(0, 60)
-      return saveTransactionWithSchedule(d, draft, { id: scheduleId, name, kind, amountMinor, amountIsEstimate: false, accountId, categoryId, frequency: repeatFrequency, startDate: date, ...(repeatEnd ? { endDate: repeatEnd } : {}), reminderDaysBefore: 1 }, c)
+      return saveTransactionWithSchedule(d, draft, { id: scheduleId, name, kind, amountMinor, amountIsEstimate: false, accountId, categoryId, frequency: repeatFrequency, ...(repeatFrequency === 'semimonthly' ? { secondDay: secondDayFrom(date, repeatSecondDay) } : {}), startDate: date, ...(repeatEnd ? { endDate: repeatEnd } : {}), reminderDaysBefore: 1 }, c)
     }
     return saveTransaction(d, draft, c)
   }
@@ -863,9 +871,12 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
             <Toggle checked={repeat} onChange={setRepeat} label={t('movementForm.repeat')} hint={repeat ? t('movementForm.repeatHint') : undefined} />
             {repeat && (
               <div className="form-row">
-                <SelectField label={t('fields.frequency')} value={repeatFrequency} onChange={(e) => setRepeatFrequency(e.target.value as Frequency)} options={FREQUENCIES.filter((f) => f !== 'once' && f !== 'custom' && f !== 'semimonthly').map((f) => ({ value: f, label: frequencyLabel(t, f) }))} />
+                <SelectField label={t('fields.frequency')} value={repeatFrequency} onChange={(e) => setRepeatFrequency(e.target.value as Frequency)} options={FREQUENCIES.filter((f) => f !== 'once' && f !== 'custom').map((f) => ({ value: f, label: frequencyLabel(t, f) }))} />
                 <TextField label={t('scheduleForm.endDate')} type="date" value={repeatEnd} min={date} onChange={(e) => setRepeatEnd(e.target.value)} />
               </div>
+            )}
+            {repeat && repeatFrequency === 'semimonthly' && (
+              <SecondDayField startDate={date} value={repeatSecondDay} onChange={setRepeatSecondDay} error={repeatSecondDayError} name="repeat-second-day" />
             )}
           </div>
         )}

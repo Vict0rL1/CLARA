@@ -3,7 +3,6 @@ import { activeAccounts, isBudgetAccount } from '../../domain/balances'
 import { categoriesForKind } from '../../domain/categories'
 import { parseLocalDate } from '../../domain/dates'
 import { newId } from '../../domain/ids'
-import { defaultSecondDay } from '../../domain/recurrence'
 import { deleteSchedule, restoreSchedule, saveSchedule } from '../../domain/operations'
 import type { Frequency, ScheduleKind } from '../../domain/types'
 import { FREQUENCIES, LIMITS, type Issue } from '../../domain/validation'
@@ -13,6 +12,8 @@ import { useData } from '../../state/store'
 import { Alert, EmptyState, PageHeader } from '../components/common'
 import { CheckboxField, MoneyField, Segmented, SelectField, TextField } from '../components/fields'
 import { CategoryPicker } from '../components/CategoryPicker'
+import { SecondDayField } from '../components/SecondDayField'
+import { secondDayFrom } from '../secondDay'
 import { parseMoneyText, moneyErrorMessage } from '../moneyText'
 import { Icon } from '../components/Icon'
 import { useToast } from '../components/toastContext'
@@ -135,7 +136,7 @@ export function ScheduleForm({ route }: { route: Route }) {
   }
 
   const day = startDate ? parseLocalDate(startDate).day : 0
-  const secondDay = secondDayText.trim() === '' ? (startDate ? defaultSecondDay(startDate) : 0) : Number(secondDayText)
+  const secondDay = secondDayFrom(startDate, secondDayText)
   const unknown = otherIssues(issues, ['name', 'amountMinor', 'startDate', 'endDate', 'accountId', 'categoryId', 'range.minMinor', 'range.extraMinor', 'secondDay'])
 
   return (
@@ -192,19 +193,7 @@ export function ScheduleForm({ route }: { route: Route }) {
           required
         />
         {frequency === 'semimonthly' && (
-          <TextField
-            label={t('scheduleForm.secondDay')}
-            name="second-day"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={31}
-            value={secondDayText}
-            placeholder={startDate ? String(defaultSecondDay(startDate)) : undefined}
-            onChange={(e) => setSecondDayText(e.target.value)}
-            hint={day > 0 && Number.isInteger(secondDay) && secondDay >= 1 && secondDay <= 31 ? t('scheduleForm.secondDayHint', { first: Math.min(day, secondDay), second: Math.max(day, secondDay) }) : undefined}
-            error={fieldError(t, fmt, issues, 'secondDay')}
-          />
+          <SecondDayField startDate={startDate} value={secondDayText} onChange={setSecondDayText} error={fieldError(t, fmt, issues, 'secondDay')} />
         )}
         {frequency !== 'once' && (
           <TextField label={t('scheduleForm.endDate')} type="date" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} hint={t('scheduleForm.endDateHint')} error={fieldError(t, fmt, issues, 'endDate')} />

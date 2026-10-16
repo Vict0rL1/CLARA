@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { simulatePurchase } from './affordability'
 import { computeBudget } from './budget'
 import { committedFor, safeToSpend } from './periods'
-import { saveAccount, saveCategoryRule, saveSchedule, saveTransaction, updateSettings } from './operations'
+import { createInitialData, saveAccount, saveCategoryRule, saveSchedule, saveTransaction, updateSettings } from './operations'
 import { allAccountBalances } from './balances'
 import { DEFAULT_NOTIFICATIONS } from './defaults'
 import { dueNotices } from './notifications'
@@ -16,7 +16,7 @@ import { canRevert, recordHistory, revertEntry } from './history'
 import { whatChanged } from './whatChanged'
 import { defaultSecondDay, nthOccurrence, occurrencesBetween, scanOccurrences } from './recurrence'
 import type { AppData, Schedule } from './types'
-import { validateSchedule } from './validation'
+import { isValidSecondDay, validateSchedule } from './validation'
 import { SCHEMA_VERSION } from './types'
 import { createBackup, parseBackup, validateAppData } from '../storage/backup'
 import { MIGRATIONS, migrate } from '../storage/migrations'
@@ -245,6 +245,38 @@ describe('Clara 2.0 §12 · dos veces al mes', () => {
     expect(b.availableMinor).toBe(90000)
     const parsed = parseBackup(JSON.stringify(createBackup(d, new Date(ctx.now), '1.0.0')))
     expect(parsed.ok && parsed.data.schedules[0]!.secondDay).toBe(15)
+  })
+
+  it('la configuración inicial acepta ingreso y pagos dos veces al mes con su segundo día', () => {
+    const base = { currency: 'CAD', timeZone: 'America/Toronto', numberLocale: 'es-MX' as const, language: 'es' as const, accountName: 'Banco', balanceMinor: 100000, balanceDate: ctx.today, fallbackHorizonDays: null, reserve: null }
+    const r = createInitialData({
+      ...base,
+      income: { name: 'Sueldo', amountMinor: 150000, date: '2026-10-01', frequency: 'semimonthly', isEstimate: false, secondDay: 15 },
+      bills: [{ name: 'Seguro', amountMinor: 2000, date: '2026-10-15', frequency: 'semimonthly', secondDay: 31 }],
+      periodType: 'untilIncome',
+    }, ctx)
+    if (!r.ok) throw new Error(JSON.stringify(r.issues))
+    const pay = r.data.schedules.find((x) => x.kind === 'income')!
+    expect(pay).toMatchObject({ frequency: 'semimonthly', secondDay: 15 })
+    expect(r.data.schedules.find((x) => x.kind === 'expense')).toMatchObject({ frequency: 'semimonthly', secondDay: 31 })
+    expect(computeBudget(r.data, ctx.today).horizon?.endDate).toBe('2026-10-01')
+    // Un segundo día que choca con el primero se rechaza con su ruta, sin crear nada a medias.
+    const bad = createInitialData({ ...base, income: { name: 'Sueldo', amountMinor: 150000, date: '2026-10-01', frequency: 'semimonthly', isEstimate: false, secondDay: 4 }, bills: [] }, ctx)
+    expect(bad.ok).toBe(false)
+    expect(!bad.ok && bad.issues.map((i) => i.path)).toContain('income.secondDay')
+    // Otra frecuencia ignora un segundo día que se hubiera quedado escrito.
+    const monthly = createInitialData({ ...base, income: { name: 'Sueldo', amountMinor: 150000, date: '2026-10-01', frequency: 'monthly', isEstimate: false, secondDay: 4 }, bills: [] }, ctx)
+    expect(monthly.ok && monthly.data.schedules[0]!.secondDay).toBeUndefined()
+  })
+
+  it('isValidSecondDay: la misma regla que usan los formularios', () => {
+    expect(isValidSecondDay('2026-10-01', 8)).toBe(true)
+    expect(isValidSecondDay('2026-10-01', 7)).toBe(false)
+    expect(isValidSecondDay('2026-10-31', 24)).toBe(true)
+    expect(isValidSecondDay('2026-10-31', 25)).toBe(false)
+    for (const bad of [0, 32, 1.5, Number.NaN, '15', undefined]) expect(isValidSecondDay('2026-10-01', bad), String(bad)).toBe(false)
+    // Sin fecha válida solo se comprueba el rango (la fecha tiene su propio error).
+    expect(isValidSecondDay('', 3)).toBe(true)
   })
 
   it('una programación v12 (sin `secondDay`) sigue siendo válida tras migrar', () => {
