@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { recurringCosts } from '../../src/domain/recurringCosts'
-import { expectNoHorizontalScroll, go, openApp, openDetails, openExplain, pickCategory, setupFirstUse, startDemo, storedData } from './helpers'
+import { baseData, tx } from '../../src/test/fixtures'
+import { expectNoHorizontalScroll, go, openApp, openDetails, openExplain, pickCategory, seedStoredData, setupFirstUse, startDemo, storedData } from './helpers'
 
 /**
  * Clara 2.0 · fase 1 (cimientos), de punta a punta: colchón de seguridad en «Puedes gastar»,
@@ -9,7 +10,7 @@ import { expectNoHorizontalScroll, go, openApp, openDetails, openExplain, pickCa
  */
 type Stored = {
   settings: { safeToSpend: { bufferMinor: number } }
-  schedules: { name: string; frequency: string; startDate: string; secondDay?: number }[]
+  schedules: { name: string; frequency: string; startDate: string; secondDay?: number; amountMinor: number; categoryId?: string; accountId: string }[]
   accounts: { name: string; kind: string; institution?: string; includeInBudget: boolean }[]
 }
 const stored = async (page: Page) => JSON.parse((await storedData(page)) ?? '{}') as Stored
@@ -290,4 +291,36 @@ test('pagos recurrentes: el calendario dice cuánto cuestan en 12 meses y al mes
   expect(cents(await rows.nth(expected.items.length).locator('.calc-row__value').textContent())).toBe(expected.totalMinor)
   expect(cents(await rows.nth(expected.items.length + 1).locator('.calc-row__value').textContent())).toBe(expected.monthlyMinor)
   await expectNoHorizontalScroll(page, 'calendario con resumen de pagos recurrentes')
+})
+
+test('pagos que parecen fijos: la bandeja lo sugiere, «Programar» abre el formulario relleno y, al guardarlo, la sugerencia desaparece', async ({ page }) => {
+  // El mismo comercio escrito de tres formas, 15,99 cada día 15: parece una suscripción no programada.
+  const notes = ['PAYPAL *NETFLIX.COM 4029', 'NETFLIX.COM 8812', 'Netflix.com', 'PAYPAL *NETFLIX.COM 7731']
+  const dates = ['2026-06-15', '2026-07-15', '2026-08-15', '2026-09-15']
+  const data = baseData({ transactions: dates.map((date, i) => tx({ id: `n${i}`, date, note: notes[i], amountMinor: 1599, categoryId: 'subscriptions' })) })
+  await seedStoredData(page, data)
+  // Una sugerencia no es un pendiente: Inicio solo cuenta la cuenta sin verificar.
+  await expect(page.getByTestId('inbox-link').first()).toContainText('1 pendiente por revisar')
+
+  await go(page, '/pendientes')
+  const card = page.locator('article', { hasText: '¿«NETFLIX COM» es un pago fijo?' })
+  await expect(card).toBeVisible()
+  await expect(card).toContainText('Lo registraste 4 veces por $15.99')
+  await expectNoHorizontalScroll(page, 'bandeja con una sugerencia de pago fijo')
+  await card.getByRole('link', { name: 'Programar' }).click()
+
+  // Nada se programó todavía: solo el formulario relleno.
+  expect((await stored(page)).schedules).toEqual([])
+  await expect(page.getByLabel('Nombre')).toHaveValue('NETFLIX COM')
+  await expect(page.getByLabel('Importe', { exact: true })).toHaveValue('15.99')
+  await expect(page.getByLabel('Frecuencia')).toHaveValue('monthly')
+  await expect(page.getByLabel('Próxima fecha')).toHaveValue('2026-10-15')
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect(page.getByText('Programación guardada').first()).toBeVisible()
+  expect((await stored(page)).schedules).toEqual([
+    expect.objectContaining({ name: 'NETFLIX COM', amountMinor: 1599, frequency: 'monthly', startDate: '2026-10-15', categoryId: 'subscriptions', accountId: 'main' }),
+  ])
+
+  await go(page, '/pendientes')
+  await expect(page.getByText('¿«NETFLIX COM» es un pago fijo?')).toHaveCount(0)
 })

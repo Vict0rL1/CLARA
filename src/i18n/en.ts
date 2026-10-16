@@ -3281,4 +3281,11 @@ export const en: Record<keyof typeof es, string> = {
   'recurring.explain': 'Each payment\'s actual dates between {from} and {to} are counted (skipped dates and paused schedules excluded) and multiplied by its amount. The monthly average is that total divided by 12. It\'s information only: nothing is reserved or recorded.',
   'recurring.row': '{name} · {count} × {amount}',
   'recurring.perMonth': '÷ 12 = per month',
+  'inbox.kind.suggestion': 'Suggestions',
+  'inbox.title.recurringCandidate': 'Is "{name}" a regular payment?',
+  'inbox.why.recurringCandidate': 'You recorded it {count} times for {amount}, on the same schedule ({frequency}), and it isn\'t scheduled. Scheduling it sets the money aside before it\'s due. Nothing is scheduled automatically.',
+  'inbox.action.schedule': 'Schedule',
+  'inbox.action.notRecurring': 'Not regular',
+  'inbox.homeSuggestions_one': 'Nothing to review · {count} suggestion',
+  'inbox.homeSuggestions_other': 'Nothing to review · {count} suggestions',
 }

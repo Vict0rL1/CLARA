@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { activeAccounts, isBudgetAccount } from '../../domain/balances'
 import { categoriesForKind } from '../../domain/categories'
-import { parseLocalDate } from '../../domain/dates'
+import { isValidLocalDate, parseLocalDate } from '../../domain/dates'
 import { newId } from '../../domain/ids'
 import { deleteSchedule, restoreSchedule, saveSchedule } from '../../domain/operations'
 import type { Frequency, ScheduleKind } from '../../domain/types'
@@ -34,27 +34,41 @@ export function ScheduleForm({ route }: { route: Route }) {
   const editId = route.segments[2] === 'editar' ? route.segments[3] : undefined
   const existing = editId ? data.schedules.find((s) => s.id === editId) : undefined
   const queryKind = route.query.get('kind') === 'income' ? 'income' : 'expense'
+  // Clara 2.0 fase 3: «Programar» desde una sugerencia de la bandeja abre el formulario relleno (solo uno
+  // nuevo; cada valor se valida y uno que no sirve se ignora). Guardar sigue siendo decisión de la persona.
+  const q = editId ? null : route.query
+  const qAmount = Number(q?.get('amount'))
+  const prefill = {
+    name: q?.get('name')?.slice(0, LIMITS.nameMax) ?? '',
+    amountMinor: Number.isSafeInteger(qAmount) && qAmount > 0 ? qAmount : undefined,
+    frequency: (FREQUENCIES as readonly string[]).includes(q?.get('frequency') ?? '') ? (q!.get('frequency') as Frequency) : undefined,
+    start: isValidLocalDate(q?.get('start')) ? q!.get('start')! : undefined,
+    category: q?.get('category') ?? undefined,
+    account: q?.get('account') && data.accounts.some((a) => a.id === q.get('account') && !a.archived) ? q.get('account')! : undefined,
+  }
 
   const [id] = useState(() => existing?.id ?? newId())
   const [kind, setKind] = useState<ScheduleKind>(existing?.kind ?? queryKind)
-  const [name, setName] = useState(existing?.name ?? '')
-  const [amountText, setAmountText] = useState(existing ? fmt.moneyInput(existing.amountMinor) : '')
+  const [name, setName] = useState(existing?.name ?? prefill.name)
+  const [amountText, setAmountText] = useState(existing ? fmt.moneyInput(existing.amountMinor) : prefill.amountMinor ? fmt.moneyInput(prefill.amountMinor) : '')
   const [isEstimate, setIsEstimate] = useState(existing?.amountIsEstimate ?? false)
   // Ingreso variable: mínimo y extra (el importe principal es el esperado).
   const [variable, setVariable] = useState(!!existing?.range)
   const [minText, setMinText] = useState(existing?.range ? fmt.moneyInput(existing.range.minMinor) : '')
   const [extraText, setExtraText] = useState(existing?.range ? fmt.moneyInput(existing.range.extraMinor) : '')
   const [rangeErrors, setRangeErrors] = useState<{ min: string | null; extra: string | null }>({ min: null, extra: null })
-  const [frequency, setFrequency] = useState<Frequency>(existing?.frequency ?? 'monthly')
+  const [frequency, setFrequency] = useState<Frequency>(existing?.frequency ?? prefill.frequency ?? 'monthly')
   const [intervalDays, setIntervalDays] = useState(String(existing?.intervalDays ?? 30))
   // Dos veces al mes: vacío = 15 días después (o antes) del primer día; se dice en la ayuda.
   const [secondDayText, setSecondDayText] = useState(existing?.secondDay ? String(existing.secondDay) : '')
   const [autoConfirm, setAutoConfirm] = useState(!!existing?.autoConfirm)
   const [paused, setPaused] = useState(!!existing?.paused)
-  const [startDate, setStartDate] = useState(existing?.startDate ?? today)
+  const [startDate, setStartDate] = useState(existing?.startDate ?? prefill.start ?? today)
   const [endDate, setEndDate] = useState(existing?.endDate ?? '')
-  const [accountId, setAccountId] = useState(existing?.accountId ?? (activeAccounts(data.accounts).find(isBudgetAccount) ?? activeAccounts(data.accounts)[0] ?? data.accounts[0]!).id)
-  const [categoryId, setCategoryId] = useState(existing?.categoryId ?? (queryKind === 'income' ? 'salary' : 'other_expense'))
+  const [accountId, setAccountId] = useState(existing?.accountId ?? prefill.account ?? (activeAccounts(data.accounts).find(isBudgetAccount) ?? activeAccounts(data.accounts)[0] ?? data.accounts[0]!).id)
+  const [categoryId, setCategoryId] = useState(
+    existing?.categoryId ?? (prefill.category && categoriesForKind(queryKind, data.categories, { prefs: data.categoryPrefs }).includes(prefill.category) ? prefill.category : queryKind === 'income' ? 'salary' : 'other_expense'),
+  )
   const [reminder, setReminder] = useState(existing?.reminderDaysBefore ?? (queryKind === 'income' ? 0 : 2))
   const [note, setNote] = useState(existing?.note ?? '')
   const [issues, setIssues] = useState<Issue[]>([])

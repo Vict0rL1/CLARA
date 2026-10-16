@@ -156,7 +156,14 @@ export function Home() {
     })
   }
   const otherReminders = reminderItems.filter((i) => i.state !== 'overdue')
-  const pendingCount = useMemo(() => inboxView(data, today).active.length, [data, today])
+  // Las sugerencias (Clara 2.0 fase 3) no son pendientes: no cuentan en el aviso de Inicio, solo en la bandeja.
+  // Las sugerencias (Clara 2.0 fase 3) no son pendientes: no ponen el aviso, solo se dicen si no hay nada más.
+  const { pendingCount, suggestionCount } = useMemo(() => {
+    const active = inboxView(data, today).active
+    const suggestionCount = active.filter((i) => i.kind === 'suggestion').length
+    return { pendingCount: active.length - suggestionCount, suggestionCount }
+  }, [data, today])
+  const inboxText = pendingCount > 0 ? tn('inbox.homeCount', pendingCount) : suggestionCount > 0 ? tn('inbox.homeSuggestions', suggestionCount) : t('inbox.homeNone')
 
   // Avisos que no cambian la cifra principal: se agrupan debajo de ella para no saturar
   // la pantalla (el primero visible; el resto, plegado). Orden: pagos vencidos, copia de
@@ -308,7 +315,7 @@ export function Home() {
       <ul className="tool-links">
         <li>
           <a href={href('/pendientes')} data-testid="inbox-link">
-            {pendingCount > 0 ? tn('inbox.homeCount', pendingCount) : t('inbox.homeNone')}
+            {inboxText}
           </a>
         </li>
         <li>
@@ -341,7 +348,7 @@ export function Home() {
       {/* Acceso compacto a la bandeja de pendientes (sin llenar la pantalla de avisos) */}
       <a className="inbox-link" href={href('/pendientes')} data-testid="inbox-link">
         <Icon name={pendingCount > 0 ? 'alert' : 'checkCircle'} size={18} />
-        <span>{pendingCount > 0 ? tn('inbox.homeCount', pendingCount) : t('inbox.homeNone')}</span>
+        <span>{inboxText}</span>
         <Icon name="chevronRight" size={16} />
       </a>
     </>

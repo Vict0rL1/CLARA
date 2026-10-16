@@ -40,7 +40,7 @@ cannot provide by itself (a server, credentials, a paid provider, a native app o
 | 10 | Safe-to-Spend: available, daily, weekly, until payday, reserved bills and goals, explanation | ✅ | `budget.ts`, `heroFigures.ts`, "¿Cómo se calculó?" | **Safety buffer** (`settings.safeToSpend.bufferMinor`, v13): done this session — subtracted from available/daily/weekly and calendar-period Safe-to-Spend, explained, shown in the composition bar, «Solo alcanza usando tu colchón» verdict. Credit limits never counted ✅; expected income never counted ✅ |
 | 11 | Budgets weekly…yearly/custom, category & overall, pause, history, projection | ✅ | `plans.ts` (`BudgetPeriodType`), `periodBudgets.ts`, `Plans.tsx` | **Alerts at 50/75/90/100 %** (`plans[].alertLevels`, v13): done this session — early levels off by default, one notice per level and cycle, only the highest reached level is sent |
 | 11 | Budget recommendations from history | ❌ | — | Phase 3 (deterministic suggestion; AI only for wording) |
-| 12 | Recurring rules separate from occurrences; reconcile; never double count; pause; skip; month-end clamping | ✅ | `recurrence.ts`, `planItems.ts`, `reconcileSchedules.ts`, `ScheduleSheet.tsx` | **Twice monthly** (`semimonthly` + `secondDay`, v13): done in the schedule form, the initial setup (income and bills) and «Repetir», with one shared field (`SecondDayField`) and one rule (`isValidSecondDay`). Subscription overview + monthly total, recurring-payment suggestions, future-only edits: Phase 3 |
+| 12 | Recurring rules separate from occurrences; reconcile; never double count; pause; skip; month-end clamping | ✅ | `recurrence.ts`, `planItems.ts`, `reconcileSchedules.ts`, `ScheduleSheet.tsx` | **Twice monthly** (`semimonthly` + `secondDay`, v13): done in the schedule form, the initial setup (income and bills) and «Repetir», with one shared field (`SecondDayField`) and one rule (`isValidSecondDay`). Subscription overview + monthly total (`recurringCosts`) and recurring-payment suggestions (`recurringDetect`, inbox): done. Future-only edits: Phase 3 |
 | 13 | Goals: target, date, contributions, virtual allocations, progress, projections | ✅ | `goals.ts`, `goalChart.ts`, `Goals.tsx` | Milestone notifications: Phase 3 |
 | 14 | Statistics: income/expense/net, categories, merchants, trends, comparisons, daily average | ✅ | `statistics.ts`, `Statistics.tsx`, `insights.ts` | Filters by account/tag/merchant/status on statistics: Phase 4 |
 | 15 | Forecast 7/14/30/90/custom, assumptions, scenarios, "Can I afford it?" | ✅ | `projection.ts` (400-day cap, explicit), `Projection.tsx`, `scenarios.ts`, `affordability.ts`, `shortfall.ts` | — |
@@ -100,7 +100,8 @@ cannot provide by itself (a server, credentials, a paid provider, a native app o
    proposed rule texts drop the codes). Still open: user-defined aliases (a stored table → schema 14), rule
    priorities, preferred account per merchant.
 3. Planning: subscriptions overview and monthly total (**done**: `recurringCosts`, exact occurrences in the next
-   12 months, in the calendar), recurring-payment suggestions from history,
+   12 months, in the calendar), recurring-payment suggestions from history (**done**: `recurringDetect`, same
+   merchant key + exact amount + regular active cadence → an inbox suggestion that only prefills the schedule form),
    future-only schedule edits, budget recommendations, goal milestones, explicit user-rate multi-currency.
 4. Analytics filters (account/tag/merchant/status), export filters, itemized receipts stored apart from
    the transaction (never one expense per item).

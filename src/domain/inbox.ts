@@ -20,12 +20,14 @@ import { normalizeText, RULE_PATTERN_MIN, ruleMatchesText } from './rules'
 import { cardSummary } from './cards'
 import { overstatedAutoConfirms } from './scheduledJobs'
 import { goalProgress, goalSavedMinor } from './goals'
+import { detectRecurring, type DetectedFrequency } from './recurringDetect'
 import type { OpContext, OpResult } from './operations'
 import type { AppData, InboxState, LocalDate, Transaction } from './types'
 
-export type InboxKind = 'uncategorized' | 'overdue' | 'duplicate' | 'balance' | 'attention' | 'integrity'
+/** `suggestion` (Clara 2.0 fase 3): no es un problema; solo una propuesta que la persona acepta o descarta. */
+export type InboxKind = 'uncategorized' | 'overdue' | 'duplicate' | 'balance' | 'attention' | 'integrity' | 'suggestion'
 
-export const INBOX_KINDS: readonly InboxKind[] = ['overdue', 'balance', 'attention', 'duplicate', 'uncategorized', 'integrity']
+export const INBOX_KINDS: readonly InboxKind[] = ['overdue', 'balance', 'attention', 'duplicate', 'uncategorized', 'integrity', 'suggestion']
 
 export type InboxReason =
   | 'otherCategory'
@@ -45,6 +47,7 @@ export type InboxReason =
   | 'ruleCategoryUnavailable'
   | 'ruleUnused'
   | 'autoConfirmOverstated'
+  | 'recurringCandidate'
 
 export interface InboxItem {
   /** Estable: el mismo problema siempre tiene el mismo id. */
@@ -66,6 +69,10 @@ export interface InboxItem {
   /** Fechas para explicar el porqué (p. ej. último movimiento vs. última verificación). */
   lastMovementDate?: LocalDate | null
   verifiedDate?: LocalDate | null
+  /** Sugerencias: nombre propuesto, cadencia y cuántas veces se vio. */
+  label?: string
+  frequency?: DetectedFrequency
+  count?: number
   canDismiss: boolean
 }
 
@@ -335,9 +342,31 @@ function integrity(data: AppData): InboxItem[] {
   return items
 }
 
+/**
+ * Pagos que parecen fijos y no están programados (`recurringDetect.ts`). La huella es el propio
+ * comercio, importe y cadencia: descartarla la oculta aunque lleguen más pagos iguales.
+ */
+function suggestions(data: AppData, today: LocalDate): InboxItem[] {
+  return detectRecurring(data, today).map((c) => ({
+    id: `sug:recurring:${c.key}:${c.amountMinor}:${c.frequency}`,
+    kind: 'suggestion',
+    reason: 'recurringCandidate',
+    fingerprint: `${c.key}|${c.amountMinor}|${c.frequency}`,
+    date: c.nextDate,
+    amountMinor: c.amountMinor,
+    txIds: c.txIds,
+    accountId: c.accountId,
+    categoryId: c.categoryId,
+    label: c.label,
+    frequency: c.frequency,
+    count: c.dates.length,
+    canDismiss: true,
+  }))
+}
+
 /** Todos los pendientes calculados (sin aplicar posponer/descartar). */
 export function computeInbox(data: AppData, today: LocalDate): InboxItem[] {
-  return [...overdue(data, today), ...balances(data, today), ...attention(data, today), ...duplicates(data), ...uncategorized(data), ...integrity(data)]
+  return [...overdue(data, today), ...balances(data, today), ...attention(data, today), ...duplicates(data), ...uncategorized(data), ...integrity(data), ...suggestions(data, today)]
 }
 
 export function inboxView(data: AppData, today: LocalDate): InboxView {

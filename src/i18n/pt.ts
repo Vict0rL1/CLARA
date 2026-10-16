@@ -3279,4 +3279,11 @@ export const pt: Record<keyof typeof es, string> = {
   'recurring.explain': 'Contam-se as datas reais de cada pagamento entre {from} e {to} (sem as omitidas nem os pausados) e multiplicam-se pelo seu valor. A média mensal é esse total dividido por 12. Só informa: não reserva nem registra nada.',
   'recurring.row': '{name} · {count} × {amount}',
   'recurring.perMonth': '÷ 12 = por mês',
+  'inbox.kind.suggestion': 'Sugestões',
+  'inbox.title.recurringCandidate': '«{name}» é um pagamento fixo?',
+  'inbox.why.recurringCandidate': 'Você registrou {count} vezes por {amount}, com a mesma frequência ({frequency}), e não está programado. Programá-lo reserva o dinheiro antes do vencimento. Nada é programado sozinho.',
+  'inbox.action.schedule': 'Programar',
+  'inbox.action.notRecurring': 'Não é fixo',
+  'inbox.homeSuggestions_one': 'Nada para revisar · {count} sugestão',
+  'inbox.homeSuggestions_other': 'Nada para revisar · {count} sugestões',
 }

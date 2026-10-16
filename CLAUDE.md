@@ -99,7 +99,9 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   exacto; saldos usan el movimiento, reportes/límites/búsqueda las líneas. Las reglas de
   categoría nunca pisan una división. Devoluciones repartidas sin superar lo pendiente.
 - Bandeja de pendientes (`domain/inbox.ts`): avisos CALCULADOS con ids estables; solo se
-  guarda posponer/descartar (con huella). Nunca elimina ni combina duplicados.
+  guarda posponer/descartar (con huella). Nunca elimina ni combina duplicados. Las sugerencias de pagos
+  fijos (`domain/recurringDetect.ts`: mismo comercio, mismo importe exacto, cadencia regular y activa) solo
+  abren el formulario relleno; nunca se programa nada solo y no cuentan como pendientes.
 - Distribuir un ingreso (`domain/incomeDistribution.ts`): solo ingresos realizados; crea
   apartados virtuales (metas), nunca dinero ni movimientos; pagos ya reservados no se
   restan dos veces; todo o nada; deshacer solo si es coherente.

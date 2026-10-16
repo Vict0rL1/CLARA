@@ -814,6 +814,25 @@ pago>`, `dup:<a>:<b>`, `bal:<cuenta>:<motivo>`, `int:…`), así nunca aparecen 
   problema sigue. **Descartar** («Está bien así», «Son distintos», «Ya lo revisé») guarda
   `{id, huella}`; si cambian los datos relevantes (importe, fecha, cuenta, nota…), el aviso
   vuelve. Los pagos vencidos y los saldos no se pueden descartar, solo posponer.
+- **Sugerencias · pagos que parecen fijos** (Clara 2.0, fase 3; `domain/recurringDetect.ts`): gastos
+  realizados de los últimos 400 días, sin vínculo con un programado, agrupados por **clave de comercio**
+  (§ comercios: sin prefijo «SQ *»/«PAYPAL *», signos ni códigos) y **exactamente el mismo importe**,
+  con todas las separaciones dentro de una cadencia:
+
+  | cadencia        | separación | mínimo |
+  |-----------------|------------|--------|
+  | cada mes        | 27–34 días | 3      |
+  | cada 2 semanas  | 13–15 días | 3      |
+  | cada semana     | 6–8 días   | 4      |
+
+  Además el último pago no puede estar más lejos que la separación máxima + 7 días (si no, ya no parece
+  activo), dos pagos el mismo día no son cadencia y una clave sin letras o de menos de 3 caracteres no
+  se propone. No se sugiere si ya existe un programado de gasto recurrente del mismo importe cuyo nombre
+  comparte la clave, o con la misma categoría y cadencia. Id `sug:recurring:<clave>:<importe>:<cadencia>`
+  (descartar con «No es fijo» se recuerda aunque llegue otro pago igual). **Programar** abre el
+  formulario relleno (nombre, importe, cadencia, próxima fecha ≥ hoy, categoría y cuenta, cada valor
+  validado); nada se programa ni se reserva hasta que la persona guarda. Una sugerencia no es un
+  pendiente: no se cuenta en Inicio (que solo la menciona si no hay ningún pendiente).
 - **Resolver** (categorizar, registrar el pago, verificar…) retira el aviso porque deja de
   calcularse. En Inicio solo aparece un acceso compacto con el número de pendientes.
 

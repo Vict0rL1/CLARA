@@ -3280,4 +3280,11 @@ export const es = {
   'recurring.explain': 'Se cuentan las fechas reales de cada pago entre el {from} y el {to} (sin omitidas ni pausados) y se multiplican por su importe. El promedio al mes es ese total entre 12. Solo informa: no reserva ni registra nada.',
   'recurring.row': '{name} · {count} × {amount}',
   'recurring.perMonth': '÷ 12 = al mes',
+  'inbox.kind.suggestion': 'Sugerencias',
+  'inbox.title.recurringCandidate': '¿«{name}» es un pago fijo?',
+  'inbox.why.recurringCandidate': 'Lo registraste {count} veces por {amount}, con la misma cadencia ({frequency}), y no está programado. Programarlo lo reserva antes de que llegue. Nada se programa solo.',
+  'inbox.action.schedule': 'Programar',
+  'inbox.action.notRecurring': 'No es fijo',
+  'inbox.homeSuggestions_one': 'Sin pendientes · {count} sugerencia',
+  'inbox.homeSuggestions_other': 'Sin pendientes · {count} sugerencias',
 } as const
