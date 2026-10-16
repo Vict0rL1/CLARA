@@ -1127,6 +1127,14 @@ Pruebas: `ui/preferences.test.ts` y e2e `personalize.spec.ts`.
   el importe. Determinista, sin IA; nunca se guarda sola.
 - **Metas**: `contribution` (importe + frecuencia) es un recordatorio; «Aportar ahora» solo propone el
   importe. Sugerencia diaria de una meta = ⌈restante / días hasta la fecha⌉.
+- **Hitos de las metas** (Clara 2.0, fase 3; `domain/goalMilestones.ts`): metas de ahorro y fondo de
+  emergencia (no los gastos planificados). Nivel alcanzado = el más alto de 25/50/75/100 con
+  `apartado × 100 ≥ objetivo × nivel` (en enteros). Es una noticia, no un estado: se avisa solo durante 7
+  días desde el apartado que cruzó ese nivel por última vez (recorriendo los apartados por fecha), así una
+  meta que ya estaba al 60 % no anuncia nada y un salto del 10 % al 80 % es un único aviso (75 %). Con
+  «Alertas de planes» activo: aviso local con clave `goal<nivel>:<meta>` (no se repite una clave ya
+  mostrada), dentro de la app en Ajustes › Notificaciones y del sistema solo si hay permiso. No se guarda
+  nada ni cambia ninguna cifra.
 - Un plan nunca mueve dinero ni cambia el disponible; los límites mensuales anteriores
   (`categoryLimits`) se convirtieron en planes mensuales recurrentes en la migración v9 → v10.
 

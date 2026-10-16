@@ -45,8 +45,9 @@ function readShown(): Set<string> {
 function writeShown(keys: Set<string>, today: string) {
   try {
     // Solo se conservan las de hoy (las claves llevan la fecha).
-    // Las alertas de planes llevan el inicio del ciclo: se conservan para no repetirlas cada día.
-    localStorage.setItem(SHOWN_KEY, JSON.stringify([...keys].filter((k) => k.endsWith(today) || k.startsWith('plan')).slice(-200)))
+    // Las alertas de planes llevan el inicio del ciclo y los hitos de metas no llevan fecha: se conservan
+    // para no repetirlos cada día.
+    localStorage.setItem(SHOWN_KEY, JSON.stringify([...keys].filter((k) => k.endsWith(today) || k.startsWith('plan') || k.startsWith('goal')).slice(-200)))
   } catch {
     // Sin almacenamiento: se repetirían al recargar; aceptable.
   }

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { recurringCosts } from '../../src/domain/recurringCosts'
-import { account, baseData, bill, tx } from '../../src/test/fixtures'
+import { account, baseData, bill, goal, tx } from '../../src/test/fixtures'
 import { expectNoHorizontalScroll, go, openApp, openDetails, openExplain, pickCategory, seedStoredData, setupFirstUse, startDemo, storedData } from './helpers'
 
 /**
@@ -402,4 +402,26 @@ test('límite sugerido según lo gastado: mediana de los meses completos, explic
   await expect(page.getByText('Plan guardado')).toBeVisible()
   const plans = JSON.parse((await storedData(page))!).plans as { amountMinor: number; categoryIds: string[] }[]
   expect(plans.map((p) => [p.amountMinor, p.categoryIds])).toEqual([[35100, ['groceries']]])
+})
+
+test('hitos de una meta: con «Alertas de planes», aviso dentro de la app al cruzar el 50 %; una meta que ya estaba ahí no avisa', async ({ page }) => {
+  const at = (id: string, date: string, amountMinor: number) => ({ id, date, amountMinor, createdAt: `${date}T12:00:00.000Z`, reason: 'contribution' as const })
+  const base = baseData()
+  const data = baseData({
+    settings: { ...base.settings, notifications: { ...base.settings.notifications, planAlerts: true } },
+    goals: [
+      // Laptop: del 30 % al 55 % con el aporte de ayer → «llegó al 50 %».
+      goal({ id: 'laptop', name: 'Laptop', targetMinor: 100000, allocations: [at('a', '2026-08-01', 30000), at('b', '2026-09-27', 25000)] }),
+      // Viaje: al 60 % desde agosto → nada nuevo.
+      goal({ id: 'trip', name: 'Viaje', targetMinor: 50000, allocations: [at('c', '2026-08-01', 30000)] }),
+    ],
+  })
+  await seedStoredData(page, data)
+  await go(page, '/ajustes/notificaciones')
+  await expect(page.getByRole('switch', { name: 'Alertas de planes (80 % y 100 %)' })).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByText('También avisa cuando una meta llega al 25, 50, 75 y 100 %')).toBeVisible()
+  const due = page.getByTestId('due-notices')
+  await expect(due).toContainText('«Laptop» llegó al 50 %')
+  await expect(due).toContainText('Llevas $550.00 apartados de $1,000.00.')
+  await expect(due).not.toContainText('Viaje')
 })

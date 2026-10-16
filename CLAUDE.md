@@ -95,6 +95,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   cuentan una vez en el total; la reserva opcional es una meta que lo gastado consume.
 - Límite sugerido (`domain/planSuggestion.ts`): mediana del gasto neto de los últimos 3 ciclos completos con
   datos (≥ 2), redondeada hacia arriba a una unidad; sin IA; «Usar» solo rellena el importe.
+- Hitos de metas (`domain/goalMilestones.ts`): 25/50/75/100 % en enteros, solo el más alto y solo 7 días desde
+  el apartado que lo cruzó; aviso local bajo «Alertas de planes»; no guarda nada.
 - Revisión semanal: lunes–domingo en la zona horaria; comparación equivalente; sin
   porcentaje si la base es 0 o faltan datos; reglas fijas, sin IA ni notificaciones.
 - Escenarios: se simulan sobre una copia; nunca modifican datos reales ni se aplican solos.

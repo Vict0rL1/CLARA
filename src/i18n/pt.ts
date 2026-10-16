@@ -3306,4 +3306,8 @@ export const pt: Record<keyof typeof es, string> = {
   'plans.suggest.row': '{from} – {to}',
   'plans.suggest.median': 'Mediana',
   'plans.suggest.rounded': 'Arredondada para cima',
+  'notify.goalMilestone.title': '«{name}» chegou a {percent} %',
+  'notify.goalDone.title': '«{name}»: meta alcançada',
+  'notify.goalMilestone.body': 'Você já reservou {saved} de {target}.',
+  'settings.notifications.plansHint': 'Também avisa quando uma meta chega a 25, 50, 75 e 100 % (uma vez por nível).',
 }

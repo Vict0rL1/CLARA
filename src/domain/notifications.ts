@@ -4,6 +4,7 @@
  * inventa un envío: si el navegador no lo permite, no hay aviso del sistema.
  */
 import { addDays } from './dates'
+import { goalMilestones } from './goalMilestones'
 import { openItemsUntil, type PlanItem } from './planItems'
 import { planAlerts } from './plans'
 import type { AppData, ClockTime, LocalDate, NotificationSettings, Plan } from './types'
@@ -11,7 +12,7 @@ import type { AppData, ClockTime, LocalDate, NotificationSettings, Plan } from '
 export interface LocalNotice {
   /** Estable por día: sirve para no repetir el mismo aviso. */
   key: string
-  kind: 'scheduledDue' | 'scheduledOverdue' | 'dailyReminder' | 'dailySummary' | 'plan80' | 'plan100' | 'planLevel'
+  kind: 'scheduledDue' | 'scheduledOverdue' | 'dailyReminder' | 'dailySummary' | 'plan80' | 'plan100' | 'planLevel' | 'goalMilestone'
   /** Claves de i18n y parámetros; la UI traduce. */
   titleKey: string
   bodyKey: string
@@ -85,6 +86,18 @@ export function dueNotices(data: AppData, input: NoticeInput, options: { amount:
         bodyKey: a.level === 100 ? 'notify.plan100.body' : 'notify.plan80.body',
         params: { name, percent: String(a.level), spent: options.amount(a.progress.spentMinor), limit: options.amount(a.progress.limitMinor), over: options.amount(Math.max(0, -a.progress.remainingMinor)) },
         href: `/plan/planes/${a.plan.id}`,
+        at: '00:00',
+      })
+    }
+    // Clara 2.0 fase 3: hitos de las metas (25/50/75/100 %), solo durante 7 días desde el aporte que lo cruzó.
+    for (const m of goalMilestones(data, today)) {
+      out.push({
+        key: `goal${m.level}:${m.goal.id}`,
+        kind: 'goalMilestone',
+        titleKey: m.level === 100 ? 'notify.goalDone.title' : 'notify.goalMilestone.title',
+        bodyKey: 'notify.goalMilestone.body',
+        params: { name: m.goal.name, percent: String(m.level), saved: options.amount(m.savedMinor), target: options.amount(m.goal.targetMinor) },
+        href: '/plan/metas',
         at: '00:00',
       })
     }

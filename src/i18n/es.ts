@@ -3307,4 +3307,8 @@ export const es = {
   'plans.suggest.row': '{from} – {to}',
   'plans.suggest.median': 'Mediana',
   'plans.suggest.rounded': 'Redondeada hacia arriba',
+  'notify.goalMilestone.title': '«{name}» llegó al {percent} %',
+  'notify.goalDone.title': '«{name}»: meta alcanzada',
+  'notify.goalMilestone.body': 'Llevas {saved} apartados de {target}.',
+  'settings.notifications.plansHint': 'También avisa cuando una meta llega al 25, 50, 75 y 100 % (una vez por nivel).',
 } as const
