@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useDeferredValue, useMemo, useState } from 'react'
+import type { AppData } from '../../domain/types'
 import { backupStatus, SNOOZE_OPTIONS } from '../../domain/backupReminder'
 import { heroFigures } from '../../domain/heroFigures'
 import { FavoriteChips } from '../favoritesUi'
@@ -156,14 +157,24 @@ export function Home() {
     })
   }
   const otherReminders = reminderItems.filter((i) => i.state !== 'overdue')
-  // Las sugerencias (Clara 2.0 fase 3) no son pendientes: no cuentan en el aviso de Inicio, solo en la bandeja.
+  // La cuenta de la bandeja no es la cifra principal: se calcula después de pintarla (con 10 000 movimientos la
+  // bandeja entera tarda decenas de ms y no debe retrasar «Puedes gastar»). Mientras tanto, solo «Pendientes».
   // Las sugerencias (Clara 2.0 fase 3) no son pendientes: no ponen el aviso, solo se dicen si no hay nada más.
-  const { pendingCount, suggestionCount } = useMemo(() => {
-    const active = inboxView(data, today).active
+  const inboxData = useDeferredValue<AppData | null>(data, null)
+  const inboxCounts = useMemo(() => {
+    if (!inboxData) return null
+    const active = inboxView(inboxData, today).active
     const suggestionCount = active.filter((i) => i.kind === 'suggestion').length
     return { pendingCount: active.length - suggestionCount, suggestionCount }
-  }, [data, today])
-  const inboxText = pendingCount > 0 ? tn('inbox.homeCount', pendingCount) : suggestionCount > 0 ? tn('inbox.homeSuggestions', suggestionCount) : t('inbox.homeNone')
+  }, [inboxData, today])
+  const pendingCount = inboxCounts?.pendingCount ?? 0
+  const inboxText = !inboxCounts
+    ? t('inbox.title')
+    : pendingCount > 0
+      ? tn('inbox.homeCount', pendingCount)
+      : inboxCounts.suggestionCount > 0
+        ? tn('inbox.homeSuggestions', inboxCounts.suggestionCount)
+        : t('inbox.homeNone')
 
   // Avisos que no cambian la cifra principal: se agrupan debajo de ella para no saturar
   // la pantalla (el primero visible; el resto, plegado). Orden: pagos vencidos, copia de
@@ -347,7 +358,7 @@ export function Home() {
     <>
       {/* Acceso compacto a la bandeja de pendientes (sin llenar la pantalla de avisos) */}
       <a className="inbox-link" href={href('/pendientes')} data-testid="inbox-link">
-        <Icon name={pendingCount > 0 ? 'alert' : 'checkCircle'} size={18} />
+        <Icon name={!inboxCounts ? 'list' : pendingCount > 0 ? 'alert' : 'checkCircle'} size={18} />
         <span>{inboxText}</span>
         <Icon name="chevronRight" size={16} />
       </a>

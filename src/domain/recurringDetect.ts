@@ -57,10 +57,15 @@ function nextAfter(last: LocalDate, frequency: DetectedFrequency, today: LocalDa
 export function detectRecurring(data: Pick<AppData, 'transactions' | 'schedules'>, today: LocalDate): RecurringCandidate[] {
   const since = addDays(today, -DETECT_LOOKBACK_DAYS)
   const groups = new Map<string, { key: string; amountMinor: number; txs: AppData['transactions'] }>()
+  const eligible = data.transactions.filter((tx) => tx.status === 'realized' && tx.kind === 'expense' && !tx.scheduleId && tx.date >= since && tx.date <= today)
+  // Ninguna cadencia acepta menos de 3 pagos del MISMO importe: lo demás se descarta antes de mirar el texto.
+  const minCount = Math.min(...CADENCES.map((c) => c.count))
+  const perAmount = new Map<number, number>()
+  for (const tx of eligible) perAmount.set(tx.amountMinor, (perAmount.get(tx.amountMinor) ?? 0) + 1)
   // Los textos se repiten mucho (el mismo comercio cada mes): la clave se calcula una vez por texto.
   const keys = new Map<string, string>()
-  for (const tx of data.transactions) {
-    if (tx.status !== 'realized' || tx.kind !== 'expense' || tx.scheduleId || tx.date < since || tx.date > today) continue
+  for (const tx of eligible) {
+    if ((perAmount.get(tx.amountMinor) ?? 0) < minCount) continue
     const text = (tx.merchant || tx.note || '').trim()
     let key = keys.get(text)
     if (key === undefined) keys.set(text, (key = merchantKey(text)))
