@@ -3266,4 +3266,6 @@ export const pt: Record<keyof typeof es, string> = {
   'rules.learn.failed': 'Não foi possível salvar a regra. Você pode criá-la em Ajustes › Regras de categoria.',
   'home.bufferInUse': 'Você está usando {amount} da sua reserva de segurança de {buffer}',
   'home.bufferInUseText': 'Seus pagamentos e reservas estão cobertos. O que você gastar agora sai do dinheiro que decidiu guardar.',
+  'rules.learn.offerMany': '{saved}. Lembrar suas {count} correções de categoria como regras?',
+  'rules.learn.savedMany': '{count} regras salvas. Você pode mudá-las em Ajustes › Regras de categoria.',
 }

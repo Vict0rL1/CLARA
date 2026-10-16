@@ -923,6 +923,26 @@ export function saveCategoryRule(data: AppData, draft: CategoryRuleDraft, ctx: O
   return { ok: true, data: touch({ ...data, categoryRules: upsert(data.categoryRules, rule) }, ctx.now), value: rule }
 }
 
+/** Varias reglas en una operación (las correcciones aceptadas en la revisión del asistente): todo o nada. */
+export function saveCategoryRules(data: AppData, drafts: readonly CategoryRuleDraft[], ctx: OpContext): OpResult<CategoryRule[]> {
+  let next = data
+  const saved: CategoryRule[] = []
+  for (const [i, draft] of drafts.entries()) {
+    const r = saveCategoryRule(next, draft, ctx)
+    if (!r.ok) return fail(r.issues.map((issue) => ({ ...issue, path: `rules[${i}].${issue.path}` })))
+    next = r.data
+    saved.push(r.value)
+  }
+  return { ok: true, data: next, value: saved }
+}
+
+/** Deshacer varias reglas recién guardadas (por id); las que ya no estén se ignoran. */
+export function deleteCategoryRules(data: AppData, ids: readonly string[], ctx: OpContext): OpResult<CategoryRule[]> {
+  const removed = data.categoryRules.filter((r) => ids.includes(r.id))
+  if (removed.length === 0) return { ok: true, data, value: [], unchanged: true }
+  return { ok: true, data: touch({ ...data, categoryRules: data.categoryRules.filter((r) => !ids.includes(r.id)) }, ctx.now), value: removed }
+}
+
 export function deleteCategoryRule(data: AppData, id: string, ctx: OpContext): OpResult<CategoryRule> {
   const rule = data.categoryRules.find((r) => r.id === id)
   if (!rule) return fail([{ path: 'id', code: 'notFound' }])

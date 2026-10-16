@@ -69,8 +69,9 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   escenario mínimo por defecto. Cobros parciales con `partialSettlement`; como mucho una
   liquidación final por ocurrencia.
 - Favoritos solo rellenan el formulario; nunca registran movimientos.
-- Corregir la categoría que proponía una regla (o la de un movimiento al editarlo) solo OFRECE «Recordar»
-  una regla (`suggestRuleFromCorrection`); nunca se crea sin pulsar y se puede deshacer.
+- Corregir la categoría que proponía una regla (o la de un movimiento al editarlo, o una línea del asistente)
+  solo OFRECE «Recordar» (`suggestRuleFromCorrection` / `suggestRulesFromCorrections`); nunca se crea sin pulsar,
+  varias se guardan todo o nada (`saveCategoryRules`) y se puede deshacer.
 - Parser del asistente (`domain/parser.ts`): las pruebas pasan por `parseText` (lo que usa el
   asistente), no solo por `parseEntry`; una coma entre dígitos es parte del importe. El asistente
   escribe en un `<textarea>` (una línea por movimiento). Moneda escrita (RT-01): un solo lector en

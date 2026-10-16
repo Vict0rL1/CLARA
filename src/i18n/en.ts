@@ -3268,4 +3268,6 @@ export const en: Record<keyof typeof es, string> = {
   'rules.learn.failed': 'The rule couldn\'t be saved. You can create it in Settings › Category rules.',
   'home.bufferInUse': 'You\'re using {amount} of your {buffer} safety buffer',
   'home.bufferInUseText': 'Your bills and set-asides are covered. What you spend now comes out of the money you chose to keep.',
+  'rules.learn.offerMany': '{saved}. Remember your {count} category corrections as rules?',
+  'rules.learn.savedMany': '{count} rules saved. You can change them in Settings › Category rules.',
 }

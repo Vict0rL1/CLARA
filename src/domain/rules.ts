@@ -180,3 +180,24 @@ export function suggestRuleFromCorrection(
   const ranked = rankRuleMatches(norm, [candidate, ...data.categoryRules.filter((r) => r.kind === kind && usable.includes(r.categoryId))])
   return ranked[0] === candidate ? { ...candidate } : null
 }
+
+/**
+ * Varias correcciones a la vez (revisión del asistente): una propuesta por texto y tipo. Si dos líneas
+ * corrigen el mismo texto a categorías distintas, no se propone ninguna de las dos (sería adivinar).
+ * Solo propone; guardarlas es `saveCategoryRules`, que la persona confirma.
+ */
+export function suggestRulesFromCorrections(
+  data: Pick<AppData, 'categoryRules' | 'categories' | 'categoryPrefs'>,
+  inputs: readonly Parameters<typeof suggestRuleFromCorrection>[1][],
+): RuleSuggestion[] {
+  const byKey = new Map<string, RuleSuggestion | null>()
+  for (const input of inputs) {
+    const s = suggestRuleFromCorrection(data, input)
+    if (!s) continue
+    const key = `${s.kind}:${normalizeText(s.pattern)}`
+    const prev = byKey.get(key)
+    if (prev === undefined) byKey.set(key, s)
+    else if (prev && prev.categoryId !== s.categoryId) byKey.set(key, null)
+  }
+  return [...byKey.values()].filter((s): s is RuleSuggestion => s !== null)
+}

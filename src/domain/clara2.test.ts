@@ -6,12 +6,12 @@ import { describe, expect, it } from 'vitest'
 import { simulatePurchase } from './affordability'
 import { computeBudget } from './budget'
 import { committedFor, safeToSpend } from './periods'
-import { createInitialData, saveAccount, saveCategoryRule, saveSchedule, saveTransaction, updateSettings } from './operations'
+import { createInitialData, deleteCategoryRules, saveAccount, saveCategoryRule, saveCategoryRules, saveSchedule, saveTransaction, updateSettings } from './operations'
 import { allAccountBalances } from './balances'
 import { DEFAULT_NOTIFICATIONS } from './defaults'
 import { dueNotices } from './notifications'
 import { closeDuePlans, planAlertLevels, planAlerts, savePlan } from './plans'
-import { explainRuleMatch, suggestRuleFromCorrection } from './rules'
+import { explainRuleMatch, suggestRuleFromCorrection, suggestRulesFromCorrections } from './rules'
 import { canRevert, recordHistory, revertEntry } from './history'
 import { whatChanged } from './whatChanged'
 import { defaultSecondDay, nthOccurrence, occurrencesBetween, scanOccurrences } from './recurrence'
@@ -441,6 +441,37 @@ describe('Clara 2.0 §7 · ofrecer recordar una corrección de categoría como r
     expect(suggestRuleFromCorrection(d, { ...base, hasSplits: true })).toBeNull()
     for (const note of [undefined, '', ' x ', '1234', '12,50 $', 'a'.repeat(41)]) expect(suggestRuleFromCorrection(d, { ...base, note }), String(note)).toBeNull()
     expect(suggestRuleFromCorrection(d, { ...base, categoryId: 'no-existe' })).toBeNull()
+  })
+
+  it('revisión del asistente: una propuesta por texto; dos correcciones contradictorias no proponen nada', () => {
+    const d = data()
+    const line = (note: string, categoryId: string, previousCategoryId = 'dining') => ({ note, kind: 'expense' as const, categoryId, previousCategoryId })
+    const out = suggestRulesFromCorrections(d, [
+      line('Café del museo', 'groceries'),
+      line('café  DEL museo', 'groceries'), // mismo texto: una sola propuesta
+      line('Panadería Sol', 'groceries', 'other_expense'),
+      line('Kiosco', 'shopping'),
+      line('KIOSCO', 'gifts'), // contradicción: ninguna
+      line('Sin cambio', 'dining'), // no hubo corrección
+    ])
+    expect(out).toEqual([
+      { pattern: 'Café del museo', kind: 'expense', categoryId: 'groceries' },
+      { pattern: 'Panadería Sol', kind: 'expense', categoryId: 'groceries' },
+    ])
+  })
+
+  it('guardar varias reglas es todo o nada y deshacer quita exactamente esas', () => {
+    const d = data()
+    const ok = saveCategoryRules(d, [{ id: 'n1', pattern: 'Café del museo', kind: 'expense', categoryId: 'groceries' }, { id: 'n2', pattern: 'Panadería Sol', kind: 'expense', categoryId: 'groceries' }], ctx)
+    if (!ok.ok) throw new Error(JSON.stringify(ok.issues))
+    expect(ok.data.categoryRules.map((r) => r.id)).toEqual(['r1', 'r2', 'n1', 'n2'])
+    // La segunda repite un texto existente («cafe central»): no se guarda ninguna.
+    const bad = saveCategoryRules(d, [{ id: 'n1', pattern: 'Café del museo', kind: 'expense', categoryId: 'groceries' }, { id: 'n3', pattern: 'CAFÉ central', kind: 'expense', categoryId: 'groceries' }], ctx)
+    expect(bad.ok).toBe(false)
+    expect(!bad.ok && bad.issues[0]!.path).toBe('rules[1].pattern')
+    const undo = deleteCategoryRules(ok.data, ['n1', 'n2', 'gone'], ctx)
+    expect(undo.ok && undo.data.categoryRules.map((r) => r.id)).toEqual(['r1', 'r2'])
+    expect(deleteCategoryRules(d, ['gone'], ctx)).toMatchObject({ ok: true, unchanged: true })
   })
 
   it('si ya hay una regla con ese mismo texto (sin acentos ni mayúsculas) no se ofrece otra', () => {

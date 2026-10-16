@@ -3267,4 +3267,6 @@ export const es = {
   'rules.learn.failed': 'No se pudo guardar la regla. Puedes crearla en Ajustes › Reglas de categoría.',
   'home.bufferInUse': 'Estás usando {amount} de tu colchón de {buffer}',
   'home.bufferInUseText': 'Tus pagos y apartados están cubiertos. Lo que gastes ahora sale del dinero que decidiste conservar.',
+  'rules.learn.offerMany': '{saved}. ¿Recordar tus {count} correcciones de categoría como reglas?',
+  'rules.learn.savedMany': '{count} reglas guardadas. Puedes cambiarlas en Ajustes › Reglas de categoría.',
 } as const

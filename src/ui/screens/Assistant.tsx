@@ -29,7 +29,9 @@ import { CategoryPicker } from '../components/CategoryPicker'
 import { Icon } from '../components/Icon'
 import { useToast } from '../components/toastContext'
 import { useFormat } from '../format'
-import { accountOptions, issueMessage } from '../labels'
+import { accountOptions, categoryLabel, issueMessage } from '../labels'
+import { suggestRulesFromCorrections, type RuleSuggestion } from '../../domain/rules'
+import { deleteCategoryRules, saveCategoryRules } from '../../domain/operations'
 import { reviewProposals } from '../../domain/review'
 import { ProposalReviewView } from '../components/ProposalReview'
 import { moneyErrorMessage } from '../moneyText'
@@ -250,6 +252,11 @@ export function Assistant({ route }: { route: Route }) {
       setIssues(errs)
       return
     }
+    // Clara 2.0 §7: si la persona cambió la categoría que se proponía, se OFRECE recordarla (nunca sola).
+    const learn = suggestRulesFromCorrections(
+      data,
+      lines.map((l) => ({ note: l.entry.merchant || l.note, kind: l.kind, categoryId: l.categoryId, previousCategoryId: l.entry.categoryId })),
+    )
     setBusy(true)
     const { result, saved } = await run((d, c) => saveConfirmedEntries(d, entries, c))
     setBusy(false)
@@ -257,8 +264,26 @@ export function Assistant({ route }: { route: Route }) {
       setIssues(result.issues)
       return
     }
-    toast({ message: saved ? tn('assistant.recorded', entries.length) : t('save.error.generic'), tone: saved ? 'good' : 'critical' })
+    const recorded = tn('assistant.recorded', entries.length)
+    toast({
+      message: !saved ? t('save.error.generic') : learn.length === 1 ? t('rules.learn.offer', { saved: recorded, category: categoryLabel(t, learn[0]!.categoryId), pattern: learn[0]!.pattern }) : learn.length > 1 ? t('rules.learn.offerMany', { saved: recorded, count: learn.length }) : recorded,
+      tone: saved ? 'good' : 'critical',
+      ...(saved && learn.length > 0 ? { action: { label: t('rules.learn.remember'), onClick: () => void rememberRules(learn) } } : {}),
+    })
     if (saved) leave(returnTo)
+  }
+
+  /** Guarda las reglas que la persona aceptó recordar, todas o ninguna; se pueden deshacer desde el aviso. */
+  const rememberRules = async (learn: RuleSuggestion[]) => {
+    const drafts = learn.map((s) => ({ id: newId(), ...s }))
+    const { result, saved } = await run((d, c) => saveCategoryRules(d, drafts, c))
+    if (!result.ok || !saved) return void toast({ message: t(result.ok ? 'save.error.generic' : 'rules.learn.failed'), tone: 'critical' })
+    const ids = drafts.map((d) => d.id)
+    toast({
+      message: drafts.length === 1 ? t('rules.learn.saved', { pattern: drafts[0]!.pattern, category: categoryLabel(t, drafts[0]!.categoryId) }) : t('rules.learn.savedMany', { count: drafts.length }),
+      tone: 'good',
+      action: { label: t('common.undo'), onClick: () => void run((d, c) => deleteCategoryRules(d, ids, c)) },
+    })
   }
 
   // D8: nivel de la voz (AnalyserNode) y tiempo transcurrido mientras se graba; con

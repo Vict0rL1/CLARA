@@ -216,3 +216,33 @@ test('«Repetir» dos veces al mes: el programado guarda el segundo día elegido
   await expect(page.getByText('Movimiento guardado y programado creado').first()).toBeVisible()
   expect((await stored(page)).schedules.find((s) => s.name === 'Lavandería')).toMatchObject({ frequency: 'semimonthly', startDate: '2026-09-28', secondDay: 14 })
 })
+
+test('asistente: corregir la categoría que proponía una regla ofrece recordarla; «Recordar» guarda y se puede deshacer', async ({ page }) => {
+  await startDemo(page)
+  const rules = async () => (JSON.parse((await storedData(page)) ?? '{}') as { categoryRules: { pattern: string; categoryId: string }[] }).categoryRules
+  const before = (await rules()).length
+  await go(page, '/asistente')
+  await page.getByLabel('Texto').fill('café del museo 4')
+  await page.getByRole('button', { name: 'Analizar' }).click()
+  const line = page.getByTestId('assistant-preview').locator('.assistant__line').first()
+  const category = line.getByLabel('Categoría', { exact: true })
+  // La regla «café» propone Restaurantes y café; la persona elige Supermercado.
+  await expect(category).toHaveAttribute('data-value', 'dining')
+  await pickCategory(page, category, 'Supermercado')
+  await page.getByRole('button', { name: 'Registrar 1 movimiento' }).click()
+  await expect(page.getByText('1 movimiento registrado. ¿Usar siempre «Supermercado» cuando la descripción incluya «café del museo»?')).toBeVisible()
+  expect((await rules()).length).toBe(before)
+  await page.getByRole('button', { name: 'Recordar' }).click()
+  await expect(page.getByText(/Regla guardada: «café del museo» → Supermercado/)).toBeVisible()
+  expect((await rules()).filter((r) => r.pattern === 'café del museo')).toEqual([expect.objectContaining({ categoryId: 'groceries' })])
+  await page.getByRole('button', { name: 'Deshacer' }).click()
+  await expect.poll(async () => (await rules()).length).toBe(before)
+
+  // Sin corrección no se ofrece nada.
+  await go(page, '/asistente')
+  await page.getByLabel('Texto').fill('café con Ana 3')
+  await page.getByRole('button', { name: 'Analizar' }).click()
+  await page.getByRole('button', { name: 'Registrar 1 movimiento' }).click()
+  await expect(page.getByText('1 movimiento registrado').first()).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Recordar' })).toHaveCount(0)
+})

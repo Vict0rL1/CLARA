@@ -423,6 +423,11 @@ normalizar = minúsculas, sin acentos, espacios simples
   la descripción entera (2–40 caracteres, con alguna letra). Nunca se guarda sola: solo al pulsar,
   con «Deshacer». No se ofrece con transferencias, ajustes ni divisiones, si ya existe una regla con
   ese texto y tipo, ni si la regla nueva no ganaría para ese texto (patrón más largo).
+  En la revisión del asistente se juntan las correcciones de todas las líneas
+  (`suggestRulesFromCorrections`): una propuesta por texto y tipo, ninguna si dos líneas corrigen el
+  mismo texto a categorías distintas; «Recordar» las guarda todas o ninguna (`saveCategoryRules`) y
+  «Deshacer» quita exactamente esas. En la importación CSV, cambiar la categoría que proponía una regla
+  muestra «Crear regla» con el diálogo ya relleno (existía antes de Clara 2.0).
 
 ## 11. Integridad de datos
 
