@@ -3300,4 +3300,11 @@ export const es = {
   'scheduleForm.savedFrom': 'Cambio guardado desde el {date}',
   'calendar.endedOn': 'terminó el {date}',
   'calendar.endsOn': 'termina el {date}',
+  'plans.suggest.title': 'Sugerencia según lo que gastaste: {amount}',
+  'plans.suggest.text': 'Mediana de los últimos {count} periodos completos, redondeada hacia arriba. Solo es una propuesta.',
+  'plans.suggest.use': 'Usar {amount}',
+  'plans.suggest.explain': 'Gasto neto (gastos − devoluciones) en las categorías elegidas, sin transferencias ni el periodo en curso. Solo cuentan periodos en los que ya usabas Clara.',
+  'plans.suggest.row': '{from} – {to}',
+  'plans.suggest.median': 'Mediana',
+  'plans.suggest.rounded': 'Redondeada hacia arriba',
 } as const

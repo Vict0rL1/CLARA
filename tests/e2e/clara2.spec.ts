@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { recurringCosts } from '../../src/domain/recurringCosts'
-import { baseData, bill, tx } from '../../src/test/fixtures'
+import { account, baseData, bill, tx } from '../../src/test/fixtures'
 import { expectNoHorizontalScroll, go, openApp, openDetails, openExplain, pickCategory, seedStoredData, setupFirstUse, startDemo, storedData } from './helpers'
 
 /**
@@ -368,4 +368,38 @@ test('cambiar un programado desde una fecha: lo anterior queda igual, desde esa 
   await go(page, `/plan/programado/editar/${schedules[1]!.id}`)
   await expect(page.getByLabel('Próxima fecha')).toHaveValue('2026-10-01')
   await expect(page.getByRole('radio', { name: 'Desde una fecha' })).toHaveCount(0)
+})
+
+test('límite sugerido según lo gastado: mediana de los meses completos, explicada; solo se usa al pulsar', async ({ page }) => {
+  // Empezó el 1-jun; supermercado: junio 300, julio 450 − 50 de devolución, agosto 350.50; septiembre (en curso) no cuenta.
+  const data = baseData({
+    accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 100000, date: '2026-06-01', setAt: '2026-06-01T12:00:00.000Z' } })],
+    transactions: [
+      tx({ id: 'jun', date: '2026-06-03', amountMinor: 30000, categoryId: 'groceries' }),
+      tx({ id: 'jul', date: '2026-07-10', amountMinor: 45000, categoryId: 'groceries' }),
+      tx({ id: 'ref', kind: 'refund', date: '2026-07-12', amountMinor: 5000, categoryId: 'groceries' }),
+      tx({ id: 'aug', date: '2026-08-20', amountMinor: 35050, categoryId: 'groceries' }),
+      tx({ id: 'sep', date: '2026-09-05', amountMinor: 99900, categoryId: 'groceries' }),
+    ],
+  })
+  await seedStoredData(page, data)
+  await go(page, '/plan/planes/nuevo')
+  await page.getByTestId('plan-categories').click()
+  await page.getByTestId('category-picker').getByRole('option', { name: 'Supermercado' }).first().click()
+  await page.getByRole('button', { name: 'Listo' }).click()
+  const box = page.getByTestId('plan-suggestion')
+  await expect(box).toContainText('Sugerencia según lo que gastaste: $351.00')
+  await expect(box).toContainText('Mediana de los últimos 3 periodos completos')
+  // Nada se rellena solo.
+  await expect(page.getByLabel('Límite máximo')).toHaveValue('')
+  await box.locator('.explain > summary').click()
+  const rows = box.locator('.calc-row__value')
+  await expect(rows).toHaveText(['$300.00', '$400.00', '$350.50', '$350.50', '$351.00'])
+  await expectNoHorizontalScroll(page, 'límite con sugerencia')
+  await box.getByRole('button', { name: 'Usar $351.00' }).click()
+  await expect(page.getByLabel('Límite máximo')).toHaveValue('351.00')
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect(page.getByText('Plan guardado')).toBeVisible()
+  const plans = JSON.parse((await storedData(page))!).plans as { amountMinor: number; categoryIds: string[] }[]
+  expect(plans.map((p) => [p.amountMinor, p.categoryIds])).toEqual([[35100, ['groceries']]])
 })

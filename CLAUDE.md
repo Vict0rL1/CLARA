@@ -93,6 +93,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   desde el calendario, lo pagado consume lo apartado en el cálculo aunque no se haya cerrado.
 - Presupuestos por periodo: asignado ≠ disponible; solo guardan ids (`txIds`); solapados
   cuentan una vez en el total; la reserva opcional es una meta que lo gastado consume.
+- Límite sugerido (`domain/planSuggestion.ts`): mediana del gasto neto de los últimos 3 ciclos completos con
+  datos (≥ 2), redondeada hacia arriba a una unidad; sin IA; «Usar» solo rellena el importe.
 - Revisión semanal: lunes–domingo en la zona horaria; comparación equivalente; sin
   porcentaje si la base es 0 o faltan datos; reglas fijas, sin IA ni notificaciones.
 - Escenarios: se simulan sobre una copia; nunca modifican datos reales ni se aplican solos.

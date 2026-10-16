@@ -3301,4 +3301,11 @@ export const en: Record<keyof typeof es, string> = {
   'scheduleForm.savedFrom': 'Change saved from {date} on',
   'calendar.endedOn': 'ended {date}',
   'calendar.endsOn': 'ends {date}',
+  'plans.suggest.title': 'Suggestion from what you spent: {amount}',
+  'plans.suggest.text': 'Median of the last {count} complete periods, rounded up. It’s only a proposal.',
+  'plans.suggest.use': 'Use {amount}',
+  'plans.suggest.explain': 'Net spending (expenses − refunds) in the chosen categories, without transfers or the current period. Only periods when you were already using Clara count.',
+  'plans.suggest.row': '{from} – {to}',
+  'plans.suggest.median': 'Median',
+  'plans.suggest.rounded': 'Rounded up',
 }

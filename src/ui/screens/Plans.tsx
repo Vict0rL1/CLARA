@@ -7,6 +7,7 @@ import { CategoryIcon } from '../components/CategoryIcon'
 import { resolveCategories } from '../../domain/categories'
 import { goalPlan, goalProgress } from '../../domain/goals'
 import { newId } from '../../domain/ids'
+import { suggestPlanAmount } from '../../domain/planSuggestion'
 import { updateSettings } from '../../domain/operations'
 import { carryAfterEdit, cycleFor, deletePlan, planBaseMinor, planCategoryOptions, planComparison, planDailySeries, planProgress, plansSummary, planTransactions, planUpcoming, repeatPlan, restorePlan, savePlan, setPlanStatus, type PlanProgress, type PlanSeriesPoint } from '../../domain/plans'
 import type { BudgetPeriodType, Goal, PlanEarlyAlertLevel } from '../../domain/types'
@@ -16,7 +17,7 @@ import { useRun, useToday } from '../../state/hooks'
 import { useData } from '../../state/store'
 import { CategoryPicker } from '../components/CategoryPicker'
 import { BottomSheet, ListRow, PrimaryButton, ProgressBar, SecondaryButton, TextButton, Toggle, type ProgressState } from '../components/base'
-import { Alert, Badge, Card, EmptyState, PageHeader, Why } from '../components/common'
+import { Alert, Badge, CalcRow, Card, EmptyState, Explain, PageHeader, Why } from '../components/common'
 import { ConfirmDialog } from '../components/Dialog'
 import { MoneyField, Segmented, SelectField, TextField } from '../components/fields'
 import { Icon } from '../components/Icon'
@@ -281,6 +282,8 @@ export function PlanForm({ route }: { route: Route }) {
   // Categorías libres para este límite (las de otros límites activos no se ofrecen).
   const allowedCategories = useMemo(() => planCategoryOptions(data, existing?.categoryIds ?? []), [data, existing])
   const preview = periodType === 'custom' ? (startDate && endDate && endDate >= startDate ? { start: startDate, end: endDate } : null) : cycleFor(periodType, data.settings, today)
+  // Clara 2.0 fase 3: importe propuesto a partir de lo gastado (mediana de periodos completos). Solo se usa al pulsar.
+  const suggestion = useMemo(() => suggestPlanAmount(data, { categoryIds, periodType }, today), [data, categoryIds, periodType, today])
 
   if (editId && !existing) {
     return (
@@ -358,6 +361,29 @@ export function PlanForm({ route }: { route: Route }) {
           <div className="form__row">
             <TextField label={t('settings.period.customStart')} type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} error={fieldError(t, fmt, issues, 'startDate')} required />
             <TextField label={t('settings.period.customEnd')} type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} error={fieldError(t, fmt, issues, 'endDate')} required />
+          </div>
+        )}
+        {suggestion && (
+          <div data-testid="plan-suggestion">
+            <Alert
+              tone="info"
+              title={t('plans.suggest.title', { amount: fmt.money(suggestion.amountMinor) })}
+              actions={
+                <button type="button" className="btn btn--secondary btn--small" onClick={() => setAmountText(fmt.moneyInput(suggestion.amountMinor))}>
+                  {t('plans.suggest.use', { amount: fmt.money(suggestion.amountMinor) })}
+                </button>
+              }
+            >
+              <p>{t('plans.suggest.text', { count: suggestion.cycles.length })}</p>
+              <Explain>
+                <p>{t('plans.suggest.explain')}</p>
+                {suggestion.cycles.map((c) => (
+                  <CalcRow key={c.start} label={t('plans.suggest.row', { from: fmt.date(c.start, { compact: true, today }), to: fmt.date(c.end, { compact: true, today }) })} value={fmt.money(c.spentMinor)} />
+                ))}
+                <CalcRow op="=" label={t('plans.suggest.median')} value={fmt.money(suggestion.medianMinor)} />
+                <CalcRow label={t('plans.suggest.rounded')} value={fmt.money(suggestion.amountMinor)} strong />
+              </Explain>
+            </Alert>
           </div>
         )}
         {periodType !== 'custom' && <Toggle checked={recurring} onChange={setRecurring} label={t('plans.form.recurring')} hint={t('plans.form.recurringHint')} />}

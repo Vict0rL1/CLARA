@@ -3299,4 +3299,11 @@ export const fr: Record<keyof typeof es, string> = {
   'scheduleForm.savedFrom': 'Changement enregistré à partir du {date}',
   'calendar.endedOn': 'terminé le {date}',
   'calendar.endsOn': 'se termine le {date}',
+  'plans.suggest.title': 'Suggestion d’après vos dépenses : {amount}',
+  'plans.suggest.text': 'Médiane des {count} dernières périodes complètes, arrondie au supérieur. Ce n’est qu’une proposition.',
+  'plans.suggest.use': 'Utiliser {amount}',
+  'plans.suggest.explain': 'Dépenses nettes (dépenses − remboursements) dans les catégories choisies, sans virements ni la période en cours. Seules comptent les périodes où vous utilisiez déjà Clara.',
+  'plans.suggest.row': '{from} – {to}',
+  'plans.suggest.median': 'Médiane',
+  'plans.suggest.rounded': 'Arrondie au supérieur',
 }

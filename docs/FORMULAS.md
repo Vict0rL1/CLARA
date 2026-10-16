@@ -1112,6 +1112,19 @@ Pruebas: `ui/preferences.test.ts` y e2e `personalize.spec.ts`.
   (`gastado × 100 ≥ límite × umbral`, en enteros): si el gasto salta del 40 % al 95 % hay un único
   aviso, el del 90 %. Editar sin enviar `alertLevels` los conserva, una lista vacía los quita y la
   renovación de un plan recurrente los hereda. Sin `alertLevels` todo es como en v12.
+- **Límite sugerido** (Clara 2.0, fase 3; `domain/planSuggestion.ts`): para el tipo de periodo y las
+  categorías del formulario, los últimos 3 ciclos COMPLETOS anteriores al actual que empiezan cuando ya
+  había datos (primer movimiento realizado o saldo de referencia más antiguo, lo que llegue antes; un mes
+  sin usar Clara no es «0 gastado»). Gastado de cada uno con la regla de arriba.
+
+  ```
+  mediana  = valor central (con 2 ciclos: ⌈(a + b) / 2⌉)
+  sugerido = ⌈mediana / unidad⌉ × unidad      (unidad = 1 de la moneda: 100 céntimos, 1 yen)
+  ```
+
+  Hacen falta ≥ 2 ciclos y una mediana > 0; sin eso, o con periodo personalizado o «hasta el próximo
+  ingreso», no hay sugerencia. Se muestra con cada ciclo, la mediana y el redondeo; «Usar» solo rellena
+  el importe. Determinista, sin IA; nunca se guarda sola.
 - **Metas**: `contribution` (importe + frecuencia) es un recordatorio; «Aportar ahora» solo propone el
   importe. Sugerencia diaria de una meta = ⌈restante / días hasta la fecha⌉.
 - Un plan nunca mueve dinero ni cambia el disponible; los límites mensuales anteriores

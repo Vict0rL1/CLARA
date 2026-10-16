@@ -79,7 +79,7 @@ export function planTransactions(data: AppData, plan: Plan, cycle: PlanCycle): T
 }
 
 /** Gastado neto del plan hasta `upTo` (incluido); nunca negativo. */
-export function planSpent(data: AppData, plan: Plan, cycle: PlanCycle, upTo: LocalDate = cycle.end): number {
+export function planSpent(data: AppData, plan: Pick<Plan, 'categoryIds'>, cycle: PlanCycle, upTo: LocalDate = cycle.end): number {
   const categories = planCategories(plan)
   const total = data.transactions.filter((tx) => tx.date >= cycle.start && tx.date <= upTo && tx.date <= cycle.end && matchesPlan(tx, categories)).reduce((s, tx) => s + planAmount(tx, categories), 0)
   return Math.max(0, total)
