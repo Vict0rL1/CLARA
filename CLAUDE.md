@@ -52,6 +52,9 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   tarjeta; pago = **transferencia** banco → tarjeta, nunca un gasto.
 - Mensuales en 29/30/31 → último día del mes corto. «Dos veces al mes» (`semimonthly`, v13): día de
   `startDate` + `secondDay` (1–31, a ≥ 7 días); el que no existe pasa al último día del mes.
+- Cambiar un programado «desde una fecha» (`domain/scheduleFrom.ts`): el de siempre termina el día antes y
+  uno nuevo empieza ese día; lo anterior no cambia. Nunca con un pago registrado (ni parcial) en esa fecha o
+  después; los vínculos hacia delante pasan al nuevo solo si esa ocurrencia sigue existiendo.
 - Operaciones idempotentes: el id se genera al abrir el formulario; guardar dos veces
   actualiza el mismo registro.
 - Importación CSV (`domain/bankImport.ts`): huella `importRef` (referencia del banco o descripción

@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { activeAccounts, isBudgetAccount } from '../../domain/balances'
 import { categoriesForKind } from '../../domain/categories'
-import { isValidLocalDate, parseLocalDate } from '../../domain/dates'
+import { addDays, isValidLocalDate, parseLocalDate } from '../../domain/dates'
 import { newId } from '../../domain/ids'
-import { deleteSchedule, restoreSchedule, saveSchedule } from '../../domain/operations'
+import { deleteSchedule, restoreSchedule, saveSchedule, type ScheduleDraft } from '../../domain/operations'
+import { defaultSplitDate, saveScheduleFrom } from '../../domain/scheduleFrom'
 import type { Frequency, ScheduleKind } from '../../domain/types'
 import { FREQUENCIES, LIMITS, type Issue } from '../../domain/validation'
 import { useT } from '../../i18n'
@@ -48,6 +49,12 @@ export function ScheduleForm({ route }: { route: Route }) {
   }
 
   const [id] = useState(() => existing?.id ?? newId())
+  // Clara 2.0 fase 3: «desde una fecha» parte la serie; el id del nuevo se genera al abrir (guardar dos
+  // veces actualiza el mismo). Solo se ofrece si hay fechas anteriores que conservar.
+  const [splitId] = useState(() => newId())
+  const [splitDefault] = useState(() => (existing ? defaultSplitDate(data, existing, today) : null))
+  const [scope, setScope] = useState<'all' | 'from'>('all')
+  const allStart = useRef(existing?.startDate ?? today)
   const [kind, setKind] = useState<ScheduleKind>(existing?.kind ?? queryKind)
   const [name, setName] = useState(existing?.name ?? prefill.name)
   const [amountText, setAmountText] = useState(existing ? fmt.moneyInput(existing.amountMinor) : prefill.amountMinor ? fmt.moneyInput(prefill.amountMinor) : '')
@@ -102,37 +109,37 @@ export function ScheduleForm({ route }: { route: Route }) {
     }
     if (!parsed.ok || busy) return
     setBusy(true)
-    const { result, saved } = await run((d, c) =>
-      saveSchedule(
-        d,
-        {
-          id,
-          name,
-          kind,
-          amountMinor: parsed.minor,
-          amountIsEstimate: isEstimate || !!range,
-          range,
-          accountId,
-          categoryId,
-          frequency,
-          ...(frequency === 'custom' ? { intervalDays: Number(intervalDays) } : {}),
-          ...(frequency === 'semimonthly' ? { secondDay: secondDay } : {}),
-          startDate,
-          endDate: endDate || undefined,
-          reminderDaysBefore: reminder,
-          note,
-          ...(autoConfirm ? { autoConfirm: true } : {}),
-          ...(paused ? { paused: true } : {}),
-        },
-        c,
-      ),
-    )
+    const draft: ScheduleDraft = {
+      id: scope === 'from' ? splitId : id,
+      name,
+      kind,
+      amountMinor: parsed.minor,
+      amountIsEstimate: isEstimate || !!range,
+      range,
+      accountId,
+      categoryId,
+      frequency,
+      ...(frequency === 'custom' ? { intervalDays: Number(intervalDays) } : {}),
+      ...(frequency === 'semimonthly' ? { secondDay: secondDay } : {}),
+      startDate,
+      endDate: endDate || undefined,
+      reminderDaysBefore: reminder,
+      note,
+      ...(autoConfirm ? { autoConfirm: true } : {}),
+      ...(paused ? { paused: true } : {}),
+    }
+    const { result, saved } = await run((d, c) => {
+      if (scope !== 'from' || !existing) return saveSchedule(d, draft, c)
+      const r = saveScheduleFrom(d, existing.id, draft, c)
+      return r.ok ? { ...r, value: r.value.next } : r
+    })
     setBusy(false)
     if (!result.ok) {
       setIssues(result.issues)
       return
     }
-    toast({ message: saved ? t('scheduleForm.saved') : t('save.error.generic'), tone: saved ? 'good' : 'critical' })
+    const message = scope === 'from' ? t('scheduleForm.savedFrom', { date: fmt.date(startDate) }) : t('scheduleForm.saved')
+    toast({ message: saved ? message : t('save.error.generic'), tone: saved ? 'good' : 'critical' })
     leave('/plan/calendario')
   }
 
@@ -197,12 +204,38 @@ export function ScheduleForm({ route }: { route: Route }) {
         {frequency === 'custom' && (
           <TextField label={t('scheduleForm.intervalDays')} type="number" inputMode="numeric" min={1} max={365} value={intervalDays} onChange={(e) => setIntervalDays(e.target.value)} hint={t('scheduleForm.intervalDaysHint')} error={fieldError(t, fmt, issues, 'intervalDays')} required />
         )}
+        {splitDefault && (
+          <Segmented
+            legend={t('scheduleForm.scope')}
+            name="sscope"
+            value={scope}
+            onChange={(next) => {
+              if (next === scope) return
+              if (next === 'from') allStart.current = startDate
+              setStartDate(next === 'from' ? splitDefault : allStart.current)
+              setScope(next)
+              setIssues([])
+            }}
+            options={[
+              { value: 'all', label: t('scheduleForm.scopeAll') },
+              { value: 'from', label: t('scheduleForm.scopeFrom') },
+            ]}
+          />
+        )}
         <TextField
-          label={t('scheduleForm.nextDate')}
+          label={scope === 'from' ? t('scheduleForm.fromDate') : t('scheduleForm.nextDate')}
           type="date"
           value={startDate}
           onChange={(e) => setStartDate(e.target.value)}
-          hint={frequency === 'monthly' && day >= 29 ? t('scheduleForm.monthEndHint', { day }) : startDate < today ? t('scheduleForm.pastDateHint') : t('scheduleForm.nextDateHint')}
+          hint={
+            scope === 'from' && isValidLocalDate(startDate)
+              ? t('scheduleForm.fromHint', { date: fmt.date(addDays(startDate, -1)) })
+              : frequency === 'monthly' && day >= 29
+                ? t('scheduleForm.monthEndHint', { day })
+                : startDate < today
+                  ? t('scheduleForm.pastDateHint')
+                  : t('scheduleForm.nextDateHint')
+          }
           error={fieldError(t, fmt, issues, 'startDate')}
           required
         />
@@ -224,7 +257,7 @@ export function ScheduleForm({ route }: { route: Route }) {
         <TextField label={t('fields.noteOptional')} value={note} maxLength={LIMITS.noteMax} onChange={(e) => setNote(e.target.value)} />
         <CheckboxField checked={autoConfirm} onChange={setAutoConfirm} label={t('scheduleForm.autoConfirm')} hint={t('scheduleForm.autoConfirmHint')} />
         {existing && <CheckboxField checked={paused} onChange={setPaused} label={t('scheduleForm.paused')} hint={t('scheduleForm.pausedHint')} />}
-        {existing && <p className="note">{t('scheduleForm.editNote')}</p>}
+        {existing && scope === 'all' && <p className="note">{t('scheduleForm.editNote')}</p>}
         {unknown.length > 0 && (
           <Alert tone="critical" title={t('common.fixErrors')} role="alert">
             <ul>

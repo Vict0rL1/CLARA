@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { recurringCosts } from '../../src/domain/recurringCosts'
-import { baseData, tx } from '../../src/test/fixtures'
+import { baseData, bill, tx } from '../../src/test/fixtures'
 import { expectNoHorizontalScroll, go, openApp, openDetails, openExplain, pickCategory, seedStoredData, setupFirstUse, startDemo, storedData } from './helpers'
 
 /**
@@ -10,7 +10,7 @@ import { expectNoHorizontalScroll, go, openApp, openDetails, openExplain, pickCa
  */
 type Stored = {
   settings: { safeToSpend: { bufferMinor: number } }
-  schedules: { name: string; frequency: string; startDate: string; secondDay?: number; amountMinor: number; categoryId?: string; accountId: string }[]
+  schedules: { id: string; name: string; frequency: string; startDate: string; endDate?: string; secondDay?: number; amountMinor: number; categoryId?: string; accountId: string }[]
   accounts: { name: string; kind: string; institution?: string; includeInBudget: boolean }[]
 }
 const stored = async (page: Page) => JSON.parse((await storedData(page)) ?? '{}') as Stored
@@ -323,4 +323,49 @@ test('pagos que parecen fijos: la bandeja lo sugiere, «Programar» abre el form
 
   await go(page, '/pendientes')
   await expect(page.getByText('¿«NETFLIX COM» es un pago fijo?')).toHaveCount(0)
+})
+
+test('cambiar un programado desde una fecha: lo anterior queda igual, desde esa fecha el importe nuevo', async ({ page }) => {
+  // Renta de 650 cada día 1 desde junio; junio–septiembre pagados. Hoy = 28-sep.
+  const paid = ['2026-06-01', '2026-07-01', '2026-08-01', '2026-09-01']
+  const data = baseData({
+    schedules: [bill('2026-06-01', 65000, { id: 'rent', name: 'Renta', frequency: 'monthly', categoryId: 'housing' })],
+    transactions: paid.map((d, i) => tx({ id: `p${i}`, date: d, amountMinor: 65000, categoryId: 'housing', scheduleId: 'rent', occurrenceDate: d })),
+  })
+  await seedStoredData(page, data)
+  await go(page, '/plan/programado/editar/rent')
+  // Por defecto, como siempre: el cambio vale para todas las fechas.
+  await expect(page.getByRole('radio', { name: 'A todas las fechas' })).toBeChecked()
+  await expect(page.getByLabel('Próxima fecha')).toHaveValue('2026-06-01')
+  await page.getByRole('radio', { name: 'Desde una fecha' }).check()
+  const from = page.getByLabel('Desde (primera fecha con los cambios)')
+  await expect(from).toHaveValue('2026-10-01')
+  await expect(page.getByText(/^Hasta el .+ sigue como estaba/)).toBeVisible()
+  await expectNoHorizontalScroll(page, 'programado: cambiar desde una fecha')
+
+  // Una fecha que no es posterior a la primera se explica y no guarda nada.
+  await from.fill('2026-06-01')
+  await page.getByLabel('Importe', { exact: true }).fill('700')
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect(page.getByText(/Elige una fecha posterior a la primera/)).toBeVisible()
+  expect((await stored(page)).schedules).toHaveLength(1)
+
+  await from.fill('2026-10-01')
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect(page.getByText(/^Cambio guardado desde el/).first()).toBeVisible()
+  const schedules = (await stored(page)).schedules
+  expect(schedules.map((s) => [s.name, s.amountMinor, s.startDate, s.endDate ?? null])).toEqual([
+    ['Renta', 65000, '2026-06-01', '2026-09-30'],
+    ['Renta', 70000, '2026-10-01', null],
+  ])
+
+  // En la lista: la de siempre termina el 30-sep; la nueva sigue, con el importe nuevo.
+  await go(page, '/plan/calendario')
+  const list = page.locator('.item-list').last()
+  await expect(list.getByRole('link', { name: /Renta.*termina el/ })).toContainText('$650.00')
+  await expect(list.getByRole('link', { name: /Renta.*1 oct/ })).toContainText('$700.00')
+  // La nueva no tiene fechas anteriores: no ofrece partirla.
+  await go(page, `/plan/programado/editar/${schedules[1]!.id}`)
+  await expect(page.getByLabel('Próxima fecha')).toHaveValue('2026-10-01')
+  await expect(page.getByRole('radio', { name: 'Desde una fecha' })).toHaveCount(0)
 })

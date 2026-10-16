@@ -145,6 +145,31 @@ años no bisiestos.
 **Primera fecha:** la «próxima fecha» de un programado es la primera ocurrencia que se
 controla; las anteriores no se consideran.
 
+**Cambiar desde una fecha (Clara 2.0, fase 3; `domain/scheduleFrom.ts`):** editar un programado
+cambia toda la serie, también las fechas vencidas sin marcar. Con «Desde una fecha» la serie se parte en
+dos registros normales (sin campos nuevos ni cambio de esquema):
+
+```
+programado de siempre: endDate = fecha elegida − 1 día; conserva pagos, vencidas y omitidas anteriores
+programado nuevo:      startDate = fecha elegida; valores del formulario; omitidas desde esa fecha
+```
+
+- La fecha tiene que ser **posterior a la primera** del programado y no posterior a su `endDate`; un
+  pago único no se parte.
+- **Nunca deja pagos huérfanos:** si hay un movimiento realizado vinculado (también un cobro parcial) en
+  la fecha elegida o después, se rechaza y se dice cuál. La fecha propuesta es la primera ocurrencia
+  pendiente desde hoy y después del último pago registrado (`defaultSplitDate`).
+- Lo que mira hacia delante sigue a la serie: un gasto planificado abierto vinculado a una ocurrencia
+  desde esa fecha pasa al nuevo si el nuevo tiene esa misma ocurrencia (si dejaría de existir, se
+  rechaza); un vencido aplazado en la bandeja conserva su aplazamiento; las plantillas de distribución
+  («el próximo pago de …») y los escenarios guardados pasan a apuntar al nuevo. Las líneas de
+  distribuciones ya hechas son historia y no se tocan.
+- Todo o nada, en una operación. Guardar dos veces actualiza el mismo nuevo (su id se genera al abrir el
+  formulario). El historial registra los dos programados y los gastos planificados; las plantillas,
+  escenarios y aplazamientos no están en el historial, así que revertir el cambio deja esas referencias
+  apuntando al nuevo, que ya no existe: la línea de la plantilla queda «no disponible» y el escenario marca
+  ese cambio como no válido (nada se aplica en silencio).
+
 **Topes de recorrido (QA-06, `domain/recurrence.ts` y `domain/planItems.ts`):** una ventana
 normal (calendario, reservas hasta el próximo ingreso) se recorre con un tope de 2 000
 ocurrencias por programado (`MAX_OCCURRENCES`, ~5 años de un pago diario). Los **vencidos**
@@ -827,7 +852,7 @@ pago>`, `dup:<a>:<b>`, `bal:<cuenta>:<motivo>`, `int:…`), así nunca aparecen 
 
   Además el último pago no puede estar más lejos que la separación máxima + 7 días (si no, ya no parece
   activo), dos pagos el mismo día no son cadencia y una clave sin letras o de menos de 3 caracteres no
-  se propone. No se sugiere si ya existe un programado de gasto recurrente del mismo importe cuyo nombre
+  se propone. No se sugiere si ya existe un programado de gasto recurrente (sin terminar) del mismo importe cuyo nombre
   comparte la clave, o con la misma categoría y cadencia. Id `sug:recurring:<clave>:<importe>:<cadencia>`
   (descartar con «No es fijo» se recuerda aunque llegue otro pago igual). **Programar** abre el
   formulario relleno (nombre, importe, cadencia, próxima fecha ≥ hoy, categoría y cuenta, cada valor

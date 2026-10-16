@@ -87,6 +87,12 @@ export type IssueCode =
   | 'notFound'
   | 'rangeOrder'
   | 'occurrenceAlreadySettled'
+  // Clara 2.0 fase 3: cambiar un programado «desde una fecha» (`scheduleFrom.ts`).
+  | 'splitNotRecurring'
+  | 'splitNotAfterStart'
+  | 'splitAfterEnd'
+  | 'splitSettledAfter'
+  | 'splitLinkedGoal'
   | 'restoreConflict'
   | 'favoriteAccountMissing'
   | 'favoriteCategoryMissing'

@@ -11,8 +11,8 @@
  * | cada semana   | 6–8 días                | 4               |
  *
  * y que siga activa (el último pago no está más lejos que la separación máxima + 7 días). No se
- * propone si ya hay un programado recurrente del mismo importe que encaja por nombre o por categoría y
- * cadencia. Solo PROPONE (una sugerencia de la bandeja): programarlo es un paso explícito de la persona
+ * propone si ya hay un programado recurrente (no terminado) del mismo importe que encaja por nombre o por
+ * categoría y cadencia. Solo PROPONE (una sugerencia de la bandeja): programarlo es un paso explícito de la persona
  * en el formulario, ya relleno; nunca se crea ni se reserva nada solo.
  */
 import { addDays, addMonthsClamped, daysBetween, parseLocalDate } from './dates'
@@ -72,7 +72,8 @@ export function detectRecurring(data: Pick<AppData, 'transactions' | 'schedules'
   }
 
   const covered = data.schedules
-    .filter((s) => s.kind === 'expense' && s.frequency !== 'once')
+    // Uno que ya terminó no cubre pagos que siguen llegando.
+    .filter((s) => s.kind === 'expense' && s.frequency !== 'once' && (!s.endDate || s.endDate >= today))
     .map((s) => ({ amountMinor: s.amountMinor, key: merchantKey(s.name), categoryId: s.categoryId, frequency: s.frequency }))
 
   const out: RecurringCandidate[] = []

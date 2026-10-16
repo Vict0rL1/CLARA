@@ -51,6 +51,9 @@ describe('pagos que parecen fijos y no están programados', () => {
     expect(detectRecurring(byName, ctx.today)).toEqual([])
     const byCategory = baseData({ transactions: netflix(), schedules: [bill('2026-10-15', 1599, { name: 'Streaming', frequency: 'monthly', categoryId: 'subscriptions' })] })
     expect(detectRecurring(byCategory, ctx.today)).toEqual([])
+    // Uno que ya terminó no cubre los pagos que siguen llegando.
+    const ended = baseData({ transactions: netflix(), schedules: [bill('2026-05-15', 1599, { name: 'Netflix', frequency: 'monthly', endDate: '2026-09-01' })] })
+    expect(detectRecurring(ended, ctx.today)).toHaveLength(1)
     // Mismo importe pero otro nombre, otra categoría o un pago único: sí se propone.
     const other = baseData({ transactions: netflix(), schedules: [bill('2026-10-15', 1599, { name: 'Música', frequency: 'once', categoryId: 'subscriptions' })] })
     expect(detectRecurring(other, ctx.today)).toHaveLength(1)

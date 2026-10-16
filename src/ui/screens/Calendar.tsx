@@ -438,7 +438,12 @@ export function Calendar() {
                     <span className="item__main">
                       <span className="item__title">{s.name}</span>
                       <span className="item__meta">
-                        {frequencyLabel(t, s.frequency)} · {next ? t('calendar.nextOn', { date: fmt.date(next, { compact: true, today }) }) : t('calendar.noNext')}
+                        {frequencyLabel(t, s.frequency)} ·{' '}
+                        {next
+                          ? t('calendar.nextOn', { date: fmt.date(next, { compact: true, today }) })
+                          : s.endDate
+                            ? t(s.endDate < today ? 'calendar.endedOn' : 'calendar.endsOn', { date: fmt.date(s.endDate, { compact: true, today }) })
+                            : t('calendar.noNext')}
                       </span>
                     </span>
                     <span className="item__amount">
