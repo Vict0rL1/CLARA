@@ -134,6 +134,19 @@ Verification of `5e9a6dd` (log: `docs/qa/clara-2.0-fase1-2026-10-15/verification
 | Playwright, 3 projects, `--workers=2` | 955 passed, 4 skipped, 7 failed: 6 = two tests with the schema number hard-coded (fixed in `7d03305`, both files rerun on 3 projects: 30/30), 1 = `performance-10k` on desktop under load (708 / 614 ms) |
 | `performance-10k` alone, same build, `--workers=1` | 3/3 pass: best of two 338, 303, 351 ms (efd2fa2: 328, 354, 332 ms), so no regression |
 
-Everything not listed in §6 phase 1 remains open and is not presented as done. Not verified: physical
+Second session (2026-10-16): `15810e3` (twice monthly in the initial setup and «Repetir»), `56f4b6e` (assistant
+review offers to remember corrections, all or nothing), `49b02cc` (phase 2 merchant normalization). Verification
+of `49b02cc` (log: `docs/qa/clara-2.0-fase2-2026-10-16/verification.txt`):
+
+| Command | Result |
+|---|---|
+| `npm run check` | exit 0 · Vitest 93 files: 952 passed, 1 skipped |
+| `npm run build` / `npm run size` | exit 0 · initial JS 829.6 KB (gzip 248.3 KB), cap 844.6 KB, not raised |
+| `npm audit` | 0 vulnerabilities |
+| Playwright, 3 projects, `--workers=2` | 972 passed, 4 skipped, 2 failed: `performance-10k` on phone (539 / 591 ms) and desktop (659 / 551 ms) under load |
+| `performance-10k` alone, same build | 3/3 pass: best of two 372, 386, 361 ms |
+| GitHub CI on `49b02cc` | check and e2e (3 projects, `--fail-on-flaky-tests`): success |
+
+Everything not listed in §6 phase 1 (and the phase 2 normalization) remains open and is not presented as done. Not verified: physical
 devices, VoiceOver/TalkBack, OS text size, device backup picker, offline install/update, interrupted
 storage, the published deployment, the remote AI service.

@@ -1,0 +1,40 @@
+Verificación de 49b02cc (Clara 2.0: dos veces al mes en configuración y «Repetir», correcciones del asistente, comercios) · 2026-10-16 · Chromium preinstalado, --workers=2
+
+SHA 49b02cc9ad5f899a3cbf678edfdfc4e184b53823 status: 0 changes
+check EXIT 0
+build EXIT 0
+size EXIT 0
+audit EXIT 0
+e2e EXIT 1
+DONE
+
+== npm run check (Vitest)
+ Test Files  93 passed (93)
+      Tests  952 passed | 1 skipped (953)
+
+== npm run size
+JS inicial: 829.6 KB en 11 archivos (gzip 248.3 KB)
+Referencia: 767.8 KB · límite 844.6 KB · cambio +8.1 %
+
+== npm audit
+found 0 vulnerabilities
+
+== Playwright, matriz completa
+  2 failed
+  4 skipped
+  972 passed (30.3m)
+  1) [celular] › tests/e2e/performance-10k.spec.ts:25:1 › 10 000 movimientos: Inicio interactivo en < 500 ms y Movimientos con solo las filas visibles 
+  2) [escritorio] › tests/e2e/performance-10k.spec.ts:25:1 › 10 000 movimientos: Inicio interactivo en < 500 ms y Movimientos con solo las filas visibles 
+Inicio con 10k: cifra principal a los 539 / 591 ms
+      50 |   console.log(`Inicio con 10k: cifra principal a los ${times.map(Math.round).join(' / ')} ms`)
+Inicio con 10k: cifra principal a los 394 / 422 ms
+Inicio con 10k: cifra principal a los 659 / 551 ms
+      50 |   console.log(`Inicio con 10k: cifra principal a los ${times.map(Math.round).join(' / ')} ms`)
+
+== performance-10k sola sobre la misma compilación (--workers=1)
+Inicio con 10k: cifra principal a los 397 / 372 ms
+Inicio con 10k: cifra principal a los 388 / 386 ms
+Inicio con 10k: cifra principal a los 438 / 361 ms
+  3 passed (59.6s)
+
+== CI de GitHub en 49b02cc: check, e2e (celular, celular-pequeno, escritorio) con --fail-on-flaky-tests: success
