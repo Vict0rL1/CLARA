@@ -7,16 +7,17 @@ import { CategoryIcon } from '../components/CategoryIcon'
 import { resolveCategories } from '../../domain/categories'
 import { goalPlan, goalProgress } from '../../domain/goals'
 import { newId } from '../../domain/ids'
+import { suggestPlanAmount } from '../../domain/planSuggestion'
 import { updateSettings } from '../../domain/operations'
 import { carryAfterEdit, cycleFor, deletePlan, planBaseMinor, planCategoryOptions, planComparison, planDailySeries, planProgress, plansSummary, planTransactions, planUpcoming, repeatPlan, restorePlan, savePlan, setPlanStatus, type PlanProgress, type PlanSeriesPoint } from '../../domain/plans'
-import type { BudgetPeriodType, Goal } from '../../domain/types'
+import type { BudgetPeriodType, Goal, PlanEarlyAlertLevel } from '../../domain/types'
 import { BUDGET_PERIOD_TYPES, LIMITS, type Issue } from '../../domain/validation'
 import { useT, type MessageKey } from '../../i18n'
 import { useRun, useToday } from '../../state/hooks'
 import { useData } from '../../state/store'
 import { CategoryPicker } from '../components/CategoryPicker'
 import { BottomSheet, ListRow, PrimaryButton, ProgressBar, SecondaryButton, TextButton, Toggle, type ProgressState } from '../components/base'
-import { Alert, Badge, Card, EmptyState, PageHeader, Why } from '../components/common'
+import { Alert, Badge, CalcRow, Card, EmptyState, Explain, PageHeader, Why } from '../components/common'
 import { ConfirmDialog } from '../components/Dialog'
 import { MoneyField, Segmented, SelectField, TextField } from '../components/fields'
 import { Icon } from '../components/Icon'
@@ -272,12 +273,17 @@ export function PlanForm({ route }: { route: Route }) {
   const [rollover, setRollover] = useState(existing?.rollover === 'carry')
   const [alertAt80, setAlert80] = useState(existing?.alertAt80 ?? true)
   const [alertAt100, setAlert100] = useState(existing?.alertAt100 ?? true)
+  // v13: avisos tempranos opcionales (50/75/90), apagados por defecto.
+  const [alertLevels, setAlertLevels] = useState<PlanEarlyAlertLevel[]>(existing?.alertLevels ?? [])
+  const toggleLevel = (level: PlanEarlyAlertLevel, on: boolean) => setAlertLevels((list) => (on ? [...new Set([...list, level])] : list.filter((l) => l !== level)))
   const [issues, setIssues] = useState<Issue[]>([])
   const [amountError, setAmountError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   // Categorías libres para este límite (las de otros límites activos no se ofrecen).
   const allowedCategories = useMemo(() => planCategoryOptions(data, existing?.categoryIds ?? []), [data, existing])
   const preview = periodType === 'custom' ? (startDate && endDate && endDate >= startDate ? { start: startDate, end: endDate } : null) : cycleFor(periodType, data.settings, today)
+  // Clara 2.0 fase 3: importe propuesto a partir de lo gastado (mediana de periodos completos). Solo se usa al pulsar.
+  const suggestion = useMemo(() => suggestPlanAmount(data, { categoryIds, periodType }, today), [data, categoryIds, periodType, today])
 
   if (editId && !existing) {
     return (
@@ -293,7 +299,7 @@ export function PlanForm({ route }: { route: Route }) {
     if (!parsed.ok || busy) return
     setBusy(true)
     const { result, saved } = await run((d, c) =>
-      savePlan(d, { id, name, categoryIds, amountMinor: parsed.minor, periodType, ...(periodType === 'custom' ? { startDate: startDate || undefined, endDate: endDate || undefined } : {}), recurring, rollover: periodType !== 'custom' && recurring && rollover ? 'carry' : 'none', alertAt80, alertAt100 }, c),
+      savePlan(d, { id, name, categoryIds, amountMinor: parsed.minor, periodType, ...(periodType === 'custom' ? { startDate: startDate || undefined, endDate: endDate || undefined } : {}), recurring, rollover: periodType !== 'custom' && recurring && rollover ? 'carry' : 'none', alertAt80, alertAt100, alertLevels }, c),
     )
     setBusy(false)
     if (!result.ok) {
@@ -357,10 +363,36 @@ export function PlanForm({ route }: { route: Route }) {
             <TextField label={t('settings.period.customEnd')} type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} error={fieldError(t, fmt, issues, 'endDate')} required />
           </div>
         )}
+        {suggestion && (
+          <div data-testid="plan-suggestion">
+            <Alert
+              tone="info"
+              title={t('plans.suggest.title', { amount: fmt.money(suggestion.amountMinor) })}
+              actions={
+                <button type="button" className="btn btn--secondary btn--small" onClick={() => setAmountText(fmt.moneyInput(suggestion.amountMinor))}>
+                  {t('plans.suggest.use', { amount: fmt.money(suggestion.amountMinor) })}
+                </button>
+              }
+            >
+              <p>{t('plans.suggest.text', { count: suggestion.cycles.length })}</p>
+              <Explain>
+                <p>{t('plans.suggest.explain')}</p>
+                {suggestion.cycles.map((c) => (
+                  <CalcRow key={c.start} label={t('plans.suggest.row', { from: fmt.date(c.start, { compact: true, today }), to: fmt.date(c.end, { compact: true, today }) })} value={fmt.money(c.spentMinor)} />
+                ))}
+                <CalcRow op="=" label={t('plans.suggest.median')} value={fmt.money(suggestion.medianMinor)} />
+                <CalcRow label={t('plans.suggest.rounded')} value={fmt.money(suggestion.amountMinor)} strong />
+              </Explain>
+            </Alert>
+          </div>
+        )}
         {periodType !== 'custom' && <Toggle checked={recurring} onChange={setRecurring} label={t('plans.form.recurring')} hint={t('plans.form.recurringHint')} />}
         {periodType !== 'custom' && recurring && <Toggle checked={rollover} onChange={setRollover} label={t('plans.rollover.label')} hint={t('plans.rollover.hint')} />}
+        <Toggle checked={alertLevels.includes(50)} onChange={(on) => toggleLevel(50, on)} label={t('plans.form.alertAt', { percent: 50 })} />
+        <Toggle checked={alertLevels.includes(75)} onChange={(on) => toggleLevel(75, on)} label={t('plans.form.alertAt', { percent: 75 })} />
         <Toggle checked={alertAt80} onChange={setAlert80} label={t('plans.form.alert80')} />
-        <Toggle checked={alertAt100} onChange={setAlert100} label={t('plans.form.alert100')} hint={!data.settings.notifications.planAlerts ? t('plans.form.alertsOff') : undefined} />
+        <Toggle checked={alertLevels.includes(90)} onChange={(on) => toggleLevel(90, on)} label={t('plans.form.alertAt', { percent: 90 })} />
+        <Toggle checked={alertAt100} onChange={setAlert100} label={t('plans.form.alert100')} hint={!data.settings.notifications.planAlerts ? t('plans.form.alertsOff') : t('plans.form.alertsHint')} />
         {unknown.length > 0 && (
           <Alert tone="critical" title={t('common.fixErrors')} role="alert">
             <ul>

@@ -77,6 +77,8 @@ export type IssueCode =
   | 'categoryInUse'
   | 'duplicateRule'
   | 'splitMismatch'
+  /** Pago dos veces al mes con días a menos de 7 de distancia (o fuera de 1–31). */
+  | 'semimonthlyDays'
   | 'splitTooFew'
   | 'distributionExceeds'
   | 'distributionConflict'
@@ -85,6 +87,12 @@ export type IssueCode =
   | 'notFound'
   | 'rangeOrder'
   | 'occurrenceAlreadySettled'
+  // Clara 2.0 fase 3: cambiar un programado «desde una fecha» (`scheduleFrom.ts`).
+  | 'splitNotRecurring'
+  | 'splitNotAfterStart'
+  | 'splitAfterEnd'
+  | 'splitSettledAfter'
+  | 'splitLinkedGoal'
   | 'restoreConflict'
   | 'favoriteAccountMissing'
   | 'favoriteCategoryMissing'
@@ -118,8 +126,9 @@ export const LIMITS = {
 
 export const TX_KINDS = ['income', 'expense', 'transfer', 'refund', 'adjustment'] as const
 export const TX_STATUSES = ['planned', 'realized'] as const
-export const ACCOUNT_KINDS = ['bank', 'cash', 'savings', 'credit', 'other'] as const
-export const FREQUENCIES = ['once', 'daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly', 'custom'] as const
+export const ACCOUNT_KINDS = ['bank', 'cash', 'savings', 'credit', 'wallet', 'prepaid', 'investment', 'other'] as const
+export const PLAN_EARLY_ALERT_LEVELS = [50, 75, 90] as const
+export const FREQUENCIES = ['once', 'daily', 'weekly', 'biweekly', 'semimonthly', 'monthly', 'quarterly', 'yearly', 'custom'] as const
 export const NUMBER_LOCALES = ['es-MX', 'es-ES', 'es-CO', 'en-CA', 'en-US', 'fr-CA', 'fr-FR', 'pt-BR'] as const
 export const DATE_STYLES = ['short', 'medium', 'iso'] as const
 export const LANGUAGES = ['es', 'en', 'pt', 'fr'] as const
@@ -200,6 +209,7 @@ export function validateSettings(s: Settings, prefix = ''): Issue[] {
       if (typeof sts[k] !== 'boolean') issues.push({ path: `${prefix}safeToSpend.${k}`, code: 'invalidValue' })
     }
     if (!isOneOf(['day', 'week', 'period'] as const, sts.granularity)) issues.push({ path: `${prefix}safeToSpend.granularity`, code: 'invalidValue' })
+    if (!Number.isSafeInteger(sts.bufferMinor) || (sts.bufferMinor as number) < 0 || (sts.bufferMinor as number) > MAX_AMOUNT_MINOR) issues.push({ path: `${prefix}safeToSpend.bufferMinor`, code: 'invalidAmount' })
   }
   const n = s.notifications
   if (!n || typeof n !== 'object') issues.push({ path: `${prefix}notifications`, code: 'required' })
@@ -328,6 +338,10 @@ export function validatePlan(plan: Plan, ctx: { data: Pick<AppData, 'settings'> 
   if (typeof plan.recurring !== 'boolean') issues.push({ path: `${p}recurring`, code: 'invalidValue' })
   if (!isOneOf(['active', 'completed', 'paused'] as const, plan.status)) issues.push({ path: `${p}status`, code: 'invalidValue' })
   for (const k of ['alertAt80', 'alertAt100'] as const) if (typeof plan[k] !== 'boolean') issues.push({ path: `${p}${k}`, code: 'invalidValue' })
+  // v13: avisos tempranos opcionales; si vienen, solo 50/75/90 y sin repetir.
+  if (plan.alertLevels !== undefined && (!Array.isArray(plan.alertLevels) || plan.alertLevels.some((l) => !(PLAN_EARLY_ALERT_LEVELS as readonly unknown[]).includes(l)) || new Set(plan.alertLevels).size !== plan.alertLevels.length)) {
+    issues.push({ path: `${p}alertLevels`, code: 'invalidValue' })
+  }
   if (plan.result !== undefined) {
     const r = plan.result
     if (!r || typeof r !== 'object' || !isMinorAmount(r.spentMinor) || typeof r.achieved !== 'boolean' || !isMinorAmount(r.deltaMinor) || !isValidTimestamp(r.closedAt)) {
@@ -346,6 +360,8 @@ export function validateAccount(a: Account, prefix = ''): Issue[] {
   if (typeof a.includeInBudget !== 'boolean') issues.push({ path: `${prefix}includeInBudget`, code: 'invalidValue' })
   // v11: opcionales; si vienen, con su tipo (la migración solo rellena lo ausente).
   if (a.archived !== undefined && typeof a.archived !== 'boolean') issues.push({ path: `${prefix}archived`, code: 'invalidValue' })
+  // v13: institución opcional; si viene, texto no vacío de hasta 40 caracteres.
+  if (a.institution !== undefined) checkName(a.institution, `${prefix}institution`, issues, 40)
   if (a.order !== undefined && !(Number.isInteger(a.order) && a.order >= 0)) issues.push({ path: `${prefix}order`, code: 'invalidValue' })
   if (!a.anchor || typeof a.anchor !== 'object') {
     issues.push({ path: `${prefix}anchor`, code: 'required' })
@@ -508,6 +524,16 @@ export function validateTransaction(tx: Transaction, ctx: ValidationContext): Is
   return issues
 }
 
+/**
+ * Segundo día de un pago «dos veces al mes»: entero 1–31 y a ≥ 7 días del día de `startDate`, así que
+ * aun pasando al último día de un mes corto nunca coinciden. Lo usan la validación y los formularios.
+ */
+export function isValidSecondDay(startDate: unknown, secondDay: unknown): boolean {
+  if (!Number.isInteger(secondDay) || (secondDay as number) < 1 || (secondDay as number) > 31) return false
+  const first = isValidLocalDate(startDate) ? Number((startDate as string).slice(8, 10)) : null
+  return first === null || Math.abs((secondDay as number) - first) >= 7
+}
+
 export function validateSchedule(s: Schedule, ctx: ValidationContext): Issue[] {
   const p = ctx.prefix ?? ''
   const issues: Issue[] = []
@@ -545,6 +571,9 @@ export function validateSchedule(s: Schedule, ctx: ValidationContext): Issue[] {
     issues.push({ path: `${p}intervalDays`, code: 'invalidValue' })
   } else if (s.intervalDays !== undefined && (!Number.isInteger(s.intervalDays) || s.intervalDays < 1)) issues.push({ path: `${p}intervalDays`, code: 'invalidValue' })
   for (const k of ['autoConfirm', 'paused'] as const) if (s[k] !== undefined && typeof s[k] !== 'boolean') issues.push({ path: `${p}${k}`, code: 'invalidValue' })
+  if (s.frequency === 'semimonthly') {
+    if (!isValidSecondDay(s.startDate, s.secondDay)) issues.push({ path: `${p}secondDay`, code: 'semimonthlyDays' })
+  } else if (s.secondDay !== undefined) issues.push({ path: `${p}secondDay`, code: 'invalidValue' })
   checkDate(s.startDate, `${p}startDate`, issues)
   if (s.endDate !== undefined) {
     checkDate(s.endDate, `${p}endDate`, issues)

@@ -1,11 +1,12 @@
 import { SUPPORTED_CURRENCIES } from '../../domain/money'
 import { activeAccounts, isBudgetAccount } from '../../domain/balances'
 import { useMemo, useRef, useState } from 'react'
-import { parseCsv, type BankDateFormat, type ColumnMapping, defaultSelection, guessMapping, type ImportRow, isImportable, looksLikeHeader, MAX_IMPORT_BYTES, MAX_IMPORT_ROWS, possibleDateFormats, previewImport } from '../../domain/bankImport'
+import { parseCsv, type BankDateFormat, type ColumnMapping, defaultSelection, guessMapping, type ImportRow, isImportable, looksLikeHeader, MAX_IMPORT_BYTES, MAX_IMPORT_ROWS, omissionSignature, possibleDateFormats, previewImport } from '../../domain/bankImport'
 import { categoriesForKind } from '../../domain/categories'
 import { newId } from '../../domain/ids'
 import { importTransactions, removeTransactions } from '../../domain/operations'
 import { matchCategoryRule, RULE_PATTERN_MAX } from '../../domain/rules'
+import { merchantLabel } from '../../domain/merchants'
 import type { CategoryRule } from '../../domain/types'
 import type { Issue } from '../../domain/validation'
 import { useT, type MessageKey } from '../../i18n'
@@ -27,6 +28,8 @@ const PAGE = 100
 interface LoadedFile {
   name: string
   table: string[][]
+  /** Cada archivo elegido es otro, aunque se llame igual (RT-03). */
+  pick: number
 }
 
 /** Lee el archivo como UTF-8; si no lo es, como Windows-1252 (habitual en bancos). */
@@ -70,7 +73,9 @@ export function BankImport() {
   const [issues, setIssues] = useState<Issue[]>([])
   const [busy, setBusy] = useState(false)
   // Más de MAX_IMPORT_ROWS filas: confirmar exige reconocer cuántas quedan fuera (nunca en silencio).
-  const [omittedAck, setOmittedAck] = useState(false)
+  // El reconocimiento es de UNA vista previa: el archivo elegido y qué filas quedan fuera (RT-03).
+  const [ackedOmission, setAckedOmission] = useState<string | null>(null)
+  const picks = useRef(0)
   const int = (n: number) => new Intl.NumberFormat(fmt.numberLocale).format(n)
   // Un id por fila, fijado al verla por primera vez: confirmar dos veces no duplica.
   const ids = useRef(new Map<string, string>())
@@ -102,13 +107,17 @@ export function BankImport() {
     setInvertSign(false)
     setChoices(new Map())
     setLimit(PAGE)
-    setFile({ name: picked.name, table })
+    setFile({ name: picked.name, table, pick: ++picks.current })
   }
 
   const preview = useMemo(
     () => (file ? previewImport(file.table, data, { accountId, mapping, hasHeader, dateFormat, invertSign, locale: data.settings.numberLocale, today, fileCurrency }) : null),
     [file, data, accountId, mapping, hasHeader, dateFormat, invertSign, today, fileCurrency],
   )
+
+  const omission = file && preview ? omissionSignature(preview) : null
+  const omissionKey = omission === null ? null : `${file!.pick}|${omission}`
+  const omittedAck = omissionKey !== null && ackedOmission === omissionKey
 
   const header = file?.table[0] ?? []
   const width = file ? file.table.reduce((max, r) => Math.max(max, r.length), 0) : 0
@@ -489,7 +498,7 @@ export function BankImport() {
                             <button
                               type="button"
                               className="btn btn--small btn--ghost"
-                              onClick={() => setRuleFor({ pattern: row.description.slice(0, RULE_PATTERN_MAX), kind: row.kind, categoryId: category.categoryId })}
+                              onClick={() => setRuleFor({ pattern: (merchantLabel(row.description) || row.description).slice(0, RULE_PATTERN_MAX), kind: row.kind, categoryId: category.categoryId })}
                             >
                               <Icon name="plus" size={16} />
                               {t('bankImport.makeRule')}
@@ -538,7 +547,7 @@ export function BankImport() {
               </p>
             )}
             {preview.omittedRows > 0 && (
-              <CheckboxField label={tn('bankImport.omittedAck', preview.omittedRows)} checked={omittedAck} onChange={setOmittedAck} />
+              <CheckboxField label={tn('bankImport.omittedAck', preview.omittedRows)} checked={omittedAck} onChange={(checked) => setAckedOmission(checked ? omissionKey : null)} />
             )}
             <div className="form__actions">
               <button type="button" className="btn btn--primary btn--large" disabled={busy || selected.length === 0 || (preview.omittedRows > 0 && !omittedAck)} onClick={() => void confirm()}>

@@ -15,6 +15,7 @@ import { canChangeCurrency } from './currencyChange'
 import { isSupportedCurrency, sumMinor } from './money'
 import { findSettlement } from './planItems'
 import { balanceAtDate, reconciliationFingerprint } from './reconcile'
+import { defaultSecondDay } from './recurrence'
 import type {
   Account,
   AllocationReason,
@@ -454,6 +455,8 @@ export function saveSchedule(data: AppData, draft: ScheduleDraft, ctx: OpContext
     frequency: draft.frequency,
     // v9: intervalo personalizado, confirmación automática y pausa (el formulario los manda explícitos).
     ...(draft.frequency === 'custom' && draft.intervalDays !== undefined ? { intervalDays: draft.intervalDays } : {}),
+    // v13: dos veces al mes; sin segundo día explícito, 15 días después (o antes) del primero.
+    ...(draft.frequency === 'semimonthly' ? { secondDay: draft.secondDay ?? defaultSecondDay(draft.startDate) } : {}),
     ...(draft.autoConfirm ? { autoConfirm: true } : {}),
     ...(draft.paused ? { paused: true } : {}),
     startDate: draft.startDate,
@@ -748,7 +751,7 @@ export function updateAccountBalance(
   return { ok: true, data: touch(next, ctx.now), value: updated }
 }
 
-export type AccountDraft = Pick<Account, 'id' | 'name' | 'kind' | 'includeInBudget' | 'card'> & {
+export type AccountDraft = Pick<Account, 'id' | 'name' | 'kind' | 'includeInBudget' | 'card' | 'institution'> & {
   /** Solo al crear. */
   openingBalanceMinor?: number
   openingDate?: LocalDate
@@ -762,6 +765,7 @@ export function saveAccount(data: AppData, draft: AccountDraft, ctx: OpContext):
     kind: draft.kind,
     includeInBudget: draft.includeInBudget,
     ...(draft.kind === 'credit' && draft.card ? { card: cleanCard(draft.card) } : {}),
+    ...(cleanText(draft.institution) ? { institution: cleanText(draft.institution) } : {}),
     anchor: existing?.anchor ?? { amountMinor: draft.openingBalanceMinor ?? 0, date: draft.openingDate ?? ctx.today, setAt: ctx.now },
     // v11: archivar y ordenar tienen sus propias operaciones; editar conserva ambos. Una cuenta nueva va al final.
     ...(existing?.archived ? { archived: true } : {}),
@@ -917,6 +921,26 @@ export function saveCategoryRule(data: AppData, draft: CategoryRuleDraft, ctx: O
   const issues = validateCategoryRule(rule, data.categoryRules, data.categories)
   if (issues.length) return fail(issues)
   return { ok: true, data: touch({ ...data, categoryRules: upsert(data.categoryRules, rule) }, ctx.now), value: rule }
+}
+
+/** Varias reglas en una operación (las correcciones aceptadas en la revisión del asistente): todo o nada. */
+export function saveCategoryRules(data: AppData, drafts: readonly CategoryRuleDraft[], ctx: OpContext): OpResult<CategoryRule[]> {
+  let next = data
+  const saved: CategoryRule[] = []
+  for (const [i, draft] of drafts.entries()) {
+    const r = saveCategoryRule(next, draft, ctx)
+    if (!r.ok) return fail(r.issues.map((issue) => ({ ...issue, path: `rules[${i}].${issue.path}` })))
+    next = r.data
+    saved.push(r.value)
+  }
+  return { ok: true, data: next, value: saved }
+}
+
+/** Deshacer varias reglas recién guardadas (por id); las que ya no estén se ignoran. */
+export function deleteCategoryRules(data: AppData, ids: readonly string[], ctx: OpContext): OpResult<CategoryRule[]> {
+  const removed = data.categoryRules.filter((r) => ids.includes(r.id))
+  if (removed.length === 0) return { ok: true, data, value: [], unchanged: true }
+  return { ok: true, data: touch({ ...data, categoryRules: data.categoryRules.filter((r) => !ids.includes(r.id)) }, ctx.now), value: removed }
 }
 
 export function deleteCategoryRule(data: AppData, id: string, ctx: OpContext): OpResult<CategoryRule> {
@@ -1130,11 +1154,11 @@ export interface SetupInput {
   balanceMinor: number
   balanceDate: LocalDate
   income:
-    | { name: string; amountMinor: number; date: LocalDate; frequency: Schedule['frequency']; isEstimate: boolean }
+    | { name: string; amountMinor: number; date: LocalDate; frequency: Schedule['frequency']; isEstimate: boolean; secondDay?: number }
     | null
   /** Si no hay ingreso: horizonte en días. */
   fallbackHorizonDays: number | null
-  bills: { name: string; amountMinor: number; date: LocalDate; frequency: Schedule['frequency'] }[]
+  bills: { name: string; amountMinor: number; date: LocalDate; frequency: Schedule['frequency']; secondDay?: number }[]
   /** `name` llega traducido desde la interfaz (p. ej. «Reserva de emergencia»). */
   reserve: { amountMinor: number; fundedFrom: Goal['fundedFrom']; name: string } | null
   /** Categorías del sistema elegidas en el onboarding (§7.1); si falta, quedan las propuestas por defecto. */
@@ -1216,6 +1240,7 @@ export function createInitialData(input: SetupInput, ctx: OpContext): OpResult<A
         accountId,
         categoryId: 'salary',
         frequency: input.income.frequency,
+        ...(input.income.frequency === 'semimonthly' && input.income.secondDay !== undefined ? { secondDay: input.income.secondDay } : {}),
         startDate: input.income.date,
         reminderDaysBefore: 0,
       },
@@ -1237,6 +1262,7 @@ export function createInitialData(input: SetupInput, ctx: OpContext): OpResult<A
         accountId,
         categoryId: 'other_expense',
         frequency: bill.frequency,
+        ...(bill.frequency === 'semimonthly' && bill.secondDay !== undefined ? { secondDay: bill.secondDay } : {}),
         startDate: bill.date,
         reminderDaysBefore: 2,
       },

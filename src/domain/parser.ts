@@ -9,7 +9,7 @@
  * categorías en cuatro idiomas más aprendizaje a partir del historial de la persona.
  */
 import { addDays, isValidLocalDate, parseLocalDate, toLocalDate, weekday } from './dates'
-import { currencyDigits, isSupportedCurrency, stripCurrencyMark, symbolMatchesCurrency } from './money'
+import { currencyDigits, currencyMarksAround, currencyMarksIn, markLabel, markMatchesCurrency, type TextMark } from './money'
 import { normalizeText, rankRuleMatches } from './rules'
 import type { AppData, Language, LocalDate, Transaction } from './types'
 
@@ -29,8 +29,9 @@ export interface ParsedEntry {
   /** Qué se detectó y qué se asumió (claves de i18n `parser.hint.*`). */
   hints: ParserHint[]
   /**
-   * Moneda escrita junto al importe que NO es la del presupuesto («café USD 10», «10 €» en CAD):
-   * código ISO o el símbolo tal cual. Nunca se convierte; la revisión bloquea la línea (AS-01).
+   * Moneda escrita que NO es la del presupuesto («café USD 10», «10 €», «EUR ten», «10 pesos» en
+   * CAD): código ISO, el símbolo o el nombre tal cual. Nunca se convierte; el campo «Importe» la
+   * conserva (`withCurrencyMark`) y la revisión bloquea la línea (AS-01, RT-01).
    */
   foreignCurrency?: string
 }
@@ -159,38 +160,43 @@ const MONTHS: Record<string, number> = {
 
 interface AmountMatch {
   minor: number
+  /** Desde la primera marca de moneda pegada hasta la última: lo que sale de la descripción. */
   start: number
   end: number
   hint?: ParserHint
-  /** Texto del importe con su marca de moneda (prefijo o código detrás), para `stripCurrencyMark`. */
-  marked?: string
+  /** Monedas escritas pegadas al importe (delante y detrás), con las definiciones de `money.ts`. */
+  marks: TextMark[]
 }
 
-/** Código de moneda escrito justo detrás del número («10 USD», «10 eur»): solo códigos conocidos. */
-const TRAILING_CODE = /^\s*([A-Za-z]{3})(?![\p{L}\d])/u
-
-/** Moneda escrita que no es la del presupuesto; `undefined` si no hay marca o si es la misma. */
-export function foreignCurrencyOf(marked: string | undefined, currency: string): string | undefined {
-  if (!marked) return undefined
-  const { mark } = stripCurrencyMark(marked)
-  if (!mark) return undefined
-  if ('unknown' in mark) return mark.unknown
-  if ('code' in mark) return mark.code === currency ? undefined : mark.code
-  return symbolMatchesCurrency(mark.symbol, currency) ? undefined : mark.symbol
+/** Letras ASCII pegadas delante del número: solo valen si son un código de moneda («GBP10», no «abc10»). */
+function attachedPrefixOk(text: string, at: number): boolean {
+  if (!/[A-Za-z]$/.test(text.slice(0, at))) return true
+  return currencyMarksAround(text, at, at).some((m) => m.end === at)
 }
 
-/** «1.234,56», «1,234.56», «25.000» (miles), «25,50», «25.5», «$25», «25€», «25k», «2.5k», «25 mil». */
+/** Letras ASCII pegadas detrás del número: solo valen si son un código o nombre de moneda («10GBP», «10euros»). */
+function attachedSuffixOk(text: string, at: number): boolean {
+  if (!/^[A-Za-z]/.test(text.slice(at))) return true
+  return currencyMarksAround(text, at, at).some((m) => m.start === at)
+}
+
+function withMarks(text: string, minor: number, start: number, end: number, hint?: ParserHint): AmountMatch {
+  const marks = currencyMarksAround(text, start, end)
+  return { minor, start: Math.min(start, ...marks.map((m) => m.start)), end: Math.max(end, ...marks.map((m) => m.end)), hint, marks }
+}
+
+/** «1.234,56», «1,234.56», «25.000» (miles), «25,50», «25.5», «$25», «25€», «GBP 25», «25k», «2.5k», «25 mil». */
 function findAmount(text: string, digits: number): AmountMatch | null {
-  const re = /(?<![\w.,])(?:[$€£¥]|r\$|c\$|us\$|cop|mxn|cad|usd|eur|brl|clp)?\s*(\d{1,3}(?:[.,\s]\d{3})+|\d+)(?:([.,])(\d{1,2}))?\s*(k|mil|m)?(?![\w])/giu
-  let best: AmountMatch | null = null
+  const re = /(?<![\p{N}.,_])(\d{1,3}(?:[.,\s]\d{3})+|\d+)(?:([.,])(\d{1,2}))?(?:\s*(k|mil|m)(?![\p{L}\p{N}_]))?(?![\p{N}_])/giu
+  let first: AmountMatch | null = null
   for (const m of text.matchAll(re)) {
     const [, intRaw, sep, frac, suffix] = m
-    let integer = intRaw!.replace(/[.,\s]/g, '')
+    const start = m.index!
+    const end = start + m[0].length
+    // Letras pegadas al número («abc10», «10abc») no son un importe, salvo un código de moneda (RT-01).
+    if (!attachedPrefixOk(text, start) || !attachedSuffixOk(text, end)) continue
+    const integer = intRaw!.replace(/[.,\s]/g, '')
     let fraction = frac ?? ''
-    // «25.000» con dos decimales ambiguos: tres dígitos tras el separador siempre son miles (ya cubierto por el grupo de miles).
-    if (!sep && !suffix && /^\d{1,3}([.,]\d{3})+$/.test(intRaw!) && digits > 0 && intRaw!.split(/[.,]/).length === 2 && intRaw!.split(/[.,]/)[1]!.length === 3) {
-      // Ambiguo (p. ej. «1.500» en MXN): se trata como miles, como hace la gente al escribir rápido.
-    }
     let scale = 1
     let hint: ParserHint | undefined
     if (suffix) {
@@ -209,38 +215,25 @@ function findAmount(text: string, digits: number): AmountMatch | null {
     }
     const fracDigits = fraction.padEnd(digits, '0').slice(0, digits)
     const minor = whole * 10 ** digits + (digits > 0 && fracDigits ? Number(fracDigits) : 0)
-    // Se prefiere el primer importe con símbolo o decimales; si no, el primero.
-    const explicit = /[$€£¥]|r\$|c\$/i.test(m[0]!) || !!sep || !!suffix
-    if (!best || (explicit && !best.hint && !/[$€£¥]/.test(text.slice(best.start, best.end)))) {
-      let end = m.index! + m[0]!.length
-      let marked = m[0]!.trim()
-      // AS-01: «10 USD» también es una moneda escrita; se quita de la descripción y se recuerda.
-      const trailing = TRAILING_CODE.exec(text.slice(end))
-      if (trailing && isSupportedCurrency(trailing[1]!.toUpperCase())) {
-        end += trailing[0].length
-        marked = `${marked} ${trailing[1]}`
-      }
-      best = { minor, start: m.index!, end, hint, marked }
-      if (explicit) break
-    }
+    const found = withMarks(text, minor, start, end, hint)
+    // Se prefiere el primer importe con moneda escrita, decimales o «k»; si no, el primero.
+    if (found.marks.length > 0 || !!sep || !!suffix) return found
+    first ??= found
   }
-  return best
+  return first
 }
 
-/** Números en palabras: «veinticinco», «twenty five», «dos mil quinientos», «cinquante». */
-function findWordAmount(norm: string, digits: number): AmountMatch | null {
-  const words = norm.split(' ')
+/** Números en palabras: «veinticinco», «twenty five», «dos mil quinientos», «cinquante» (con su moneda: «EUR ten»). */
+function findWordAmount(text: string, digits: number): AmountMatch | null {
+  const words = [...text.matchAll(/\S+/g)]
   let total = 0
   let current = 0
   let start = -1
   let end = -1
   let seen = false
   for (let i = 0; i < words.length; i++) {
-    const w = words[i]!.replace(/^(y|and|e|et)$/, '')
-    if (w === '') {
-      if (seen) continue
-      continue
-    }
+    const w = normalizeText(words[i]![0]).replace(/^(y|and|e|et)$/, '')
+    if (w === '') continue
     const v = NUMBER_WORDS[w]
     if (v === undefined) {
       if (seen) break
@@ -258,9 +251,20 @@ function findWordAmount(norm: string, digits: number): AmountMatch | null {
   if (!seen) return null
   total += current
   if (total === 0) return null
-  const charStart = words.slice(0, start).join(' ').length + (start > 0 ? 1 : 0)
-  const charEnd = words.slice(0, end + 1).join(' ').length
-  return { minor: total * 10 ** digits, start: charStart, end: charEnd, hint: 'amountWords' }
+  const charStart = words[start]!.index!
+  const charEnd = words[end]!.index! + words[end]![0].length
+  return withMarks(text, total * 10 ** digits, charStart, charEnd, 'amountWords')
+}
+
+/**
+ * Moneda escrita que NO es la del presupuesto (código, símbolo o nombre tal cual), o `undefined`.
+ * Manda lo pegado al importe; si no hay nada pegado, cualquier moneda explícita de la frase
+ * («coffee (USD) 10», «paid in euros») deja la línea sin resolver: nunca se asume la del presupuesto.
+ */
+function foreignCurrencyOf(amount: AmountMatch | null, rest: string, currency: string): string | undefined {
+  const marks = amount && amount.marks.length > 0 ? amount.marks : currencyMarksIn(rest)
+  const foreign = marks.find((m) => !markMatchesCurrency(m.mark, currency))
+  return foreign ? markLabel(foreign.mark) : undefined
 }
 
 /* ---------- Fechas ---------- */
@@ -420,7 +424,7 @@ export function parseEntry(raw: string, ctx: ParseContext): ParsedEntry {
   } else hints.push('assumedToday')
 
   // Importe
-  const amount = findAmount(working, digits) ?? findWordAmount(normalizeText(working), digits)
+  const amount = findAmount(working, digits) ?? findWordAmount(working, digits)
   let description = working
   if (amount) {
     description = (working.slice(0, amount.start) + ' ' + working.slice(amount.end)).replace(/\s+/g, ' ').trim()
@@ -490,7 +494,7 @@ export function parseEntry(raw: string, ctx: ParseContext): ParsedEntry {
   if (isTransfer) confidence = Math.min(confidence, 0.5)
   confidence = Math.max(0.05, Math.min(0.95, confidence))
 
-  const foreignCurrency = foreignCurrencyOf(amount?.marked, ctx.currency)
+  const foreignCurrency = foreignCurrencyOf(amount, amount ? working.slice(0, amount.start) + ' ' + working.slice(amount.end) : working, ctx.currency)
   return { kind: isTransfer ? 'transfer' : kind, amountMinor: amount?.minor ?? null, description, ...(merchant ? { merchant } : {}), ...(categoryId ? { categoryId } : {}), date: dateValue, confidence: Math.round(confidence * 100) / 100, raw: raw.trim(), hints, ...(foreignCurrency ? { foreignCurrency } : {}) }
 }
 

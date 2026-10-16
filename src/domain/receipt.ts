@@ -6,7 +6,7 @@
  */
 import { isValidLocalDate, toLocalDate } from './dates'
 import { parseEntry, type ParseContext } from './parser'
-import { currencyDigits } from './money'
+import { currencyDigits, currencyMarksAround, currencyMarksIn, markLabel, markMatchesCurrency, type TextMark } from './money'
 import type { LocalDate } from './types'
 
 export interface ReceiptResult {
@@ -18,6 +18,11 @@ export interface ReceiptResult {
   confidence: number
   /** Importes vistos, de mayor a menor (para ofrecer alternativas). */
   amountsMinor: number[]
+  /**
+   * Moneda impresa que no es la del presupuesto («12,50 €», «GBP 18.20» en CAD): el total se
+   * propone con ella escrita y la línea queda bloqueada hasta corregirla. Nunca se convierte (RT-01).
+   */
+  foreignCurrency?: string
 }
 
 const TOTAL_WORDS = /\b(total|importe|monto|amount\s*due|amount|montant|a\s*pagar|to\s*pay|à\s*payer|valor|sum[a]?)\b/i
@@ -114,10 +119,18 @@ export function parseReceiptText(text: string, ctx: ParseContext): ReceiptResult
   }
   const sorted = [...new Set(amounts)].sort((a, b) => b - a)
   if (total === null && sorted.length > 0) total = sorted[0]!
+  const foreign = lines.flatMap(receiptMarks).find((m) => !markMatchesCurrency(m.mark, ctx.currency))
   const date = dateInText(text, ctx.today)
   const merchant = merchantInLines(lines)
   const category = merchant ? parseEntry(merchant, ctx) : null
   const categoryId = category && category.hints.some((h) => h === 'categoryDictionary' || h === 'categoryLearned' || h === 'categoryRule') ? (category.categoryId ?? null) : null
   const confidence = (total !== null ? (totalScore > 0 ? 0.5 : 0.3) : 0) + (date ? 0.25 : 0) + (merchant ? 0.25 : 0)
-  return { totalMinor: total, date, merchant, categoryId, confidence, amountsMinor: sorted }
+  return { totalMinor: total, date, merchant, categoryId, confidence, amountsMinor: sorted, ...(foreign ? { foreignCurrency: markLabel(foreign.mark) } : {}) }
+}
+
+/** Monedas impresas en una línea del recibo: pegadas a un importe o un símbolo suelto. */
+function receiptMarks(line: string): TextMark[] {
+  const out = currencyMarksIn(line, { receipt: true })
+  for (const m of line.matchAll(AMOUNT)) out.push(...currencyMarksAround(line, m.index!, m.index! + m[0].length, { receipt: true }))
+  return out
 }

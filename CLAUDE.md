@@ -41,7 +41,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
 - Saldo actual = saldo de referencia + movimientos realizados posteriores
   (`txAppliesToAccount`). Los previstos nunca cambian el saldo.
 - Disponible = saldo del presupuesto − pagos pendientes/vencidos hasta el día del próximo
-  ingreso (incluido) − apartados de metas del presupuesto. El día del ingreso NO cuenta
+  ingreso (incluido) − apartados de metas del presupuesto − colchón de seguridad
+  (`settings.safeToSpend.bufferMinor`, 0 por defecto; no es gasto ni mueve dinero). El día del ingreso NO cuenta
   en los días del periodo. Ingresos futuros nunca se suman. Sin ingreso → horizonte;
   nunca dividir entre cero.
 - Una ocurrencia programada está pagada si hay un movimiento realizado con su
@@ -49,14 +50,19 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
 - Transferencias entre cuentas propias no son ingresos ni gastos.
 - Tarjetas de crédito: cuenta `credit` con saldo negativo (deuda). Compra = gasto de la
   tarjeta; pago = **transferencia** banco → tarjeta, nunca un gasto.
-- Mensuales en 29/30/31 → último día del mes corto.
+- Mensuales en 29/30/31 → último día del mes corto. «Dos veces al mes» (`semimonthly`, v13): día de
+  `startDate` + `secondDay` (1–31, a ≥ 7 días); el que no existe pasa al último día del mes.
+- Cambiar un programado «desde una fecha» (`domain/scheduleFrom.ts`): el de siempre termina el día antes y
+  uno nuevo empieza ese día; lo anterior no cambia. Nunca con un pago registrado (ni parcial) en esa fecha o
+  después; los vínculos hacia delante pasan al nuevo solo si esa ocurrencia sigue existiendo.
 - Operaciones idempotentes: el id se genera al abrir el formulario; guardar dos veces
   actualiza el mismo registro.
 - Importación CSV (`domain/bankImport.ts`): huella `importRef` (referencia del banco o descripción
   COMPLETA; las huellas antiguas de 80 caracteres se siguen reconociendo) evita reimportar; posibles
   duplicados desmarcados; filas con error visibles y nunca importadas; lo marcado se guarda todo o
-  nada; más de 5000 filas → cuántas y cuáles quedan fuera, y confirmar exige reconocerlo; el archivo
-  nunca sale del dispositivo.
+  nada; más de 5000 filas → cuántas y cuáles quedan fuera, y confirmar exige reconocerlo (solo para ESA
+  vista previa: archivo elegido + `omissionSignature`; otro archivo, otro contenido o leer la cabecera de
+  otra forma lo piden de nuevo, RT-03); el archivo nunca sale del dispositivo.
 - Papelera: eliminar saca el movimiento de `transactions` a `trash` (nunca participa en
   cálculos). Restaurar no deja vínculos rotos ni liquida dos veces una ocurrencia; filas
   CSV en la papelera no se reimportan. Sin borrado automático.
@@ -66,10 +72,19 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   escenario mínimo por defecto. Cobros parciales con `partialSettlement`; como mucho una
   liquidación final por ocurrencia.
 - Favoritos solo rellenan el formulario; nunca registran movimientos.
+- Corregir la categoría que proponía una regla (o la de un movimiento al editarlo, o una línea del asistente)
+  solo OFRECE «Recordar» (`suggestRuleFromCorrection` / `suggestRulesFromCorrections`); nunca se crea sin pulsar,
+  varias se guardan todo o nada (`saveCategoryRules`) y se puede deshacer.
 - Parser del asistente (`domain/parser.ts`): las pruebas pasan por `parseText` (lo que usa el
   asistente), no solo por `parseEntry`; una coma entre dígitos es parte del importe. El asistente
-  escribe en un `<textarea>` (una línea por movimiento). Reglas de categoría: un solo resolutor
-  (`rankRuleMatches`: patrón más largo, a igualdad la más antigua) para asistente, revisión y Ajustes.
+  escribe en un `<textarea>` (una línea por movimiento). Moneda escrita (RT-01): un solo lector en
+  `money.ts` (`currencyMarksAround`, `currencyMarksIn`, `stripCurrencyMark`) para códigos delante o
+  detrás (también pegados), símbolos, nombres, signos locales con letras («kr», «Ft») e importes en
+  palabras; si no es la del presupuesto o
+  queda sin resolver, el campo la conserva (`withCurrencyMark`) y la línea no se registra. Nunca se convierte. Reglas de categoría: un solo resolutor
+  (`rankRuleMatches`: patrón más largo, a igualdad la más antigua) para asistente, revisión y Ajustes; coincide
+  el texto tal cual o la clave de comercio (`domain/merchants.ts`: sin prefijo «SQ *», signos ni códigos de
+  referencia), siempre un superconjunto de lo de antes.
   La revisión distingue saldo (solo realizado) de disponible (simulado sobre una copia, nunca deducido).
 - Gastos planificados = metas `kind: 'expense'` (`domain/plannedExpenses.ts`): el plan es
   solo sugerencia; solo lo apartado descuenta. Vinculados a una ocurrencia, esa ocurrencia
@@ -78,16 +93,24 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   desde el calendario, lo pagado consume lo apartado en el cálculo aunque no se haya cerrado.
 - Presupuestos por periodo: asignado ≠ disponible; solo guardan ids (`txIds`); solapados
   cuentan una vez en el total; la reserva opcional es una meta que lo gastado consume.
+- Límite sugerido (`domain/planSuggestion.ts`): mediana del gasto neto de los últimos 3 ciclos completos con
+  datos (≥ 2), redondeada hacia arriba a una unidad; sin IA; «Usar» solo rellena el importe.
+- Hitos de metas (`domain/goalMilestones.ts`): 25/50/75/100 % en enteros, solo el más alto y solo 7 días desde
+  el apartado que lo cruzó; aviso local bajo «Alertas de planes»; no guarda nada.
 - Revisión semanal: lunes–domingo en la zona horaria; comparación equivalente; sin
   porcentaje si la base es 0 o faltan datos; reglas fijas, sin IA ni notificaciones.
 - Escenarios: se simulan sobre una copia; nunca modifican datos reales ni se aplican solos.
+- Filtros de Estadísticas (`domain/statsFilter.ts`): cuenta, etiqueta y comercio filtran los movimientos y todo se
+  calcula igual sobre esa copia; el saldo futuro no se filtra y se dice.
 - Búsqueda: local, sin acentos ni mayúsculas; categorías fijas en el idioma activo;
   papelera solo si se pide.
 - Compras divididas (`splits`, `domain/splits.ts`): un solo movimiento; Σ líneas = total
   exacto; saldos usan el movimiento, reportes/límites/búsqueda las líneas. Las reglas de
   categoría nunca pisan una división. Devoluciones repartidas sin superar lo pendiente.
 - Bandeja de pendientes (`domain/inbox.ts`): avisos CALCULADOS con ids estables; solo se
-  guarda posponer/descartar (con huella). Nunca elimina ni combina duplicados.
+  guarda posponer/descartar (con huella). Nunca elimina ni combina duplicados. Las sugerencias de pagos
+  fijos (`domain/recurringDetect.ts`: mismo comercio, mismo importe exacto, cadencia regular y activa) solo
+  abren el formulario relleno; nunca se programa nada solo y no cuentan como pendientes.
 - Distribuir un ingreso (`domain/incomeDistribution.ts`): solo ingresos realizados; crea
   apartados virtuales (metas), nunca dinero ni movimientos; pagos ya reservados no se
   restan dos veces; todo o nada; deshacer solo si es coherente.
@@ -96,6 +119,9 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
 - Historial (`domain/history.ts`): `AppStore.commit` registra antes/después de cada registro
   financiero que cambió (máx. 1000 entradas). Revertir solo si nada cambió después y validando
   todo; importar/demo = corte `replace`. Es local, no una auditoría inviolable.
+- Deshacer importar/restaurar (`state/replaceUndo.ts`): ligado a la revisión que fija el propio reemplazo
+  (`AppStore.commitTracked`, antes de esperar al almacenamiento), nunca a lo último guardado. Cualquier
+  cambio posterior —de la persona o automático, aunque su escritura siga pendiente— lo invalida (RT-02).
 - «¿Qué cambió?» (`domain/whatChanged.ts`): Σ pasos + tiempo + sin explicar = diferencia, al
   céntimo. Nunca inventa causas ni compara antes del historial o de un corte.
 - Plantillas (`domain/templates.ts`): solo rellenan formularios; regla de redondeo explícita;
@@ -152,7 +178,7 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   No hace falta `.env` en esta fase.
 - Restaurar una copia valida TODO el archivo y no aplica nada si hay un error. CSV del banco: cada fila
   con error se muestra con su motivo y no se importa; las filas marcadas se guardan todo o nada.
-- Cambios de formato de datos: subir `SCHEMA_VERSION` (hoy 12) y añadir migración con prueba.
+- Cambios de formato de datos: subir `SCHEMA_VERSION` (hoy 13) y añadir migración con prueba.
   Las migraciones solo rellenan campos ausentes; nunca borran datos mal formados.
 - Guardado (`indexedDbRepository.ts`, `localStorageRepository.ts`; ver `docs/STORAGE.md`): nunca sobrescribe lo que otra pestaña u otra
   versión guardó después de leer (error `conflict`); si guardar falla, se avisa de forma

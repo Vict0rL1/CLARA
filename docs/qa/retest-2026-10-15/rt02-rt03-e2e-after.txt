@@ -1,0 +1,25 @@
+
+Running 21 tests using 2 workers
+
+[1/21] [celular] › tests/e2e/retest.spec.ts:92:1 › RT-02 · importar una copia que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar
+[2/21] [celular] › tests/e2e/retest.spec.ts:102:1 › RT-02 · restaurar una copia local que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar
+[3/21] [celular] › tests/e2e/retest.spec.ts:235:1 › RT-02 · importar con la escritura retenida: un gasto de CAD 9 registrado mientras tanto sobrevive a «Deshacer» y a recargar
+[4/21] [celular] › tests/e2e/retest.spec.ts:247:1 › RT-02 · restaurar una copia local con la escritura retenida: un gasto de CAD 9 registrado mientras tanto sobrevive a «Deshacer» y a recargar
+[5/21] [celular] › tests/e2e/retest.spec.ts:293:1 › RT-03 · reconocer las filas omitidas de un archivo y elegir otro más grande: hay que reconocerlo de nuevo
+[6/21] [celular] › tests/e2e/retest.spec.ts:314:1 › RT-03 · el mismo nombre con otro contenido, o leer la primera fila de otra forma, también piden reconocerlo de nuevo
+[7/21] [celular] › tests/e2e/retest.spec.ts:330:1 › RT-03 · cancelar el selector de archivos deja la misma vista previa con su reconocimiento; un archivo pequeño no pide nada
+[8/21] [celular] › tests/e2e/retest.spec.ts:92:1 › RT-02 · importar una copia que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar
+[9/21] [celular] › tests/e2e/retest.spec.ts:102:1 › RT-02 · restaurar una copia local que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar
+[10/21] [celular] › tests/e2e/retest.spec.ts:235:1 › RT-02 · importar con la escritura retenida: un gasto de CAD 9 registrado mientras tanto sobrevive a «Deshacer» y a recargar
+[11/21] [celular] › tests/e2e/retest.spec.ts:247:1 › RT-02 · restaurar una copia local con la escritura retenida: un gasto de CAD 9 registrado mientras tanto sobrevive a «Deshacer» y a recargar
+[12/21] [celular] › tests/e2e/retest.spec.ts:293:1 › RT-03 · reconocer las filas omitidas de un archivo y elegir otro más grande: hay que reconocerlo de nuevo
+[13/21] [celular] › tests/e2e/retest.spec.ts:314:1 › RT-03 · el mismo nombre con otro contenido, o leer la primera fila de otra forma, también piden reconocerlo de nuevo
+[14/21] [celular] › tests/e2e/retest.spec.ts:330:1 › RT-03 · cancelar el selector de archivos deja la misma vista previa con su reconocimiento; un archivo pequeño no pide nada
+[15/21] [celular] › tests/e2e/retest.spec.ts:92:1 › RT-02 · importar una copia que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar
+[16/21] [celular] › tests/e2e/retest.spec.ts:102:1 › RT-02 · restaurar una copia local que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar
+[17/21] [celular] › tests/e2e/retest.spec.ts:235:1 › RT-02 · importar con la escritura retenida: un gasto de CAD 9 registrado mientras tanto sobrevive a «Deshacer» y a recargar
+[18/21] [celular] › tests/e2e/retest.spec.ts:247:1 › RT-02 · restaurar una copia local con la escritura retenida: un gasto de CAD 9 registrado mientras tanto sobrevive a «Deshacer» y a recargar
+[19/21] [celular] › tests/e2e/retest.spec.ts:293:1 › RT-03 · reconocer las filas omitidas de un archivo y elegir otro más grande: hay que reconocerlo de nuevo
+[20/21] [celular] › tests/e2e/retest.spec.ts:314:1 › RT-03 · el mismo nombre con otro contenido, o leer la primera fila de otra forma, también piden reconocerlo de nuevo
+[21/21] [celular] › tests/e2e/retest.spec.ts:330:1 › RT-03 · cancelar el selector de archivos deja la misma vista previa con su reconocimiento; un archivo pequeño no pide nada
+  21 passed (1.6m)

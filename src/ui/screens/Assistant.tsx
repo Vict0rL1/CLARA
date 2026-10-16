@@ -13,7 +13,7 @@ import { parseReceiptText } from '../../domain/receipt'
 import { compressReceipt, ocrAvailable, recognizeText } from '../ocr'
 import { resolveCategories } from '../../domain/categories'
 import { newId } from '../../domain/ids'
-import { parseMoney } from '../../domain/money'
+import { parseMoney, withCurrencyMark } from '../../domain/money'
 import { countEntries, learnCategories, MAX_PARSER_LINES, type ParsedEntry } from '../../domain/parser'
 import { computeBudget } from '../../domain/budget'
 import { implausibilityRatio, isImplausibleAmount } from '../../domain/plausibility'
@@ -29,7 +29,9 @@ import { CategoryPicker } from '../components/CategoryPicker'
 import { Icon } from '../components/Icon'
 import { useToast } from '../components/toastContext'
 import { useFormat } from '../format'
-import { accountOptions, issueMessage } from '../labels'
+import { accountOptions, categoryLabel, issueMessage } from '../labels'
+import { suggestRulesFromCorrections, type RuleSuggestion } from '../../domain/rules'
+import { deleteCategoryRules, saveCategoryRules } from '../../domain/operations'
 import { reviewProposals } from '../../domain/review'
 import { ProposalReviewView } from '../components/ProposalReview'
 import { moneyErrorMessage } from '../moneyText'
@@ -55,14 +57,14 @@ interface Line {
 }
 
 /**
- * Texto inicial del importe. Si la persona escribió otra moneda («café USD 10» en CAD), se deja
- * escrita en el campo: así el campo explica el error y nada se guarda en la moneda equivocada (AS-01).
+ * Texto inicial del importe. Si la persona escribió otra moneda («café USD 10», «coffee 10€»,
+ * «EUR ten» en CAD) o el recibo la trae impresa, se deja escrita en el campo con la misma marca que
+ * lee `parseMoney`: así el campo explica el error y nada se guarda en la moneda equivocada (AS-01, RT-01).
  */
 function initialAmountText(entry: ParsedEntry, fmt: { moneyInput: (minor: number) => string }): string {
   if (entry.amountMinor === null) return ''
   const amount = fmt.moneyInput(entry.amountMinor)
-  if (!entry.foreignCurrency) return amount
-  return /^[A-Za-z]{3}$/.test(entry.foreignCurrency) ? `${amount} ${entry.foreignCurrency}` : `${entry.foreignCurrency}${amount}`
+  return entry.foreignCurrency ? withCurrencyMark(amount, entry.foreignCurrency) : amount
 }
 
 /** Moneda escrita en el campo que no es la del presupuesto (o `undefined`). */
@@ -138,8 +140,9 @@ export function Assistant({ route }: { route: Route }) {
         confidence: receipt?.confidence ?? 0,
         raw: t('assistant.photoRaw', { name: file.name || 'foto' }),
         hints,
+        ...(receipt?.foreignCurrency ? { foreignCurrency: receipt.foreignCurrency } : {}),
       }
-      const line: Line = { id: newId(), entry, kind: 'expense', amountText: entry.amountMinor === null ? '' : fmt.moneyInput(entry.amountMinor), categoryId: entry.categoryId ?? 'other_expense', date: entry.date, note: entry.description, receiptUri }
+      const line: Line = { id: newId(), entry, kind: 'expense', amountText: initialAmountText(entry, fmt), categoryId: entry.categoryId ?? 'other_expense', date: entry.date, note: entry.description, receiptUri }
       setLines((ls) => [...(ls ?? []), line])
       setIssues([])
     } catch {
@@ -249,6 +252,11 @@ export function Assistant({ route }: { route: Route }) {
       setIssues(errs)
       return
     }
+    // Clara 2.0 §7: si la persona cambió la categoría que se proponía, se OFRECE recordarla (nunca sola).
+    const learn = suggestRulesFromCorrections(
+      data,
+      lines.map((l) => ({ note: l.entry.merchant || l.note, kind: l.kind, categoryId: l.categoryId, previousCategoryId: l.entry.categoryId })),
+    )
     setBusy(true)
     const { result, saved } = await run((d, c) => saveConfirmedEntries(d, entries, c))
     setBusy(false)
@@ -256,8 +264,26 @@ export function Assistant({ route }: { route: Route }) {
       setIssues(result.issues)
       return
     }
-    toast({ message: saved ? tn('assistant.recorded', entries.length) : t('save.error.generic'), tone: saved ? 'good' : 'critical' })
+    const recorded = tn('assistant.recorded', entries.length)
+    toast({
+      message: !saved ? t('save.error.generic') : learn.length === 1 ? t('rules.learn.offer', { saved: recorded, category: categoryLabel(t, learn[0]!.categoryId), pattern: learn[0]!.pattern }) : learn.length > 1 ? t('rules.learn.offerMany', { saved: recorded, count: learn.length }) : recorded,
+      tone: saved ? 'good' : 'critical',
+      ...(saved && learn.length > 0 ? { action: { label: t('rules.learn.remember'), onClick: () => void rememberRules(learn) } } : {}),
+    })
     if (saved) leave(returnTo)
+  }
+
+  /** Guarda las reglas que la persona aceptó recordar, todas o ninguna; se pueden deshacer desde el aviso. */
+  const rememberRules = async (learn: RuleSuggestion[]) => {
+    const drafts = learn.map((s) => ({ id: newId(), ...s }))
+    const { result, saved } = await run((d, c) => saveCategoryRules(d, drafts, c))
+    if (!result.ok || !saved) return void toast({ message: t(result.ok ? 'save.error.generic' : 'rules.learn.failed'), tone: 'critical' })
+    const ids = drafts.map((d) => d.id)
+    toast({
+      message: drafts.length === 1 ? t('rules.learn.saved', { pattern: drafts[0]!.pattern, category: categoryLabel(t, drafts[0]!.categoryId) }) : t('rules.learn.savedMany', { count: drafts.length }),
+      tone: 'good',
+      action: { label: t('common.undo'), onClick: () => void run((d, c) => deleteCategoryRules(d, ids, c)) },
+    })
   }
 
   // D8: nivel de la voz (AnalyserNode) y tiempo transcurrido mientras se graba; con

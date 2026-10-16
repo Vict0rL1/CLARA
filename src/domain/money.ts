@@ -240,13 +240,202 @@ export type ParseMoneyResult = { ok: true; minor: number } | { ok: false; error:
 
 /**
  * Lo que la persona (o un CSV) escribió junto al número: un código («USD 100», «12 EUR»), un
- * prefijo con dólar («CA$», «US$», «R$») o un símbolo suelto («€12», «12,50 €», «$ 45»).
+ * prefijo con dólar («CA$», «US$», «R$»), un símbolo suelto («€12», «12,50 €», «$ 45») o el nombre
+ * de una moneda que puede ser varias («10 pesos»: `name` tal como se escribió y las monedas posibles).
  * `unknown` es un texto que parece un código pero no es una moneda admitida.
  */
-export type CurrencyMark = { code: string } | { symbol: string } | { unknown: string }
+export type CurrencyMark = { code: string } | { symbol: string } | { unknown: string } | { name: string; codes: readonly string[] }
 
 /** Prefijos con dólar → moneda. */
 const DOLLAR_PREFIX: Record<string, string> = { C: 'CAD', CA: 'CAD', CAN: 'CAD', US: 'USD', U: 'USD', MX: 'MXN', MEX: 'MXN', R: 'BRL', COL: 'COP', CO: 'COP', AU: 'AUD', NZ: 'NZD', AR: 'ARS', CL: 'CLP', UY: 'UYU', HK: 'HKD', SG: 'SGD', NT: 'TWD' }
+
+function dollarMark(letters: string): CurrencyMark {
+  const key = letters.toUpperCase()
+  if (!key) return { symbol: '$' }
+  return DOLLAR_PREFIX[key] ? { code: DOLLAR_PREFIX[key]! } : { unknown: `${key}$` }
+}
+
+/**
+ * Códigos ISO 4217 vigentes. Solo sirven para RECONOCER una moneda escrita en un texto libre: una
+ * moneda real que la app no admite («RUB 10») sigue siendo otra moneda, nunca la del presupuesto (RT-01).
+ */
+const ISO_4217 = new Set(
+  ('AED AFN ALL AMD ANG AOA ARS AUD AWG AZN BAM BBD BDT BGN BHD BIF BMD BND BOB BRL BSD BTN BWP BYN BZD CAD CDF CHF CLP CNY COP CRC CUP ' +
+    'CVE CZK DJF DKK DOP DZD EGP ERN ETB EUR FJD FKP GBP GEL GHS GIP GMD GNF GTQ GYD HKD HNL HTG HUF IDR ILS INR IQD IRR ISK JMD JOD JPY ' +
+    'KES KGS KHR KMF KPW KRW KWD KYD KZT LAK LBP LKR LRD LSL LYD MAD MDL MGA MKD MMK MNT MOP MRU MUR MVR MWK MXN MYR MZN NAD NGN NIO NOK ' +
+    'NPR NZD OMR PAB PEN PGK PHP PKR PLN PYG QAR RON RSD RUB RWF SAR SBD SCR SDG SEK SGD SHP SLE SOS SRD SSP STN SVC SYP SZL THB TJS TMT ' +
+    'TND TOP TRY TTD TWD TZS UAH UGX USD UYU UZS VES VND VUV WST XAF XCD XOF XPF YER ZAR ZMW ZWG').split(' '),
+)
+
+/**
+ * Códigos admitidos que también son palabras corrientes en es/en/pt/fr («pen», «ron», «try», «mad»,
+ * «ils», «bob»): en minúsculas no se leen como moneda en un texto libre; en MAYÚSCULAS sí, salvo en
+ * un recibo, que va todo en mayúsculas («PEN 2.99» es un bolígrafo).
+ */
+const CODE_WORDS = new Set(['PEN', 'RON', 'TRY', 'MAD', 'ILS', 'BOB'])
+
+const PESOS = ['MXN', 'COP', 'CLP', 'ARS', 'UYU', 'DOP', 'PHP'] as const
+const RUPEES = ['INR', 'PKR', 'IDR'] as const
+
+/**
+ * Nombres de moneda (minúsculas, sin acentos) → la marca que representan. Solo nombres que no son
+ * palabras corrientes: ni «libra»/«pound» sueltos (peso), ni «real», ni «franc» sueltos. `far` = se
+ * reconoce también lejos del importe («paid in euros»); el resto, solo pegado a él.
+ */
+const CURRENCY_NAMES: ReadonlyMap<string, { mark: CurrencyMark; far: boolean }> = (() => {
+  const map = new Map<string, { mark: CurrencyMark; far: boolean }>()
+  const add = (words: string, mark: (word: string) => CurrencyMark, far: boolean) => {
+    for (const w of words.split(',')) map.set(w, { mark: mark(w), far })
+  }
+  add('euro', () => ({ code: 'EUR' }), false)
+  add('euros', () => ({ code: 'EUR' }), true)
+  add('dollar,dolar', () => ({ symbol: '$' }), false)
+  add('dollars,dolares', () => ({ symbol: '$' }), true)
+  add('peso', (w) => ({ name: w, codes: PESOS }), false)
+  add('pesos', (w) => ({ name: w, codes: PESOS }), true)
+  add('yen,iene,yuan', (w) => ({ code: w === 'yuan' ? 'CNY' : 'JPY' }), false)
+  add('yenes,ienes,yuanes', (w) => ({ code: w === 'yuanes' ? 'CNY' : 'JPY' }), true)
+  add('reais', () => ({ code: 'BRL' }), true)
+  add('rupee,rupia,roupie', (w) => ({ name: w, codes: RUPEES }), false)
+  add('rupees,rupias,roupies', (w) => ({ name: w, codes: RUPEES }), true)
+  add('libra esterlina,libras esterlinas,pound sterling,pounds sterling,livre sterling,livres sterling', () => ({ code: 'GBP' }), true)
+  add('franco suizo,francos suizos,franco suico,francos suicos,swiss franc,swiss francs,franc suisse,francs suisses', () => ({ code: 'CHF' }), true)
+  return map
+})()
+
+/**
+ * Signos locales escritos con letras, tal cual (distinguen mayúsculas: «Ft» es el forinto y «ft» son
+ * pies). Solo cuentan pegados al importe («10 kr», «1000 Ft», «Rp 1000»).
+ */
+const LOCAL_SIGNS: ReadonlyMap<string, CurrencyMark> = (() => {
+  const map = new Map<string, CurrencyMark>()
+  for (const w of ['kr', 'Kr', 'KR']) map.set(w, { name: 'kr', codes: ['SEK', 'NOK', 'DKK', 'ISK'] })
+  for (const w of ['Rs', 'RS']) map.set(w, { name: 'Rs', codes: ['INR', 'PKR'] })
+  const codes: Record<string, string> = { zł: 'PLN', Zł: 'PLN', Kč: 'CZK', Ft: 'HUF', lei: 'RON', Lei: 'RON', лв: 'BGN', TL: 'TRY', Bs: 'BOB', Rp: 'IDR', RM: 'MYR' }
+  for (const [w, code] of Object.entries(codes)) map.set(w, { code })
+  return map
+})()
+
+function nameKey(words: string): string {
+  return words
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+}
+
+/** ¿Esa marca puede ser la moneda del presupuesto? Un código desconocido nunca lo es. */
+export function markMatchesCurrency(mark: CurrencyMark, currency: CurrencyCode): boolean {
+  if ('code' in mark) return mark.code === currency
+  if ('symbol' in mark) return symbolMatchesCurrency(mark.symbol, currency)
+  if ('name' in mark) return mark.codes.includes(currency)
+  return false
+}
+
+/** Cómo se nombra la marca en un aviso: el código, el símbolo o el nombre tal como se escribió. */
+export function markLabel(mark: CurrencyMark): string {
+  return 'code' in mark ? mark.code : 'symbol' in mark ? mark.symbol : 'name' in mark ? mark.name : mark.unknown
+}
+
+/**
+ * El texto de un campo «Importe» con la moneda escrita, de modo que `stripCurrencyMark` lea la
+ * misma marca: códigos y nombres detrás («10.00 USD», «10.00 pesos»), símbolos delante («€10.00»).
+ */
+export function withCurrencyMark(amount: string, label: string): string {
+  return /^(?:[A-Za-z]{0,3}\$|\p{Sc})$/u.test(label) ? `${label}${amount}` : `${amount} ${label}`
+}
+
+/** Opciones para leer marcas en un texto libre. */
+export interface TextMarkOptions {
+  /** Texto de un recibo (todo en mayúsculas): los códigos que son palabras y los ISO no admitidos no cuentan. */
+  receipt?: boolean
+}
+
+/** Una marca de moneda encontrada en un texto libre y dónde está. */
+export interface TextMark {
+  mark: CurrencyMark
+  start: number
+  end: number
+}
+
+function codeMark(raw: string, options: TextMarkOptions): CurrencyMark | null {
+  const code = raw.toUpperCase()
+  const upper = raw === code
+  if (isSupportedCurrency(code)) return CODE_WORDS.has(code) && (!upper || options.receipt) ? null : { code }
+  return upper && !options.receipt && ISO_4217.has(code) ? { unknown: code } : null
+}
+
+function nameMark(words: string): { mark: CurrencyMark; far: boolean } | undefined {
+  const local = LOCAL_SIGNS.get(words.trim())
+  return CURRENCY_NAMES.get(nameKey(words)) ?? (local ? { mark: local, far: false } : undefined)
+}
+
+/**
+ * Marcas de moneda pegadas (solo espacios entre medias) al importe que ocupa `[start, end)` de un
+ * texto libre: delante («GBP 10», «US$10», «€ 10», «EUR ten») y detrás («10€», «10 gbp»,
+ * «ten euros», «10 pounds sterling»). Mismas definiciones que `stripCurrencyMark` (RT-01).
+ */
+export function currencyMarksAround(text: string, start: number, end: number, options: TextMarkOptions = {}): TextMark[] {
+  const out: TextMark[] = []
+  const before = text.slice(0, start)
+  const dollar = /(?<![\p{L}\p{N}])([A-Za-z]{1,3})\$\s*$/u.exec(before)
+  const symbol = /(\p{Sc})\s*$/u.exec(before)
+  const code = /(?<![\p{L}\p{N}])([A-Za-z]{3})\s*$/u.exec(before)
+  const codeBefore = code ? codeMark(code[1]!, options) : null
+  if (dollar) out.push({ mark: dollarMark(dollar[1]!), start: dollar.index, end: start })
+  else if (symbol) out.push({ mark: { symbol: symbol[1]! }, start: symbol.index, end: start })
+  else if (codeBefore) out.push({ mark: codeBefore, start: code!.index, end: start })
+  else {
+    const two = /(?<![\p{L}\p{N}])(\p{L}+\s+\p{L}+)\s*$/u.exec(before)
+    const one = /(?<![\p{L}\p{N}])(\p{L}+)\s*$/u.exec(before)
+    const found = (two && nameMark(two[1]!) ? two : null) ?? (one && nameMark(one[1]!) ? one : null)
+    if (found) out.push({ mark: nameMark(found[1]!)!.mark, start: found.index, end: start })
+  }
+  const after = text.slice(end)
+  const symbolAfter = /^\s*(\p{Sc})/u.exec(after)
+  const codeAfter = /^\s*([A-Za-z]{3})(?![\p{L}\p{N}])/u.exec(after)
+  const codeAfterMark = codeAfter ? codeMark(codeAfter[1]!, options) : null
+  if (symbolAfter) out.push({ mark: { symbol: symbolAfter[1]! }, start: end, end: end + symbolAfter[0].length })
+  else if (codeAfterMark) out.push({ mark: codeAfterMark, start: end, end: end + codeAfter![0].length })
+  else {
+    const two = /^\s*(\p{L}+\s+\p{L}+)(?![\p{L}\p{N}])/u.exec(after)
+    const one = /^\s*(\p{L}+)(?![\p{L}\p{N}])/u.exec(after)
+    const found = (two && nameMark(two[1]!) ? two : null) ?? (one && nameMark(one[1]!) ? one : null)
+    if (found) out.push({ mark: nameMark(found[1]!)!.mark, start: end, end: end + found[0].length })
+  }
+  return out
+}
+
+/**
+ * Marcas explícitas en cualquier parte de un texto libre, lejos del importe: símbolos, códigos
+ * admitidos escritos en MAYÚSCULAS («coffee (USD) 10») y nombres en plural («paid in euros»). Lejos
+ * del importe no cuentan los ISO no admitidos («AMD GPU 500» no es el dram). En un recibo solo los
+ * símbolos (sus líneas van en mayúsculas y abrevian artículos).
+ */
+export function currencyMarksIn(text: string, options: TextMarkOptions = {}): TextMark[] {
+  const out: TextMark[] = []
+  for (const m of text.matchAll(/(?<![\p{L}\p{N}])([A-Za-z]{1,3})\$|\p{Sc}/gu)) {
+    out.push({ mark: m[1] !== undefined ? dollarMark(m[1]) : { symbol: m[0] }, start: m.index!, end: m.index! + m[0].length })
+  }
+  if (options.receipt) return out.sort((a, b) => a.start - b.start)
+  for (const m of text.matchAll(/(?<![\p{L}\p{N}])([A-Za-z]{3})(?![\p{L}\p{N}])/gu)) {
+    const mark = m[1] === m[1]!.toUpperCase() ? codeMark(m[1]!, options) : null
+    if (mark && 'code' in mark) out.push({ mark, start: m.index!, end: m.index! + 3 })
+  }
+  // Cada palabra, sola y junto a la siguiente («pounds sterling»): ninguna queda sin mirar.
+  const words = [...text.matchAll(/(?<![\p{L}\p{N}])\p{L}+/gu)]
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i]!
+    const next = words[i + 1]
+    const pairEnd = next && /^\s+$/.test(text.slice(word.index! + word[0].length, next.index!)) ? next.index! + next[0].length : null
+    const two = pairEnd === null ? undefined : nameMark(text.slice(word.index!, pairEnd))
+    const found = two ?? nameMark(word[0])
+    if (!found?.far) continue
+    out.push({ mark: found.mark, start: word.index!, end: two ? pairEnd! : word.index! + word[0].length })
+    if (two) i++
+  }
+  return out.sort((a, b) => a.start - b.start)
+}
 
 /**
  * Separa la marca de moneda del número: `text` queda listo para `parseScaled` (con su signo) y
@@ -264,16 +453,22 @@ export function stripCurrencyMark(input: string): { text: string; mark: Currency
     const code = raw.toUpperCase()
     mark = isSupportedCurrency(code) ? { code } : { unknown: code }
   }
-  // Código al final: «12 USD», «1.234,56 EUR».
-  const suffix = /^(.*\d.*?)\s*([A-Za-z]{3})$/.exec(s)
-  if (suffix) {
+  // Nombre al final: «10 euros», «10.00 pesos», «10 pounds sterling» (RT-01).
+  const named = /^(.*\d.*?)\s+(\p{L}+(?:\s+\p{L}+)?)$/u.exec(s)
+  const name = named ? nameMark(named[2]!) : undefined
+  // Código al final: «12 USD», «1.234,56 EUR» (una palabra entera: «dollars» no es «ARS»).
+  const suffix = name ? null : /^(.*\d.*?)\s*(?<![A-Za-z])([A-Za-z]{3})$/.exec(s)
+  if (name) {
+    mark = name.mark
+    s = named![1]!.trim()
+  } else if (suffix) {
     setCode(suffix[2]!)
     s = suffix[1]!.trim()
   }
   // Prefijos: «CAD 12», «CA$12», «US$ 12», «$12», «€12». Un signo puede ir detrás («$-12»).
   const code = /^([A-Za-z]{3})\s*(?=[-−+]?[\d.,])/.exec(s)
   const dollar = /^([A-Za-z]{0,3})\$\s*/.exec(s)
-  const symbol = /^([€£¥])\s*/.exec(s)
+  const symbol = /^(\p{Sc})\s*/u.exec(s)
   if (code) {
     if (!mark) setCode(code[1]!)
     s = s.slice(code[0].length)
@@ -286,8 +481,8 @@ export function stripCurrencyMark(input: string): { text: string; mark: Currency
     mark ??= { symbol: symbol[1]! }
     s = s.slice(symbol[0].length)
   } else {
-    // Símbolo al final: «12,50 €», «45 $».
-    const trailing = /^(.*\d.*?)\s*([€£¥$])$/.exec(s)
+    // Símbolo al final: «12,50 €», «45 $», «10 ₽».
+    const trailing = /^(.*\d.*?)\s*(\p{Sc})$/u.exec(s)
     if (trailing) {
       mark ??= { symbol: trailing[2]! }
       s = trailing[1]!.trim()
@@ -333,10 +528,8 @@ export function parseMoney(
   const digits = currencyDigits(currency)
   const { text, mark } = stripCurrencyMark(input)
   // QA-05: una moneda escrita que no es la del presupuesto se rechaza; nunca se convierte ni se asume.
-  if (mark) {
-    if ('unknown' in mark) return { ok: false, error: 'unknownCurrency', digits, found: mark.unknown, expected: currency }
-    if ('code' in mark && mark.code !== currency) return { ok: false, error: 'currencyMismatch', digits, found: mark.code, expected: currency }
-    if ('symbol' in mark && !symbolMatchesCurrency(mark.symbol, currency)) return { ok: false, error: 'currencyMismatch', digits, found: mark.symbol, expected: currency }
+  if (mark && !markMatchesCurrency(mark, currency)) {
+    return { ok: false, error: 'unknown' in mark ? 'unknownCurrency' : 'currencyMismatch', digits, found: markLabel(mark), expected: currency }
   }
   return parseScaled(text, digits, locale, options)
 }

@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { activeAccounts, isBudgetAccount } from '../../domain/balances'
 import { categoriesForKind } from '../../domain/categories'
-import { parseLocalDate } from '../../domain/dates'
+import { addDays, isValidLocalDate, parseLocalDate } from '../../domain/dates'
 import { newId } from '../../domain/ids'
-import { deleteSchedule, restoreSchedule, saveSchedule } from '../../domain/operations'
+import { deleteSchedule, restoreSchedule, saveSchedule, type ScheduleDraft } from '../../domain/operations'
+import { defaultSplitDate, saveScheduleFrom } from '../../domain/scheduleFrom'
 import type { Frequency, ScheduleKind } from '../../domain/types'
 import { FREQUENCIES, LIMITS, type Issue } from '../../domain/validation'
 import { useT } from '../../i18n'
@@ -12,6 +13,8 @@ import { useData } from '../../state/store'
 import { Alert, EmptyState, PageHeader } from '../components/common'
 import { CheckboxField, MoneyField, Segmented, SelectField, TextField } from '../components/fields'
 import { CategoryPicker } from '../components/CategoryPicker'
+import { SecondDayField } from '../components/SecondDayField'
+import { secondDayFrom } from '../secondDay'
 import { parseMoneyText, moneyErrorMessage } from '../moneyText'
 import { Icon } from '../components/Icon'
 import { useToast } from '../components/toastContext'
@@ -32,25 +35,47 @@ export function ScheduleForm({ route }: { route: Route }) {
   const editId = route.segments[2] === 'editar' ? route.segments[3] : undefined
   const existing = editId ? data.schedules.find((s) => s.id === editId) : undefined
   const queryKind = route.query.get('kind') === 'income' ? 'income' : 'expense'
+  // Clara 2.0 fase 3: «Programar» desde una sugerencia de la bandeja abre el formulario relleno (solo uno
+  // nuevo; cada valor se valida y uno que no sirve se ignora). Guardar sigue siendo decisión de la persona.
+  const q = editId ? null : route.query
+  const qAmount = Number(q?.get('amount'))
+  const prefill = {
+    name: q?.get('name')?.slice(0, LIMITS.nameMax) ?? '',
+    amountMinor: Number.isSafeInteger(qAmount) && qAmount > 0 ? qAmount : undefined,
+    frequency: (FREQUENCIES as readonly string[]).includes(q?.get('frequency') ?? '') ? (q!.get('frequency') as Frequency) : undefined,
+    start: isValidLocalDate(q?.get('start')) ? q!.get('start')! : undefined,
+    category: q?.get('category') ?? undefined,
+    account: q?.get('account') && data.accounts.some((a) => a.id === q.get('account') && !a.archived) ? q.get('account')! : undefined,
+  }
 
   const [id] = useState(() => existing?.id ?? newId())
+  // Clara 2.0 fase 3: «desde una fecha» parte la serie; el id del nuevo se genera al abrir (guardar dos
+  // veces actualiza el mismo). Solo se ofrece si hay fechas anteriores que conservar.
+  const [splitId] = useState(() => newId())
+  const [splitDefault] = useState(() => (existing ? defaultSplitDate(data, existing, today) : null))
+  const [scope, setScope] = useState<'all' | 'from'>('all')
+  const allStart = useRef(existing?.startDate ?? today)
   const [kind, setKind] = useState<ScheduleKind>(existing?.kind ?? queryKind)
-  const [name, setName] = useState(existing?.name ?? '')
-  const [amountText, setAmountText] = useState(existing ? fmt.moneyInput(existing.amountMinor) : '')
+  const [name, setName] = useState(existing?.name ?? prefill.name)
+  const [amountText, setAmountText] = useState(existing ? fmt.moneyInput(existing.amountMinor) : prefill.amountMinor ? fmt.moneyInput(prefill.amountMinor) : '')
   const [isEstimate, setIsEstimate] = useState(existing?.amountIsEstimate ?? false)
   // Ingreso variable: mínimo y extra (el importe principal es el esperado).
   const [variable, setVariable] = useState(!!existing?.range)
   const [minText, setMinText] = useState(existing?.range ? fmt.moneyInput(existing.range.minMinor) : '')
   const [extraText, setExtraText] = useState(existing?.range ? fmt.moneyInput(existing.range.extraMinor) : '')
   const [rangeErrors, setRangeErrors] = useState<{ min: string | null; extra: string | null }>({ min: null, extra: null })
-  const [frequency, setFrequency] = useState<Frequency>(existing?.frequency ?? 'monthly')
+  const [frequency, setFrequency] = useState<Frequency>(existing?.frequency ?? prefill.frequency ?? 'monthly')
   const [intervalDays, setIntervalDays] = useState(String(existing?.intervalDays ?? 30))
+  // Dos veces al mes: vacío = 15 días después (o antes) del primer día; se dice en la ayuda.
+  const [secondDayText, setSecondDayText] = useState(existing?.secondDay ? String(existing.secondDay) : '')
   const [autoConfirm, setAutoConfirm] = useState(!!existing?.autoConfirm)
   const [paused, setPaused] = useState(!!existing?.paused)
-  const [startDate, setStartDate] = useState(existing?.startDate ?? today)
+  const [startDate, setStartDate] = useState(existing?.startDate ?? prefill.start ?? today)
   const [endDate, setEndDate] = useState(existing?.endDate ?? '')
-  const [accountId, setAccountId] = useState(existing?.accountId ?? (activeAccounts(data.accounts).find(isBudgetAccount) ?? activeAccounts(data.accounts)[0] ?? data.accounts[0]!).id)
-  const [categoryId, setCategoryId] = useState(existing?.categoryId ?? (queryKind === 'income' ? 'salary' : 'other_expense'))
+  const [accountId, setAccountId] = useState(existing?.accountId ?? prefill.account ?? (activeAccounts(data.accounts).find(isBudgetAccount) ?? activeAccounts(data.accounts)[0] ?? data.accounts[0]!).id)
+  const [categoryId, setCategoryId] = useState(
+    existing?.categoryId ?? (prefill.category && categoriesForKind(queryKind, data.categories, { prefs: data.categoryPrefs }).includes(prefill.category) ? prefill.category : queryKind === 'income' ? 'salary' : 'other_expense'),
+  )
   const [reminder, setReminder] = useState(existing?.reminderDaysBefore ?? (queryKind === 'income' ? 0 : 2))
   const [note, setNote] = useState(existing?.note ?? '')
   const [issues, setIssues] = useState<Issue[]>([])
@@ -84,36 +109,37 @@ export function ScheduleForm({ route }: { route: Route }) {
     }
     if (!parsed.ok || busy) return
     setBusy(true)
-    const { result, saved } = await run((d, c) =>
-      saveSchedule(
-        d,
-        {
-          id,
-          name,
-          kind,
-          amountMinor: parsed.minor,
-          amountIsEstimate: isEstimate || !!range,
-          range,
-          accountId,
-          categoryId,
-          frequency,
-          ...(frequency === 'custom' ? { intervalDays: Number(intervalDays) } : {}),
-          startDate,
-          endDate: endDate || undefined,
-          reminderDaysBefore: reminder,
-          note,
-          ...(autoConfirm ? { autoConfirm: true } : {}),
-          ...(paused ? { paused: true } : {}),
-        },
-        c,
-      ),
-    )
+    const draft: ScheduleDraft = {
+      id: scope === 'from' ? splitId : id,
+      name,
+      kind,
+      amountMinor: parsed.minor,
+      amountIsEstimate: isEstimate || !!range,
+      range,
+      accountId,
+      categoryId,
+      frequency,
+      ...(frequency === 'custom' ? { intervalDays: Number(intervalDays) } : {}),
+      ...(frequency === 'semimonthly' ? { secondDay: secondDay } : {}),
+      startDate,
+      endDate: endDate || undefined,
+      reminderDaysBefore: reminder,
+      note,
+      ...(autoConfirm ? { autoConfirm: true } : {}),
+      ...(paused ? { paused: true } : {}),
+    }
+    const { result, saved } = await run((d, c) => {
+      if (scope !== 'from' || !existing) return saveSchedule(d, draft, c)
+      const r = saveScheduleFrom(d, existing.id, draft, c)
+      return r.ok ? { ...r, value: r.value.next } : r
+    })
     setBusy(false)
     if (!result.ok) {
       setIssues(result.issues)
       return
     }
-    toast({ message: saved ? t('scheduleForm.saved') : t('save.error.generic'), tone: saved ? 'good' : 'critical' })
+    const message = scope === 'from' ? t('scheduleForm.savedFrom', { date: fmt.date(startDate) }) : t('scheduleForm.saved')
+    toast({ message: saved ? message : t('save.error.generic'), tone: saved ? 'good' : 'critical' })
     leave('/plan/calendario')
   }
 
@@ -131,7 +157,8 @@ export function ScheduleForm({ route }: { route: Route }) {
   }
 
   const day = startDate ? parseLocalDate(startDate).day : 0
-  const unknown = otherIssues(issues, ['name', 'amountMinor', 'startDate', 'endDate', 'accountId', 'categoryId', 'range.minMinor', 'range.extraMinor'])
+  const secondDay = secondDayFrom(startDate, secondDayText)
+  const unknown = otherIssues(issues, ['name', 'amountMinor', 'startDate', 'endDate', 'accountId', 'categoryId', 'range.minMinor', 'range.extraMinor', 'secondDay'])
 
   return (
     <div className="stack">
@@ -177,15 +204,44 @@ export function ScheduleForm({ route }: { route: Route }) {
         {frequency === 'custom' && (
           <TextField label={t('scheduleForm.intervalDays')} type="number" inputMode="numeric" min={1} max={365} value={intervalDays} onChange={(e) => setIntervalDays(e.target.value)} hint={t('scheduleForm.intervalDaysHint')} error={fieldError(t, fmt, issues, 'intervalDays')} required />
         )}
+        {splitDefault && (
+          <Segmented
+            legend={t('scheduleForm.scope')}
+            name="sscope"
+            value={scope}
+            onChange={(next) => {
+              if (next === scope) return
+              if (next === 'from') allStart.current = startDate
+              setStartDate(next === 'from' ? splitDefault : allStart.current)
+              setScope(next)
+              setIssues([])
+            }}
+            options={[
+              { value: 'all', label: t('scheduleForm.scopeAll') },
+              { value: 'from', label: t('scheduleForm.scopeFrom') },
+            ]}
+          />
+        )}
         <TextField
-          label={t('scheduleForm.nextDate')}
+          label={scope === 'from' ? t('scheduleForm.fromDate') : t('scheduleForm.nextDate')}
           type="date"
           value={startDate}
           onChange={(e) => setStartDate(e.target.value)}
-          hint={frequency === 'monthly' && day >= 29 ? t('scheduleForm.monthEndHint', { day }) : startDate < today ? t('scheduleForm.pastDateHint') : t('scheduleForm.nextDateHint')}
+          hint={
+            scope === 'from' && isValidLocalDate(startDate)
+              ? t('scheduleForm.fromHint', { date: fmt.date(addDays(startDate, -1)) })
+              : frequency === 'monthly' && day >= 29
+                ? t('scheduleForm.monthEndHint', { day })
+                : startDate < today
+                  ? t('scheduleForm.pastDateHint')
+                  : t('scheduleForm.nextDateHint')
+          }
           error={fieldError(t, fmt, issues, 'startDate')}
           required
         />
+        {frequency === 'semimonthly' && (
+          <SecondDayField startDate={startDate} value={secondDayText} onChange={setSecondDayText} error={fieldError(t, fmt, issues, 'secondDay')} />
+        )}
         {frequency !== 'once' && (
           <TextField label={t('scheduleForm.endDate')} type="date" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} hint={t('scheduleForm.endDateHint')} error={fieldError(t, fmt, issues, 'endDate')} />
         )}
@@ -201,7 +257,7 @@ export function ScheduleForm({ route }: { route: Route }) {
         <TextField label={t('fields.noteOptional')} value={note} maxLength={LIMITS.noteMax} onChange={(e) => setNote(e.target.value)} />
         <CheckboxField checked={autoConfirm} onChange={setAutoConfirm} label={t('scheduleForm.autoConfirm')} hint={t('scheduleForm.autoConfirmHint')} />
         {existing && <CheckboxField checked={paused} onChange={setPaused} label={t('scheduleForm.paused')} hint={t('scheduleForm.pausedHint')} />}
-        {existing && <p className="note">{t('scheduleForm.editNote')}</p>}
+        {existing && scope === 'all' && <p className="note">{t('scheduleForm.editNote')}</p>}
         {unknown.length > 0 && (
           <Alert tone="critical" title={t('common.fixErrors')} role="alert">
             <ul>

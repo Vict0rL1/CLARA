@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useDeferredValue, useMemo, useState } from 'react'
+import type { AppData } from '../../domain/types'
 import { backupStatus, SNOOZE_OPTIONS } from '../../domain/backupReminder'
 import { heroFigures } from '../../domain/heroFigures'
 import { FavoriteChips } from '../favoritesUi'
@@ -156,7 +157,24 @@ export function Home() {
     })
   }
   const otherReminders = reminderItems.filter((i) => i.state !== 'overdue')
-  const pendingCount = useMemo(() => inboxView(data, today).active.length, [data, today])
+  // La cuenta de la bandeja no es la cifra principal: se calcula después de pintarla (con 10 000 movimientos la
+  // bandeja entera tarda decenas de ms y no debe retrasar «Puedes gastar»). Mientras tanto, solo «Pendientes».
+  // Las sugerencias (Clara 2.0 fase 3) no son pendientes: no ponen el aviso, solo se dicen si no hay nada más.
+  const inboxData = useDeferredValue<AppData | null>(data, null)
+  const inboxCounts = useMemo(() => {
+    if (!inboxData) return null
+    const active = inboxView(inboxData, today).active
+    const suggestionCount = active.filter((i) => i.kind === 'suggestion').length
+    return { pendingCount: active.length - suggestionCount, suggestionCount }
+  }, [inboxData, today])
+  const pendingCount = inboxCounts?.pendingCount ?? 0
+  const inboxText = !inboxCounts
+    ? t('inbox.title')
+    : pendingCount > 0
+      ? tn('inbox.homeCount', pendingCount)
+      : inboxCounts.suggestionCount > 0
+        ? tn('inbox.homeSuggestions', inboxCounts.suggestionCount)
+        : t('inbox.homeNone')
 
   // Avisos que no cambian la cifra principal: se agrupan debajo de ella para no saturar
   // la pantalla (el primero visible; el resto, plegado). Orden: pagos vencidos, copia de
@@ -308,7 +326,7 @@ export function Home() {
       <ul className="tool-links">
         <li>
           <a href={href('/pendientes')} data-testid="inbox-link">
-            {pendingCount > 0 ? tn('inbox.homeCount', pendingCount) : t('inbox.homeNone')}
+            {inboxText}
           </a>
         </li>
         <li>
@@ -340,8 +358,8 @@ export function Home() {
     <>
       {/* Acceso compacto a la bandeja de pendientes (sin llenar la pantalla de avisos) */}
       <a className="inbox-link" href={href('/pendientes')} data-testid="inbox-link">
-        <Icon name={pendingCount > 0 ? 'alert' : 'checkCircle'} size={18} />
-        <span>{pendingCount > 0 ? tn('inbox.homeCount', pendingCount) : t('inbox.homeNone')}</span>
+        <Icon name={!inboxCounts ? 'list' : pendingCount > 0 ? 'alert' : 'checkCircle'} size={18} />
+        <span>{inboxText}</span>
         <Icon name="chevronRight" size={16} />
       </a>
     </>
@@ -692,6 +710,11 @@ export function Home() {
                 <span className="hero__ledger-item">
                   <span className="hero__ledger-label">{t('home.ledger.reserved')}</span> <span className="hero__ledger-value">−{fmt.money(budget.reservedTotalMinor + budget.goalsReservedMinor)}</span>
                 </span>
+                {budget.safetyBufferMinor > 0 && (
+                  <span className="hero__ledger-item" data-testid="hero-ledger-buffer">
+                    <span className="hero__ledger-label">{t('home.ledger.buffer')}</span> <span className="hero__ledger-value">−{fmt.money(budget.safetyBufferMinor)}</span>
+                  </span>
+                )}
               </p>
             )}
             {budget.status === 'ok' && (
@@ -716,8 +739,14 @@ export function Home() {
                 </div>
               </>
             )}
-            {budget.status === 'ok' && budget.availableMinor < 0 && (
-              <Alert tone="critical" title={t('home.negativeTitle', { amount: fmt.money(-budget.availableMinor) })}>
+            {/* v13: si solo se está usando el colchón, pagos y apartados están cubiertos: aviso, no alarma. */}
+            {budget.status === 'ok' && budget.availableMinor < 0 && budget.availableMinor + budget.safetyBufferMinor >= 0 && (
+              <Alert tone="warning" title={t('home.bufferInUse', { amount: fmt.money(-budget.availableMinor), buffer: fmt.money(budget.safetyBufferMinor) })}>
+                {t('home.bufferInUseText')}
+              </Alert>
+            )}
+            {budget.status === 'ok' && budget.availableMinor + budget.safetyBufferMinor < 0 && (
+              <Alert tone="critical" title={t('home.negativeTitle', { amount: fmt.money(-(budget.availableMinor + budget.safetyBufferMinor)) })}>
                 {t('home.negativeText')}{' '}
                 <a href={href('/alcanza/faltante')}>{t('shortfall.open')}</a>
               </Alert>
@@ -769,6 +798,7 @@ export function Home() {
                     spendableMinor={budget.spendableMinor}
                     reservedMinor={budget.reservedTotalMinor}
                     goalsMinor={budget.goalsReservedMinor}
+                    bufferMinor={budget.safetyBufferMinor}
                     availableMinor={budget.availableMinor}
                     fmt={fmt}
                   />
@@ -839,6 +869,7 @@ export function Home() {
                     {g.consumedMinor > 0 ? ` · ${t(g.goal.kind === 'expense' && g.goal.plan?.link ? 'explain.goalPaid' : 'explain.goalConsumed', { amount: fmt.money(g.consumedMinor) })}` : ''}
                   </p>
                 ))}
+                {budget.safetyBufferMinor > 0 && <CalcRow op="−" label={t('explain.buffer')} value={fmt.money(budget.safetyBufferMinor)} />}
                 <CalcRow op="=" label={t('explain.available')} value={fmt.money(budget.availableMinor)} strong />
                 {budget.horizon && budget.dailyMinor !== null && (
                   <>

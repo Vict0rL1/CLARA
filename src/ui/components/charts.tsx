@@ -32,28 +32,33 @@ function CompositionBarInner({
   spendableMinor,
   reservedMinor,
   goalsMinor,
+  bufferMinor = 0,
   availableMinor,
   fmt,
 }: {
   spendableMinor: number
   reservedMinor: number
   goalsMinor: number
+  /** Colchón de seguridad (Clara 2.0 §10); solo aparece si es mayor que 0. */
+  bufferMinor?: number
   availableMinor: number
   fmt: Formatter
 }) {
   const { t } = useT()
   const free = Math.max(0, availableMinor)
   const shortage = Math.max(0, -availableMinor)
-  const total = reservedMinor + goalsMinor + free
+  const total = reservedMinor + goalsMinor + bufferMinor + free
   const segments = [
     { key: 'reserved', label: t('home.composition.reserved'), value: reservedMinor, cls: 'series-1' },
     { key: 'goals', label: t('home.composition.goals'), value: goalsMinor, cls: 'series-2' },
+    ...(bufferMinor > 0 ? [{ key: 'buffer', label: t('home.composition.buffer'), value: bufferMinor, cls: 'series-buffer' }] : []),
     { key: 'free', label: t('home.composition.free'), value: free, cls: 'series-3' },
   ]
-  const summary = t('home.composition.aria', {
+  const summary = t(bufferMinor > 0 ? 'home.composition.ariaBuffer' : 'home.composition.aria', {
     balance: fmt.money(spendableMinor),
     reserved: fmt.money(reservedMinor),
     goals: fmt.money(goalsMinor),
+    buffer: fmt.money(bufferMinor),
     free: fmt.money(availableMinor),
   })
   // Si faltan fondos, se marca hasta dónde llega el saldo real.

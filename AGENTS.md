@@ -7,7 +7,8 @@ French). The project rules — architecture layers, money as integer minor units
 `CLAUDE.md` (Spanish); follow them when changing code.
 
 `main` contains everything: stages 1–4 of the Clara program and the release-stabilization fixes of
-2026-10-13 (`docs/STABILIZATION-2026-10-13.md`).
+2026-10-13 (`docs/STABILIZATION-2026-10-13.md`). The follow-up fixes RT-01/02/03 from the independent
+retest of 2026-10-15 are described in the same document (section «Comprobación independiente…»).
 
 ## 1. Setup
 
@@ -45,6 +46,7 @@ Useful variants:
 ```bash
 npx playwright test --project=celular-pequeno --workers=2         # one viewport, like CI
 npx playwright test tests/e2e/stabilization.spec.ts               # the stabilization regressions only
+npx playwright test tests/e2e/retest.spec.ts                      # the 2026-10-15 retest regressions (RT-01/02/03)
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/path/to/chrome npm run test:e2e   # use a preinstalled Chromium
 BASE_URL=http://localhost:4174 npx playwright test <spec>         # run specs against another running build
 ```
@@ -64,11 +66,12 @@ Notes for reliable runs:
 | Path | What |
 |---|---|
 | `src/domain/` | Pure financial logic (no React, no storage, "today" passed in). All formulas: `docs/FORMULAS.md` |
-| `src/storage/` | IndexedDB / localStorage repository, backups, migrations (schema 12) |
+| `src/storage/` | IndexedDB / localStorage repository, backups, migrations (schema 13) |
 | `src/state/` | In-memory store, undo of import/restore (`replaceUndo.ts`) |
 | `src/ui/` | Screens and components; all text comes from `src/i18n/{es,en,pt,fr}.ts` |
 | `tests/e2e/` | Playwright specs; `stabilization.spec.ts` = one test per audit finding |
 | `src/domain/stabilization.test.ts` | Unit regressions per audit finding |
+| `src/domain/retest.test.ts`, `src/state/replaceUndo.test.ts` | Unit regressions for RT-01/RT-03 and RT-02 (delayed IndexedDB writes) |
 | `docs/STABILIZATION-2026-10-13.md` | What was fixed, before/after evidence, known limits, later roadmap |
 | `docs/screenshots/stabilization-2026-10-13/` | Before (audited `e7c9d87`) / after screenshots |
 
@@ -93,6 +96,9 @@ Start each case from a fresh demo (welcome screen → «Explorar con datos de de
 | 13 | Phone at 320 px with 200 % text (browser zoom/text size), es/en/pt/fr: Ajustes › Cuentas, Plan › Metas, Ajustes › Datos, Plan › Calendario | No horizontal scrolling; bottom bar may use two rows; nothing hidden behind it |
 | 14 | On a touch device, swipe a movement row quickly left | Row opens; «Eliminar» responds to the tap |
 | 15 | A goal with more than 50 history entries | «Mostrando 50 de N…» and «Mostrar más» until the oldest |
+| RT-01 | Assistant (CAD budget): `coffee 10€`, `coffee GBP 10`, `coffee EUR ten`, `coffee ten USD`, `café diez euros` | Each line keeps its currency in the amount field (`€10.00`, `10.00 GBP`…), says «No se convierte» and «Registrar» stays disabled; `coffee 10` / `tea 4 CAD` register in CAD |
+| RT-02 | Export a backup, set `autoConfirm: true` on «Recibo de luz» in the JSON, import it, then «Deshacer» (also via Copias locales › Restaurar) | The bill is recorded automatically; Undo answers «No se deshizo…» and the bill survives a reload |
+| RT-03 | Import: choose a 5,003-row CSV, tick «Entiendo que 3 filas…», then «Elegir otro archivo» with 6,000 rows (or the same name with other content, or untick the header option) | The new «Entiendo que N filas…» is unticked and Import stays disabled until ticked again |
 
 **Not covered by automated tests (please test on real devices):** physical phones (iOS Safari, Android
 Chrome), the OS text size at 200 %, a screen reader (VoiceOver / TalkBack), offline install and update of the

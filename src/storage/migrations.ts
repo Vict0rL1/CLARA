@@ -168,6 +168,18 @@ export const MIGRATIONS: Record<number, (raw: Raw) => Raw> = {
       ? { plans: raw.plans.map((p: unknown) => (p && typeof p === 'object' && !Array.isArray(p) ? { ...(p as Raw), ...((p as Raw).rollover === undefined ? { rollover: 'none' } : {}) } : p)) }
       : {}),
   }),
+  // v12 → v13 (Clara 2.0): colchón de seguridad del *safe to spend* (0 = lo de siempre). También admite
+  // tipos de cuenta y frecuencias nuevos, que no necesitan relleno: una versión anterior verá «datos de
+  // una versión más nueva» en vez de darlos por dañados. Solo se rellena lo ausente.
+  12: (raw) => {
+    const settings = raw.settings && typeof raw.settings === 'object' && !Array.isArray(raw.settings) ? (raw.settings as Raw) : null
+    const sts = settings?.safeToSpend && typeof settings.safeToSpend === 'object' && !Array.isArray(settings.safeToSpend) ? (settings.safeToSpend as Raw) : null
+    return {
+      ...raw,
+      schemaVersion: 13,
+      ...(settings && sts && sts.bufferMinor === undefined ? { settings: { ...settings, safeToSpend: { ...sts, bufferMinor: 0 } } } : {}),
+    }
+  },
 }
 
 export function migrate(raw: Raw): Raw {

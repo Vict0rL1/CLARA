@@ -14,7 +14,7 @@
  * Nada de esto guarda: solo rellena el formulario, que la persona revisa.
  */
 import { categoriesForKind } from './categories'
-import { parseMoney, stripCurrencyMark } from './money'
+import { markLabel, markMatchesCurrency, parseMoney, stripCurrencyMark } from './money'
 import { dictionaryCategory, learnCategories, parseText, significantWords } from './parser'
 import { matchCategoryRule, normalizeText } from './rules'
 import type { AppData, CurrencyCode, Language } from './types'
@@ -34,8 +34,9 @@ export function parseShortcutAmount(text: string, currency: string, numberLocale
   if (mark && 'unknown' in mark) return { ok: false }
   const parsed = parseMoney(amount, currency as CurrencyCode, numberLocale)
   if (!parsed.ok) return { ok: false }
-  const marked = mark && 'code' in mark ? mark.code : mark && 'symbol' in mark ? SYMBOL[mark.symbol] : undefined
-  return marked && marked !== currency ? { ok: true, minor: parsed.minor, foreignCurrency: marked } : { ok: true, minor: parsed.minor }
+  // Cualquier marca que no pueda ser la moneda del presupuesto se avisa (RT-01): «€» se nombra EUR.
+  if (!mark || markMatchesCurrency(mark, currency as CurrencyCode)) return { ok: true, minor: parsed.minor }
+  return { ok: true, minor: parsed.minor, foreignCurrency: 'symbol' in mark ? (SYMBOL[mark.symbol] ?? mark.symbol) : markLabel(mark) }
 }
 
 export interface MovementLink {

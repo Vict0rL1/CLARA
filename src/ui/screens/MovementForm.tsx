@@ -9,15 +9,17 @@ import { computeBudget } from '../../domain/budget'
 import { implausibilityRatio, isImplausibleAmount } from '../../domain/plausibility'
 import { ConfirmDialog } from '../components/Dialog'
 import { CategoryPicker } from '../components/CategoryPicker'
+import { SecondDayField } from '../components/SecondDayField'
+import { secondDayError, secondDayFrom } from '../secondDay'
 import { saveTransactionWithSchedule } from '../../domain/repeat'
 import { FREQUENCIES } from '../../domain/validation'
 import { Toggle } from '../components/base'
 import { frequencyLabel } from '../labels'
-import { markOccurrence, saveTransaction, type OpContext } from '../../domain/operations'
+import { deleteCategoryRule, markOccurrence, saveCategoryRule, saveTransaction, type OpContext } from '../../domain/operations'
 import { periodsProposedFor, setTransactionPeriods } from '../../domain/periodBudgets'
 import { inferRefundSplit, refundableByCategory, suggestSplitFromHistory, txCategoryIds } from '../../domain/splits'
 import { openItemsUntil } from '../../domain/planItems'
-import { explainRuleMatch } from '../../domain/rules'
+import { explainRuleMatch, suggestRuleFromCorrection } from '../../domain/rules'
 import { historyOfRecord } from '../../domain/history'
 import { similarTransactions } from '../../domain/duplicates'
 import { readMovementLink, suggestCategoryForMerchant } from '../../domain/shortcutLink'
@@ -218,6 +220,8 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
   const [repeat, setRepeat] = useState(false)
   const [repeatFrequency, setRepeatFrequency] = useState<Frequency>('monthly')
   const [repeatEnd, setRepeatEnd] = useState('')
+  const [repeatSecondDay, setRepeatSecondDay] = useState('')
+  const [repeatSecondDayError, setRepeatSecondDayError] = useState<string | null>(null)
   const [scheduleId] = useState(() => `s_${newId()}`)
   // G5: un gasto desproporcionado pide confirmación una vez por movimiento.
   const [implausible, setImplausible] = useState<number | null | false>(false)
@@ -227,6 +231,8 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
   // Regla de categoría: solo propone mientras la persona no elija la categoría a mano.
   const [categoryTouched, setCategoryTouched] = useState(() => !!existing || !!duplicateOf || !!q.get('category') || !!prefill)
   const [ruleApplied, setRuleApplied] = useState<CategoryRule | undefined>(undefined)
+  // Clara 2.0 §7: categoría que proponía una regla y la persona cambió (para ofrecer recordar la corrección).
+  const [correctedFrom, setCorrectedFrom] = useState<string | undefined>(undefined)
   const [ruleCompetitors, setRuleCompetitors] = useState(0)
   // Vínculo con un pago o ingreso previsto (solo movimientos nuevos): evita contarlo dos veces.
   const [linkKey, setLinkKey] = useState('')
@@ -378,6 +384,10 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
     setAmountError(moneyErrorMessage(t, parsed))
     // Evita un segundo envío por doble clic antes de que React vuelva a pintar.
     if (!parsed.ok || submitting.current) return
+    // «Repetir» dos veces al mes: el segundo día se valida antes de guardar (misma regla que el dominio).
+    const badSecondDay = repeat && canRepeat && repeatFrequency === 'semimonthly' && secondDayError(date, repeatSecondDay)
+    setRepeatSecondDayError(badSecondDay ? t('issue.semimonthlyDays') : null)
+    if (badSecondDay) return
     if (kind === 'expense' && !implausibleOk.current && isImplausibleAmount(parsed.minor, availableMinor, data.settings.currency)) {
       pendingAnother.current = another
       setImplausible(implausibilityRatio(parsed.minor, availableMinor))
@@ -442,15 +452,31 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
         }),
       )
     }
+    const savedMessage = t(existing ? 'movementForm.updated' : repeat && canRepeat ? 'movementForm.repeatSaved' : 'movementForm.saved')
+    // Clara 2.0 §7: si la persona corrigió la categoría, se OFRECE recordarla como regla; nunca se guarda sola.
+    const learn = saved && !canDistribute ? suggestRuleFromCorrection(data, { note: savedTx.note, kind: savedTx.kind, categoryId: savedTx.categoryId, previousCategoryId: existing ? existing.categoryId : correctedFrom, hasSplits: !!savedTx.splits }) : null
     toast({
-      message: saved ? t(existing ? 'movementForm.updated' : repeat && canRepeat ? 'movementForm.repeatSaved' : 'movementForm.saved') : t('save.error.generic'),
+      message: !saved ? t('save.error.generic') : learn ? t('rules.learn.offer', { saved: savedMessage, category: categoryLabel(t, learn.categoryId), pattern: learn.pattern }) : savedMessage,
       tone: saved ? 'good' : 'critical',
       // Tras registrar un ingreso recibido se ofrece repartirlo (nunca se hace solo).
       ...(canDistribute ? { action: { label: t('distribution.offer'), onClick: () => navigate(`/movimientos/distribuir/${savedTx.id}`) } } : {}),
+      ...(learn ? { action: { label: t('rules.learn.remember'), onClick: () => void rememberRule(learn) } } : {}),
     })
     // Tras guardar, el historial vuelve a abrirse limpio (solo «Volver» recupera la vista).
     forgetListReturn(data.budgetId)
     leave(returnTo)
+  }
+
+  /** Guarda la regla que la persona aceptó recordar; se puede deshacer desde el aviso. */
+  async function rememberRule(learn: { pattern: string; kind: 'expense' | 'income'; categoryId: string }) {
+    const ruleId = newId()
+    const { result, saved } = await run((d, c) => saveCategoryRule(d, { id: ruleId, ...learn }, c))
+    if (!result.ok || !saved) return void toast({ message: t(result.ok ? 'save.error.generic' : 'rules.learn.failed'), tone: 'critical' })
+    toast({
+      message: t('rules.learn.saved', { pattern: learn.pattern, category: categoryLabel(t, learn.categoryId) }),
+      tone: 'good',
+      action: { label: t('common.undo'), onClick: () => void run((d, c) => deleteCategoryRule(d, ruleId, c)) },
+    })
   }
 
   /** Guarda el movimiento (o liquida la ocurrencia vinculada). */
@@ -493,7 +519,7 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
     }
     if (repeat && canRepeat && (kind === 'expense' || kind === 'income')) {
       const name = (note.trim() || merchant.trim() || categoryLabel(t, categoryId)).slice(0, 60)
-      return saveTransactionWithSchedule(d, draft, { id: scheduleId, name, kind, amountMinor, amountIsEstimate: false, accountId, categoryId, frequency: repeatFrequency, startDate: date, ...(repeatEnd ? { endDate: repeatEnd } : {}), reminderDaysBefore: 1 }, c)
+      return saveTransactionWithSchedule(d, draft, { id: scheduleId, name, kind, amountMinor, amountIsEstimate: false, accountId, categoryId, frequency: repeatFrequency, ...(repeatFrequency === 'semimonthly' ? { secondDay: secondDayFrom(date, repeatSecondDay) } : {}), startDate: date, ...(repeatEnd ? { endDate: repeatEnd } : {}), reminderDaysBefore: 1 }, c)
     }
     return saveTransaction(d, draft, c)
   }
@@ -802,6 +828,7 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
                 className={`chip${c === categoryId ? ' chip--selected' : ''}`}
                 aria-pressed={c === categoryId}
                 onClick={() => {
+                  if (ruleApplied && ruleApplied.categoryId !== c) setCorrectedFrom(ruleApplied.categoryId)
                   setCategoryId(c)
                   setCategoryTouched(true)
                   setRuleApplied(undefined)
@@ -819,6 +846,7 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
             data={data}
             value={categoryId}
             onChange={(id) => {
+              if (ruleApplied && ruleApplied.categoryId !== id) setCorrectedFrom(ruleApplied.categoryId)
               setCategoryId(id)
               setCategoryTouched(true)
               setRuleApplied(undefined)
@@ -846,6 +874,9 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
                 <SelectField label={t('fields.frequency')} value={repeatFrequency} onChange={(e) => setRepeatFrequency(e.target.value as Frequency)} options={FREQUENCIES.filter((f) => f !== 'once' && f !== 'custom').map((f) => ({ value: f, label: frequencyLabel(t, f) }))} />
                 <TextField label={t('scheduleForm.endDate')} type="date" value={repeatEnd} min={date} onChange={(e) => setRepeatEnd(e.target.value)} />
               </div>
+            )}
+            {repeat && repeatFrequency === 'semimonthly' && (
+              <SecondDayField startDate={date} value={repeatSecondDay} onChange={setRepeatSecondDay} error={repeatSecondDayError} name="repeat-second-day" />
             )}
           </div>
         )}

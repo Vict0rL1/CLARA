@@ -1,0 +1,121 @@
+
+ RUN  v5.0.2 /home/user/ALCANZA
+
+ ❯ src/domain/zz-rt01-before.test.ts (9 tests | 8 failed) 191ms
+   ❯ RT-01 · ninguna moneda escrita distinta se convierte en la del presupuesto (9)
+     × es: el parser conserva la moneda, la quita de la descripción y el campo la bloquea 71ms
+     × en: el parser conserva la moneda, la quita de la descripción y el campo la bloquea 10ms
+     × pt: el parser conserva la moneda, la quita de la descripción y el campo la bloquea 8ms
+     × fr: el parser conserva la moneda, la quita de la descripción y el campo la bloquea 2ms
+     × en otro presupuesto la regla es la misma: su propia moneda vale y las demás se bloquean 6ms
+     × la marca va y vuelve por el campo: lo que el asistente escribe siempre se lee como la misma moneda 15ms
+     × fotos de recibos: el total con otra moneda se marca; uno en la moneda del presupuesto no 6ms
+     × enlaces de atajos: cualquier moneda distinta llega como aviso, nunca como la del presupuesto 9ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/domain/zz-rt01-before.test.ts > RT-01 · ninguna moneda escrita distinta se convierte en la del presupuesto > es: el parser conserva la moneda, la quita de la descripción y el campo la bloquea
+ FAIL  src/domain/zz-rt01-before.test.ts > RT-01 · ninguna moneda escrita distinta se convierte en la del presupuesto > en: el parser conserva la moneda, la quita de la descripción y el campo la bloquea
+ FAIL  src/domain/zz-rt01-before.test.ts > RT-01 · ninguna moneda escrita distinta se convierte en la del presupuesto > pt: el parser conserva la moneda, la quita de la descripción y el campo la bloquea
+ FAIL  src/domain/zz-rt01-before.test.ts > RT-01 · ninguna moneda escrita distinta se convierte en la del presupuesto > fr: el parser conserva la moneda, la quita de la descripción y el campo la bloquea
+AssertionError: coffee 10€: expected undefined to be '€' // Object.is equality
+
+- Expected:
+"€"
+
++ Received:
+undefined
+
+ ❯ src/domain/zz-rt01-before.test.ts:81:45
+     79|         const { entry, field, parsed } = fieldOf(text, language)
+     80|         expect(entry.amountMinor, text).toBe(minor)
+     81|         expect(entry.foreignCurrency, text).toBe(mark)
+       |                                             ^
+     82|         expect(entry.description.toLowerCase(), text).not.toContain(ma…
+     83|         // Lo que se puede guardar nunca es un importe en CAD: el camp…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  src/domain/zz-rt01-before.test.ts > RT-01 · ninguna moneda escrita distinta se convierte en la del presupuesto > en otro presupuesto la regla es la misma: su propia moneda vale y las demás se bloquean
+AssertionError: expected undefined to be '$' // Object.is equality
+
+- Expected:
+"$"
+
++ Received:
+undefined
+
+ ❯ src/domain/zz-rt01-before.test.ts:123:75
+    121|     expect(fieldOf('café dix EUR', 'fr', 'EUR').entry.foreignCurrency)…
+    122|     expect(fieldOf('café $10', 'fr', 'EUR').entry.foreignCurrency).toB…
+    123|     expect(fieldOf('café 10 dollars', 'fr', 'EUR').entry.foreignCurren…
+       |                                                                           ^
+    124|     expect(fieldOf('tacos 100 pesos', 'es', 'MXN').entry.foreignCurren…
+    125|     expect(fieldOf('tacos 100 pesos', 'es', 'USD').entry.foreignCurren…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  src/domain/zz-rt01-before.test.ts > RT-01 · ninguna moneda escrita distinta se convierte en la del presupuesto > la marca va y vuelve por el campo: lo que el asistente escribe siempre se lee como la misma moneda
+AssertionError: ₽: expected '₽10.00' to be '10.00' // Object.is equality
+
+Expected: "10.00"
+Received: "₽10.00"
+
+ ❯ src/domain/zz-rt01-before.test.ts:132:31
+    130|       const text = withCurrencyMark('10.00', mark)
+    131|       const back = stripCurrencyMark(text)
+    132|       expect(back.text, mark).toBe('10.00')
+       |                               ^
+    133|       const r = parseMoney(text, 'CAD', 'en-CA')
+    134|       if (mark === '$') expect(r).toEqual({ ok: true, minor: 1000 })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  src/domain/zz-rt01-before.test.ts > RT-01 · ninguna moneda escrita distinta se convierte en la del presupuesto > fotos de recibos: el total con otra moneda se marca; uno en la moneda del presupuesto no
+AssertionError: expected undefined to be '€' // Object.is equality
+
+- Expected:
+"€"
+
++ Received:
+undefined
+
+ ❯ src/domain/zz-rt01-before.test.ts:142:32
+    140|     const r1 = parseReceiptText('CAFE DE PARIS\n2026-09-20\nTOTAL 12,5…
+    141|     expect(r1.totalMinor).toBe(1250)
+    142|     expect(r1.foreignCurrency).toBe('€')
+       |                                ^
+    143|     const r2 = parseReceiptText('PUB LONDON\nTOTAL GBP 18.20', ctx('en…
+    144|     expect(r2.foreignCurrency).toBe('GBP')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  src/domain/zz-rt01-before.test.ts > RT-01 · ninguna moneda escrita distinta se convierte en la del presupuesto > enlaces de atajos: cualquier moneda distinta llega como aviso, nunca como la del presupuesto
+AssertionError: expected { ok: false } to deeply equal { ok: true, minor: 1000, …(1) }
+
+- Expected
++ Received
+
+  {
+-   "foreignCurrency": "EUR",
+-   "minor": 1000,
+-   "ok": true,
++   "ok": false,
+  }
+
+ ❯ src/domain/zz-rt01-before.test.ts:154:61
+    152|   it('enlaces de atajos: cualquier moneda distinta llega como aviso, n…
+    153|     expect(parseShortcutAmount('10 €', 'CAD', 'en-CA')).toEqual({ ok: …
+    154|     expect(parseShortcutAmount('10 euros', 'CAD', 'en-CA')).toEqual({ …
+       |                                                             ^
+    155|     expect(parseShortcutAmount('$10', 'EUR', 'fr-FR')).toEqual({ ok: t…
+    156|     expect(parseShortcutAmount('10 pesos', 'CAD', 'en-CA')).toEqual({ …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  8 failed | 1 passed (9)
+   Start at  20:13:20
+   Duration  1.41s (transform 73%, tests 19%, import 8%, worker 1%)
+
