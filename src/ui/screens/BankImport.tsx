@@ -6,6 +6,7 @@ import { categoriesForKind } from '../../domain/categories'
 import { newId } from '../../domain/ids'
 import { importTransactions, removeTransactions } from '../../domain/operations'
 import { matchCategoryRule, RULE_PATTERN_MAX } from '../../domain/rules'
+import { merchantLabel } from '../../domain/merchants'
 import type { CategoryRule } from '../../domain/types'
 import type { Issue } from '../../domain/validation'
 import { useT, type MessageKey } from '../../i18n'
@@ -497,7 +498,7 @@ export function BankImport() {
                             <button
                               type="button"
                               className="btn btn--small btn--ghost"
-                              onClick={() => setRuleFor({ pattern: row.description.slice(0, RULE_PATTERN_MAX), kind: row.kind, categoryId: category.categoryId })}
+                              onClick={() => setRuleFor({ pattern: (merchantLabel(row.description) || row.description).slice(0, RULE_PATTERN_MAX), kind: row.kind, categoryId: category.categoryId })}
                             >
                               <Icon name="plus" size={16} />
                               {t('bankImport.makeRule')}

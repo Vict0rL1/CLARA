@@ -16,7 +16,7 @@ import { distributionIncomeState } from './incomeDistribution'
 import { findSettlement, openItemsUntil, type PlanItem } from './planItems'
 import { lastVerified, reconciliationsFor, reconciliationState } from './reconcile'
 import { planProgress } from './plans'
-import { normalizeText, RULE_PATTERN_MIN } from './rules'
+import { normalizeText, RULE_PATTERN_MIN, ruleMatchesText } from './rules'
 import { cardSummary } from './cards'
 import { overstatedAutoConfirms } from './scheduledJobs'
 import { goalProgress, goalSavedMinor } from './goals'
@@ -271,7 +271,8 @@ function ruleItems(data: AppData, today: LocalDate): InboxItem[] {
     if (pattern.length < RULE_PATTERN_MIN) continue
     const created = localDateInTimeZone(new Date(rule.createdAt), data.settings.timeZone)
     if (daysBetween(created, today) < RULE_UNUSED_DAYS) continue
-    const matches = notes.filter((n) => n.kind === rule.kind && n.text.includes(pattern))
+    // Mismo criterio que al proponer categorías (texto tal cual o clave de comercio, fase 2).
+    const matches = notes.filter((n) => n.kind === rule.kind && ruleMatchesText(n.text, rule.pattern))
     if (matches.some((n) => n.date >= since && n.date <= today)) continue
     const last = matches.reduce<LocalDate | null>((max, n) => (max === null || n.date > max ? n.date : max), null)
     items.push({ ...base, id: `rule:${rule.id}:unused`, reason: 'ruleUnused', fingerprint: `${pattern}|${rule.categoryId}`, lastMovementDate: last })

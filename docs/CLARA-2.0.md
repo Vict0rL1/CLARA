@@ -95,7 +95,10 @@ cannot provide by itself (a server, credentials, a paid provider, a native app o
 1. **Foundation (this session):** audit ✅; ledger property tests ✅; schema 13 with safety buffer ✅, account
    kinds ✅, twice-monthly schedules ✅, budget alert thresholds ✅ and offering to remember a category
    correction ✅ (movement form).
-2. Merchant intelligence: aliases, normalization table, rule priorities, preferred account per merchant.
+2. Merchant intelligence: **normalization done** (`domain/merchants.ts`: processor prefixes, punctuation and
+   reference codes; rules match plain text or merchant key, a strict superset; «Top comercios» groups variants;
+   proposed rule texts drop the codes). Still open: user-defined aliases (a stored table → schema 14), rule
+   priorities, preferred account per merchant.
 3. Planning: subscriptions overview and monthly total, recurring-payment suggestions from history,
    future-only schedule edits, budget recommendations, goal milestones, explicit user-rate multi-currency.
 4. Analytics filters (account/tag/merchant/status), export filters, itemized receipts stored apart from

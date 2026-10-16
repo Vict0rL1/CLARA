@@ -246,3 +246,27 @@ test('asistente: corregir la categoría que proponía una regla ofrece recordarl
   await expect(page.getByText('1 movimiento registrado').first()).toBeVisible()
   await expect(page.getByRole('button', { name: 'Recordar' })).toHaveCount(0)
 })
+
+test('comercios: una regla escrita normal reconoce la forma del extracto («UBER *EATS 8XK2L») y «Crear regla» propone el nombre sin el código', async ({ page }) => {
+  await startDemo(page)
+  await go(page, '/ajustes/reglas')
+  await page.getByRole('button', { name: 'Nueva regla' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Nueva regla de categoría' })
+  await dialog.getByLabel('Si la descripción contiene').fill('Uber Eats')
+  await pickCategory(page, dialog.getByLabel('Categoría', { exact: true }), 'Restaurantes y café')
+  await dialog.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+
+  await go(page, '/movimientos/importar')
+  const csv = ['Fecha,Descripción,Importe', '2026-09-27,UBER *EATS 8XK2L TORONTO,-18.50', '2026-09-27,SQ *PANADERIA SOL 4412,-6.00'].join('\n')
+  await page.getByTestId('bank-file').setInputFiles({ name: 'banco.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) })
+  await expect(page.getByLabel('Categoría: UBER *EATS 8XK2L TORONTO')).toHaveValue('dining')
+  await expect(page.getByText('regla «Uber Eats»')).toBeVisible()
+
+  const bakery = page.getByLabel('Categoría: SQ *PANADERIA SOL 4412')
+  await bakery.selectOption({ label: 'Supermercado' })
+  await page.getByRole('button', { name: /^Crear regla ?: SQ \*PANADERIA SOL 4412$/ }).click()
+  const ruleDialog = page.getByRole('dialog', { name: 'Nueva regla de categoría' })
+  // Sin el prefijo del procesador ni el código, que cambian en cada compra.
+  await expect(ruleDialog.getByLabel('Si la descripción contiene')).toHaveValue('PANADERIA SOL')
+})

@@ -405,9 +405,19 @@ guarda hasta confirmar la vista previa. Límites: 2 MB y 5000 filas.
 ## 10 e. Reglas de categoría
 
 ```
-coincide  = normalizar(descripción) contiene normalizar(texto de la regla)
+coincide   = normalizar(descripción) contiene normalizar(texto de la regla)
+             o clave(descripción) contiene clave(texto de la regla)          (Clara 2.0, fase 2)
 normalizar = minúsculas, sin acentos, espacios simples
+clave      = normalizar(sin prefijo de procesador «SQ *», «TST*», «PAYPAL *»…, signos → espacios,
+             sin códigos de referencia: palabras de ≥ 4 caracteres con algún dígito o números de ≥ 3 cifras)
 ```
+
+- **Comercios (`domain/merchants.ts`):** «UBER *EATS 8XK2L TORONTO» tiene la clave «uber eats toronto», así
+  que la regla «Uber Eats» coincide. Es un superconjunto de la coincidencia anterior (prueba con 500 textos
+  aleatorios): nada que coincidía deja de hacerlo. La misma clave agrupa «Top comercios» (se muestra la
+  primera forma escrita) y la usa la bandeja para decidir si una regla está «sin uso». Al proponer una
+  regla (corrección o «Crear regla» en el CSV) se propone el nombre sin prefijo ni código, que la persona
+  ve y puede editar. Nada guardado cambia; no hay listas remotas ni IA.
 
 - Solo se consideran reglas del mismo tipo (gasto o ingreso; las devoluciones usan las
   de gasto) cuya categoría exista y no esté archivada. El texto tiene al menos 2
