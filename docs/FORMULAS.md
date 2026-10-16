@@ -1149,6 +1149,13 @@ Pruebas: `ui/preferences.test.ts` y e2e `personalize.spec.ts`.
 - **Por categoría**: netos positivos ordenados de mayor a menor; porcentaje entero sobre su suma.
   Tocar una categoría abre el historial filtrado por categoría y fechas del rango.
 - **Series de 6 periodos**: ingresos y gasto neto por periodo, del más antiguo al actual.
+- **Filtros** (Clara 2.0, fase 4; `domain/statsFilter.ts`): cuenta (`accountId`), etiqueta y comercio (la
+  misma clave que agrupa «Top comercios», así sus variantes cuentan juntas); varios a la vez = «y». No hay
+  fórmulas nuevas: se filtran los movimientos y todas las cifras, gráficos y tablas se calculan igual sobre
+  esa copia. Una transferencia no es ingreso ni gasto con o sin filtro. El saldo futuro es de todas las
+  cuentas del presupuesto y no se filtra (se dice). Van en la dirección (`cuenta`, `etiqueta`, `comercio`):
+  sobreviven a recargar; un valor que ya no existe se ignora. «Estado» no es un filtro: Estadísticas solo
+  usa movimientos realizados.
 - **Tendencia**: acumulado diario del gasto neto (nunca negativo) del periodo frente al anterior,
   alineados por día del periodo; los días futuros del actual quedan vacíos.
 - **Top 5**: agrupa por comercio (o nota si no hay) sin acentos ni mayúsculas; resta devoluciones;

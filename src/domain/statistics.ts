@@ -8,8 +8,7 @@ import { periodSummary, type CategorySpending } from './insights'
 import { floorDiv, mulDivFloor, sumMinor } from './money'
 import { getPeriod, type Period } from './periods'
 import { estimateDailySpend, projectBalance } from './projection'
-import { normalizeText } from './rules'
-import { merchantKey } from './merchants'
+import { txMerchantKey } from './statsFilter'
 import { trackedSince } from './weeklyReview'
 import type { AppData, BudgetPeriodType, LocalDate, Settings, Transaction } from './types'
 
@@ -176,11 +175,11 @@ export function topMerchants(data: AppData, range: StatsRange, limit = 5): TopEn
   const groups = new Map<string, TopEntry>()
   for (const tx of data.transactions) {
     if (tx.status !== 'realized' || tx.date < range.start || tx.date > range.end || (tx.kind !== 'expense' && tx.kind !== 'refund')) continue
-    const label = (tx.merchant ?? tx.note ?? '').trim()
-    if (!label) continue
     // Fase 2: las variantes del mismo comercio («UBER *EATS 8XK2L», «Uber Eats») se agrupan; se muestra
     // la primera forma escrita. Sin palabras de comercio (p. ej. solo un código) se agrupa por el texto.
-    const key = merchantKey(label) || normalizeText(label)
+    const key = txMerchantKey(tx)
+    if (!key) continue
+    const label = (tx.merchant ?? tx.note ?? '').trim()
     const entry = groups.get(key) ?? { key, label, amountMinor: 0, count: 0 }
     entry.amountMinor += tx.kind === 'expense' ? tx.amountMinor : -tx.amountMinor
     entry.count += 1

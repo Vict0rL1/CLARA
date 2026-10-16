@@ -42,7 +42,7 @@ cannot provide by itself (a server, credentials, a paid provider, a native app o
 | 11 | Budget recommendations from history | ✅ | `planSuggestion.ts`, plan form | Done (phase 3): median net spending of the last ≤3 complete cycles with data (≥2), rounded up to a whole unit, explained; «Usar» only fills the amount. No AI |
 | 12 | Recurring rules separate from occurrences; reconcile; never double count; pause; skip; month-end clamping | ✅ | `recurrence.ts`, `planItems.ts`, `reconcileSchedules.ts`, `ScheduleSheet.tsx` | **Twice monthly** (`semimonthly` + `secondDay`, v13): done in the schedule form, the initial setup (income and bills) and «Repetir», with one shared field (`SecondDayField`) and one rule (`isValidSecondDay`). Subscription overview + monthly total (`recurringCosts`) and recurring-payment suggestions (`recurringDetect`, inbox): done. Future-only edits (`scheduleFrom`, «Desde una fecha»): done |
 | 13 | Goals: target, date, contributions, virtual allocations, progress, projections | ✅ | `goals.ts`, `goalChart.ts`, `Goals.tsx` | Milestone notices (`goalMilestones.ts`, 25/50/75/100 %, local only, 7 days after crossing, under «Alertas de planes»): done |
-| 14 | Statistics: income/expense/net, categories, merchants, trends, comparisons, daily average | ✅ | `statistics.ts`, `Statistics.tsx`, `insights.ts` | Filters by account/tag/merchant/status on statistics: Phase 4 |
+| 14 | Statistics: income/expense/net, categories, merchants, trends, comparisons, daily average | ✅ | `statistics.ts`, `Statistics.tsx`, `insights.ts`, `statsFilter.ts` | Filters by account/tag/merchant: done (phase 4; same formulas over the filtered movements, kept in the URL). Status is not a filter: statistics only use realized movements |
 | 15 | Forecast 7/14/30/90/custom, assumptions, scenarios, "Can I afford it?" | ✅ | `projection.ts` (400-day cap, explicit), `Projection.tsx`, `scenarios.ts`, `affordability.ts`, `shortfall.ts` | — |
 | 16 | Search & combined filters, virtualization, trash/restore | ✅ | `search.ts`, `txFilters.ts`, `listView.ts`, `Trash.tsx` | — |
 | 17 | Custom categories (icon, color, archive), tags (many per transaction) | ✅ | `categoryOps.ts`, `tagOps.ts`, `CategoryPicker` | — |
@@ -104,8 +104,8 @@ cannot provide by itself (a server, credentials, a paid provider, a native app o
    merchant key + exact amount + regular active cadence → an inbox suggestion that only prefills the schedule form),
    future-only schedule edits (**done**: `scheduleFrom`, the old series ends the day before and a new one starts;
    never with a recorded payment on or after that date; forward-looking links follow only if the occurrence exists), budget recommendations (**done**: `planSuggestion`, median of complete cycles, rounded up, explained), goal milestones (**done**: `goalMilestones`, local notices only), explicit user-rate multi-currency.
-4. Analytics filters (account/tag/merchant/status), export filters, itemized receipts stored apart from
-   the transaction (never one expense per item).
+4. Analytics filters (**done**: account/tag/merchant in Estadísticas, `statsFilter`), export filters, itemized
+   receipts stored apart from the transaction (never one expense per item).
 5. 🔒 Integrations: server-side AI adapter (owner endpoint), received-events inbox with idempotency keys
    for Shortcuts links, sync/auth design with end-to-end encryption. Each behind a feature flag and only
    with credentials provided by the owner.

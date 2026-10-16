@@ -425,3 +425,41 @@ test('hitos de una meta: con «Alertas de planes», aviso dentro de la app al cr
   await expect(due).toContainText('Llevas $550.00 apartados de $1,000.00.')
   await expect(due).not.toContainText('Viaje')
 })
+
+test('estadísticas con filtros de cuenta, etiqueta y comercio: las cifras son las de esos movimientos y el filtro sobrevive a recargar', async ({ page }) => {
+  const anchor = { amountMinor: 100000, date: '2026-08-01', setAt: '2026-08-01T12:00:00.000Z' }
+  const data = baseData({
+    accounts: [account({ id: 'main', name: 'Principal', anchor }), account({ id: 'card', name: 'Tarjeta Visa', kind: 'credit', anchor: { ...anchor, amountMinor: 0 } })],
+    tags: [{ id: 'trip', name: 'Viaje a Quebec', color: 'emerald', createdAt: anchor.setAt, updatedAt: anchor.setAt }],
+    transactions: [
+      tx({ id: 'u1', date: '2026-09-03', amountMinor: 1850, categoryId: 'dining', note: 'UBER *EATS 8XK2L', accountId: 'card', tagIds: ['trip'] }),
+      tx({ id: 'u2', date: '2026-09-10', amountMinor: 2200, categoryId: 'dining', merchant: 'Uber Eats', accountId: 'main' }),
+      tx({ id: 'g1', date: '2026-09-12', amountMinor: 8000, categoryId: 'groceries', note: 'Super', accountId: 'main', tagIds: ['trip'] }),
+      tx({ id: 'r1', kind: 'refund', date: '2026-09-14', amountMinor: 500, categoryId: 'dining', note: 'Uber Eats', accountId: 'card' }),
+    ],
+  })
+  await seedStoredData(page, data)
+  await go(page, '/estadisticas?periodo=month')
+  const expenses = page.getByTestId('stats-expenses')
+  await expect(expenses).toHaveText('$115.50')
+  await page.getByTestId('stats-filters').locator('summary').click()
+  await page.getByLabel('Cuenta', { exact: true }).selectOption({ label: 'Tarjeta Visa' })
+  await expect(expenses).toHaveText('$13.50')
+  await expect(page.getByTestId('stats-filter-active')).toContainText('Cifras solo de: Tarjeta Visa')
+  await expectNoHorizontalScroll(page, 'estadísticas filtradas')
+
+  // Recargar conserva el filtro (va en la dirección); se le suma la etiqueta → solo u1.
+  await page.reload()
+  await expect(expenses).toHaveText('$13.50')
+  await page.getByLabel('Etiqueta', { exact: true }).selectOption({ label: 'Viaje a Quebec' })
+  await expect(expenses).toHaveText('$18.50')
+  await expect(page.getByTestId('stats-filters').locator('summary')).toContainText('Filtrar (2 activos)')
+
+  // Comercio: las dos formas de Uber Eats (y su devolución) cuentan juntas.
+  await page.getByRole('button', { name: 'Quitar filtros' }).click()
+  await expect(expenses).toHaveText('$115.50')
+  await page.getByTestId('stats-filters').locator('summary').click()
+  await page.getByLabel('Comercio', { exact: true }).selectOption({ label: 'UBER *EATS 8XK2L' })
+  await expect(expenses).toHaveText('$35.50')
+  await expect(page.getByTestId('stats-top').locator('li')).toHaveCount(1)
+})

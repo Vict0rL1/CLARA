@@ -6,6 +6,7 @@
 import { useMemo, useState } from 'react'
 import { categoryVisual, categoryVisuals } from '../../domain/categories'
 import { addDays } from '../../domain/dates'
+import { filterStatsData, statsFilterCount, type StatsFilter } from '../../domain/statsFilter'
 import { categoryBreakdown, cumulativeTrend, dailyAverage, futureBalance, periodSeries, periodStats, shiftRange, statsRange, STATS_PERIOD_TYPES, topMerchants, type Delta, type SeriesPoint, type StatsPeriodType } from '../../domain/statistics'
 import type { CategoryColor } from '../../domain/types'
 import { useT, type MessageKey } from '../../i18n'
@@ -14,7 +15,7 @@ import { useData } from '../../state/store'
 import { MonthNavigator, SecondaryButton } from '../components/base'
 import { Card, EmptyState, Explain, PageHeader } from '../components/common'
 import { InsightsTabs } from '../components/InsightsTabs'
-import { TextField } from '../components/fields'
+import { SelectField, TextField } from '../components/fields'
 import { Icon } from '../components/Icon'
 import { CategoryDonut, FutureBalanceChart, IncomeExpenseBars, TrendLines } from '../components/statsCharts'
 import { DATE_LOCALE, useFormat, type Formatter } from '../format'
@@ -53,12 +54,32 @@ export function Statistics({ route }: { route: Route }) {
   const [customStart, setCustomStart] = useState(route.query.get('desde') ?? '')
   const [customEnd, setCustomEnd] = useState(route.query.get('hasta') ?? '')
   const range = useMemo(() => statsRange(type, data.settings, anchor, customStart && customEnd && customEnd >= customStart ? { start: customStart, end: customEnd } : undefined), [type, data.settings, anchor, customStart, customEnd])
-  const stats = useMemo(() => periodStats(data, type, range), [data, type, range])
-  const breakdown = useMemo(() => categoryBreakdown(data, range), [data, range])
-  const series = useMemo(() => periodSeries(data, type, range, 6), [data, type, range])
-  const trend = useMemo(() => cumulativeTrend(data, range, stats.previous, today), [data, range, stats.previous, today])
-  const top = useMemo(() => topMerchants(data, range, 5), [data, range])
-  const avg = useMemo(() => dailyAverage(data, range, today), [data, range, today])
+  // Clara 2.0 fase 4: filtros por cuenta, etiqueta y comercio (en la dirección, como el periodo). Solo se
+  // filtran los movimientos; cada cifra se calcula igual. Un valor que ya no existe se ignora.
+  const qAccount = route.query.get('cuenta') ?? ''
+  const qTag = route.query.get('etiqueta') ?? ''
+  const qMerchant = (route.query.get('comercio') ?? '').slice(0, 120)
+  const filter: StatsFilter = useMemo(
+    () => ({
+      ...(data.accounts.some((a) => a.id === qAccount) ? { accountId: qAccount } : {}),
+      ...(data.tags.some((tg) => tg.id === qTag) ? { tagId: qTag } : {}),
+      ...(qMerchant ? { merchant: qMerchant } : {}),
+    }),
+    [data.accounts, data.tags, qAccount, qTag, qMerchant],
+  )
+  const filterCount = statsFilterCount(filter)
+  const fdata = useMemo(() => filterStatsData(data, filter), [data, filter])
+  // Comercios para elegir: los del último año (sin filtros), y el elegido aunque ya no salga.
+  const merchantOptions = useMemo(() => {
+    const list = topMerchants(data, { start: addDays(today, -365), end: today, period: null }, 40).map((e) => ({ value: e.key, label: e.label }))
+    return filter.merchant && !list.some((o) => o.value === filter.merchant) ? [...list, { value: filter.merchant, label: filter.merchant }] : list
+  }, [data, today, filter.merchant])
+  const stats = useMemo(() => periodStats(fdata, type, range), [fdata, type, range])
+  const breakdown = useMemo(() => categoryBreakdown(fdata, range), [fdata, range])
+  const series = useMemo(() => periodSeries(fdata, type, range, 6), [fdata, type, range])
+  const trend = useMemo(() => cumulativeTrend(fdata, range, stats.previous, today), [fdata, range, stats.previous, today])
+  const top = useMemo(() => topMerchants(fdata, range, 5), [fdata, range])
+  const avg = useMemo(() => dailyAverage(fdata, range, today), [fdata, range, today])
   const future = useMemo(() => futureBalance(data, today), [data, today])
   const visuals = useMemo(() => categoryVisuals(data), [data])
   const color = (id: string): CategoryColor => categoryVisual(visuals, id).color
@@ -74,7 +95,13 @@ export function Statistics({ route }: { route: Route }) {
     if (per?.type === 'semester') return t('stats.axisSemester', { n: per.anchorMonth <= 6 ? 1 : 2 })
     return fmt.date(p.range.start, { compact: true })
   }
-  const go = (patch: Record<string, string | undefined>) => navigate(withQuery('/estadisticas', { periodo: type, fecha: anchor, ...patch }))
+  const go = (patch: Record<string, string | undefined>) =>
+    navigate(withQuery('/estadisticas', { periodo: type, fecha: anchor, cuenta: filter.accountId, etiqueta: filter.tagId, comercio: filter.merchant, ...patch }))
+  const filterNames = [
+    filter.accountId ? data.accounts.find((a) => a.id === filter.accountId)?.name : undefined,
+    filter.tagId ? data.tags.find((tg) => tg.id === filter.tagId)?.name : undefined,
+    filter.merchant ? (merchantOptions.find((o) => o.value === filter.merchant)?.label ?? filter.merchant) : undefined,
+  ].filter((x): x is string => !!x)
   const move = (dir: -1 | 1) => {
     const next = shiftRange(range, type, data.settings, dir)
     if (type === 'custom') {
@@ -112,6 +139,43 @@ export function Statistics({ route }: { route: Route }) {
       )}
       <MonthNavigator label={title} onPrev={() => move(-1)} onNext={() => move(1)} prevLabel={t('stats.prev')} nextLabel={t('stats.next')} nextDisabled={isCurrent} onToday={isCurrent ? undefined : () => go({ fecha: today, desde: undefined, hasta: undefined })} todayLabel={t('stats.today')} />
       <p className="note">{t('stats.rangeNote', { from: fmt.date(range.start, { compact: true, today }), to: fmt.date(range.end, { compact: true, today }) })}</p>
+      <details className="explain" data-testid="stats-filters" open={filterCount > 0 || undefined}>
+        <summary>
+          <Icon name="sliders" size={16} />
+          <span>{filterCount > 0 ? t('stats.filters.titleCount', { count: filterCount }) : t('stats.filters.title')}</span>
+        </summary>
+        <div className="stack-sm">
+          <SelectField
+            label={t('stats.filters.account')}
+            value={filter.accountId ?? ''}
+            onChange={(e) => go({ cuenta: e.target.value || undefined })}
+            options={[{ value: '', label: t('stats.filters.any') }, ...data.accounts.filter((a) => !a.archived || a.id === filter.accountId).map((a) => ({ value: a.id, label: a.name }))]}
+          />
+          {data.tags.length > 0 && (
+            <SelectField
+              label={t('stats.filters.tag')}
+              value={filter.tagId ?? ''}
+              onChange={(e) => go({ etiqueta: e.target.value || undefined })}
+              options={[{ value: '', label: t('stats.filters.any') }, ...data.tags.map((tg) => ({ value: tg.id, label: tg.name }))]}
+            />
+          )}
+          {merchantOptions.length > 0 && (
+            <SelectField
+              label={t('stats.filters.merchant')}
+              hint={t('stats.filters.merchantHint')}
+              value={filter.merchant ?? ''}
+              onChange={(e) => go({ comercio: e.target.value || undefined })}
+              options={[{ value: '', label: t('stats.filters.any') }, ...merchantOptions]}
+            />
+          )}
+        </div>
+      </details>
+      {filterCount > 0 && (
+        <div className="stack-sm" data-testid="stats-filter-active">
+          <p className="note">{t('stats.filters.active', { list: filterNames.join(' · ') })}</p>
+          <SecondaryButton onClick={() => go({ cuenta: undefined, etiqueta: undefined, comercio: undefined })}>{t('stats.filters.clear')}</SecondaryButton>
+        </div>
+      )}
 
       <div className="stat-grid" data-testid="stats-tiles">
         <Card as="div" className="stat">
@@ -215,6 +279,7 @@ export function Statistics({ route }: { route: Route }) {
           </h2>
           <FutureBalanceChart future={future} fmt={fmt} today={today} />
           <p className="note">{t('stats.futureNote')}</p>
+          {filterCount > 0 && <p className="note">{t('stats.filters.futureNote')}</p>}
           <Explain summary={t('common.howCalculated')}>
             <p>{t('stats.futureExplain', { daily: fmt.money(future.dailySpendMinor), days: future.daysObserved })}</p>
           </Explain>

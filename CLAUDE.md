@@ -100,6 +100,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
 - Revisión semanal: lunes–domingo en la zona horaria; comparación equivalente; sin
   porcentaje si la base es 0 o faltan datos; reglas fijas, sin IA ni notificaciones.
 - Escenarios: se simulan sobre una copia; nunca modifican datos reales ni se aplican solos.
+- Filtros de Estadísticas (`domain/statsFilter.ts`): cuenta, etiqueta y comercio filtran los movimientos y todo se
+  calcula igual sobre esa copia; el saldo futuro no se filtra y se dice.
 - Búsqueda: local, sin acentos ni mayúsculas; categorías fijas en el idioma activo;
   papelera solo si se pide.
 - Compras divididas (`splits`, `domain/splits.ts`): un solo movimiento; Σ líneas = total
