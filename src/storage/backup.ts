@@ -193,6 +193,8 @@ function pickTx(t: Obj): Transaction {
 const SCHEDULE_KEYS = [
   'id', 'name', 'kind', 'amountMinor', 'amountIsEstimate', 'range', 'currency', 'accountId', 'categoryId', 'frequency',
   'startDate', 'endDate', 'reminderDaysBefore', 'skippedDates', 'note', 'intervalDays', 'secondDay', 'autoConfirm', 'paused', 'createdAt', 'updatedAt',
+  // v14 (PR #15, QA-01): sin esta clave, restaurar una copia perdía la fecha que fija un tramo partido.
+  'anchorDate',
 ] as const
 const GOAL_KEYS = ['id', 'name', 'kind', 'targetMinor', 'targetDate', 'currency', 'fundedFrom', 'allocations', 'plan', 'icon', 'color', 'contribution', 'createdAt', 'updatedAt'] as const
 const ALLOCATION_KEYS = ['id', 'amountMinor', 'date', 'createdAt', 'reason', 'distributionId'] as const

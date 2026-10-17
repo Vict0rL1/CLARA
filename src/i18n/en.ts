@@ -3327,7 +3327,8 @@ export const en: Record<keyof typeof es, string> = {
   'recurring.outOfRange': 'Your scheduled amounts add up to more than Clara can calculate exactly, so no rounded total or average is shown. Check the amounts in the list.',
   'calendar.flow.outOfRange': 'No projected balance for this day: from {date} the balance exceeds what Clara can calculate exactly, and no approximate figure is shown.',
   'calendar.flow.outOfRangeNote': 'From {date} the projected balance exceeds what Clara can calculate exactly: those days have no figure.',
-  'scheduleForm.anchorDrift': '{date} is day {nominal} moved to the end of a shorter month: if you start there, the series will repeat on day {day}, even in months that have a day {nominal}.',
-  'scheduleForm.anchorDriftKeep': 'To keep day {nominal}, start on {keep}.',
   'currency.bufferBlocks': 'The saved safety buffer ({amount}) is already an amount in {currency}: amounts are not converted or relabelled. Set it to 0 in the Safe-to-spend settings and you can change the currency.',
+  'scheduleForm.fromKeepsDates': 'From {date} the new values apply; the series keeps its usual dates.',
+  'scheduleForm.fromNewDates': '{date} is not one of the series’ dates: from there it repeats from that date and its days change.',
+  'issue.anchorAfterStart': 'The date that anchors the series cannot be after the first date.',
 }

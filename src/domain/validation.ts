@@ -52,6 +52,7 @@ export type IssueCode =
   | 'amountNotPositive'
   | 'amountTooLarge'
   | 'currencyMismatch'
+  | 'anchorAfterStart'
   /** Moneda escrita junto al importe distinta de la del presupuesto (asistente, AS-01). */
   | 'writtenCurrency'
   | 'unsupportedCurrency'
@@ -572,9 +573,15 @@ export function validateSchedule(s: Schedule, ctx: ValidationContext): Issue[] {
   } else if (s.intervalDays !== undefined && (!Number.isInteger(s.intervalDays) || s.intervalDays < 1)) issues.push({ path: `${p}intervalDays`, code: 'invalidValue' })
   for (const k of ['autoConfirm', 'paused'] as const) if (s[k] !== undefined && typeof s[k] !== 'boolean') issues.push({ path: `${p}${k}`, code: 'invalidValue' })
   if (s.frequency === 'semimonthly') {
-    if (!isValidSecondDay(s.startDate, s.secondDay)) issues.push({ path: `${p}secondDay`, code: 'semimonthlyDays' })
+    if (!isValidSecondDay(s.anchorDate ?? s.startDate, s.secondDay)) issues.push({ path: `${p}secondDay`, code: 'semimonthlyDays' })
   } else if (s.secondDay !== undefined) issues.push({ path: `${p}secondDay`, code: 'invalidValue' })
   checkDate(s.startDate, `${p}startDate`, issues)
+  // v14: la fecha que fija la serie (un tramo partido sin cambiar la regla) va antes o en la primera; nunca en un pago único.
+  if (s.anchorDate !== undefined) {
+    checkDate(s.anchorDate, `${p}anchorDate`, issues)
+    if (s.frequency === 'once') issues.push({ path: `${p}anchorDate`, code: 'invalidValue' })
+    else if (isValidLocalDate(s.anchorDate) && isValidLocalDate(s.startDate) && s.anchorDate > s.startDate) issues.push({ path: `${p}anchorDate`, code: 'anchorAfterStart' })
+  }
   if (s.endDate !== undefined) {
     checkDate(s.endDate, `${p}endDate`, issues)
     if (isValidLocalDate(s.endDate) && isValidLocalDate(s.startDate) && s.endDate < s.startDate) {

@@ -15,12 +15,16 @@
  * ocurrencia (gastos planificados vinculados, aplazamientos de la bandeja) o siempre (plantillas de
  * distribución y escenarios guardados, que apuntan a «el próximo pago»); un gasto planificado vinculado a
  * una fecha que dejaría de existir se rechaza. Es una sola operación: todo o nada.
+ *
+ * v14 (auditoría del PR #15, QA-01): el tramo nuevo conserva la fecha que fija la serie (`anchorDate`) cuando no
+ * cambia la regla, así sus ocurrencias son exactamente las de siempre desde la fecha elegida; `startDate` es solo
+ * el límite desde el que cuenta.
  */
-import { addDays, isValidLocalDate, parseLocalDate } from './dates'
+import { addDays, isValidLocalDate } from './dates'
 import { saveSchedule, touch, type OpContext, type OpResult, type ScheduleDraft } from './operations'
-import { defaultSecondDay, occurrencesBetween } from './recurrence'
+import { anchorOf, defaultSecondDay, occurrencesBetween } from './recurrence'
 import { nextPendingOccurrence } from './repeat'
-import type { AppData, Frequency, LocalDate, Schedule } from './types'
+import type { AppData, LocalDate, Schedule } from './types'
 import type { Issue } from './validation'
 
 const fail = (issues: Issue[]): { ok: false; issues: Issue[] } => ({ ok: false, issues })
@@ -47,61 +51,40 @@ export function defaultSplitDate(data: Pick<AppData, 'transactions'>, schedule: 
   return date && date > schedule.startDate ? date : null
 }
 
-/** Qué día nominal de una serie de calendario representa una fecha, y si está movido al final de un mes corto. */
-export interface OccurrenceAnchor {
-  /** El día del mes que dice la serie (el de `startDate` o `secondDay`). */
-  nominalDay: number
-  which: 'first' | 'second'
-  /** La fecha es el último día de un mes que no tiene `nominalDay` (31 → 30-sep, 31 → 28-feb). */
-  clamped: boolean
+/** La regla de repetición tal como la manda el formulario (frecuencia, intervalo y segundo día) con la fecha elegida. */
+export type RuleDraft = Pick<Schedule, 'frequency' | 'startDate'> & Partial<Pick<Schedule, 'intervalDays' | 'secondDay'>>
+
+/** ¿El borrador repite con la misma regla que el programado (frecuencia, intervalo y segundo día; la fecha no cuenta)? */
+export function sameRule(old: Schedule, rule: RuleDraft): boolean {
+  if (rule.frequency !== old.frequency) return false
+  if (old.frequency === 'custom' && (rule.intervalDays ?? null) !== (old.intervalDays ?? null)) return false
+  if (old.frequency === 'semimonthly') {
+    const fallback = defaultSecondDay(anchorOf(old))
+    if ((rule.secondDay ?? fallback) !== (old.secondDay ?? fallback)) return false
+  }
+  return true
 }
 
-const CALENDAR_FREQUENCIES: ReadonlySet<Frequency> = new Set<Frequency>(['monthly', 'quarterly', 'yearly', 'semimonthly'])
-/** Cuánto se mira hacia delante para proponer una fecha que conserva el día (un ciclo bisiesto completo). */
-const KEEP_LOOKAHEAD_DAYS = 1500
-
-/**
- * Día nominal de `date` en una serie mensual, trimestral, anual o «dos veces al mes»; `null` si la fecha no es
- * una ocurrencia de la serie o la serie no va por días del mes (diaria, semanal…).
- */
-export function occurrenceAnchor(schedule: Schedule, date: LocalDate): OccurrenceAnchor | null {
-  if (!CALENDAR_FREQUENCIES.has(schedule.frequency) || !isValidLocalDate(date)) return null
-  if (occurrencesBetween(schedule, date, date).length === 0) return null
-  const day = parseLocalDate(date).day
-  const first = parseLocalDate(schedule.startDate).day
-  if (schedule.frequency !== 'semimonthly') return { nominalDay: first, which: 'first', clamped: day < first }
-  const second = schedule.secondDay ?? defaultSecondDay(schedule.startDate)
-  if (day === first) return { nominalDay: first, which: 'first', clamped: false }
-  if (day === second) return { nominalDay: second, which: 'second', clamped: false }
-  // Un día que este mes no tiene: el mayor de los dos, movido a su último día.
-  return first > second ? { nominalDay: first, which: 'first', clamped: true } : { nominalDay: second, which: 'second', clamped: true }
+/** ¿`date` es una fecha de la serie (contando las omitidas y sin mirar la fecha de fin)? */
+export function isSeriesDate(schedule: Schedule, date: LocalDate): boolean {
+  return isValidLocalDate(date) && occurrencesBetween({ ...schedule, endDate: undefined }, date, date).length > 0
 }
 
 /**
- * QA V2 (SCH-01): el segundo día del tramo nuevo al partir un «dos veces al mes» en `from`. El tramo nuevo empieza
- * en `from`, así que su primer día es el de `from`; el segundo tiene que ser el OTRO día nominal de la serie. Si
- * `from` cae en el segundo día (15 y 30, desde el 30), el segundo pasa a ser el primero (15): sin esto quedaban
- * 30 y 30 y no se podía guardar. También con el segundo día implícito (vacío = 15 días después), que si no
- * cambiaría solo (1 y 16, desde el 16, daría 16 y 31). `null` si no hay nada que reanclar.
+ * Auditoría del PR #15 (QA-01): al partir «desde una fecha» SIN cambiar la regla (misma frecuencia, intervalo y
+ * segundo día) en una fecha de la serie, el tramo nuevo conserva la fecha que fija la serie (`anchorDate` = la de
+ * siempre): sus ocurrencias desde la fecha elegida son exactamente las que ya había (el 31 sigue siendo el 31
+ * aunque la fecha elegida sea un 28-feb movido; 1 y 20 siguen siendo 1 y 20; una serie semanal conserva su día).
+ * Cambiar la regla, o elegir una fecha que no es de la serie, reancla la serie en esa fecha: es un cambio
+ * explícito y el formulario lo dice.
  */
-export function splitSecondDay(schedule: Schedule, from: LocalDate): number | null {
-  if (schedule.frequency !== 'semimonthly') return null
-  const anchor = occurrenceAnchor(schedule, from)
-  if (!anchor) return null
-  return anchor.which === 'first' ? (schedule.secondDay ?? defaultSecondDay(schedule.startDate)) : parseLocalDate(schedule.startDate).day
+export function splitKeepsAnchor(old: Schedule, rule: RuleDraft): boolean {
+  return old.frequency !== 'once' && sameRule(old, rule) && isSeriesDate(old, rule.startDate)
 }
 
-/**
- * Borde de fin de mes (QA V2, revisado aparte de SCH-01): partir la serie en una fecha MOVIDA (el 31 que cae el
- * 30-sep) hace que el tramo nuevo empiece ese día y, como el modelo toma el día de `startDate`, se repita el 30
- * también en los meses de 31 días. El modelo de recurrencia no cambia: se dice, con la siguiente fecha que sí
- * conserva el día nominal (`keepFrom`), y la persona decide. `null` si la fecha no está movida.
- */
-export function splitAnchorDrift(schedule: Schedule, from: LocalDate): { nominalDay: number; day: number; keepFrom: LocalDate | null } | null {
-  const anchor = occurrenceAnchor(schedule, from)
-  if (!anchor?.clamped) return null
-  const keepFrom = occurrencesBetween(schedule, addDays(from, 1), addDays(from, KEEP_LOOKAHEAD_DAYS)).find((d) => occurrenceAnchor(schedule, d)?.clamped === false) ?? null
-  return { nominalDay: anchor.nominalDay, day: parseLocalDate(from).day, keepFrom }
+/** La fecha que fija el tramo nuevo: la de siempre si se conservan las fechas; si no, la elegida. */
+export function splitAnchor(old: Schedule, rule: RuleDraft): LocalDate {
+  return splitKeepsAnchor(old, rule) ? anchorOf(old) : rule.startDate
 }
 
 export interface ScheduleSplit {
@@ -132,9 +115,11 @@ export function saveScheduleFrom(data: AppData, scheduleId: string, draft: Sched
   if (settled && settled >= from) return fail([{ path: 'startDate', code: 'splitSettledAfter', params: { date: settled } }])
 
   const ended: Schedule = { ...old, endDate: addDays(from, -1), skippedDates: old.skippedDates.filter((d) => d < from), updatedAt: ctx.now }
+  // QA-01 (auditoría del PR #15): sin cambiar la regla, el tramo nuevo conserva la fecha que fija la serie.
+  const anchor = splitAnchor(old, draft)
   const created = saveSchedule(
     { ...data, schedules: data.schedules.map((s) => (s.id === old.id ? ended : s)) },
-    { ...draft, skippedDates: old.skippedDates.filter((d) => d >= from) },
+    { ...draft, skippedDates: old.skippedDates.filter((d) => d >= from), anchorDate: anchor !== from ? anchor : undefined },
     ctx,
   )
   if (!created.ok) return created

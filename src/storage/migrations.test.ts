@@ -33,3 +33,13 @@ describe('migración v10 → v11 (cuentas: archivada y orden)', () => {
     expect((out.accounts as Record<string, unknown>[])[0]).toMatchObject({ archived: false, order: 0 })
   })
 })
+
+describe('migración v13 → v14 (ancla de la serie e historial ampliado: nada que rellenar)', () => {
+  it('sube el número y deja todo lo demás igual; `migrate` llega a la versión actual', () => {
+    const v13 = JSON.parse(JSON.stringify({ ...baseData(), schemaVersion: 13 })) as Record<string, unknown>
+    const out = MIGRATIONS[13]!(v13)
+    expect(out.schemaVersion).toBe(14)
+    expect({ ...out, schemaVersion: 13 }).toEqual(v13)
+    expect(migrate({ ...v13 }).schemaVersion).toBe(SCHEMA_VERSION)
+  })
+})

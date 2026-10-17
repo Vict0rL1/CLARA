@@ -12,11 +12,13 @@ import { minimumPayment, monthlyInterest } from './cards'
 import { heroFigures } from './heroFigures'
 import { parseMoney, stripCurrencyMark, withCurrencyMark, withCurrencyMarks, MAX_AMOUNT_MINOR } from './money'
 import { parseText, type ParseContext, type ParsedEntry } from './parser'
+import { type ScheduleDraft } from './operations'
 import { dayBalance, projectBalance } from './projection'
+import { occurrencesBetween } from './recurrence'
 import { parseReceiptText } from './receipt'
 import { recurringCosts } from './recurringCosts'
 import { periodStats, statsRange } from './statistics'
-import { occurrenceAnchor, splitAnchorDrift, splitSecondDay } from './scheduleFrom'
+import { saveScheduleFrom, splitKeepsAnchor } from './scheduleFrom'
 import { parseShortcutAmount, readMovementLink } from './shortcutLink'
 import type { Language, Schedule } from './types'
 import { account, baseData, bill, ctx, income, tx } from '../test/fixtures'
@@ -104,6 +106,7 @@ describe('CUR-02 · el lector compartido reconcilia prefijo y sufijo; una contra
   // Contradicciones: nunca la moneda del presupuesto, en ningún consumidor.
   const CONFLICTS: readonly (readonly [string, string, string])[] = [
     ['USD 10 CAD', 'USD', 'CAD'],
+    ['EUR 10 CAD', 'EUR', 'CAD'],
     ['€10 CAD', '€', 'CAD'],
     ['GBP 10 CAD', 'GBP', 'CAD'],
     ['US$10 CAD', 'USD', 'CAD'],
@@ -376,38 +379,34 @@ describe('FIN-01 · el resumen de pagos recurrentes tiene un rango exacto explí
   })
 })
 
-describe('SCH-01 · partir un «dos veces al mes» conserva sus dos días (y el borde de fin de mes se declara)', () => {
-  const twice = (startDate: string, secondDay?: number): Schedule => bill(startDate, 1000, { id: 'tw', frequency: 'semimonthly', ...(secondDay ? { secondDay } : {}) })
+describe('SCH-01 (QA V2) · partir un «dos veces al mes» conserva sus dos días: lo resuelve la fecha que fija la serie (PR #15, QA-01)', () => {
+  const twice = (startDate: string, secondDay: number): Schedule => bill(startDate, 1000, { id: 'tw', frequency: 'semimonthly', secondDay })
+  const amountOnly = (s: Schedule, startDate: string): ScheduleDraft => {
+    const { createdAt: _c, updatedAt: _u, currency: _cur, skippedDates: _k, ...rest } = s
+    return { ...rest, id: 'next', startDate, amountMinor: 1200 }
+  }
+  const splitFrom = (s: Schedule, from: string) => {
+    const r = saveScheduleFrom(baseData({ schedules: [s] }), s.id, amountOnly(s, from), ctx)
+    if (!r.ok) throw new Error(JSON.stringify(r.issues))
+    return r.value.next
+  }
 
-  it('qué día nominal representa una fecha de la serie, y si está movido al final de un mes corto', () => {
+  it('15 y 30 desde el 30, y 1 y 16 desde el 16: el tramo nuevo sigue con los mismos días sin tocar el segundo día', () => {
+    const next = splitFrom(twice('2026-06-15', 30), '2026-09-30')
+    expect(next).toMatchObject({ startDate: '2026-09-30', anchorDate: '2026-06-15', secondDay: 30 })
+    expect(occurrencesBetween(next, '2026-09-30', '2026-11-30')).toEqual(['2026-09-30', '2026-10-15', '2026-10-30', '2026-11-15', '2026-11-30'])
+    const implicit = splitFrom(twice('2026-06-01', 16), '2026-10-16')
+    expect(implicit).toMatchObject({ startDate: '2026-10-16', anchorDate: '2026-06-01', secondDay: 16 })
+    expect(occurrencesBetween(implicit, '2026-10-16', '2026-12-01')).toEqual(['2026-10-16', '2026-11-01', '2026-11-16', '2026-12-01'])
+  })
+
+  it('borde de fin de mes: 15 y 31 desde el 30-sep (el 31 movido) sigue siendo 15 y 31; cambiar la regla o la fecha sí reancla', () => {
     const s = twice('2026-06-15', 31)
-    expect(occurrenceAnchor(s, '2026-10-15')).toEqual({ nominalDay: 15, which: 'first', clamped: false })
-    expect(occurrenceAnchor(s, '2026-10-31')).toEqual({ nominalDay: 31, which: 'second', clamped: false })
-    expect(occurrenceAnchor(s, '2026-09-30')).toEqual({ nominalDay: 31, which: 'second', clamped: true })
-    expect(occurrenceAnchor(s, '2026-10-05')).toBeNull()
-    expect(occurrenceAnchor(bill('2026-01-31', 1000, { frequency: 'monthly' }), '2026-09-30')).toEqual({ nominalDay: 31, which: 'first', clamped: true })
-    expect(occurrenceAnchor(bill('2026-01-31', 1000, { frequency: 'weekly' }), '2026-02-07')).toBeNull()
-  })
-
-  it('el segundo día del tramo nuevo es el otro día nominal (también el implícito de 15 días)', () => {
-    // 15 y 30: desde el 30 → empieza el 30 con segundo día 15 (antes quedaban 30 y 30, bloqueado).
-    expect(splitSecondDay(twice('2026-06-15', 30), '2026-09-30')).toBe(15)
-    expect(splitSecondDay(twice('2026-06-15', 30), '2026-10-15')).toBe(30)
-    // Segundo día implícito (1 → 16): desde el 16 el segundo es 1, no 31.
-    expect(splitSecondDay(twice('2026-06-01'), '2026-10-16')).toBe(1)
-    expect(splitSecondDay(twice('2026-06-01'), '2026-10-01')).toBe(16)
-    // Una fecha que no es de la serie o una serie que no es «dos veces al mes»: nada que reanclar.
-    expect(splitSecondDay(twice('2026-06-15', 30), '2026-10-05')).toBeNull()
-    expect(splitSecondDay(bill('2026-06-15', 1000, { frequency: 'monthly' }), '2026-10-15')).toBeNull()
-  })
-
-  it('borde de fin de mes: partir en una fecha movida cambia el día nominal; se dice y se propone la siguiente que lo conserva', () => {
-    // 15 y 31: el 30-sep es el 31 movido. Partir ahí dejaría 15 y 30 (en meses de 31 días, el 30).
-    expect(splitSecondDay(twice('2026-06-15', 31), '2026-09-30')).toBe(15)
-    expect(splitAnchorDrift(twice('2026-06-15', 31), '2026-09-30')).toEqual({ nominalDay: 31, day: 30, keepFrom: '2026-10-15' })
-    expect(splitAnchorDrift(bill('2026-01-31', 1000, { frequency: 'monthly' }), '2026-09-30')).toEqual({ nominalDay: 31, day: 30, keepFrom: '2026-10-31' })
-    // Sin fecha movida no hay nada que decir.
-    expect(splitAnchorDrift(twice('2026-06-15', 31), '2026-10-15')).toBeNull()
-    expect(splitAnchorDrift(twice('2026-06-15', 30), '2026-09-30')).toBeNull()
+    expect(occurrencesBetween(splitFrom(s, '2026-09-30'), '2026-09-30', '2026-12-31')).toEqual(['2026-09-30', '2026-10-15', '2026-10-31', '2026-11-15', '2026-11-30', '2026-12-15', '2026-12-31'])
+    expect(splitKeepsAnchor(s, { frequency: 'semimonthly', secondDay: 31, startDate: '2026-09-30' })).toBe(true)
+    // Otro segundo día, u otra fecha que no es de la serie: cambio explícito de la regla.
+    expect(splitKeepsAnchor(s, { frequency: 'semimonthly', secondDay: 20, startDate: '2026-09-30' })).toBe(false)
+    expect(splitKeepsAnchor(s, { frequency: 'semimonthly', secondDay: 31, startDate: '2026-10-05' })).toBe(false)
+    expect(splitKeepsAnchor(s, { frequency: 'monthly', startDate: '2026-09-30' })).toBe(false)
   })
 })

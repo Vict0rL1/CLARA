@@ -180,6 +180,11 @@ export const MIGRATIONS: Record<number, (raw: Raw) => Raw> = {
       ...(settings && sts && sts.bufferMinor === undefined ? { settings: { ...settings, safeToSpend: { ...sts, bufferMinor: 0 } } } : {}),
     }
   },
+  // v13 → v14 (auditoría del PR #15, QA-01 y QA-05): `schedules[].anchorDate` (opcional; solo lo escribe partir una
+  // serie sin cambiar su regla) y el historial registra también `templates`, `scenarios` e `inboxSnoozed`. Nada que
+  // rellenar: los datos v13 valen tal cual. El número sube para que una versión anterior, que no sabe leer esos
+  // valores, vea «datos de una versión más nueva» en vez de calcular mal las fechas (docs/ROLLBACK.md).
+  13: (raw) => ({ ...raw, schemaVersion: 14 }),
 }
 
 export function migrate(raw: Raw): Raw {

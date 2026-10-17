@@ -13,7 +13,7 @@ import { tinyPng } from './png'
  */
 type Stored = {
   transactions: { id: string; amountMinor: number; currency: string; note?: string }[]
-  schedules: { id: string; name: string; amountMinor: number; startDate: string; endDate?: string; secondDay?: number; paused?: boolean }[]
+  schedules: { id: string; name: string; amountMinor: number; startDate: string; endDate?: string; secondDay?: number; anchorDate?: string; paused?: boolean }[]
 }
 const stored = async (page: Page) => JSON.parse((await storedData(page)) ?? '{}') as Stored
 
@@ -243,7 +243,7 @@ test('STAT-01 · las fechas personalizadas viven en la dirección: sobreviven a 
   await expect(page.getByTestId('stats-filter-active')).toBeVisible()
 })
 
-test('SCH-01 · partir un «dos veces al mes» (15 y 30) desde el 30 conserva los días; volver a «todas» restaura; el borde de fin de mes se dice', async ({ page }) => {
+test('SCH-01 · partir un «dos veces al mes» (15 y 30) desde el 30 conserva los días sin tocar el segundo día; volver a «todas» restaura; 15 y 31 desde un 30-sep sigue siendo 15 y 31 (PR #15, QA-01)', async ({ page }) => {
   const paid = ['2026-06-15', '2026-06-30', '2026-07-15', '2026-07-30', '2026-08-15', '2026-08-30', '2026-09-15']
   const data = baseData({
     schedules: [
@@ -258,10 +258,11 @@ test('SCH-01 · partir un «dos veces al mes» (15 y 30) desde el 30 conserva lo
   await expect(second).toHaveValue('30')
   await page.getByRole('radio', { name: 'Desde una fecha' }).check()
   await expect(page.getByLabel('Desde (primera fecha con los cambios)')).toHaveValue('2026-09-30')
-  await shot(page, 'sch01-split', page.getByLabel('Segundo día del mes'))
-  await expect(second).toHaveValue('15')
+  await shot(page, 'sch01-split', second)
+  // El segundo día no cambia y la ayuda sigue diciendo 15 y 30: la fecha que fija la serie es la de siempre.
+  await expect(second).toHaveValue('30')
   await expect(page.getByText('Se repite el día 15 y el día 30 de cada mes.', { exact: false })).toBeVisible()
-  // Volver a «todas las fechas» deja todo como estaba.
+  await expect(page.getByText('las fechas de la serie siguen siendo las de siempre', { exact: false })).toBeVisible()
   await page.getByRole('radio', { name: 'A todas las fechas' }).check()
   await expect(second).toHaveValue('30')
   await expect(page.getByLabel('Próxima fecha')).toHaveValue('2026-06-15')
@@ -272,19 +273,35 @@ test('SCH-01 · partir un «dos veces al mes» (15 y 30) desde el 30 conserva lo
   await expect(page.getByText(/^Cambio guardado desde el/).first()).toBeVisible()
   await waitForSaved(page)
   const gyms = (await stored(page)).schedules.filter((s) => s.name === 'Gimnasio')
-  expect(gyms.map((s) => [s.amountMinor, s.startDate, s.endDate ?? null, s.secondDay ?? null])).toEqual([
-    [50000, '2026-06-15', '2026-09-29', 30],
-    [55000, '2026-09-30', null, 15],
+  expect(gyms.map((s) => [s.amountMinor, s.startDate, s.endDate ?? null, s.secondDay ?? null, s.anchorDate ?? null])).toEqual([
+    [50000, '2026-06-15', '2026-09-29', 30, null],
+    [55000, '2026-09-30', null, 30, '2026-06-15'],
   ])
+  // Tras recargar (el formulario deja la app en el calendario), el tramo nuevo sigue ahí con su próxima fecha
+  // (30-sep) y la de siempre termina el 29-sep.
+  await page.reload()
+  await go(page, '/')
+  await expect(page.getByTestId('available')).toBeVisible()
+  await go(page, '/plan/calendario')
+  const list = page.locator('.item-list').last()
+  await expect(list.getByRole('link', { name: /Gimnasio.*termina el/ })).toContainText('$500.00')
+  await expect(list.getByRole('link', { name: /Gimnasio.*30 sep/ })).toContainText('$550.00')
 
-  // 15 y 31: el 30-sep es el 31 movido. Partir ahí cambiaría el día; se dice y se propone una fecha que lo conserva.
+  // 15 y 31 desde el 30-sep (el 31 movido): el tramo nuevo sigue el 15 y el 31, sin arreglos ni avisos de cambio de día.
   await go(page, '/plan/programado/editar/eom')
   await page.getByRole('radio', { name: 'Desde una fecha' }).check()
   await expect(page.getByLabel('Desde (primera fecha con los cambios)')).toHaveValue('2026-09-30')
-  await expect(page.getByLabel('Segundo día del mes')).toHaveValue('15')
-  const drift = page.getByTestId('split-anchor-drift')
-  await expect(drift).toContainText('31')
-  await expect(drift).toContainText('15 oct')
-  await shot(page, 'sch01-month-end', page.getByTestId('split-anchor-drift'))
+  await expect(page.getByLabel('Segundo día del mes')).toHaveValue('31')
+  await expect(page.getByText('Se repite el día 15 y el día 31 de cada mes.', { exact: false })).toBeVisible()
+  await shot(page, 'sch01-month-end', page.getByLabel('Segundo día del mes'))
   await expectNoHorizontalScroll(page, 'partir un programado en un fin de mes movido')
+  await page.getByLabel('Importe', { exact: true }).fill('25')
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect(page.getByText(/^Cambio guardado desde el/).first()).toBeVisible()
+  await waitForSaved(page)
+  const savings = (await stored(page)).schedules.filter((s) => s.name === 'Ahorro quincenal')
+  expect(savings.map((s) => [s.startDate, s.secondDay ?? null, s.anchorDate ?? null])).toEqual([
+    ['2026-06-15', 31, null],
+    ['2026-09-30', 31, '2026-06-15'],
+  ])
 })

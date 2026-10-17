@@ -57,9 +57,11 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   `startDate` + `secondDay` (1–31, a ≥ 7 días); el que no existe pasa al último día del mes.
 - Cambiar un programado «desde una fecha» (`domain/scheduleFrom.ts`): el de siempre termina el día antes y
   uno nuevo empieza ese día; lo anterior no cambia. Nunca con un pago registrado (ni parcial) en esa fecha o
-  después; los vínculos hacia delante pasan al nuevo solo si esa ocurrencia sigue existiendo. Al partir un «dos veces
-  al mes», el segundo día del tramo nuevo es el otro día nominal (`splitSecondDay`, `ui/secondDay.ts`; SCH-01) y
-  partir en una fecha movida a fin de mes se avisa (`splitAnchorDrift`) sin cambiar el modelo.
+  después; los vínculos hacia delante pasan al nuevo solo si esa ocurrencia sigue existiendo. Sin cambiar la regla
+  (frecuencia, intervalo, segundo día) y en una fecha de la serie, el tramo nuevo conserva la fecha que fija la serie
+  (`anchorDate`, v14; `splitKeepsAnchor`): el 31 sigue siendo el 31 aunque empiece un 28-feb movido y «1 y 20»
+  siguen siendo 1 y 20 (PR #15, QA-01). `startDate` es solo el límite desde el que cuenta; las fechas, la validación
+  de «dos veces al mes» y la ayuda salen de `anchorOf`.
 - Operaciones idempotentes: el id se genera al abrir el formulario; guardar dos veces
   actualiza el mismo registro.
 - Importación CSV (`domain/bankImport.ts`): huella `importRef` (referencia del banco o descripción
@@ -190,7 +192,7 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   No hace falta `.env` en esta fase.
 - Restaurar una copia valida TODO el archivo y no aplica nada si hay un error. CSV del banco: cada fila
   con error se muestra con su motivo y no se importa; las filas marcadas se guardan todo o nada.
-- Cambios de formato de datos: subir `SCHEMA_VERSION` (hoy 13) y añadir migración con prueba.
+- Cambios de formato de datos: subir `SCHEMA_VERSION` (hoy 14) y añadir migración con prueba.
   Las migraciones solo rellenan campos ausentes; nunca borran datos mal formados.
 - Guardado (`indexedDbRepository.ts`, `localStorageRepository.ts`; ver `docs/STORAGE.md`): nunca sobrescribe lo que otra pestaña u otra
   versión guardó después de leer (error `conflict`); si guardar falla, se avisa de forma

@@ -3325,7 +3325,8 @@ export const fr: Record<keyof typeof es, string> = {
   'recurring.outOfRange': 'Les montants programmés dépassent ce que Clara peut calculer exactement : aucun total ni moyenne arrondis ne sont affichés. Vérifiez les montants dans la liste.',
   'calendar.flow.outOfRange': 'Pas de solde projeté pour ce jour : à partir du {date}, le solde dépasse ce que Clara peut calculer exactement, et aucun montant approximatif n’est affiché.',
   'calendar.flow.outOfRangeNote': 'À partir du {date}, le solde projeté dépasse ce que Clara peut calculer exactement : ces jours n’ont pas de montant.',
-  'scheduleForm.anchorDrift': 'Le {date} correspond au {nominal} déplacé à la fin d’un mois plus court : si vous commencez là, la série se répétera le {day}, même les mois qui ont un {nominal}.',
-  'scheduleForm.anchorDriftKeep': 'Pour garder le {nominal}, commencez le {keep}.',
   'currency.bufferBlocks': 'Le coussin de sécurité enregistré ({amount}) est déjà un montant en {currency} : les montants ne sont ni convertis ni réinterprétés. Mettez-le à 0 dans les réglages du disponible et vous pourrez changer de devise.',
+  'scheduleForm.fromKeepsDates': 'À partir du {date}, les nouvelles valeurs s’appliquent ; la série garde ses dates habituelles.',
+  'scheduleForm.fromNewDates': 'Le {date} n’est pas une date de la série : à partir de là, elle se répète depuis cette date et ses jours changent.',
+  'issue.anchorAfterStart': 'La date qui fixe la série ne peut pas être postérieure à la première date.',
 }

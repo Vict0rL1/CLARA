@@ -456,7 +456,9 @@ export function saveSchedule(data: AppData, draft: ScheduleDraft, ctx: OpContext
     // v9: intervalo personalizado, confirmación automática y pausa (el formulario los manda explícitos).
     ...(draft.frequency === 'custom' && draft.intervalDays !== undefined ? { intervalDays: draft.intervalDays } : {}),
     // v13: dos veces al mes; sin segundo día explícito, 15 días después (o antes) del primero.
-    ...(draft.frequency === 'semimonthly' ? { secondDay: draft.secondDay ?? defaultSecondDay(draft.startDate) } : {}),
+    ...(draft.frequency === 'semimonthly' ? { secondDay: draft.secondDay ?? defaultSecondDay(draft.anchorDate ?? draft.startDate) } : {}),
+    // v14: la fecha que fija la serie cuando `startDate` es solo el límite (un tramo partido sin cambiar la regla).
+    ...(draft.frequency !== 'once' && draft.anchorDate && draft.anchorDate !== draft.startDate ? { anchorDate: draft.anchorDate } : {}),
     ...(draft.autoConfirm ? { autoConfirm: true } : {}),
     ...(draft.paused ? { paused: true } : {}),
     startDate: draft.startDate,

@@ -173,17 +173,18 @@ programado nuevo:      startDate = fecha elegida; valores del formulario; omitid
 - **Nunca deja pagos huérfanos:** si hay un movimiento realizado vinculado (también un cobro parcial) en
   la fecha elegida o después, se rechaza y se dice cuál. La fecha propuesta es la primera ocurrencia
   pendiente desde hoy y después del último pago registrado (`defaultSplitDate`).
-- **«Dos veces al mes» (QA V2, SCH-01; `splitSecondDay`, `ui/secondDay.ts`):** el tramo nuevo empieza en
-  la fecha elegida, así que su primer día es el de esa fecha y el segundo pasa a ser el OTRO día nominal de
-  la serie (15 y 30 desde el 30 → empieza el 30 con segundo día 15; antes quedaban 30 y 30 y no se podía
-  guardar). También con el segundo día implícito (1 y 16 desde el 16 → segundo día 1, no 31). Volver a
-  «todas las fechas» restaura el original; lo que la persona escribió se respeta y pasa por la validación
-  normal.
-- **Borde de fin de mes (revisado aparte):** una fecha MOVIDA al último día de un mes corto (el 31 que cae
-  el 30-sep) representa el día nominal 31 (`occurrenceAnchor`), pero un tramo que empieza el 30 se repetirá
-  el 30 también en los meses de 31 días: el modelo de recurrencia toma el día de `startDate` y NO cambia.
-  El formulario lo dice (`splitAnchorDrift`) y propone la siguiente fecha que conserva el día nominal; la
-  persona decide.
+- **La serie conserva sus fechas (v14, auditoría del PR #15 · QA-01; antes QA V2 · SCH-01):** el tramo
+  nuevo guarda `anchorDate` = la fecha que fijaba la serie, y `startDate` es solo el límite desde el que
+  cuenta. Las ocurrencias desde la fecha elegida son exactamente las que ya había: un sueldo del 31 partido
+  el 28-feb (el 31 movido) sigue el 31-mar, 30-abr, 31-may; «1 y 20» partido el 20-oct sigue 1 y 20 sin
+  tocar el segundo día; una serie semanal conserva su día. Se conserva cuando NO cambia la regla (misma
+  frecuencia, intervalo y segundo día; `sameRule`) y la fecha elegida es de la serie (`isSeriesDate`;
+  `splitKeepsAnchor`). Cambiar la regla, o elegir una fecha que no es de la serie, reancla la serie en esa
+  fecha (cambio explícito; el formulario dice cuál de los dos ocurre). El día del mes de la ayuda, el segundo
+  día por defecto y la validación de «dos veces al mes» salen de `anchorDate` (`anchorOf`), y las guardas
+  (pagos registrados después, gastos planificados vinculados) no cambian. Un ingreso futuro más alto nunca
+  sube el dinero de hoy: con el sueldo del 31 partido, el pago del 30-mar sigue reservado por el ingreso del
+  31-mar.
 - Lo que mira hacia delante sigue a la serie: un gasto planificado abierto vinculado a una ocurrencia
   desde esa fecha pasa al nuevo si el nuevo tiene esa misma ocurrencia (si dejaría de existir, se
   rechaza); un vencido aplazado en la bandeja conserva su aplazamiento; las plantillas de distribución
@@ -652,6 +653,11 @@ Diferencia = saldo observado − saldo calculado
 - v11 → v12 añade a cada límite (`plans[]`) `rollover: 'none'` solo si **falta**; `carriedMinor` es
   opcional y solo lo escribe la renovación de un límite con arrastre. Ningún importe, fecha ni
   movimiento se toca (`stage3.test.ts`, `migration-main.spec.ts`).
+- v13 → v14 (auditoría del PR #15) no rellena nada: añade `schedules[].anchorDate` (opcional; solo lo
+  escribe partir una serie sin cambiar su regla, §5) y el historial registra también `templates`,
+  `scenarios` e `inboxSnoozed` (§26). Los datos v13 valen tal cual; el número sube para que una versión
+  anterior, que no sabe leer `anchorDate`, vea «datos de una versión más nueva» en vez de calcular mal las
+  fechas de un tramo partido (`migrations.test.ts`, `docs/ROLLBACK.md`).
 - v12 → v13 añade `settings.safeToSpend.bufferMinor = 0` solo si **falta** (un valor ya guardado se
   respeta y unos ajustes mal formados se conservan tal cual para que la validación los señale). Con 0
   el disponible es idéntico al de v12. Son opcionales y no necesitan migración: `schedules[].secondDay`

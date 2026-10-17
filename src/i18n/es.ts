@@ -3326,7 +3326,8 @@ export const es = {
   'recurring.outOfRange': 'Los importes programados suman más de lo que Clara puede calcular con exactitud: no se muestra un total ni un promedio redondeados. Revisa los importes en la lista.',
   'calendar.flow.outOfRange': 'Sin saldo proyectado para este día: desde el {date} el saldo supera lo que Clara puede calcular con exactitud y no se muestra una cifra aproximada.',
   'calendar.flow.outOfRangeNote': 'Desde el {date} el saldo proyectado supera lo que Clara puede calcular con exactitud: esos días no tienen cifra.',
-  'scheduleForm.anchorDrift': 'El {date} es el día {nominal} movido al final de un mes más corto: si empiezas ahí, la serie se repetirá el día {day}, también en los meses que tienen día {nominal}.',
-  'scheduleForm.anchorDriftKeep': 'Para conservar el día {nominal}, empieza el {keep}.',
   'currency.bufferBlocks': 'El colchón de seguridad guardado ({amount}) ya es un importe en {currency}: los importes no se convierten ni se reinterpretan. Ponlo en 0 en los ajustes del disponible y podrás cambiar la moneda.',
+  'scheduleForm.fromKeepsDates': 'Desde el {date} valen los valores nuevos; las fechas de la serie siguen siendo las de siempre.',
+  'scheduleForm.fromNewDates': 'El {date} no es una fecha de la serie: desde ahí se repetirá a partir de esa fecha y cambian sus días.',
+  'issue.anchorAfterStart': 'La fecha que fija la serie no puede ser posterior a la primera fecha.',
 } as const

@@ -15,7 +15,7 @@ export type Timestamp = string
 /** Código ISO 4217, por ejemplo 'CAD'. */
 export type CurrencyCode = string
 
-export const SCHEMA_VERSION = 13 as const
+export const SCHEMA_VERSION = 14 as const
 
 /**
  * 'credit' = tarjeta de crédito: su saldo es una DEUDA y se guarda como número
@@ -188,7 +188,7 @@ export interface Schedule {
   accountId: string
   categoryId?: string
   frequency: Frequency
-  /** Primera fecha pendiente. También fija el día del mes para pagos mensuales. */
+  /** Primera fecha que cuenta. Sin `anchorDate`, también fija el día del mes (y la fase) de la serie. */
   startDate: LocalDate
   endDate?: LocalDate
   reminderDaysBefore: number
@@ -198,8 +198,15 @@ export interface Schedule {
   /* ---- v9 (opcionales) ---- */
   /** Solo `frequency: 'custom'`: cada N días. */
   intervalDays?: number
-  /** v13 · Solo `frequency: 'semimonthly'`: el otro día del mes (1–31, a ≥ 7 días del de `startDate`). */
+  /** v13 · Solo `frequency: 'semimonthly'`: el otro día del mes (1–31, a ≥ 7 días del de la fecha que fija la serie). */
   secondDay?: number
+  /**
+   * v14 · Fecha que fija la serie (el día del mes y la fase de los pasos) cuando `startDate` es solo el límite
+   * desde el que cuenta: al partir una serie «desde una fecha» sin cambiar su regla, el tramo nuevo conserva la
+   * de siempre y sus ocurrencias son exactamente las que ya había (auditoría del PR #15, QA-01). Ausente =
+   * `startDate`. Siempre ≤ `startDate`; nunca con `frequency: 'once'`.
+   */
+  anchorDate?: LocalDate
   /**
    * `true`: la ocurrencia se registra sola al llegar su fecha (al abrir la app o a medianoche).
    * Ausente o `false`: queda «por confirmar» (nunca se registra sin confirmación).
