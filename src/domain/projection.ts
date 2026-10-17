@@ -15,7 +15,7 @@
 import { isBudgetAccount, spendableBalance } from './balances'
 import { addDays, daysBetween } from './dates'
 import { goalsReservedTotal } from './reserves'
-import { floorDiv, sumMinor } from './money'
+import { checkedSumMinor, floorDiv, sumMinor } from './money'
 import { openItemsUntil, type PlanItem } from './planItems'
 import type { AppData, IncomeScenario, LocalDate } from './types'
 
@@ -42,10 +42,18 @@ export interface ProjectionOptions {
   scenario?: IncomeScenario
   /** Simulaciones (etapa 3): salidas extra en fechas concretas; nunca se guardan. Fechas pasadas cuentan hoy. */
   extraOutflows?: { date: LocalDate; amountMinor: number }[]
+  /**
+   * QA V2 (FIN-01): si el saldo de un día deja de ser un entero exacto (importes extremos), la proyección
+   * termina el día anterior y lo dice (`outOfRangeFrom`) en vez de fallar. Solo lo pide el calendario, que
+   * ya muestra «sin cifra» después del último día proyectado; sin pedirlo, una suma inexacta sigue siendo un error.
+   */
+  stopWhenOutOfRange?: boolean
 }
 
 export interface ProjectionResult {
   today: LocalDate
+  /** Primer día cuyo saldo ya no es un entero exacto (con `stopWhenOutOfRange`): la proyección acaba el día antes. */
+  outOfRangeFrom: LocalDate | null
   startMinor: number
   goalsReservedMinor: number
   days: ProjectionDay[]
@@ -97,14 +105,22 @@ export function projectBalance(data: AppData, today: LocalDate, options: Project
   let lowest = { date: today, minor: startMinor }
   let firstNegativeDate: LocalDate | null = startMinor < 0 ? today : null
   let firstBelowGoalsDate: LocalDate | null = goalsReservedMinor > 0 && startMinor < goalsReservedMinor ? today : null
+  let outOfRangeFrom: LocalDate | null = null
 
   for (let d = 0; d < totalDays; d++) {
     const date = addDays(today, d)
     const events = byDate.get(date) ?? []
-    const eventsMinor = sumMinor(events.map((e) => e.budgetEffectMinor))
     const extraMinor = -(d === 0 ? extraToday : 0) - (extraByDate.get(date) ?? 0)
+    const dayMinor = checkedSumMinor(events.map((e) => e.budgetEffectMinor))
+    const endMinor = dayMinor === null ? null : checkedSumMinor([balance, dayMinor, -dailySpendMinor, extraMinor])
+    if (dayMinor === null || endMinor === null) {
+      if (!options.stopWhenOutOfRange) throw new RangeError('Desbordamiento al sumar importes')
+      outOfRangeFrom = date
+      break
+    }
+    const eventsMinor = dayMinor
     const startOfDay = balance
-    balance = sumMinor([balance, eventsMinor, -dailySpendMinor, extraMinor])
+    balance = endMinor
     days.push({ date, startMinor: startOfDay, events, eventsMinor, dailySpendMinor, extraMinor, endMinor: balance })
     if (balance < lowest.minor) lowest = { date, minor: balance }
     if (balance < 0 && firstNegativeDate === null) firstNegativeDate = date
@@ -113,6 +129,7 @@ export function projectBalance(data: AppData, today: LocalDate, options: Project
 
   return {
     today,
+    outOfRangeFrom,
     startMinor,
     goalsReservedMinor,
     days,

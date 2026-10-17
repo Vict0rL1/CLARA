@@ -199,7 +199,7 @@ export function BankImport() {
   const rowBadges = (row: ImportRow) => {
     switch (row.status) {
       case 'error':
-        return <Badge tone="critical" icon="alert">{t(`bankImport.error.row.${row.error}` as MessageKey, { found: row.currency ?? '?', expected: data.settings.currency })}</Badge>
+        return <Badge tone="critical" icon="alert">{t(`bankImport.error.row.${row.error}` as MessageKey, { found: row.currency ?? '?', other: row.otherCurrency ?? '?', expected: data.settings.currency })}</Badge>
       case 'duplicate':
         return <Badge tone="neutral" icon="check">{t('bankImport.status.duplicate')}</Badge>
       case 'possibleDuplicate':
@@ -432,8 +432,8 @@ export function BankImport() {
             {cardPaymentRows > 0 && (
               <p className="note" data-testid="import-card-payment-note">{tn('bankImport.cardPaymentNote', cardPaymentRows)}</p>
             )}
-            {preview.rows.some((r) => r.error === 'currency') && (
-              <p className="note" data-testid="import-currency-note">{t('bankImport.currencyNote', { count: preview.rows.filter((r) => r.error === 'currency').length, currency: data.settings.currency })}</p>
+            {preview.rows.some((r) => r.error === 'currency' || r.error === 'currencyConflict') && (
+              <p className="note" data-testid="import-currency-note">{t('bankImport.currencyNote', { count: preview.rows.filter((r) => r.error === 'currency' || r.error === 'currencyConflict').length, currency: data.settings.currency })}</p>
             )}
             {account && selected.some((r) => r.anchorRelation === 'before') && (
               <p className="note">{t('bankImport.beforeAnchorNote', { date: fmt.date(account.anchor.date) })}</p>

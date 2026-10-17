@@ -30,6 +30,8 @@ describe('I3 · pruebas rápidas (@smoke)', () => {
         'offline.spec.ts › tras la primera visita, la app abre sin conexión y conserva los datos',
         'data-safety.spec.ts › H4 · datos de una versión más nueva (esquema actual + 1): se explican, sin «Empezar de nuevo», y ningún botón los toca',
         'shortcut-link.spec.ts › atajo de iPhone: rellena importe, comercio y categoría, avisa y solo guarda al pulsar Guardar',
+        // QA V2: una moneda escrita distinta nunca se registra como la del presupuesto (CUR-01).
+        'qa-v2.spec.ts › CUR-01 · «coffee USD $10» en CAD conserva USD y bloquea la línea; corregida, se registra en CAD y sobrevive a recargar',
       ].sort(),
     )
   })

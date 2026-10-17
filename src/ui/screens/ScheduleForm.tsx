@@ -4,7 +4,7 @@ import { categoriesForKind } from '../../domain/categories'
 import { addDays, isValidLocalDate, parseLocalDate } from '../../domain/dates'
 import { newId } from '../../domain/ids'
 import { deleteSchedule, restoreSchedule, saveSchedule, type ScheduleDraft } from '../../domain/operations'
-import { defaultSplitDate, saveScheduleFrom } from '../../domain/scheduleFrom'
+import { defaultSplitDate, saveScheduleFrom, splitAnchorDrift } from '../../domain/scheduleFrom'
 import type { Frequency, ScheduleKind } from '../../domain/types'
 import { FREQUENCIES, LIMITS, type Issue } from '../../domain/validation'
 import { useT } from '../../i18n'
@@ -14,7 +14,7 @@ import { Alert, EmptyState, PageHeader } from '../components/common'
 import { CheckboxField, MoneyField, Segmented, SelectField, TextField } from '../components/fields'
 import { CategoryPicker } from '../components/CategoryPicker'
 import { SecondDayField } from '../components/SecondDayField'
-import { secondDayFrom } from '../secondDay'
+import { secondDayDraft, secondDayForScope, secondDayFrom } from '../secondDay'
 import { parseMoneyText, moneyErrorMessage } from '../moneyText'
 import { Icon } from '../components/Icon'
 import { useToast } from '../components/toastContext'
@@ -66,8 +66,11 @@ export function ScheduleForm({ route }: { route: Route }) {
   const [rangeErrors, setRangeErrors] = useState<{ min: string | null; extra: string | null }>({ min: null, extra: null })
   const [frequency, setFrequency] = useState<Frequency>(existing?.frequency ?? prefill.frequency ?? 'monthly')
   const [intervalDays, setIntervalDays] = useState(String(existing?.intervalDays ?? 30))
-  // Dos veces al mes: vacío = 15 días después (o antes) del primer día; se dice en la ayuda.
-  const [secondDayText, setSecondDayText] = useState(existing?.secondDay ? String(existing.secondDay) : '')
+  // Dos veces al mes: vacío = 15 días después (o antes) del primer día; se dice en la ayuda. Al partir la
+  // serie «desde una fecha», el segundo día se reancla en el otro día nominal (SCH-01, `secondDayForScope`).
+  const [secondDayState, setSecondDayState] = useState(() => secondDayDraft(existing?.secondDay ? String(existing.secondDay) : ''))
+  const secondDayText = secondDayState.text
+  const setSecondDayText = (text: string) => setSecondDayState((d) => ({ ...d, text }))
   const [autoConfirm, setAutoConfirm] = useState(!!existing?.autoConfirm)
   const [paused, setPaused] = useState(!!existing?.paused)
   const [startDate, setStartDate] = useState(existing?.startDate ?? prefill.start ?? today)
@@ -158,6 +161,8 @@ export function ScheduleForm({ route }: { route: Route }) {
 
   const day = startDate ? parseLocalDate(startDate).day : 0
   const secondDay = secondDayFrom(startDate, secondDayText)
+  // Borde de fin de mes: partir en una fecha movida (el 31 que cae el 30-sep) cambia el día del tramo nuevo; se dice.
+  const drift = existing && scope === 'from' && frequency === existing.frequency ? splitAnchorDrift(existing, startDate) : null
   const unknown = otherIssues(issues, ['name', 'amountMinor', 'startDate', 'endDate', 'accountId', 'categoryId', 'range.minMinor', 'range.extraMinor', 'secondDay'])
 
   return (
@@ -212,7 +217,9 @@ export function ScheduleForm({ route }: { route: Route }) {
             onChange={(next) => {
               if (next === scope) return
               if (next === 'from') allStart.current = startDate
-              setStartDate(next === 'from' ? splitDefault : allStart.current)
+              const nextStart = next === 'from' ? splitDefault : allStart.current
+              setStartDate(nextStart)
+              setSecondDayState((d) => secondDayForScope(d, existing, next, nextStart))
               setScope(next)
               setIssues([])
             }}
@@ -226,7 +233,10 @@ export function ScheduleForm({ route }: { route: Route }) {
           label={scope === 'from' ? t('scheduleForm.fromDate') : t('scheduleForm.nextDate')}
           type="date"
           value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
+          onChange={(e) => {
+            setStartDate(e.target.value)
+            if (scope === 'from') setSecondDayState((d) => secondDayForScope(d, existing, 'from', e.target.value))
+          }}
           hint={
             scope === 'from' && isValidLocalDate(startDate)
               ? t('scheduleForm.fromHint', { date: fmt.date(addDays(startDate, -1)) })
@@ -239,6 +249,12 @@ export function ScheduleForm({ route }: { route: Route }) {
           error={fieldError(t, fmt, issues, 'startDate')}
           required
         />
+        {drift && (
+          <p className="note" data-testid="split-anchor-drift">
+            <Icon name="info" size={14} /> {t('scheduleForm.anchorDrift', { date: fmt.date(startDate, { compact: true, today }), nominal: drift.nominalDay, day: drift.day })}
+            {drift.keepFrom && ` ${t('scheduleForm.anchorDriftKeep', { nominal: drift.nominalDay, keep: fmt.date(drift.keepFrom, { compact: true, today }) })}`}
+          </p>
+        )}
         {frequency === 'semimonthly' && (
           <SecondDayField startDate={startDate} value={secondDayText} onChange={setSecondDayText} error={fieldError(t, fmt, issues, 'secondDay')} />
         )}

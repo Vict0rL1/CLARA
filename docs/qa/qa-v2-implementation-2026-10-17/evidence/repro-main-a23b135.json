@@ -1,0 +1,66 @@
+{
+  "cur01": [
+    [
+      "coffee USD $10",
+      1000,
+      null
+    ],
+    [
+      "coffee EUR $10",
+      1000,
+      null
+    ],
+    [
+      "coffee USD 10",
+      1000,
+      "USD"
+    ]
+  ],
+  "cur02": [
+    [
+      "USD 10 CAD",
+      {
+        "ok": true,
+        "minor": 1000
+      }
+    ],
+    [
+      "€10 CAD",
+      {
+        "ok": true,
+        "minor": 1000
+      }
+    ],
+    [
+      "GBP 10 CAD",
+      {
+        "ok": true,
+        "minor": 1000
+      }
+    ],
+    [
+      "US$10 CAD",
+      {
+        "ok": true,
+        "minor": 1000
+      }
+    ]
+  ],
+  "cur03": [
+    [
+      "SHOP\nTOTAL PEN 10.00",
+      1000,
+      null
+    ],
+    [
+      "SHOP\nTOTAL RUB 10.00",
+      1000,
+      null
+    ],
+    [
+      "SHOP\nTOTAL USD 10.00",
+      1000,
+      null
+    ]
+  ]
+}

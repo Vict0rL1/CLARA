@@ -21,7 +21,7 @@ import { CategoryDonut, FutureBalanceChart, IncomeExpenseBars, TrendLines } from
 import { DATE_LOCALE, useFormat, type Formatter } from '../format'
 import { categoryLabel } from '../labels'
 import { periodLabel } from '../periodLabel'
-import { href, navigate, withQuery, type Route } from '../router'
+import { href, navigate, replaceRouteQuietly, withQuery, type Route } from '../router'
 
 const CHIPS: StatsPeriodType[] = STATS_PERIOD_TYPES
 /** Un domingo conocido: sumando el índice se obtiene cada día de la semana para etiquetarlo con el formateador. */
@@ -95,8 +95,24 @@ export function Statistics({ route }: { route: Route }) {
     if (per?.type === 'semester') return t('stats.axisSemester', { n: per.anchorMonth <= 6 ? 1 : 2 })
     return fmt.date(p.range.start, { compact: true })
   }
-  const go = (patch: Record<string, string | undefined>) =>
-    navigate(withQuery('/estadisticas', { periodo: type, fecha: anchor, cuenta: filter.accountId, etiqueta: filter.tagId, comercio: filter.merchant, ...patch }))
+  // QA V2 (STAT-01): las fechas de un periodo personalizado viven en la dirección como el resto; cambiar un filtro
+  // las conserva y escribirlas las actualiza (sin navegar), así sobreviven a recargar y a compartir el enlace.
+  const pathFor = (patch: Record<string, string | undefined>) =>
+    withQuery('/estadisticas', {
+      periodo: type,
+      fecha: anchor,
+      ...(type === 'custom' ? { desde: customStart || undefined, hasta: customEnd || undefined } : {}),
+      cuenta: filter.accountId,
+      etiqueta: filter.tagId,
+      comercio: filter.merchant,
+      ...patch,
+    })
+  const go = (patch: Record<string, string | undefined>) => navigate(pathFor(patch))
+  const setCustom = (start: string, end: string) => {
+    setCustomStart(start)
+    setCustomEnd(end)
+    replaceRouteQuietly(pathFor({ desde: start || undefined, hasta: end || undefined }))
+  }
   const filterNames = [
     filter.accountId ? data.accounts.find((a) => a.id === filter.accountId)?.name : undefined,
     filter.tagId ? data.tags.find((tg) => tg.id === filter.tagId)?.name : undefined,
@@ -133,8 +149,8 @@ export function Statistics({ route }: { route: Route }) {
       </div>
       {type === 'custom' && (
         <div className="form__row">
-          <TextField label={t('settings.period.customStart')} type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} />
-          <TextField label={t('settings.period.customEnd')} type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} />
+          <TextField label={t('settings.period.customStart')} type="date" value={customStart} onChange={(e) => setCustom(e.target.value, customEnd)} />
+          <TextField label={t('settings.period.customEnd')} type="date" value={customEnd} onChange={(e) => setCustom(customStart, e.target.value)} />
         </div>
       )}
       <MonthNavigator label={title} onPrev={() => move(-1)} onNext={() => move(1)} prevLabel={t('stats.prev')} nextLabel={t('stats.next')} nextDisabled={isCurrent} onToday={isCurrent ? undefined : () => go({ fecha: today, desde: undefined, hasta: undefined })} todayLabel={t('stats.today')} />

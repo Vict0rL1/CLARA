@@ -5,7 +5,7 @@
  */
 import { addDays, daysBetween, weekday } from './dates'
 import { periodSummary, type CategorySpending } from './insights'
-import { floorDiv, mulDivFloor, sumMinor } from './money'
+import { checkedMulDivFloor, floorDiv, mulDivFloor, sumMinor } from './money'
 import { getPeriod, type Period } from './periods'
 import { estimateDailySpend, projectBalance } from './projection'
 import { txMerchantKey } from './statsFilter'
@@ -52,7 +52,7 @@ export interface Delta {
 
 function delta(current: number, previous: number, comparable: boolean): Delta {
   const diffMinor = current - previous
-  return { diffMinor, percent: comparable && previous > 0 ? floorDiv(diffMinor * 100, previous) : null }
+  return { diffMinor, percent: comparable && previous > 0 ? checkedMulDivFloor(diffMinor, 100, previous) : null }
 }
 
 export interface PeriodStats {

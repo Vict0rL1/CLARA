@@ -3320,4 +3320,11 @@ export const pt: Record<keyof typeof es, string> = {
   'stats.filters.active': 'Valores só de: {list}. Calculados como sem filtro.',
   'stats.filters.clear': 'Remover filtros',
   'stats.filters.futureNote': 'O saldo futuro é de todas as contas do orçamento: os filtros não se aplicam.',
+  'money.error.currencyConflict': 'O valor tem duas moedas diferentes ({found} e {other}). Nada é convertido: digite só o número em {expected}.',
+  'bankImport.error.row.currencyConflict': 'Duas moedas diferentes ({found} e {other}); este orçamento usa {expected}',
+  'recurring.outOfRange': 'Os valores programados somam mais do que a Clara consegue calcular com exatidão: nenhum total nem média arredondados são mostrados. Confira os valores na lista.',
+  'calendar.flow.outOfRange': 'Sem saldo projetado para este dia: a partir de {date} o saldo ultrapassa o que a Clara consegue calcular com exatidão, e não se mostra um valor aproximado.',
+  'calendar.flow.outOfRangeNote': 'A partir de {date} o saldo projetado ultrapassa o que a Clara consegue calcular com exatidão: esses dias não têm valor.',
+  'scheduleForm.anchorDrift': '{date} corresponde ao dia {nominal} movido para o fim de um mês mais curto: se começar aí, a série vai se repetir no dia {day}, também nos meses que têm dia {nominal}.',
+  'scheduleForm.anchorDriftKeep': 'Para manter o dia {nominal}, comece em {keep}.',
 }

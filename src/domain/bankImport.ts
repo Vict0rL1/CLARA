@@ -239,7 +239,7 @@ export interface ImportOptions {
 }
 
 /** `currency`: la fila (o el archivo) está en otra moneda, o en una desconocida; nunca se asume la del presupuesto. */
-export type ImportRowError = 'date' | 'amount' | 'zero' | 'future' | 'tooLarge' | 'currency'
+export type ImportRowError = 'date' | 'amount' | 'zero' | 'future' | 'tooLarge' | 'currency' | 'currencyConflict'
 
 /**
  * - trashed: el movimiento de esa fila está en la papelera → no se importa (se restaura desde la papelera).
@@ -263,6 +263,8 @@ export interface ImportRow {
   anchorRelation?: 'before' | 'sameDay' | 'after'
   /** Moneda escrita en la fila (columna propia, código o símbolo junto al importe), si la hubo. */
   currency?: string
+  /** `currencyConflict` (QA V2): la otra moneda escrita en el mismo importe («-USD 10 CAD» → USD y CAD). */
+  otherCurrency?: string
   /**
    * Parece el pago de una tarjeta (§8): dinero que entra en una tarjeta («PAYMENT - THANK YOU») o que
    * sale de un banco hacia una tarjeta («PAGO TARJETA VISA»). Un pago de tarjeta no es ingreso ni gasto
@@ -327,7 +329,7 @@ const signedOf = (tx: Transaction) => (tx.kind === 'income' ? tx.amountMinor : -
 const prefixKeyOf = (accountId: string, date: string, signed: number, description: string) => `${accountId}|${date}|${signed}|${normalizeDescription(description)}`
 const isBankRef = (ref: string | undefined) => !!ref && ref.includes('|ref|')
 
-type AmountRead = { ok: true; value: number; currency?: string } | { ok: false; error: ImportRowError; currency?: string }
+type AmountRead = { ok: true; value: number; currency?: string } | { ok: false; error: ImportRowError; currency?: string; otherCurrency?: string }
 
 function signedAmount(cells: string[], mapping: ColumnMapping, currency: string, locale: string): AmountRead {
   // Columna de moneda (QA-05): un código distinto del presupuesto, o desconocido, no se importa.
@@ -339,7 +341,7 @@ function signedAmount(cells: string[], mapping: ColumnMapping, currency: string,
       explicit = raw
     }
   }
-  const read = (i: number | undefined): { ok: true; minor: number; empty: boolean; currency?: string } | { ok: false; error: ImportRowError; currency?: string } => {
+  const read = (i: number | undefined): { ok: true; minor: number; empty: boolean; currency?: string } | { ok: false; error: ImportRowError; currency?: string; otherCurrency?: string } => {
     const raw = (i === undefined ? '' : (cells[i] ?? '')).replace(/^\((.*)\)$/, '-$1')
     if (raw.trim() === '') return { ok: true, minor: 0, empty: true }
     const r = parseMoney(raw.replace(/^\+/, ''), currency, locale, { allowNegative: true, allowZero: true })
@@ -348,6 +350,8 @@ function signedAmount(cells: string[], mapping: ColumnMapping, currency: string,
       return { ok: true, minor: r.minor, empty: false, ...(mark && 'code' in mark ? { currency: mark.code } : {}) }
     }
     if (r.error === 'currencyMismatch' || r.error === 'unknownCurrency') return { ok: false, error: 'currency', currency: r.found }
+    // QA V2 (CUR-02): «-USD 10 CAD», «€10 CAD»: dos monedas que se contradicen; nunca se importa como ninguna.
+    if (r.error === 'currencyConflict') return { ok: false, error: 'currencyConflict', currency: r.found, otherCurrency: r.other }
     return { ok: false, error: r.error === 'tooLarge' ? 'tooLarge' : 'amount' }
   }
   if (mapping.amount !== undefined) {
@@ -415,7 +419,7 @@ export function previewImport(table: string[][], data: AppData, options: ImportO
     if (!date) return { line, status: 'error', error: 'date', description }
     if (options.fileCurrency && options.fileCurrency.toUpperCase() !== currency) return { line, status: 'error', error: 'currency', date, description, currency: options.fileCurrency.toUpperCase() }
     const amount = signedAmount(cells, options.mapping, currency, options.locale)
-    if (!amount.ok) return { line, status: 'error', error: amount.error, date, description, ...(amount.currency ? { currency: amount.currency } : {}) }
+    if (!amount.ok) return { line, status: 'error', error: amount.error, date, description, ...(amount.currency ? { currency: amount.currency } : {}), ...(amount.otherCurrency ? { otherCurrency: amount.otherCurrency } : {}) }
     const signed = options.invertSign ? -amount.value : amount.value
     if (signed === 0) return { line, status: 'error', error: 'zero', date, description }
     const amountMinor = Math.abs(signed)

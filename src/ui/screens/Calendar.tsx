@@ -54,7 +54,8 @@ export function Calendar() {
   // aunque caiga en el mes siguiente. Los días pasados no se proyectan: el saldo real vive en Cuentas.
   const projectionEnd = maxDate(monthEnd, addDays(today, MIN_PROJECTION_DAYS - 1))
   const projectionDays = Math.min(CALENDAR_PROJECTION_MAX_DAYS, daysBetween(today, projectionEnd) + 1)
-  const projection = useMemo(() => projectBalance(data, today, { days: projectionDays }), [data, today, projectionDays])
+  // QA V2 (FIN-01): con importes extremos la proyección acaba en el último día exacto; después no hay cifra.
+  const projection = useMemo(() => projectBalance(data, today, { days: projectionDays, stopWhenOutOfRange: true }), [data, today, projectionDays])
   const byDate = useMemo(() => new Map<string, ProjectionDay>(projection.days.map((d) => [d.date, d])), [projection])
   const lastProjected = projection.days[projection.days.length - 1]?.date ?? today
   const firstNegative = projection.firstNegativeDate ? byDate.get(projection.firstNegativeDate) : undefined
@@ -63,12 +64,14 @@ export function Calendar() {
   const simParsed = simText.trim() ? parseMoneyText(simText, fmt) : null
   const simMinor = simParsed?.ok ? simParsed.minor : 0
   // Un mes de proyección es barato: se recalcula al escribir, sin memorizar.
-  const simulated = simMinor > 0 ? projectBalance(data, today, { days: projectionDays, extraOutflows: [{ date: simDay, amountMinor: simMinor }] }) : null
+  const simulated = simMinor > 0 ? projectBalance(data, today, { days: projectionDays, extraOutflows: [{ date: simDay, amountMinor: simMinor }], stopWhenOutOfRange: true }) : null
   const simDayResult = simulated?.days.find((d) => d.date === simDay)
   // Más allá de la proyección no hay cifra: se dice, no se muestra la del último día calculado.
   const simBeyond = simMinor > 0 && simDay > lastProjected
   const selectedBalance = selectedDay ? dayBalance(projection, selectedDay) : null
   const monthBeyond = monthEnd > lastProjected
+  const outOfRangeFrom = projection.outOfRangeFrom
+  const selectedOutOfRange = !!selectedDay && !!outOfRangeFrom && selectedDay >= outOfRangeFrom
   const simNegative = simulated?.firstNegativeDate ? simulated.days.find((d) => d.date === simulated.firstNegativeDate) : undefined
   // Conciliación: movimientos ya registrados que parecen una ocurrencia abierta sin vincular.
   const unlinked = useMemo(() => unlinkedSettlements(data, today), [data, today])
@@ -355,7 +358,10 @@ export function Calendar() {
         </table>
         {monthBeyond && (
           <p className="note" data-testid="calendar-beyond-note">
-            <Icon name="info" size={14} /> {t('calendar.flow.beyondNote', { date: fmt.date(lastProjected, { compact: true, today }) })}
+            <Icon name="info" size={14} />{' '}
+            {outOfRangeFrom && monthEnd >= outOfRangeFrom
+              ? t('calendar.flow.outOfRangeNote', { date: fmt.date(outOfRangeFrom, { compact: true, today }) })
+              : t('calendar.flow.beyondNote', { date: fmt.date(lastProjected, { compact: true, today }) })}
           </p>
         )}
       </Card>
@@ -373,9 +379,11 @@ export function Calendar() {
           <p className="item__meta" data-testid="day-balance" data-state={selectedBalance?.state}>
             {selectedBalance?.state === 'projected'
               ? t('calendar.flow.dayBalance', { amount: fmt.money(selectedBalance.endMinor) })
-              : selectedBalance?.state === 'beyond'
-                ? t('calendar.flow.beyond', { date: fmt.date(selectedBalance.lastDate, { compact: true, today }), days: CALENDAR_PROJECTION_MAX_DAYS })
-                : t('calendar.flow.past')}
+              : selectedBalance?.state === 'beyond' && selectedOutOfRange
+                ? t('calendar.flow.outOfRange', { date: fmt.date(outOfRangeFrom!, { compact: true, today }) })
+                : selectedBalance?.state === 'beyond'
+                  ? t('calendar.flow.beyond', { date: fmt.date(selectedBalance.lastDate, { compact: true, today }), days: CALENDAR_PROJECTION_MAX_DAYS })
+                  : t('calendar.flow.past')}
           </p>
         )}
         {listed.length === 0 ? <EmptyState compact icon="calendar" title={t('calendar.empty')} /> : <ul className="item-list">{listed.map(renderItem)}</ul>}
@@ -482,16 +490,22 @@ function RecurringSummary() {
   return (
     <div className="stack-sm" data-testid="recurring-summary">
       <div className="stats">
-        {expenses.items.length > 0 && (
+        {expenses.ok && expenses.items.length > 0 && (
           <>
             <StatTile label={t('recurring.monthly')} value={approx(expenses.monthlyMinor, expenses.hasEstimates)} hint={t('recurring.monthlyHint')} />
             <StatTile label={t('recurring.year')} value={approx(expenses.totalMinor, expenses.hasEstimates)} hint={tn('recurring.payments', expenses.items.reduce((n, i) => n + i.occurrences, 0))} />
           </>
         )}
-        {incomes.items.length > 0 && <StatTile label={t('recurring.incomeMonthly')} value={approx(incomes.monthlyMinor, incomes.hasEstimates)} hint={t('recurring.monthlyHint')} />}
+        {incomes.ok && incomes.items.length > 0 && <StatTile label={t('recurring.incomeMonthly')} value={approx(incomes.monthlyMinor, incomes.hasEstimates)} hint={t('recurring.monthlyHint')} />}
       </div>
+      {/* QA V2 (FIN-01): un total que no cabe en un entero exacto no se muestra (ni recortado ni redondeado). */}
+      {(!expenses.ok || !incomes.ok) && (
+        <p className="note" data-testid="recurring-out-of-range">
+          <Icon name="info" size={14} /> {t('recurring.outOfRange')}
+        </p>
+      )}
       {expenses.pausedCount > 0 && <p className="note">{tn('recurring.paused', expenses.pausedCount)}</p>}
-      {expenses.items.length > 0 && (
+      {expenses.ok && expenses.items.length > 0 && (
         <Explain>
           <p>{t('recurring.explain', range)}</p>
           {expenses.items.map((i) => (

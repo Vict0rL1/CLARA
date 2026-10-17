@@ -3320,4 +3320,11 @@ export const fr: Record<keyof typeof es, string> = {
   'stats.filters.active': 'Chiffres uniquement pour : {list}. Calculés comme sans filtre.',
   'stats.filters.clear': 'Retirer les filtres',
   'stats.filters.futureNote': 'Le solde futur couvre tous les comptes du budget : les filtres ne s’appliquent pas.',
+  'money.error.currencyConflict': 'Le montant contient deux devises différentes ({found} et {other}). Rien n’est converti : saisissez seulement le nombre en {expected}.',
+  'bankImport.error.row.currencyConflict': 'Deux devises différentes ({found} et {other}) ; ce budget utilise {expected}',
+  'recurring.outOfRange': 'Les montants programmés dépassent ce que Clara peut calculer exactement : aucun total ni moyenne arrondis ne sont affichés. Vérifiez les montants dans la liste.',
+  'calendar.flow.outOfRange': 'Pas de solde projeté pour ce jour : à partir du {date}, le solde dépasse ce que Clara peut calculer exactement, et aucun montant approximatif n’est affiché.',
+  'calendar.flow.outOfRangeNote': 'À partir du {date}, le solde projeté dépasse ce que Clara peut calculer exactement : ces jours n’ont pas de montant.',
+  'scheduleForm.anchorDrift': 'Le {date} correspond au {nominal} déplacé à la fin d’un mois plus court : si vous commencez là, la série se répétera le {day}, même les mois qui ont un {nominal}.',
+  'scheduleForm.anchorDriftKeep': 'Pour garder le {nominal}, commencez le {keep}.',
 }

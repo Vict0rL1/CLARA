@@ -27,11 +27,13 @@ export type ShortcutAmount = { ok: true; minor: number; foreignCurrency?: string
 /**
  * Lee el importe de un atajo con el mismo lector de marcas de moneda que el resto de la app
  * (`stripCurrencyMark`, QA-05). Aquí una moneda distinta NO es un error: el formulario se rellena
- * con el número y avisa (`foreignCurrency`), porque nada se guarda sin que la persona revise.
+ * con el número y avisa (`foreignCurrency`), porque nada se guarda sin que la persona revise. Dos monedas
+ * que se contradicen sí: no se sabe cuál es, así que el importe queda vacío y se dice (QA V2, CUR-02).
  */
 export function parseShortcutAmount(text: string, currency: string, numberLocale: string): ShortcutAmount {
   const { text: amount, mark } = stripCurrencyMark(text.replace(/[\u00a0\u202f]/g, ' '))
-  if (mark && 'unknown' in mark) return { ok: false }
+  // Una moneda desconocida, o dos que se contradicen («USD 10 CAD», QA V2): el importe no se rellena.
+  if (mark && ('unknown' in mark || 'conflict' in mark)) return { ok: false }
   const parsed = parseMoney(amount, currency as CurrencyCode, numberLocale)
   if (!parsed.ok) return { ok: false }
   // Cualquier marca que no pueda ser la moneda del presupuesto se avisa (RT-01): «€» se nombra EUR.

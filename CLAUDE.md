@@ -34,7 +34,10 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
 ## Reglas financieras (ver `docs/FORMULAS.md`)
 
 - Dinero = **enteros en unidades menores**. Prohibido usar flotantes para importes.
-  Divisiones con `floorDiv`/`ceilDiv`/`mulDivFloor`.
+  Divisiones con `floorDiv`/`ceilDiv`/`mulDivFloor`/`mulDivCeil`; nunca `importe * k` antes de dividir. Un agregado
+  que no cabe en un entero exacto (> 2⁵³ − 1) no se redondea ni se recorta: `checkedSumMinor`/`checkedMulDivFloor`
+  devuelven `null` y la pantalla dice que no hay cifra (QA V2, FIN-01: `recurringCosts` → `ok: false`;
+  `projectBalance` con `stopWhenOutOfRange` → `outOfRangeFrom`).
 - Una moneda por presupuesto; cada registro guarda `currency` y se valida.
 - Fechas de calendario (`'AAAA-MM-DD'`) separadas de marcas de tiempo (ISO UTC).
   "Hoy" = `todayInTimeZone(settings.timeZone)`.
@@ -54,7 +57,9 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   `startDate` + `secondDay` (1–31, a ≥ 7 días); el que no existe pasa al último día del mes.
 - Cambiar un programado «desde una fecha» (`domain/scheduleFrom.ts`): el de siempre termina el día antes y
   uno nuevo empieza ese día; lo anterior no cambia. Nunca con un pago registrado (ni parcial) en esa fecha o
-  después; los vínculos hacia delante pasan al nuevo solo si esa ocurrencia sigue existiendo.
+  después; los vínculos hacia delante pasan al nuevo solo si esa ocurrencia sigue existiendo. Al partir un «dos veces
+  al mes», el segundo día del tramo nuevo es el otro día nominal (`splitSecondDay`, `ui/secondDay.ts`; SCH-01) y
+  partir en una fecha movida a fin de mes se avisa (`splitAnchorDrift`) sin cambiar el modelo.
 - Operaciones idempotentes: el id se genera al abrir el formulario; guardar dos veces
   actualiza el mismo registro.
 - Importación CSV (`domain/bankImport.ts`): huella `importRef` (referencia del banco o descripción
@@ -81,7 +86,13 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   `money.ts` (`currencyMarksAround`, `currencyMarksIn`, `stripCurrencyMark`) para códigos delante o
   detrás (también pegados), símbolos, nombres, signos locales con letras («kr», «Ft») e importes en
   palabras; si no es la del presupuesto o
-  queda sin resolver, el campo la conserva (`withCurrencyMark`) y la línea no se registra. Nunca se convierte. Reglas de categoría: un solo resolutor
+  queda sin resolver, el campo la conserva (`withCurrencyMark`) y la línea no se registra. Nunca se convierte.
+  Se leen TODAS las marcas (hasta dos a cada lado del importe y las del resto de la frase) y se unen con
+  `reconcileMarks`: un código concreto acota a un símbolo genérico («USD $10» = USD, «$10 CAD» = CAD) y dos que se
+  contradicen («USD 10 CAD», «€10 CAD») son `currencyConflict` en todos los consumidores (campos, asistente, CSV,
+  atajos, recibos): el campo conserva las dos (`withCurrencyMarks`) y nada se registra (QA V2, CUR-01/02). En un
+  recibo, en líneas de total/pago un código junto al importe cuenta aunque sea palabra («TOTAL PEN 10.00») o ISO no
+  admitido; en líneas de artículo no (CUR-03). Reglas de categoría: un solo resolutor
   (`rankRuleMatches`: patrón más largo, a igualdad la más antigua) para asistente, revisión y Ajustes; coincide
   el texto tal cual o la clave de comercio (`domain/merchants.ts`: sin prefijo «SQ *», signos ni códigos de
   referencia), siempre un superconjunto de lo de antes.
@@ -101,7 +112,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   porcentaje si la base es 0 o faltan datos; reglas fijas, sin IA ni notificaciones.
 - Escenarios: se simulan sobre una copia; nunca modifican datos reales ni se aplican solos.
 - Filtros de Estadísticas (`domain/statsFilter.ts`): cuenta, etiqueta y comercio filtran los movimientos y todo se
-  calcula igual sobre esa copia; el saldo futuro no se filtra y se dice.
+  calcula igual sobre esa copia; el saldo futuro no se filtra y se dice. Las fechas del periodo personalizado también
+  van en la dirección (`desde`/`hasta`) y se conservan al filtrar (STAT-01).
 - Búsqueda: local, sin acentos ni mayúsculas; categorías fijas en el idioma activo;
   papelera solo si se pide.
 - Compras divididas (`splits`, `domain/splits.ts`): un solo movimiento; Σ líneas = total

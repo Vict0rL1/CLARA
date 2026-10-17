@@ -9,7 +9,7 @@
  * categorías en cuatro idiomas más aprendizaje a partir del historial de la persona.
  */
 import { addDays, isValidLocalDate, parseLocalDate, toLocalDate, weekday } from './dates'
-import { currencyDigits, currencyMarksAround, currencyMarksIn, markLabel, markMatchesCurrency, type TextMark } from './money'
+import { currencyDigits, currencyMarksAround, currencyMarksIn, markLabel, markMatchesCurrency, reconcileMarks, type TextMark } from './money'
 import { normalizeText, rankRuleMatches } from './rules'
 import type { AppData, Language, LocalDate, Transaction } from './types'
 
@@ -34,6 +34,12 @@ export interface ParsedEntry {
    * conserva (`withCurrencyMark`) y la revisión bloquea la línea (AS-01, RT-01).
    */
   foreignCurrency?: string
+  /**
+   * Dos monedas escritas que no pueden ser la misma («coffee USD 10 CAD», «coffee EUR $10»), en el orden
+   * en que se escribieron. Tampoco se convierte ni se elige una: el campo conserva las dos
+   * (`withCurrencyMarks`) y la línea no se registra hasta corregirla (QA V2, CUR-01/02).
+   */
+  currencyConflict?: readonly [string, string]
 }
 
 export type ParserHint =
@@ -257,14 +263,20 @@ function findWordAmount(text: string, digits: number): AmountMatch | null {
 }
 
 /**
- * Moneda escrita que NO es la del presupuesto (código, símbolo o nombre tal cual), o `undefined`.
- * Manda lo pegado al importe; si no hay nada pegado, cualquier moneda explícita de la frase
- * («coffee (USD) 10», «paid in euros») deja la línea sin resolver: nunca se asume la del presupuesto.
+ * Moneda escrita que NO es la del presupuesto (código, símbolo o nombre tal cual), o dos que se
+ * contradicen. Se unen TODAS las marcas de la entrada, pegadas al importe y explícitas en el resto de la
+ * frase («coffee (USD) 10», «paid in euros»), en orden de lectura (`reconcileMarks`, QA V2 CUR-01): un
+ * código concreto acota a un símbolo genérico («coffee USD $10» → USD), nunca al revés. Nada se convierte
+ * ni se asume la moneda del presupuesto.
  */
-function foreignCurrencyOf(amount: AmountMatch | null, rest: string, currency: string): string | undefined {
-  const marks = amount && amount.marks.length > 0 ? amount.marks : currencyMarksIn(rest)
-  const foreign = marks.find((m) => !markMatchesCurrency(m.mark, currency))
-  return foreign ? markLabel(foreign.mark) : undefined
+function writtenCurrencyOf(amount: AmountMatch | null, rest: string, currency: string): Pick<ParsedEntry, 'foreignCurrency' | 'currencyConflict'> {
+  const far = currencyMarksIn(rest)
+  const cut = amount ? amount.start : rest.length
+  const marks = [...far.filter((m) => m.start < cut), ...(amount?.marks ?? []), ...far.filter((m) => m.start >= cut)]
+  const mark = reconcileMarks(marks.map((m) => m.mark))
+  if (!mark || markMatchesCurrency(mark, currency)) return {}
+  if ('conflict' in mark) return { currencyConflict: [markLabel(mark.conflict[0]), markLabel(mark.conflict[1])] }
+  return { foreignCurrency: markLabel(mark) }
 }
 
 /* ---------- Fechas ---------- */
@@ -494,8 +506,8 @@ export function parseEntry(raw: string, ctx: ParseContext): ParsedEntry {
   if (isTransfer) confidence = Math.min(confidence, 0.5)
   confidence = Math.max(0.05, Math.min(0.95, confidence))
 
-  const foreignCurrency = foreignCurrencyOf(amount, amount ? working.slice(0, amount.start) + ' ' + working.slice(amount.end) : working, ctx.currency)
-  return { kind: isTransfer ? 'transfer' : kind, amountMinor: amount?.minor ?? null, description, ...(merchant ? { merchant } : {}), ...(categoryId ? { categoryId } : {}), date: dateValue, confidence: Math.round(confidence * 100) / 100, raw: raw.trim(), hints, ...(foreignCurrency ? { foreignCurrency } : {}) }
+  const written = writtenCurrencyOf(amount, amount ? working.slice(0, amount.start) + ' ' + working.slice(amount.end) : working, ctx.currency)
+  return { kind: isTransfer ? 'transfer' : kind, amountMinor: amount?.minor ?? null, description, ...(merchant ? { merchant } : {}), ...(categoryId ? { categoryId } : {}), date: dateValue, confidence: Math.round(confidence * 100) / 100, raw: raw.trim(), hints, ...written }
 }
 
 /** Texto libre → entradas (máximo 200). */

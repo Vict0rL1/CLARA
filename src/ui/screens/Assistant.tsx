@@ -13,7 +13,7 @@ import { parseReceiptText } from '../../domain/receipt'
 import { compressReceipt, ocrAvailable, recognizeText } from '../ocr'
 import { resolveCategories } from '../../domain/categories'
 import { newId } from '../../domain/ids'
-import { parseMoney, withCurrencyMark } from '../../domain/money'
+import { parseMoney, withCurrencyMark, withCurrencyMarks } from '../../domain/money'
 import { countEntries, learnCategories, MAX_PARSER_LINES, type ParsedEntry } from '../../domain/parser'
 import { computeBudget } from '../../domain/budget'
 import { implausibilityRatio, isImplausibleAmount } from '../../domain/plausibility'
@@ -64,12 +64,16 @@ interface Line {
 function initialAmountText(entry: ParsedEntry, fmt: { moneyInput: (minor: number) => string }): string {
   if (entry.amountMinor === null) return ''
   const amount = fmt.moneyInput(entry.amountMinor)
+  // QA V2: dos monedas que se contradicen se conservan las dos («USD 10.00 CAD»).
+  if (entry.currencyConflict) return withCurrencyMarks(amount, entry.currencyConflict)
   return entry.foreignCurrency ? withCurrencyMark(amount, entry.foreignCurrency) : amount
 }
 
-/** Moneda escrita en el campo que no es la del presupuesto (o `undefined`). */
-function writtenCurrencyOf(result: ReturnType<typeof parseMoney>): string | undefined {
-  return !result.ok && (result.error === 'currencyMismatch' || result.error === 'unknownCurrency') ? result.found : undefined
+/** Moneda escrita en el campo que no es la del presupuesto, o las dos que se contradicen («USD y CAD»); si no, `undefined`. */
+function writtenCurrencyOf(result: ReturnType<typeof parseMoney>, list: (items: readonly string[]) => string): string | undefined {
+  if (result.ok) return undefined
+  if (result.error === 'currencyConflict') return list([result.found ?? '', result.other ?? ''])
+  return result.error === 'currencyMismatch' || result.error === 'unknownCurrency' ? result.found : undefined
 }
 
 type SpeechCtor = new () => { lang: string; interimResults: boolean; continuous: boolean; onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onend: (() => void) | null; onerror: (() => void) | null; start: () => void; stop: () => void }
@@ -141,6 +145,7 @@ export function Assistant({ route }: { route: Route }) {
         raw: t('assistant.photoRaw', { name: file.name || 'foto' }),
         hints,
         ...(receipt?.foreignCurrency ? { foreignCurrency: receipt.foreignCurrency } : {}),
+        ...(receipt?.currencyConflict ? { currencyConflict: receipt.currencyConflict } : {}),
       }
       const line: Line = { id: newId(), entry, kind: 'expense', amountText: initialAmountText(entry, fmt), categoryId: entry.categoryId ?? 'other_expense', date: entry.date, note: entry.description, receiptUri }
       setLines((ls) => [...(ls ?? []), line])
@@ -201,7 +206,7 @@ export function Assistant({ route }: { route: Route }) {
       data,
       lines.map((l) => {
         const parsed = parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale)
-        const written = writtenCurrencyOf(parsed)
+        const written = writtenCurrencyOf(parsed, fmt.list)
         return {
           id: l.id,
           source: l.receiptUri ? ('ai_photo' as const) : ('ai_text' as const),
@@ -220,12 +225,12 @@ export function Assistant({ route }: { route: Route }) {
       // Lo disponible antes/después se simula con la misma operación que al registrar.
       { now: makeContext(data.settings.timeZone).now },
     )
-  }, [lines, data, accountId, today])
+  }, [lines, data, accountId, today, fmt.list])
   const reviewOf = (id: string) => reviewed?.reviews.find((r) => r.id === id)
 
   const transferRows = lines?.filter((l) => l.review === 'transfer').length ?? 0
   // AS-01: una línea con otra moneda escrita no se registra (ni se convierte) hasta corregir el importe.
-  const foreignRows = lines?.filter((l) => !!writtenCurrencyOf(parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale))).length ?? 0
+  const foreignRows = lines?.filter((l) => !!writtenCurrencyOf(parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale), fmt.list)).length ?? 0
   const availableMinor = useMemo(() => computeBudget(data, today).availableMinor, [data, today])
   const implausibleTimes = (l: Line): number | null | false => {
     if (l.kind !== 'expense') return false
@@ -241,7 +246,7 @@ export function Assistant({ route }: { route: Route }) {
     lines.forEach((l, i) => {
       const parsed = parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale)
       if (!parsed.ok) {
-        const written = writtenCurrencyOf(parsed)
+        const written = writtenCurrencyOf(parsed, fmt.list)
         errs.push(written ? { path: `entries[${i}].amountMinor`, code: 'writtenCurrency', params: { found: written, expected: data.settings.currency } } : { path: `entries[${i}].amountMinor`, code: 'invalidAmount' })
         return
       }
@@ -469,7 +474,7 @@ export function Assistant({ route }: { route: Route }) {
                   </Badge>
                 </div>
                 <Segmented legend={t('fields.kind')} name={`kind-${l.id}`} value={l.kind} onChange={(k) => update(l.id, { kind: k, review: undefined, categoryId: k === 'income' ? 'salary' : 'other_expense' })} options={[{ value: 'expense', label: t('txKind.expense') }, { value: 'income', label: t('txKind.income') }]} />
-                <MoneyField label={t('fields.amount')} value={l.amountText} onChange={(v) => update(l.id, { amountText: v })} fmt={fmt} error={lineError(i, 'amountMinor') || writtenCurrencyOf(parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale)) ? (moneyErrorMessage(t, parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale)) ?? t('issue.invalidAmount')) : null} />
+                <MoneyField label={t('fields.amount')} value={l.amountText} onChange={(v) => update(l.id, { amountText: v })} fmt={fmt} error={lineError(i, 'amountMinor') || writtenCurrencyOf(parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale), fmt.list) ? (moneyErrorMessage(t, parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale)) ?? t('issue.invalidAmount')) : null} />
                 <CategoryPicker label={t('fields.category')} kind={l.kind} data={data} value={l.categoryId} onChange={(id) => update(l.id, { categoryId: id })} keep={l.categoryId} allowNew />
                 <TextField label={t('fields.date')} type="date" value={l.date} max={today} onChange={(e) => update(l.id, { date: e.target.value })} error={lineError(i, 'date') ? issueMessage(t, fmt, lineError(i, 'date')!) : undefined} />
                 <TextField label={t('fields.noteOptional')} value={l.note} maxLength={120} onChange={(e) => update(l.id, { note: e.target.value })} />

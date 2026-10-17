@@ -28,6 +28,8 @@ export interface Formatter {
   timestamp: (ts: Timestamp) => string
   time: (ts: Timestamp) => string
   percent: (fraction: number) => string
+  /** «USD y CAD», «USD and CAD»: una lista corta en el idioma de la interfaz. */
+  list: (items: readonly string[]) => string
 }
 
 /**
@@ -48,6 +50,7 @@ export function createFormatter(settings: Settings, options: { privacy?: boolean
     return f
   }
   const percentFormat = new Intl.NumberFormat(settings.numberLocale, { style: 'percent', maximumFractionDigits: 0 })
+  const listFormat = new Intl.ListFormat(lang, { type: 'conjunction' })
 
   return {
     currency: settings.currency,
@@ -94,6 +97,7 @@ export function createFormatter(settings: Settings, options: { privacy?: boolean
       dtf('ts', { timeZone: settings.timeZone, day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(ts)),
     time: (ts) => dtf('time', { timeZone: settings.timeZone, hour: '2-digit', minute: '2-digit' }).format(new Date(ts)),
     percent: (fraction) => percentFormat.format(fraction),
+    list: (items) => listFormat.format(items),
   }
 }
 

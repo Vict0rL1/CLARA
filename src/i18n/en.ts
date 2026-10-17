@@ -3322,4 +3322,11 @@ export const en: Record<keyof typeof es, string> = {
   'stats.filters.active': 'Figures only for: {list}. Calculated the same way as without a filter.',
   'stats.filters.clear': 'Clear filters',
   'stats.filters.futureNote': 'Future balance covers every budget account: filters don’t apply.',
+  'money.error.currencyConflict': 'The amount has two different currencies ({found} and {other}). Nothing is converted: type just the number in {expected}.',
+  'bankImport.error.row.currencyConflict': 'Two different currencies ({found} and {other}); this budget uses {expected}',
+  'recurring.outOfRange': 'Your scheduled amounts add up to more than Clara can calculate exactly, so no rounded total or average is shown. Check the amounts in the list.',
+  'calendar.flow.outOfRange': 'No projected balance for this day: from {date} the balance exceeds what Clara can calculate exactly, and no approximate figure is shown.',
+  'calendar.flow.outOfRangeNote': 'From {date} the projected balance exceeds what Clara can calculate exactly: those days have no figure.',
+  'scheduleForm.anchorDrift': '{date} is day {nominal} moved to the end of a shorter month: if you start there, the series will repeat on day {day}, even in months that have a day {nominal}.',
+  'scheduleForm.anchorDriftKeep': 'To keep day {nominal}, start on {keep}.',
 }
