@@ -3327,4 +3327,5 @@ export const pt: Record<keyof typeof es, string> = {
   'calendar.flow.outOfRangeNote': 'A partir de {date} o saldo projetado ultrapassa o que a Clara consegue calcular com exatidão: esses dias não têm valor.',
   'scheduleForm.anchorDrift': '{date} corresponde ao dia {nominal} movido para o fim de um mês mais curto: se começar aí, a série vai se repetir no dia {day}, também nos meses que têm dia {nominal}.',
   'scheduleForm.anchorDriftKeep': 'Para manter o dia {nominal}, comece em {keep}.',
+  'currency.bufferBlocks': 'O colchão de segurança salvo ({amount}) já é um valor em {currency}: os valores não são convertidos nem reinterpretados. Coloque-o em 0 nos ajustes do disponível e poderá trocar a moeda.',
 }

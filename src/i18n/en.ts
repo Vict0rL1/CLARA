@@ -3329,4 +3329,5 @@ export const en: Record<keyof typeof es, string> = {
   'calendar.flow.outOfRangeNote': 'From {date} the projected balance exceeds what Clara can calculate exactly: those days have no figure.',
   'scheduleForm.anchorDrift': '{date} is day {nominal} moved to the end of a shorter month: if you start there, the series will repeat on day {day}, even in months that have a day {nominal}.',
   'scheduleForm.anchorDriftKeep': 'To keep day {nominal}, start on {keep}.',
+  'currency.bufferBlocks': 'The saved safety buffer ({amount}) is already an amount in {currency}: amounts are not converted or relabelled. Set it to 0 in the Safe-to-spend settings and you can change the currency.',
 }

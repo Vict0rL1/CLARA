@@ -3328,4 +3328,5 @@ export const es = {
   'calendar.flow.outOfRangeNote': 'Desde el {date} el saldo proyectado supera lo que Clara puede calcular con exactitud: esos días no tienen cifra.',
   'scheduleForm.anchorDrift': 'El {date} es el día {nominal} movido al final de un mes más corto: si empiezas ahí, la serie se repetirá el día {day}, también en los meses que tienen día {nominal}.',
   'scheduleForm.anchorDriftKeep': 'Para conservar el día {nominal}, empieza el {keep}.',
+  'currency.bufferBlocks': 'El colchón de seguridad guardado ({amount}) ya es un importe en {currency}: los importes no se convierten ni se reinterpretan. Ponlo en 0 en los ajustes del disponible y podrás cambiar la moneda.',
 } as const

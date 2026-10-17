@@ -3327,4 +3327,5 @@ export const fr: Record<keyof typeof es, string> = {
   'calendar.flow.outOfRangeNote': 'À partir du {date}, le solde projeté dépasse ce que Clara peut calculer exactement : ces jours n’ont pas de montant.',
   'scheduleForm.anchorDrift': 'Le {date} correspond au {nominal} déplacé à la fin d’un mois plus court : si vous commencez là, la série se répétera le {day}, même les mois qui ont un {nominal}.',
   'scheduleForm.anchorDriftKeep': 'Pour garder le {nominal}, commencez le {keep}.',
+  'currency.bufferBlocks': 'Le coussin de sécurité enregistré ({amount}) est déjà un montant en {currency} : les montants ne sont ni convertis ni réinterprétés. Mettez-le à 0 dans les réglages du disponible et vous pourrez changer de devise.',
 }
