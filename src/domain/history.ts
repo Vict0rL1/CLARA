@@ -20,13 +20,25 @@ import type { AppData, HistoryChange, HistoryCollection, HistoryEntry, HistorySo
 export const HISTORY_MAX_ENTRIES = 1000
 
 type ListCollection = Exclude<HistoryCollection, 'settings'>
-const LISTS: readonly ListCollection[] = ['accounts', 'transactions', 'schedules', 'goals', 'trash', 'reconciliations', 'incomeDistributions', 'periodBudgets']
+// v14 (auditoría del PR #15, QA-05): también plantillas, escenarios y aplazamientos de la bandeja, que partir un
+// programado reescribe; sin ellos, revertir la partición dejaba referencias al programado que desaparecía.
+const LISTS: readonly ListCollection[] = ['accounts', 'transactions', 'schedules', 'goals', 'trash', 'reconciliations', 'incomeDistributions', 'periodBudgets', 'templates', 'scenarios', 'inboxSnoozed']
 /** Ajustes que cambian cifras (el idioma o el formato de fecha no). */
 // v13: `safeToSpend` lleva el colchón de seguridad, que cambia el disponible: sin registrarlo, «¿Qué cambió?» no lo vería.
 const FINANCIAL_SETTINGS = ['currency', 'timeZone', 'fallbackHorizonDays', 'safeToSpend'] as const
 const SETTINGS_ID = 'settings'
 
 type WithId = { id: string }
+
+/** La lista de una colección del historial (`inboxSnoozed` vive dentro de `inbox`). */
+function listOf(data: AppData, collection: ListCollection): WithId[] {
+  return collection === 'inboxSnoozed' ? data.inbox.snoozed : (data[collection] as WithId[])
+}
+
+function withList(data: AppData, collection: ListCollection, list: WithId[]): AppData {
+  if (collection === 'inboxSnoozed') return { ...data, inbox: { ...data.inbox, snoozed: list as AppData['inbox']['snoozed'] } }
+  return { ...data, [collection]: list }
+}
 
 /**
  * Igualdad de valores guardados, sin depender del orden de las claves (al recargar, el
@@ -58,8 +70,8 @@ function financialSettings(s: Settings) {
 export function diffForHistory(prev: AppData, next: AppData): HistoryChange[] {
   const changes: HistoryChange[] = []
   for (const collection of LISTS) {
-    const a = prev[collection] as WithId[]
-    const b = next[collection] as WithId[]
+    const a = listOf(prev, collection)
+    const b = listOf(next, collection)
     if (a === b) continue
     const before = new Map(a.map((x) => [x.id, x]))
     const seen = new Set<string>()
@@ -112,18 +124,18 @@ export function recordHistory(prev: AppData | null, next: AppData, now: string, 
 
 function currentValue(data: AppData, collection: HistoryCollection, id: string): unknown {
   if (collection === 'settings') return financialSettings(data.settings)
-  return (data[collection] as WithId[]).find((x) => x.id === id) ?? null
+  return listOf(data, collection).find((x) => x.id === id) ?? null
 }
 
 export function setValue(data: AppData, collection: HistoryCollection, id: string, value: unknown): AppData {
   if (collection === 'settings') return { ...data, settings: { ...data.settings, ...(value as Partial<Settings>) } }
-  const list = data[collection] as WithId[]
+  const list = listOf(data, collection)
   const index = list.findIndex((x) => x.id === id)
   let next: WithId[]
   if (value === null) next = list.filter((x) => x.id !== id)
   else if (index >= 0) next = list.map((x, i) => (i === index ? (value as WithId) : x))
   else next = [...list, value as WithId]
-  return { ...data, [collection]: next }
+  return withList(data, collection, next)
 }
 
 /**
@@ -208,7 +220,7 @@ export function setValues(data: AppData, values: { collection: HistoryCollection
       for (const value of m.values()) next = setValue(next, 'settings', SETTINGS_ID, value)
       continue
     }
-    const list = next[collection] as WithId[]
+    const list = listOf(next, collection)
     const seen = new Set<string>()
     const out: WithId[] = []
     for (const item of list) {
@@ -220,7 +232,7 @@ export function setValues(data: AppData, values: { collection: HistoryCollection
       }
     }
     for (const [id, value] of m) if (!seen.has(id) && value !== null) out.push(value as WithId)
-    next = { ...next, [collection]: out }
+    next = withList(next, collection, out)
   }
   return next
 }

@@ -131,7 +131,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
 - Registro de copias (`backup`): no modifica `updatedAt`. Una exportación fallida no se
   registra; «exportada» ≠ «verificada». La copia sin fotos (`withoutReceipts`) tampoco se registra.
 - Historial (`domain/history.ts`): `AppStore.commit` registra antes/después de cada registro
-  financiero que cambió (máx. 1000 entradas). Revertir solo si nada cambió después y validando
+  financiero que cambió (máx. 1000 entradas; desde v14 también plantillas, escenarios y aplazamientos de la
+  bandeja, para que revertir una partición no deje referencias colgadas: PR #15, QA-05). Revertir solo si nada cambió después y validando
   todo; importar/demo = corte `replace`. Es local, no una auditoría inviolable.
 - Deshacer importar/restaurar (`state/replaceUndo.ts`): ligado a la revisión que fija el propio reemplazo
   (`AppStore.commitTracked`, antes de esperar al almacenamiento), nunca a lo último guardado. Cualquier

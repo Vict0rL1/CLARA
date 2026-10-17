@@ -3329,4 +3329,13 @@ export const fr: Record<keyof typeof es, string> = {
   'scheduleForm.fromKeepsDates': 'À partir du {date}, les nouvelles valeurs s’appliquent ; la série garde ses dates habituelles.',
   'scheduleForm.fromNewDates': 'Le {date} n’est pas une date de la série : à partir de là, elle se répète depuis cette date et ses jours changent.',
   'issue.anchorAfterStart': 'La date qui fixe la série ne peut pas être postérieure à la première date.',
+  'history.template.created': 'Modèle créé : {name}',
+  'history.template.updated': 'Modèle modifié : {name}',
+  'history.template.deleted': 'Modèle supprimé : {name}',
+  'history.scenario.created': 'Scénario enregistré : {name}',
+  'history.scenario.updated': 'Scénario modifié : {name}',
+  'history.scenario.deleted': 'Scénario supprimé : {name}',
+  'history.snooze.created': 'Avis reporté jusqu’au {date}',
+  'history.snooze.updated': 'Report modifié ({date})',
+  'history.snooze.deleted': 'Report retiré ({date})',
 }

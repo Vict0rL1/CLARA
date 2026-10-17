@@ -1013,7 +1013,7 @@ export function validateTemplate(tpl: Template, prefix = ''): Issue[] {
   return issues
 }
 
-export const HISTORY_COLLECTIONS: readonly HistoryCollection[] = ['accounts', 'transactions', 'schedules', 'goals', 'trash', 'reconciliations', 'incomeDistributions', 'periodBudgets', 'settings']
+export const HISTORY_COLLECTIONS: readonly HistoryCollection[] = ['accounts', 'transactions', 'schedules', 'goals', 'trash', 'reconciliations', 'incomeDistributions', 'periodBudgets', 'templates', 'scenarios', 'inboxSnoozed', 'settings']
 const HISTORY_SOURCES: readonly HistorySource[] = ['app', 'revert', 'plan', 'replace']
 /** Margen de seguridad al importar (la app conserva como mucho HISTORY_MAX_ENTRIES). */
 const HISTORY_IMPORT_MAX = 5000

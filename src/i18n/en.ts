@@ -3331,4 +3331,13 @@ export const en: Record<keyof typeof es, string> = {
   'scheduleForm.fromKeepsDates': 'From {date} the new values apply; the series keeps its usual dates.',
   'scheduleForm.fromNewDates': '{date} is not one of the series’ dates: from there it repeats from that date and its days change.',
   'issue.anchorAfterStart': 'The date that anchors the series cannot be after the first date.',
+  'history.template.created': 'Template created: {name}',
+  'history.template.updated': 'Template changed: {name}',
+  'history.template.deleted': 'Template deleted: {name}',
+  'history.scenario.created': 'Scenario saved: {name}',
+  'history.scenario.updated': 'Scenario changed: {name}',
+  'history.scenario.deleted': 'Scenario deleted: {name}',
+  'history.snooze.created': 'Notice snoozed until {date}',
+  'history.snooze.updated': 'Snooze changed ({date})',
+  'history.snooze.deleted': 'Snooze removed ({date})',
 }

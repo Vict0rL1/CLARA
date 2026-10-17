@@ -938,8 +938,10 @@ Código: `src/domain/history.ts`. Pantalla: `Ajustes › Historial de cambios`.
 
 - **Qué se registra.** En cada guardado se compara el estado anterior con el nuevo, por id, en
   las colecciones financieras (cuentas, movimientos, programados, metas, papelera,
-  conciliaciones, distribuciones, presupuestos por periodo) y en los ajustes que cambian
-  cifras (`currency`, `timeZone`, `fallbackHorizonDays`). Se guarda cada registro cambiado con
+  conciliaciones, distribuciones, presupuestos por periodo; desde v14 también plantillas, escenarios y
+  aplazamientos de la bandeja —`templates`, `scenarios`, `inboxSnoozed`—, que partir un programado
+  reescribe y revertirlo devuelve: PR #15, QA-05) y en los ajustes que cambian
+  cifras (`currency`, `timeZone`, `fallbackHorizonDays`, `safeToSpend`). Se guarda cada registro cambiado con
   su valor **anterior y nuevo completos**. Sin cambios financieros no se añade entrada (cambiar
   el idioma no aparece).
 - **Origen.** `app` (uso normal), `revert` (con `revertOf`), `plan` (aplicado desde un plan) y

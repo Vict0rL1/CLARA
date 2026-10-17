@@ -3330,4 +3330,13 @@ export const es = {
   'scheduleForm.fromKeepsDates': 'Desde el {date} valen los valores nuevos; las fechas de la serie siguen siendo las de siempre.',
   'scheduleForm.fromNewDates': 'El {date} no es una fecha de la serie: desde ahí se repetirá a partir de esa fecha y cambian sus días.',
   'issue.anchorAfterStart': 'La fecha que fija la serie no puede ser posterior a la primera fecha.',
+  'history.template.created': 'Plantilla creada: {name}',
+  'history.template.updated': 'Plantilla cambiada: {name}',
+  'history.template.deleted': 'Plantilla eliminada: {name}',
+  'history.scenario.created': 'Escenario guardado: {name}',
+  'history.scenario.updated': 'Escenario cambiado: {name}',
+  'history.scenario.deleted': 'Escenario eliminado: {name}',
+  'history.snooze.created': 'Aviso aplazado hasta el {date}',
+  'history.snooze.updated': 'Aplazamiento cambiado ({date})',
+  'history.snooze.deleted': 'Aplazamiento retirado ({date})',
 } as const
