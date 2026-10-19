@@ -92,7 +92,9 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   Se leen TODAS las marcas (hasta dos a cada lado del importe y las del resto de la frase) y se unen con
   `reconcileMarks`: un código concreto acota a un símbolo genérico («USD $10» = USD, «$10 CAD» = CAD) y dos que se
   contradicen («USD 10 CAD», «€10 CAD») son `currencyConflict` en todos los consumidores (campos, asistente, CSV,
-  atajos, recibos): el campo conserva las dos (`withCurrencyMarks`) y nada se registra (QA V2, CUR-01/02). En un
+  atajos, recibos): el campo conserva las dos (`withCurrencyMarks`) y nada se registra (QA V2, CUR-01/02). En texto
+  libre la segunda marca de un lado solo cuenta si una de las dos se escribió como código (`TextMark.kind`): «Cafe
+  Euro $12» y «Peso $10» son 12 y 10 de la moneda del presupuesto (R4). En un
   recibo, en líneas de total/pago un código junto al importe cuenta aunque sea palabra («TOTAL PEN 10.00») o ISO no
   admitido; en líneas de artículo no (CUR-03). Reglas de categoría: un solo resolutor
   (`rankRuleMatches`: patrón más largo, a igualdad la más antigua) para asistente, revisión y Ajustes; coincide
@@ -115,7 +117,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
 - Escenarios: se simulan sobre una copia; nunca modifican datos reales ni se aplican solos.
 - Filtros de Estadísticas (`domain/statsFilter.ts`): cuenta, etiqueta y comercio filtran los movimientos y todo se
   calcula igual sobre esa copia; el saldo futuro no se filtra y se dice. Las fechas del periodo personalizado también
-  van en la dirección (`desde`/`hasta`) y se conservan al filtrar (STAT-01).
+  van en la dirección (`desde`/`hasta`) y se conservan al filtrar (STAT-01); la dirección manda: chips, «Hoy» y
+  atrás/adelante alinean las fechas escritas con ella y nunca se contradicen (R2).
 - Búsqueda: local, sin acentos ni mayúsculas; categorías fijas en el idioma activo;
   papelera solo si se pide.
 - Compras divididas (`splits`, `domain/splits.ts`): un solo movimiento; Σ líneas = total
@@ -132,7 +135,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   registra; «exportada» ≠ «verificada». La copia sin fotos (`withoutReceipts`) tampoco se registra.
 - Historial (`domain/history.ts`): `AppStore.commit` registra antes/después de cada registro
   financiero que cambió (máx. 1000 entradas; desde v14 también plantillas, escenarios y aplazamientos de la
-  bandeja, para que revertir una partición no deje referencias colgadas: PR #15, QA-05). Revertir solo si nada cambió después y validando
+  bandeja, para que revertir una partición no deje referencias colgadas: PR #15, QA-05; posponer o retirar un aviso
+  por sí solo no crea entrada y un aplazamiento caducado que ya no está no bloquea revertir ni se resucita, R5). Revertir solo si nada cambió después y validando
   todo; importar/demo = corte `replace`. Es local, no una auditoría inviolable.
 - Deshacer importar/restaurar (`state/replaceUndo.ts`): ligado a la revisión que fija el propio reemplazo
   (`AppStore.commitTracked`, antes de esperar al almacenamiento), nunca a lo último guardado. Cualquier

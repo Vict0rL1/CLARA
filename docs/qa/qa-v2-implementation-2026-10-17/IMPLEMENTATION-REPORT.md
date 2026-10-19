@@ -17,7 +17,9 @@ working clone until the user authorizes a push.
 | `a720d19` | PR #15 QA-01 — a split keeps the series anchor (schema 14 `anchorDate`); supersedes SCH-01's second-day swap | 23 |
 | `f99a93d` | PR #15 QA-05 — history records templates, scenarios and snoozes (atomic split undo) | 12 |
 | `23c2021` | Browser acceptance QA-01/02/03/05, QA-04 criteria, evidence, AGENTS.md | 5 |
-| (next) | This report, the verification logs and the re-captured SCH-01 screenshots (docs only) | — |
+| `40eb75e` | This report (first version), the verification logs of §6 and the re-captured SCH-01 screenshots (docs only) | 22 |
+| `e785381` … `a91d1bd` | Self-review follow-ups R1–R7, one commit each (§8) | — |
+| (next) | §8 docs (CLAUDE.md, FORMULAS), evidence of the reproductions, this addendum; then the re-verification logs (docs only) | — |
 
 Each of `4679bb9`, `a720d19` and `f99a93d` was checked on its own in a temporary worktree (`tsc -b`, `oxlint`, full
 Vitest run; `evidence/final-verify/worktree-*.txt`). That check is why the four commits were re-created once before
@@ -142,3 +144,28 @@ Firefox/WebKit did not run (§7).
 - **Performance budget**: the 10k-movement main-figure budget (< 500 ms) is measured in the browser tests on this
   container's CPU; see §6 for the measured times and whether a narrow rerun was needed.
 - The local QA artifacts named by the two briefs were not available (§2); all reproductions here are repository-based.
+
+## 8. Self-review follow-ups (R1–R7), after the verification in §6
+
+An adversarial review of the whole diff `819eaa9..23c2021` (single pass, inline) reported seven findings. Each was
+treated as evidence, not proof: reproduced first (unit probe, failing test or browser run against the unchanged
+`23c2021` build), then fixed with the smallest change, then re-verified (§8.2). Evidence: `evidence/final-verify/review/`.
+
+### 8.1 Findings
+
+| ID | Claim | Reproduced? | Fix | Commit |
+|---|---|---|---|---|
+| R1 | The idempotent branch of `saveScheduleFrom` (same id saved twice) passed the raw draft and dropped `anchorDate` — QA-01 reintroduced by a retry. | Yes: `review/unit-r1-r5-before.txt` (`anchorDate` undefined on the second save). | The branch computes `splitAnchor` like the first save. Test in `qaPr15Anchor.test.ts`. | `e785381` |
+| R2 | Statistics kept the custom range in state and in the URL; chips, «Hoy» and back/forward made screen and address disagree. | Partly. The screen is re-mounted on every address change (`App.tsx` keys it by path **and** query), so the screen/address split the review described cannot happen today. What was real: non-custom addresses dragged the custom dates along (`review/e2e-r2-r7-before-23c2021-build.txt`: the month URL kept `desde=2026-07-01`), «Hoy» in a custom range dropped the range, and the typed range was lost between chips. | `pathFor` carries `desde`/`hasta` only when the target period is custom; «Hoy» in a custom range moves it to a range of the same length ending today; the typed dates are render-adjusted state keyed by the address so the alignment no longer depends on the re-mount. «Personalizado» after another chip opens the default custom range (documented). e2e `qa-pr15.spec.ts` «R2». | `706bf38` |
+| R3 | `simBeyond` compared with the base projection; a simulated run that stops earlier rendered nothing. | Confirmed by reading; not constructible cheaply in the browser (needs ~150 daily 10¹² schedules and a November view). | `ui/calendarSim.ts` (`simulationView`): result / out-of-range-from / beyond with the simulation's own last day; unit-tested. | `e788ee4` |
+| R4 | The second adjacent mark let a currency NAME before a symbol block ordinary lines («Cafe Euro $12»). | Yes: `review/r4-baseline-819eaa9.txt` (CAD 12.00 on 819eaa9) vs the pre-fix state (`currencyConflict` EUR/$). | `TextMark.kind`; in free text the second mark of a side counts only when one of the two was written as a code. Amount fields unchanged (their two marks must round-trip). `review/r4-after.txt`. | `cb19294` |
+| R5 | Tracking `inbox.snoozed` turned an unrelated snooze (which prunes expired ones) into a revert «conflict», and filled the history with snooze entries. | Yes: `review/unit-r1-r5-before.txt` (entry created for a snooze-only commit; conflict after pruning). | Snooze-only commits record nothing; expired + gone snoozes are not conflicts and are not resurrected; manual removal of a valid snooze still conflicts. | `868ddbe` |
+| R6 | `categoryBreakdown` and `planProgress` still used `Math.floor((amount * 100) / total)`. | Yes: 396 000 000 000 297 / 400 000 000 000 300 → 98 (float) vs 99 (exact); `percentExact.test.ts`. | `mulDivFloor(amount, 100, total)` in both. | `edc5742` |
+| R7 | With the recurring total out of range the note pointed to a list that was not rendered. | Yes: `review/e2e-r2-r7-before-23c2021-build.txt` (the new FIN-01 assertion timed out on the missing list). | The list renders whenever there are payments; «Sin cifra exacta» for the total and the monthly average. | `a91d1bd` |
+
+Not changed on purpose: «$12 Euro Market» stays a conflict («$» against the name «euro» next to the amount); before
+QA V2 it was silently registered in EUR (`review/r4-baseline-819eaa9.txt`).
+
+### 8.2 Re-verification at the final SHA
+
+«R_VERIFICATION»

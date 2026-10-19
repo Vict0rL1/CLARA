@@ -223,8 +223,9 @@ registra y no cambia el disponible (`domain/recurringCosts.ts`, calendario › �
 
 **Rango exacto (QA V2, FIN-01):** cada producto y el total se calculan con `BigInt`. Si el total no cabe en
 un entero exacto (> 2⁵³ − 1) el resultado es `ok: false` sin total ni promedio —ni recortados ni
-redondeados—; la lista de programados con sus ocurrencias sigue ahí y el calendario dice que suman «más de
-lo que Clara puede calcular con exactitud». Justo en el máximo exacto sigue siendo válido; un céntimo más,
+redondeados—; la lista de programados con sus ocurrencias sigue ahí (cada pago con su total, exacto siempre
+que quepa; el total y el promedio dicen «sin cifra exacta», revisión propia R7) y el calendario dice que suman
+«más de lo que Clara puede calcular con exactitud». Justo en el máximo exacto sigue siendo válido; un céntimo más,
 no. Pausar un programado u omitir fechas vuelve a dejarlo en rango. Los datos guardados no cambian.
 
 ## 6. Disponible hasta el próximo ingreso
@@ -940,7 +941,8 @@ Código: `src/domain/history.ts`. Pantalla: `Ajustes › Historial de cambios`.
   las colecciones financieras (cuentas, movimientos, programados, metas, papelera,
   conciliaciones, distribuciones, presupuestos por periodo; desde v14 también plantillas, escenarios y
   aplazamientos de la bandeja —`templates`, `scenarios`, `inboxSnoozed`—, que partir un programado
-  reescribe y revertirlo devuelve: PR #15, QA-05) y en los ajustes que cambian
+  reescribe y revertirlo devuelve: PR #15, QA-05; los aplazamientos solo acompañan a otros cambios —posponer o
+  retirar un aviso no crea entrada— y uno caducado que ya no está no es conflicto ni se resucita, R5) y en los ajustes que cambian
   cifras (`currency`, `timeZone`, `fallbackHorizonDays`, `safeToSpend`). Se guarda cada registro cambiado con
   su valor **anterior y nuevo completos**. Sin cambios financieros no se añade entrada (cambiar
   el idioma no aparece).
@@ -1117,7 +1119,7 @@ Pruebas: `ui/preferences.test.ts` y e2e `personalize.spec.ts`.
 
 - Entradas: líneas, «;», y «,» o conectores («y», «and», «e», «et») solo cuando cada parte tiene un número. Máximo 200.
 - Importe: primer número con moneda escrita, decimales o «k»; si no, el primero. Separadores regionales (`1.234,56`, `1,234.56`, `1 234,56`), «k»/«mil»/«M», números en palabras (es/en/pt/fr). Monedas sin decimales redondean a entero. Sin importe, la entrada lo pide y su confianza queda ≤ 0,25.
-- Moneda escrita (AS-01, RT-01): se lee con las mismas definiciones que los campos de importe (`money.ts`), pegada al importe delante o detrás —también sin espacio y con importes en palabras—: código ISO (`GBP 10`, `10GBP`, `EUR ten`, `ten USD`), símbolo (`10€`, `£10`, `¥1000`, `10 ₽`), prefijo con dólar (`US$10`), nombre (`10 euros`, `diez euros`, `10 pesos`) o signo local escrito con letras (`10 kr`, `1000 Ft`, `Rp 1000`, `10 zł`; distingue mayúsculas: `10 ft` son pies). Sin nada pegado, una moneda explícita en la frase (código admitido en MAYÚSCULAS, símbolo o nombre en plural: `coffee (USD) 10`) deja la línea sin resolver. Si no es la del presupuesto, el campo «Importe» la conserva (`10.00 GBP`, `€10.00`) y la línea no se registra hasta escribir el importe en la moneda del presupuesto; nunca se convierte. Un ISO real no admitido (`RUB 10`) también bloquea; en minúsculas no cuentan los códigos que son palabras (`pen`, `ron`, `try`, `mad`, `ils`, `bob`). Se juntan TODAS las marcas de la entrada —hasta dos pegadas a cada lado del importe y las explícitas del resto de la frase— en orden de lectura y se unen con `reconcileMarks` (§1): «coffee USD $10» es USD (el código acota al símbolo, nunca al revés; QA V2, CUR-01), «coffee $10 CAD» es CAD, y dos que se contradicen («coffee USD 10 CAD», «coffee EUR $10») dejan `currencyConflict`: el campo conserva las dos («USD 10.00 CAD», `withCurrencyMarks`) y la línea no se registra. Lo mismo para una foto de recibo (§36).
+- Moneda escrita (AS-01, RT-01): se lee con las mismas definiciones que los campos de importe (`money.ts`), pegada al importe delante o detrás —también sin espacio y con importes en palabras—: código ISO (`GBP 10`, `10GBP`, `EUR ten`, `ten USD`), símbolo (`10€`, `£10`, `¥1000`, `10 ₽`), prefijo con dólar (`US$10`), nombre (`10 euros`, `diez euros`, `10 pesos`) o signo local escrito con letras (`10 kr`, `1000 Ft`, `Rp 1000`, `10 zł`; distingue mayúsculas: `10 ft` son pies). Sin nada pegado, una moneda explícita en la frase (código admitido en MAYÚSCULAS, símbolo o nombre en plural: `coffee (USD) 10`) deja la línea sin resolver. Si no es la del presupuesto, el campo «Importe» la conserva (`10.00 GBP`, `€10.00`) y la línea no se registra hasta escribir el importe en la moneda del presupuesto; nunca se convierte. Un ISO real no admitido (`RUB 10`) también bloquea; en minúsculas no cuentan los códigos que son palabras (`pen`, `ron`, `try`, `mad`, `ils`, `bob`). Se juntan TODAS las marcas de la entrada —hasta dos pegadas a cada lado del importe y las explícitas del resto de la frase— en orden de lectura y se unen con `reconcileMarks` (§1): «coffee USD $10» es USD (el código acota al símbolo, nunca al revés; QA V2, CUR-01), «coffee $10 CAD» es CAD, y dos que se contradicen («coffee USD 10 CAD», «coffee EUR $10») dejan `currencyConflict`: el campo conserva las dos («USD 10.00 CAD», `withCurrencyMarks`) y la línea no se registra. La segunda marca de un lado solo cuenta si una de las dos se escribió como código (`TextMark.kind`): «Cafe Euro $12», «Sushi Yen $25» o «Peso $10» son importes de la moneda del presupuesto con texto corriente, como antes de QA V2 (revisión propia, R4); «$12 Euro Market» sigue siendo «$» contra «euro» (nombre pegado al importe). Lo mismo para una foto de recibo (§36).
 - Tipo: ingreso si aparece una palabra clave de ingreso en cualquiera de los cuatro idiomas; si no, gasto.
 - Fecha: ISO, `d/m(/a)`, «15 de octubre» / «oct 15» (en inglés manda mes-día), relativas (hoy, ayer, anteayer…) y días de la semana (el más reciente, hoy incluido). Una fecha futura se sustituye por hoy. Sin fecha: hoy.
 - Categoría, por prioridad: regla de la persona → palabra aprendida del historial (≥ 2 veces y mayoría) → diccionario por palabra clave (gana la más larga). Solo categorías activas del tipo detectado; si nada coincide, no se inventa.
@@ -1189,10 +1191,15 @@ Pruebas: `ui/preferences.test.ts` y e2e `personalize.spec.ts`.
   que contiene el día previo al inicio / posterior al fin; los personalizados se desplazan su duración.
   Las fechas del periodo personalizado van en la dirección (`desde`, `hasta`) como el tipo y los filtros:
   cambiar un filtro las conserva y escribirlas actualiza la dirección sin navegar (`replaceRouteQuietly`),
-  así sobreviven a recargar y a compartir el enlace (QA V2, STAT-01).
+  así sobreviven a recargar y a compartir el enlace (QA V2, STAT-01). La dirección manda (R2): al navegar —chips,
+  «Hoy», atrás/adelante— las fechas escritas se alinean con ella; «Hoy» en el personalizado es un periodo con el mismo
+  número de días que termina hoy; las fechas no se arrastran a la dirección de otro periodo.
 - **Tres cifras**: ingresos = Σ ingresos realizados; gastos = gasto neto (§15); neto = ingresos − gastos.
   Delta = actual − anterior; porcentaje entero = ⌊delta × 100 / anterior⌋ solo si anterior > 0 y el
-  periodo anterior empieza en o después de `trackedSince` (si no, se indica «no comparable»).
+  periodo anterior empieza en o después de `trackedSince` (si no, se indica «no comparable»). Todo
+  porcentaje de importes —también el de cada categoría del donut y el de un límite (`planProgress`)— se
+  calcula con `mulDivFloor(importe, 100, total)`, nunca «importe × 100» en coma flotante (revisión propia R6:
+  396 000 000 000 297 de 400 000 000 000 300 es 99 %, en coma flotante salía 98).
 - **Por categoría**: netos positivos ordenados de mayor a menor; porcentaje entero sobre su suma.
   Tocar una categoría abre el historial filtrado por categoría y fechas del rango.
 - **Series de 6 periodos**: ingresos y gasto neto por periodo, del más antiguo al actual.
@@ -1380,7 +1387,9 @@ compactos ni se redondean para calcular.
   ese día (una fecha pasada cuenta hoy) sobre una copia; el resultado dice el saldo al cerrar ese
   día y el primer negativo que provoca. No se guarda nada: «Registrar como previsto» solo abre el
   formulario relleno (gasto previsto en esa fecha) y la persona decide. La proyección y el
-  disponible del calendario no cambian mientras se simula.
+  disponible del calendario no cambian mientras se simula. Lo que se dice del día simulado sale de
+  ESA simulación (`ui/calendarSim.ts`, revisión propia R3): más allá de sus días o desde que deja de
+  ser exacta (`outOfRangeFrom`) no hay cifra y se dice; nunca se mira el alcance de la proyección base.
 - **Conciliación de programados** (`domain/reconcileSchedules.ts`): `unlinkedSettlements` propone,
   para cada ocurrencia abierta (pendiente o vencida, de 45 días atrás a 14 adelante), el movimiento
   realizado sin `scheduleId` del mismo sentido e importe a ±3 días (el más cercano; cada movimiento
