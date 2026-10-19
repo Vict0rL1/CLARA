@@ -184,3 +184,47 @@ test('QA-05 · partir un programado que usan una plantilla, un escenario y un ap
   expect(back.inbox.snoozed.map((s) => s.id)).toEqual(['due:schedule:old:2026-10-01'])
   await expectNoHorizontalScroll(page, 'historial con una partición revertida')
 })
+
+test('R2 (revisión propia) · Estadísticas: el periodo personalizado vive solo en la dirección; chips, «Hoy» y atrás/adelante nunca la contradicen', async ({ page }) => {
+  const data = baseData({
+    accounts: [account({ id: 'main', name: 'Principal', anchor: anchor(500000, '2026-06-01') })],
+    transactions: [tx({ id: 'j1', date: '2026-07-03', amountMinor: 12345, accountId: 'main', note: 'Super julio' }), tx({ id: 'a1', date: '2026-08-03', amountMinor: 20000, accountId: 'main', note: 'Super agosto' })],
+  })
+  await seedStoredData(page, data)
+  await go(page, '/estadisticas?periodo=custom&desde=2026-07-01&hasta=2026-07-31')
+  const tiles = page.getByTestId('stats-tiles')
+  const start = page.getByLabel('Inicio del periodo personalizado')
+  const end = page.getByLabel('Fin del periodo personalizado')
+  const expectRange = async (from: string, to: string, expenses: string) => {
+    await expect(start).toHaveValue(from)
+    await expect(end).toHaveValue(to)
+    await expect(tiles).toContainText(expenses)
+    expect(new URL(page.url()).hash).toContain(`desde=${from}`)
+    expect(new URL(page.url()).hash).toContain(`hasta=${to}`)
+  }
+  await expectRange('2026-07-01', '2026-07-31', '$123.45')
+  // Chip «Mensual»: la dirección del mes no arrastra las fechas personalizadas. Volver a «Personalizado» abre el
+  // personalizado por defecto (últimos 30 días, sin fechas escritas) y la dirección dice lo mismo: nunca se contradicen.
+  await page.getByRole('button', { name: 'Mensual', exact: true }).click()
+  await expect(start).toHaveCount(0)
+  expect(new URL(page.url()).hash).not.toContain('desde=')
+  await page.getByRole('button', { name: 'Personalizado', exact: true }).click()
+  await expect(start).toHaveValue('')
+  await expect(end).toHaveValue('')
+  expect(new URL(page.url()).hash).toContain('periodo=custom')
+  expect(new URL(page.url()).hash).not.toContain('desde=')
+  // «Periodo siguiente» (agosto) y atrás/adelante: la pantalla sigue a la dirección.
+  await go(page, '/estadisticas?periodo=custom&desde=2026-07-01&hasta=2026-07-31')
+  await expectRange('2026-07-01', '2026-07-31', '$123.45')
+  await page.getByRole('button', { name: 'Periodo siguiente' }).click()
+  await expectRange('2026-08-01', '2026-08-31', '$200.00')
+  await page.goBack()
+  await expectRange('2026-07-01', '2026-07-31', '$123.45')
+  await page.goForward()
+  await expectRange('2026-08-01', '2026-08-31', '$200.00')
+  // «Hoy» en personalizado: un periodo de la misma duración que termina hoy (28-sep), en la pantalla y en la dirección.
+  await page.getByRole('button', { name: 'Hoy', exact: true }).click()
+  await expectRange('2026-08-29', '2026-09-28', '$0.00')
+  await page.reload()
+  await expectRange('2026-08-29', '2026-09-28', '$0.00')
+})

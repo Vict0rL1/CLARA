@@ -5,7 +5,7 @@
  */
 import { useMemo, useState } from 'react'
 import { categoryVisual, categoryVisuals } from '../../domain/categories'
-import { addDays } from '../../domain/dates'
+import { addDays, daysBetween } from '../../domain/dates'
 import { filterStatsData, statsFilterCount, type StatsFilter } from '../../domain/statsFilter'
 import { categoryBreakdown, cumulativeTrend, dailyAverage, futureBalance, periodSeries, periodStats, shiftRange, statsRange, STATS_PERIOD_TYPES, topMerchants, type Delta, type SeriesPoint, type StatsPeriodType } from '../../domain/statistics'
 import type { CategoryColor } from '../../domain/types'
@@ -51,8 +51,15 @@ export function Statistics({ route }: { route: Route }) {
   const defaultType: StatsPeriodType = data.settings.budgetPeriod.type === 'untilIncome' ? 'month' : data.settings.budgetPeriod.type
   const type: StatsPeriodType = CHIPS.includes(queryType as StatsPeriodType) ? (queryType as StatsPeriodType) : defaultType
   const anchor = route.query.get('fecha') ?? today
-  const [customStart, setCustomStart] = useState(route.query.get('desde') ?? '')
-  const [customEnd, setCustomEnd] = useState(route.query.get('hasta') ?? '')
+  // Revisión propia (R2): la dirección manda. Al navegar en el periodo personalizado (chips, «Hoy», atrás/adelante) las
+  // fechas escritas se alinean con ella (estado ajustado durante el render, sin efecto); escribirlas cambia el estado y
+  // actualiza la dirección sin navegar (`setCustom`), así nunca se contradicen. Hoy la pantalla se vuelve a montar con
+  // cada dirección (App.tsx la clava por ruta y consulta); esta guarda no depende de eso.
+  const urlDates = `${route.query.get('desde') ?? ''}|${route.query.get('hasta') ?? ''}`
+  const [custom, setCustomState] = useState({ from: urlDates, start: route.query.get('desde') ?? '', end: route.query.get('hasta') ?? '' })
+  if (type === 'custom' && custom.from !== urlDates) setCustomState({ from: urlDates, start: route.query.get('desde') ?? '', end: route.query.get('hasta') ?? '' })
+  const customStart = type === 'custom' && custom.from !== urlDates ? (route.query.get('desde') ?? '') : custom.start
+  const customEnd = type === 'custom' && custom.from !== urlDates ? (route.query.get('hasta') ?? '') : custom.end
   const range = useMemo(() => statsRange(type, data.settings, anchor, customStart && customEnd && customEnd >= customStart ? { start: customStart, end: customEnd } : undefined), [type, data.settings, anchor, customStart, customEnd])
   // Clara 2.0 fase 4: filtros por cuenta, etiqueta y comercio (en la dirección, como el periodo). Solo se
   // filtran los movimientos; cada cifra se calcula igual. Un valor que ya no existe se ignora.
@@ -101,7 +108,8 @@ export function Statistics({ route }: { route: Route }) {
     withQuery('/estadisticas', {
       periodo: type,
       fecha: anchor,
-      ...(type === 'custom' ? { desde: customStart || undefined, hasta: customEnd || undefined } : {}),
+      // Las fechas personalizadas van solo cuando el periodo DESTINO es el personalizado (no quedan en otro periodo).
+      ...((patch.periodo ?? type) === 'custom' ? { desde: customStart || undefined, hasta: customEnd || undefined } : {}),
       cuenta: filter.accountId,
       etiqueta: filter.tagId,
       comercio: filter.merchant,
@@ -109,8 +117,7 @@ export function Statistics({ route }: { route: Route }) {
     })
   const go = (patch: Record<string, string | undefined>) => navigate(pathFor(patch))
   const setCustom = (start: string, end: string) => {
-    setCustomStart(start)
-    setCustomEnd(end)
+    setCustomState((c) => ({ ...c, start, end }))
     replaceRouteQuietly(pathFor({ desde: start || undefined, hasta: end || undefined }))
   }
   const filterNames = [
@@ -120,11 +127,8 @@ export function Statistics({ route }: { route: Route }) {
   ].filter((x): x is string => !!x)
   const move = (dir: -1 | 1) => {
     const next = shiftRange(range, type, data.settings, dir)
-    if (type === 'custom') {
-      setCustomStart(next.start)
-      setCustomEnd(next.end)
-      go({ desde: next.start, hasta: next.end })
-    } else go({ fecha: next.start })
+    if (type === 'custom') go({ desde: next.start, hasta: next.end })
+    else go({ fecha: next.start })
   }
   const isCurrent = range.end >= today
   const noData = stats.transactionCount === 0
@@ -153,7 +157,7 @@ export function Statistics({ route }: { route: Route }) {
           <TextField label={t('settings.period.customEnd')} type="date" value={customEnd} onChange={(e) => setCustom(customStart, e.target.value)} />
         </div>
       )}
-      <MonthNavigator label={title} onPrev={() => move(-1)} onNext={() => move(1)} prevLabel={t('stats.prev')} nextLabel={t('stats.next')} nextDisabled={isCurrent} onToday={isCurrent ? undefined : () => go({ fecha: today, desde: undefined, hasta: undefined })} todayLabel={t('stats.today')} />
+      <MonthNavigator label={title} onPrev={() => move(-1)} onNext={() => move(1)} prevLabel={t('stats.prev')} nextLabel={t('stats.next')} nextDisabled={isCurrent} onToday={isCurrent ? undefined : () => (type === 'custom' ? go({ desde: addDays(today, -daysBetween(range.start, range.end)), hasta: today }) : go({ fecha: today }))} todayLabel={t('stats.today')} />
       <p className="note">{t('stats.rangeNote', { from: fmt.date(range.start, { compact: true, today }), to: fmt.date(range.end, { compact: true, today }) })}</p>
       <details className="explain" data-testid="stats-filters" open={filterCount > 0 || undefined}>
         <summary>
