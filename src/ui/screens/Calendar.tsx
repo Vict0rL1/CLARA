@@ -16,7 +16,6 @@ import { Alert, Badge, CalcRow, Card, EmptyState, Explain, StatTile, Why, type T
 import { MoneyField } from '../components/fields'
 import { moneyErrorMessage, parseMoneyText } from '../moneyText'
 import { Icon } from '../components/Icon'
-import { simulationView } from '../calendarSim'
 import { useToast } from '../components/toastContext'
 import { MarkPaidDialog } from '../dialogs'
 import { useFormat } from '../format'
@@ -66,14 +65,13 @@ export function Calendar() {
   const simMinor = simParsed?.ok ? simParsed.minor : 0
   // Un mes de proyección es barato: se recalcula al escribir, sin memorizar.
   const simulated = simMinor > 0 ? projectBalance(data, today, { days: projectionDays, extraOutflows: [{ date: simDay, amountMinor: simMinor }], stopWhenOutOfRange: true }) : null
-  // Lo que se dice del día simulado sale de ESA simulación: más allá de sus días no hay cifra, y con importes
-  // extremos puede dejar de ser exacta antes que la proyección base (revisión propia, R3).
-  const simView = simulated ? simulationView(simulated, simDay) : null
-  const simDayResult = simView?.kind === 'result' ? simView.day : undefined
+  // Lo que se dice del día simulado sale de ESA simulación, con la misma regla que el día elegido (`dayBalance`): más
+  // allá de sus días o desde que deja de ser exacta no hay cifra (revisión propia, R3).
+  const simBalance = simulated ? dayBalance(simulated, simDay) : null
+  const simDayResult = simBalance?.state === 'projected' ? simBalance : undefined
   const selectedBalance = selectedDay ? dayBalance(projection, selectedDay) : null
   const monthBeyond = monthEnd > lastProjected
   const outOfRangeFrom = projection.outOfRangeFrom
-  const selectedOutOfRange = !!selectedDay && !!outOfRangeFrom && selectedDay >= outOfRangeFrom
   const simNegative = simulated?.firstNegativeDate ? simulated.days.find((d) => d.date === simulated.firstNegativeDate) : undefined
   // Conciliación: movimientos ya registrados que parecen una ocurrencia abierta sin vincular.
   const unlinked = useMemo(() => unlinkedSettlements(data, today), [data, today])
@@ -381,8 +379,8 @@ export function Calendar() {
           <p className="item__meta" data-testid="day-balance" data-state={selectedBalance?.state}>
             {selectedBalance?.state === 'projected'
               ? t('calendar.flow.dayBalance', { amount: fmt.money(selectedBalance.endMinor) })
-              : selectedBalance?.state === 'beyond' && selectedOutOfRange
-                ? t('calendar.flow.outOfRange', { date: fmt.date(outOfRangeFrom!, { compact: true, today }) })
+              : selectedBalance?.state === 'outOfRange'
+                ? t('calendar.flow.outOfRange', { date: fmt.date(selectedBalance.from, { compact: true, today }) })
                 : selectedBalance?.state === 'beyond'
                   ? t('calendar.flow.beyond', { date: fmt.date(selectedBalance.lastDate, { compact: true, today }), days: CALENDAR_PROJECTION_MAX_DAYS })
                   : t('calendar.flow.past')}
@@ -398,12 +396,12 @@ export function Calendar() {
         </h2>
         <p className="note">{t('calendar.sim.hint')}</p>
         <MoneyField label={t('calendar.sim.amount')} hint={fmt.date(simDay, { weekday: true, compact: true, today })} value={simText} onChange={setSimText} error={simParsed ? moneyErrorMessage(t, simParsed) : null} fmt={fmt} name="simulate" />
-        {simView && simView.kind !== 'result' && (
+        {simBalance && simBalance.state !== 'projected' && (
           <p className="flow-line" data-testid="sim-beyond" aria-live="polite">
             <Icon name="info" size={16} />
-            {simView.kind === 'beyond'
-              ? t('calendar.sim.beyond', { date: fmt.date(simView.lastDate, { compact: true, today }) })
-              : t('calendar.flow.outOfRange', { date: fmt.date(simView.from, { compact: true, today }) })}
+            {simBalance.state === 'outOfRange'
+              ? t('calendar.flow.outOfRange', { date: fmt.date(simBalance.from, { compact: true, today }) })
+              : t('calendar.sim.beyond', { date: fmt.date(simBalance.state === 'beyond' ? simBalance.lastDate : lastProjected, { compact: true, today }) })}
           </p>
         )}
         {simulated && simDayResult && (

@@ -196,7 +196,7 @@ test('FIN-01 · 25 pagos diarios de 10^12: el calendario se abre, dice que el to
   for (let i = 0; i < 12; i++) await page.getByRole('button', { name: 'Mes siguiente' }).click()
   await expect(page.getByText('No se pudo abrir esta pantalla')).toHaveCount(0)
   await page.locator('.cal-day').filter({ has: page.locator('.cal-day__num', { hasText: /^−?25$/ }) }).click()
-  await expect(page.getByTestId('day-balance')).toHaveAttribute('data-state', 'beyond')
+  await expect(page.getByTestId('day-balance')).toHaveAttribute('data-state', 'outOfRange')
   await expect(page.getByTestId('day-balance')).toContainText('supera lo que Clara puede calcular con exactitud')
   await shot(page, 'fin01-calendar-beyond', page.getByTestId('day-balance'))
 

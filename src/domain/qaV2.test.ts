@@ -397,7 +397,7 @@ describe('FIN-01 · el resumen de pagos recurrentes tiene un rango exacto explí
     const last = p.days[p.days.length - 1]!
     expect(Number.isSafeInteger(last.endMinor)).toBe(true)
     expect(p.days.length).toBeLessThan(400)
-    expect(dayBalance(p, p.outOfRangeFrom!)).toEqual({ state: 'beyond', lastDate: last.date })
+    expect(dayBalance(p, p.outOfRangeFrom!)).toEqual({ state: 'outOfRange', from: p.outOfRangeFrom })
     // Con importes normales llega al final y no hay fecha fuera de rango.
     const normal = projectBalance(baseData({ schedules: [daily(0, 1000)] }), ctx.today, { days: 400, stopWhenOutOfRange: true })
     expect(normal.days).toHaveLength(400)

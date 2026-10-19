@@ -202,15 +202,23 @@ export function estimateDailySpend(data: AppData, today: LocalDate, lookbackDays
 /** Días que el calendario proyecta como máximo (desde hoy, incluido). Más allá no hay cifra por día. */
 export const CALENDAR_PROJECTION_MAX_DAYS = 400
 
-export type DayBalance = { state: 'past' } | { state: 'projected'; endMinor: number } | { state: 'beyond'; lastDate: LocalDate }
+export type DayBalance =
+  | { state: 'past' }
+  | { state: 'projected'; endMinor: number }
+  /** Desde `from` el saldo deja de ser un entero exacto (`stopWhenOutOfRange`): sin cifra, y se dice desde cuándo. */
+  | { state: 'outOfRange'; from: LocalDate }
+  /** Más allá de los días proyectados: `lastDate` es el último con cifra. */
+  | { state: 'beyond'; lastDate: LocalDate }
 
 /**
- * Saldo de un día del calendario: pasado (vive en Cuentas), proyectado (cierre de ese día) o fuera de
- * la proyección. Nunca se toma el último día proyectado como si fuera el saldo de un día posterior.
+ * Saldo de un día del calendario: pasado (vive en Cuentas), proyectado (cierre de ese día), fuera del rango exacto
+ * (QA V2, FIN-01) o más allá de la proyección. Nunca se toma el último día proyectado como si fuera el saldo de un
+ * día posterior. La misma regla vale para la proyección base y para una simulación (revisión propia, R3).
  */
-export function dayBalance(projection: Pick<ProjectionResult, 'today' | 'days'>, date: LocalDate): DayBalance {
+export function dayBalance(projection: Pick<ProjectionResult, 'today' | 'days' | 'outOfRangeFrom'>, date: LocalDate): DayBalance {
   if (date < projection.today) return { state: 'past' }
   const day = projection.days.find((d) => d.date === date)
   if (day) return { state: 'projected', endMinor: day.endMinor }
+  if (projection.outOfRangeFrom && date >= projection.outOfRangeFrom) return { state: 'outOfRange', from: projection.outOfRangeFrom }
   return { state: 'beyond', lastDate: projection.days[projection.days.length - 1]?.date ?? projection.today }
 }
