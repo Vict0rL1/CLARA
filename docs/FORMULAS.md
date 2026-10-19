@@ -1388,8 +1388,9 @@ compactos ni se redondean para calcular.
   día y el primer negativo que provoca. No se guarda nada: «Registrar como previsto» solo abre el
   formulario relleno (gasto previsto en esa fecha) y la persona decide. La proyección y el
   disponible del calendario no cambian mientras se simula. Lo que se dice del día simulado sale de
-  ESA simulación (`ui/calendarSim.ts`, revisión propia R3): más allá de sus días o desde que deja de
-  ser exacta (`outOfRangeFrom`) no hay cifra y se dice; nunca se mira el alcance de la proyección base.
+  ESA simulación con la misma regla que el día elegido (`dayBalance`, revisión propia R3): proyectado,
+  fuera del rango exacto desde `outOfRangeFrom` (sin cifra, se dice desde cuándo) o más allá de sus
+  días; nunca se mira el alcance de la proyección base.
 - **Conciliación de programados** (`domain/reconcileSchedules.ts`): `unlinkedSettlements` propone,
   para cada ocurrencia abierta (pendiente o vencida, de 45 días atrás a 14 adelante), el movimiento
   realizado sin `scheduleId` del mismo sentido e importe a ±3 días (el más cercano; cada movimiento
