@@ -121,7 +121,7 @@ export function planProgress(data: AppData, plan: Plan, today: LocalDate): PlanP
     limitMinor: limit,
     remainingMinor: remaining,
     fraction: limit > 0 ? spent / limit : 0,
-    percent: limit > 0 ? Math.floor((spent * 100) / limit) : 0,
+    percent: limit > 0 ? mulDivFloor(spent, 100, limit) : 0,
     state,
     daysTotal,
     daysLeft,

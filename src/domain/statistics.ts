@@ -102,7 +102,7 @@ export function categoryBreakdown(data: AppData, range: StatsRange): { total: nu
   const summary = periodSummary(data, range.start, range.end)
   const positive = summary.categories.filter((c) => c.netMinor > 0)
   const total = sumMinor(positive.map((c) => c.netMinor))
-  return { total, categories: positive.map((c) => ({ ...c, percent: total > 0 ? Math.floor((c.netMinor * 100) / total) : 0 })) }
+  return { total, categories: positive.map((c) => ({ ...c, percent: total > 0 ? mulDivFloor(c.netMinor, 100, total) : 0 })) }
 }
 
 export interface SeriesPoint {
