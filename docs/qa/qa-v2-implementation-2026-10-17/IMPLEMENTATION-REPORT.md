@@ -22,7 +22,8 @@ working clone until the user authorizes a push.
 | `053f023` | §8 docs (CLAUDE.md, FORMULAS), evidence of the reproductions, this addendum | — |
 | `3c9205d` | The re-verification logs of §8.2 (docs only) | — |
 | `19597ea` … `4a0ee9b` | Second review of the follow-ups S1–S4 and the acceptance gaps (§8.3) | — |
-| (next) | §8.3 docs and evidence; then the re-verification logs of §8.4 (docs only) | — |
+| `d28de42` | §8.3 docs and evidence | — |
+| (next) | The re-verification logs of §8.4 (docs only) | — |
 
 Each of `4679bb9`, `a720d19` and `f99a93d` was checked on its own in a temporary worktree (`tsc -b`, `oxlint`, full
 Vitest run; `evidence/final-verify/worktree-*.txt`). That check is why the four commits were re-created once before
@@ -210,4 +211,20 @@ merchant, account + tag + merchant, clearing, back/forward, three viewports).
 
 ### 8.4 Re-verification at the final SHA
 
-«S_VERIFICATION»
+Run at `d28de42` (`d28de4213937ed8ecdd229f3c0f8a75384e661a7`) on 2026-10-19, 04:18–04:50 UTC, same container and
+settings as §6, strictly sequential. Logs: `evidence/final-verify-review2/` (`verification.txt` is the summary).
+
+| Step | Result |
+|---|---|
+| Each second-review commit standalone (`19597ea`, `5d86c04`, `9a650eb`, `4a0ee9b`): `tsc -b`, `oxlint`, `vitest run` | all exit 0 · 1040 / 1040 / 1040 / 1041 passed, 1 skipped each |
+| `npm run check` | exit 0 · 106 files, **1041 passed, 1 skipped** (1042) |
+| `npm run build` | exit 0 · 227 modules · build id `33786017053715dc4f1fe47ff2a127d72aa2e4a58e10d073cf4b5d2a03fd00db` (70 files) |
+| `npm run size` | exit 0 · initial JS **842.8 KB** in 11 files (gzip 252.2 KB) · limit 844.6 KB unchanged |
+| `npm audit --audit-level=high` | exit 0 · 0 vulnerabilities |
+| Playwright `celular` — `--workers=2 --fail-on-flaky-tests` | exit 0 · 344 passed, 1 skipped, 0 failed, 0 flaky (9.0 min) |
+| Playwright `celular-pequeno` | exit 0 · 345 passed, 0 skipped (8.5 min) |
+| Playwright `escritorio` | exit 0 · 342 passed, 3 skipped (9.2 min) |
+| 10 000-movement main figure (best of two loads, as the test is written) | celular 424 / 321 ms · celular-pequeno 291 / 208 ms · escritorio 416 / 508 ms. The desktop second load was over budget and the first under; the test passed on its own rule and the result is kept as is. Additional evidence (not a replacement): the test alone, `--workers=1`, same build — 239 / 217, 281 / 232, 255 / 241 ms, 3 passed (`perf-10k-solo.txt`). |
+| SCH-01 «after» screenshots | 1 passed; byte-identical to the §6 captures (nothing to commit) |
+
+The skips are the same pre-existing conditions as in §6. Firefox/WebKit did not run (§7).
