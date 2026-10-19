@@ -756,7 +756,9 @@ export interface AppData {
 /**
  * v14 (auditoría del PR #15, QA-05): también `templates`, `scenarios` e `inboxSnoozed` (los aplazamientos de la
  * bandeja, `inbox.snoozed`), que partir un programado reescribe; así revertir la partición los devuelve y un cambio
- * posterior en ellos es un conflicto. Las entradas anteriores no los tienen y siguen pudiendo revertirse.
+ * posterior en ellos es un conflicto. Las entradas anteriores no los tienen y siguen pudiendo revertirse. Los
+ * aplazamientos solo acompañan a otros cambios (posponer o retirar un aviso no crea entrada) y uno caducado que ya no
+ * está no es un conflicto ni se resucita al revertir (R5).
  */
 export type HistoryCollection = 'accounts' | 'transactions' | 'schedules' | 'goals' | 'trash' | 'reconciliations' | 'incomeDistributions' | 'periodBudgets' | 'templates' | 'scenarios' | 'inboxSnoozed' | 'settings'
 

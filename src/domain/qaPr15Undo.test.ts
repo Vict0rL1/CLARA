@@ -4,7 +4,8 @@
  * (= CUR-02) están en `qaV2.test.ts` y `tests/e2e/qa-v2.spec.ts`; la aceptación de navegador en `tests/e2e/qa-pr15.spec.ts`.
  */
 import { describe, expect, it } from 'vitest'
-import { recordHistory, revertEntry } from './history'
+import { canRevert, diffForHistory, recordHistory, revertEntry } from './history'
+import { snoozeInboxItem, unsnoozeInboxItem } from './inbox'
 import { saveTransaction, type ScheduleDraft } from './operations'
 import { saveScheduleFrom } from './scheduleFrom'
 import type { AppData, Schedule } from './types'
@@ -76,5 +77,51 @@ describe('QA-05 · deshacer una partición devuelve también plantillas, escenar
     expect(back.data.transactions.map((t) => t.id)).toEqual(['cafe'])
     expect(back.data.schedules.map((s) => s.id)).toEqual(['old'])
     expect(paymentTarget(back.data)).toEqual({ kind: 'payment', scheduleId: 'old' })
+  })
+})
+
+describe('R5 (revisión propia) · aplazamientos en el historial: solo acompañan a otros cambios y los caducados nunca bloquean revertir', () => {
+  const rent = bill('2026-06-01', 65000, { id: 'old', name: 'Renta', frequency: 'monthly', categoryId: 'housing' })
+  const seed = (): AppData => baseData({ schedules: [rent], inbox: { snoozed: [{ id: 'due:schedule:old:2026-10-01', until: '2026-10-20', at: EARLIER }], dismissed: [] } })
+  const splitAndRecord = (d: AppData) => recordHistory(d, split(d, 'old', amountOnly(rent, '2026-10-01', 70000), '2026-09-28').data, NOW)
+
+  it('posponer o retirar un aviso no crea una entrada del historial (no es un cambio financiero)', () => {
+    const d = seed()
+    const snoozed = snoozeInboxItem(d, 'backup:reminder', '2026-10-10', at('2026-09-28'))
+    if (!snoozed.ok) throw new Error('snooze')
+    expect(diffForHistory(d, snoozed.data)).toEqual([])
+    expect(recordHistory(d, snoozed.data, NOW).history).toHaveLength(d.history.length)
+    const removed = unsnoozeInboxItem(snoozed.data, 'backup:reminder', at('2026-09-29'))
+    if (!removed.ok) throw new Error('unsnooze')
+    expect(diffForHistory(snoozed.data, removed.data)).toEqual([])
+  })
+
+  it('una partición registra el aplazamiento que renombra; si caduca y otro aplazamiento lo retira de paso, revertir sigue siendo posible y no lo resucita', () => {
+    const d = seed()
+    const after = splitAndRecord(d)
+    const entry = after.history.at(-1)!
+    expect(entry.changes.filter((c) => c.collection === 'inboxSnoozed').map((c) => c.id).sort()).toEqual(['due:schedule:next:2026-10-01', 'due:schedule:old:2026-10-01'])
+    // El 21-oct el aplazamiento renombrado ya caducó; posponer otro aviso lo retira de paso (inbox.ts).
+    const later = snoozeInboxItem(after, 'other:notice', '2026-11-01', at('2026-10-21'))
+    if (!later.ok) throw new Error('snooze')
+    expect(later.data.inbox.snoozed.map((s) => s.id)).toEqual(['other:notice'])
+    const tracked = recordHistory(after, later.data, '2026-10-21T12:00:00.000Z')
+    expect(tracked.history).toHaveLength(after.history.length)
+    expect(canRevert(tracked, entry, '2026-10-21')).toBe('ok')
+    const back = revertEntry(tracked, entry.id, at('2026-10-21'))
+    if (!back.ok) throw new Error(JSON.stringify(back.issues))
+    expect(back.data.schedules).toEqual(d.schedules)
+    expect(back.data.inbox.snoozed.map((s) => s.id)).toEqual(['other:notice'])
+    expect(validateAppData(JSON.parse(JSON.stringify(back.data))).ok).toBe(true)
+  })
+
+  it('un aplazamiento vigente que la persona retiró a mano después sí es un conflicto: no se pisa lo que hizo', () => {
+    const after = splitAndRecord(seed())
+    const entry = after.history.at(-1)!
+    const shown = unsnoozeInboxItem(after, 'due:schedule:next:2026-10-01', at('2026-10-05'))
+    if (!shown.ok) throw new Error('unsnooze')
+    const tracked = recordHistory(after, shown.data, '2026-10-05T12:00:00.000Z')
+    expect(canRevert(tracked, entry, '2026-10-05')).toBe('conflict')
+    expect(revertEntry(tracked, entry.id, at('2026-10-05'))).toMatchObject({ ok: false, issues: [{ path: 'history', code: 'revertConflict' }] })
   })
 })
