@@ -16,6 +16,7 @@ import { Alert, Badge, CalcRow, Card, EmptyState, Explain, StatTile, Why, type T
 import { MoneyField } from '../components/fields'
 import { moneyErrorMessage, parseMoneyText } from '../moneyText'
 import { Icon } from '../components/Icon'
+import { simulationView } from '../calendarSim'
 import { useToast } from '../components/toastContext'
 import { MarkPaidDialog } from '../dialogs'
 import { useFormat } from '../format'
@@ -65,9 +66,10 @@ export function Calendar() {
   const simMinor = simParsed?.ok ? simParsed.minor : 0
   // Un mes de proyección es barato: se recalcula al escribir, sin memorizar.
   const simulated = simMinor > 0 ? projectBalance(data, today, { days: projectionDays, extraOutflows: [{ date: simDay, amountMinor: simMinor }], stopWhenOutOfRange: true }) : null
-  const simDayResult = simulated?.days.find((d) => d.date === simDay)
-  // Más allá de la proyección no hay cifra: se dice, no se muestra la del último día calculado.
-  const simBeyond = simMinor > 0 && simDay > lastProjected
+  // Lo que se dice del día simulado sale de ESA simulación: más allá de sus días no hay cifra, y con importes
+  // extremos puede dejar de ser exacta antes que la proyección base (revisión propia, R3).
+  const simView = simulated ? simulationView(simulated, simDay) : null
+  const simDayResult = simView?.kind === 'result' ? simView.day : undefined
   const selectedBalance = selectedDay ? dayBalance(projection, selectedDay) : null
   const monthBeyond = monthEnd > lastProjected
   const outOfRangeFrom = projection.outOfRangeFrom
@@ -396,10 +398,12 @@ export function Calendar() {
         </h2>
         <p className="note">{t('calendar.sim.hint')}</p>
         <MoneyField label={t('calendar.sim.amount')} hint={fmt.date(simDay, { weekday: true, compact: true, today })} value={simText} onChange={setSimText} error={simParsed ? moneyErrorMessage(t, simParsed) : null} fmt={fmt} name="simulate" />
-        {simBeyond && (
+        {simView && simView.kind !== 'result' && (
           <p className="flow-line" data-testid="sim-beyond" aria-live="polite">
             <Icon name="info" size={16} />
-            {t('calendar.sim.beyond', { date: fmt.date(lastProjected, { compact: true, today }) })}
+            {simView.kind === 'beyond'
+              ? t('calendar.sim.beyond', { date: fmt.date(simView.lastDate, { compact: true, today }) })
+              : t('calendar.flow.outOfRange', { date: fmt.date(simView.from, { compact: true, today }) })}
           </p>
         )}
         {simulated && simDayResult && (
