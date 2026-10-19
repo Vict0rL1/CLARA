@@ -98,10 +98,11 @@ test('QA-02 · con un colchón de seguridad guardado y nada más, la moneda no s
 test('QA-03 · Estadísticas de julio (personalizado): las cifras siguen siendo solo de julio tras cada filtro, al quitarlos, con atrás/adelante, al recargar y al abrir la dirección; el saldo futuro dice que no se filtra', async ({ page }) => {
   const data = baseData({
     accounts: [account({ id: 'main', name: 'Principal', anchor: anchor(500000, '2026-06-01') }), account({ id: 'card', name: 'Tarjeta', kind: 'credit', anchor: anchor(0, '2026-06-01') })],
+    tags: [{ id: 'tg', name: 'Viaje', color: 'blue', createdAt: '2026-06-01T12:00:00.000Z', updatedAt: '2026-06-01T12:00:00.000Z' }],
     transactions: [
-      tx({ id: 'j1', date: '2026-07-03', amountMinor: 12345, accountId: 'main', note: 'Super julio' }),
-      tx({ id: 'j2', date: '2026-07-20', amountMinor: 10000, accountId: 'card', note: 'Gasolina julio' }),
-      tx({ id: 's1', date: '2026-09-10', amountMinor: 55555, accountId: 'main', note: 'Super septiembre' }),
+      tx({ id: 'j1', date: '2026-07-03', amountMinor: 12345, accountId: 'main', note: 'Super julio', merchant: 'Super', tagIds: ['tg'] }),
+      tx({ id: 'j2', date: '2026-07-20', amountMinor: 10000, accountId: 'card', note: 'Gasolina julio', merchant: 'Gasolinera' }),
+      tx({ id: 's1', date: '2026-09-10', amountMinor: 55555, accountId: 'main', note: 'Super septiembre', merchant: 'Super', tagIds: ['tg'] }),
       // Siete días con gasto en el último mes: el saldo futuro se muestra (y dice que no se filtra).
       ...Array.from({ length: 7 }, (_, i) => tx({ id: `d${i}`, date: `2026-09-${String(15 + i).padStart(2, '0')}`, amountMinor: 1000, accountId: 'main', note: `Café ${i}` })),
     ],
@@ -126,10 +127,24 @@ test('QA-03 · Estadísticas de julio (personalizado): las cifras siguen siendo 
   await expect(page.getByText('El saldo futuro es de todas las cuentas del presupuesto')).toBeVisible()
   await accountFilter.selectOption({ label: 'Tarjeta' })
   await expectJuly('$100.00')
+  // Etiqueta, comercio y combinaciones (criterios de QA-03): siempre cifras solo de julio, con las fechas en la dirección.
+  await accountFilter.selectOption({ label: 'Todas' })
+  await expectJuly('$223.45')
+  await page.getByTestId('stats-filters').locator('summary').click()
+  const tagFilter = page.getByTestId('stats-filters').getByLabel('Etiqueta')
+  const merchantFilter = page.getByTestId('stats-filters').getByLabel('Comercio')
+  await tagFilter.selectOption({ label: 'Viaje' })
+  await expectJuly('$123.45')
+  await merchantFilter.selectOption({ label: 'Super' })
+  await expectJuly('$123.45')
+  await accountFilter.selectOption({ label: 'Tarjeta' })
+  await expectJuly('$0.00')
+  await expect(page.getByText('Cifras solo de: Tarjeta · Viaje · Super', { exact: false })).toBeVisible()
   await page.getByRole('button', { name: 'Quitar filtros' }).click()
   await expectJuly('$223.45')
+  // Atrás vuelve a la última combinación (Tarjeta · Viaje · Super → $0.00); adelante, a «sin filtros».
   await page.goBack()
-  await expectJuly('$100.00')
+  await expectJuly('$0.00')
   await page.goForward()
   await expectJuly('$223.45')
   await page.reload()

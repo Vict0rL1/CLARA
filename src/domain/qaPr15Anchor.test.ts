@@ -10,7 +10,7 @@ import { occurrencesBetween } from './recurrence'
 import { defaultSplitDate, saveScheduleFrom } from './scheduleFrom'
 import type { AppData, Schedule } from './types'
 import { validateAppData } from '../storage/backup'
-import { account, baseData, bill, income, tx } from '../test/fixtures'
+import { account, baseData, bill, goal, income, tx } from '../test/fixtures'
 
 /** El borrador que manda el formulario al partir «desde una fecha» cambiando SOLO el importe (con la fecha propuesta). */
 function amountOnly(s: Schedule, startDate: string, amountMinor: number): ScheduleDraft {
@@ -62,6 +62,20 @@ describe('QA-01 · partir un programado cambiando solo el importe conserva las f
     expect(validateAppData(r.data).ok).toBe(true)
     const r2 = split(d, 'tw', amountOnly(d.schedules[0]!, defaultSplitDate(d, d.schedules[0]!, '2026-10-25')!, 5500), '2026-10-25')
     expect(occurrencesBetween(r2.value.next, '2026-11-01', '2026-12-31')).toEqual(['2026-11-01', '2026-11-20', '2026-12-01', '2026-12-20'])
+  })
+
+  it('vínculos hacia delante: un gasto planificado ligado al 31-mar pasa al tramo nuevo porque esa fecha sigue existiendo; ligado a una fecha que no es de la serie, la partición se rechaza', () => {
+    const linked = goal({ id: 'g', name: 'Seguro', kind: 'expense', targetMinor: 20000, targetDate: '2026-03-31', plan: { link: { scheduleId: 'salary', occurrenceDate: '2026-03-31' }, history: [] } })
+    const d = { ...data([salary('2026-01-31')]), goals: [linked] }
+    // Sobre 819eaa9 la serie nueva se contaba desde el 28-feb (28-mar, 28-abr…), el 31-mar desaparecía y partir fallaba con `splitLinkedGoal`.
+    const r = split(d, 'salary', amountOnly(d.schedules[0]!, '2026-02-28', 320000), '2026-02-15')
+    expect(r.data.goals.map((g) => [g.id, g.plan?.link?.scheduleId, g.plan?.link?.occurrenceDate])).toEqual([['g', 'next', '2026-03-31']])
+    expect(occurrencesBetween(r.value.next, '2026-03-01', '2026-03-31')).toEqual(['2026-03-31'])
+    expect(validateAppData(r.data).ok).toBe(true)
+    // La guarda sigue: una fecha ligada que no está en la serie (el 28-mar no es un 31) impide partir, sin cambios parciales.
+    const other = { ...d, goals: [{ ...linked, plan: { ...linked.plan!, link: { scheduleId: 'salary', occurrenceDate: '2026-03-28' } } }] }
+    const refused = saveScheduleFrom(other, 'salary', amountOnly(other.schedules[0]!, '2026-02-28', 320000), at('2026-02-15'))
+    expect(refused.ok ? [] : refused.issues).toEqual([{ path: 'startDate', code: 'splitLinkedGoal', params: { name: 'Seguro', date: '2026-03-28' } }])
   })
 
   it('guardar dos veces el mismo tramo (mismo id, como al reintentar el formulario) conserva la fecha que fija la serie', () => {
