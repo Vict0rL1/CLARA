@@ -34,7 +34,7 @@ relative to today, everything is marked as demo). «Ajustes › Demostración y 
 ## 3. Automated checks (run all of these before declaring a change done)
 
 ```bash
-npm run check        # typecheck + oxlint + i18n literal check + Vitest (≈1 030 unit tests, incl. qa/, the QA V2 and the PR #15 audit contracts)
+npm run check        # typecheck + oxlint + i18n literal check + Vitest (≈1 040 unit tests, incl. qa/, the QA V2, the PR #15 audit and the self-review contracts)
 npm run build        # production build
 npm run size         # initial JS budget: must stay ≤ 844.6 KB (currently ≈ 844 KB: ~0.5 KB of headroom after QA V2) — do not raise it
 npm audit --audit-level=high   # dependency audit (CI fails on a high/critical vulnerability)
@@ -75,7 +75,8 @@ Notes for reliable runs:
 | `src/domain/stabilization.test.ts` | Unit regressions per audit finding |
 | `src/domain/retest.test.ts`, `src/state/replaceUndo.test.ts` | Unit regressions for RT-01/RT-03 and RT-02 (delayed IndexedDB writes) |
 | `src/domain/qaV2.test.ts`, `src/ui/secondDay.test.ts`, `tests/e2e/qa-v2.spec.ts` | QA V2 contracts (CUR-01/02/03, FIN-01, STAT-01, SCH-01); the CUR-01 browser test is also `@smoke` |
-| `src/domain/qaPr15{Anchor,Currency,Undo}.test.ts`, `tests/e2e/qa-pr15.spec.ts` | PR #15 audit contracts: QA-01 series anchor (schema 14), QA-02 buffer guard, QA-05 split undo; browser acceptance incl. QA-03 |
+| `src/domain/qaPr15{Anchor,Currency,Undo}.test.ts`, `tests/e2e/qa-pr15.spec.ts` | PR #15 audit contracts: QA-01 series anchor (schema 14, forward links), QA-02 buffer guard, QA-05 split undo (snooze rules R5/S1); browser acceptance incl. QA-03 filters and the R2 address rule |
+| `src/domain/percentExact.test.ts`, `src/domain/dayBalance.test.ts` | Self-review contracts: exact integer percentages (R6); one rule for what a calendar day says, base or simulated (`outOfRange`, R3/S3) |
 | `docs/qa/qa-v2-implementation-2026-10-17/` | QA V2 implementation report, before/after evidence (JSON, logs) and screenshots |
 | `docs/STABILIZATION-2026-10-13.md` | What was fixed, before/after evidence, known limits, later roadmap |
 | `docs/screenshots/stabilization-2026-10-13/` | Before (audited `e7c9d87`) / after screenshots |
