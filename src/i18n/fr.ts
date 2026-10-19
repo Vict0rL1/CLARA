@@ -3338,4 +3338,5 @@ export const fr: Record<keyof typeof es, string> = {
   'history.snooze.created': 'Avis reporté jusqu’au {date}',
   'history.snooze.updated': 'Report modifié ({date})',
   'history.snooze.deleted': 'Report retiré ({date})',
+  'recurring.noFigure': 'Pas de chiffre exact',
 }

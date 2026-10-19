@@ -3338,4 +3338,5 @@ export const pt: Record<keyof typeof es, string> = {
   'history.snooze.created': 'Aviso adiado até {date}',
   'history.snooze.updated': 'Adiamento alterado ({date})',
   'history.snooze.deleted': 'Adiamento retirado ({date})',
+  'recurring.noFigure': 'Sem valor exato',
 }

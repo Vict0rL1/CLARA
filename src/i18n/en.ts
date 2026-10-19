@@ -3340,4 +3340,5 @@ export const en: Record<keyof typeof es, string> = {
   'history.snooze.created': 'Notice snoozed until {date}',
   'history.snooze.updated': 'Snooze changed ({date})',
   'history.snooze.deleted': 'Snooze removed ({date})',
+  'recurring.noFigure': 'No exact figure',
 }

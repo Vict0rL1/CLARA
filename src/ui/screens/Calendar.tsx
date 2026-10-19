@@ -509,14 +509,15 @@ function RecurringSummary() {
         </p>
       )}
       {expenses.pausedCount > 0 && <p className="note">{tn('recurring.paused', expenses.pausedCount)}</p>}
-      {expenses.ok && expenses.items.length > 0 && (
+      {/* Revisión propia (R7): la lista sale también cuando el total no cabe (el aviso remite a ella); sin cifra donde no la hay. */}
+      {expenses.items.length > 0 && (
         <Explain>
           <p>{t('recurring.explain', range)}</p>
           {expenses.items.map((i) => (
-            <CalcRow key={i.schedule.id} op="+" label={t('recurring.row', { name: i.schedule.name, count: i.occurrences, amount: approx(i.schedule.amountMinor, i.schedule.amountIsEstimate) })} value={fmt.money(i.totalMinor)} />
+            <CalcRow key={i.schedule.id} op="+" label={t('recurring.row', { name: i.schedule.name, count: i.occurrences, amount: approx(i.schedule.amountMinor, i.schedule.amountIsEstimate) })} value={i.totalMinor === null ? t('recurring.noFigure') : fmt.money(i.totalMinor)} />
           ))}
-          <CalcRow op="=" label={t('recurring.year')} value={approx(expenses.totalMinor, expenses.hasEstimates)} strong />
-          <CalcRow label={t('recurring.perMonth')} value={approx(expenses.monthlyMinor, expenses.hasEstimates)} />
+          <CalcRow op="=" label={t('recurring.year')} value={expenses.ok ? approx(expenses.totalMinor, expenses.hasEstimates) : t('recurring.noFigure')} strong />
+          <CalcRow label={t('recurring.perMonth')} value={expenses.ok ? approx(expenses.monthlyMinor, expenses.hasEstimates) : t('recurring.noFigure')} />
         </Explain>
       )}
     </div>

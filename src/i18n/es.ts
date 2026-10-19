@@ -3339,4 +3339,5 @@ export const es = {
   'history.snooze.created': 'Aviso aplazado hasta el {date}',
   'history.snooze.updated': 'Aplazamiento cambiado ({date})',
   'history.snooze.deleted': 'Aplazamiento retirado ({date})',
+  'recurring.noFigure': 'Sin cifra exacta',
 } as const

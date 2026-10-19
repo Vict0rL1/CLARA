@@ -186,6 +186,10 @@ test('FIN-01 · 25 pagos diarios de 10^12: el calendario se abre, dice que el to
   const summary = page.getByTestId('recurring-summary')
   await expect(summary.getByTestId('recurring-out-of-range')).toContainText('más de lo que Clara puede calcular con exactitud')
   await expect(summary.getByText('Pagos fijos al mes')).toHaveCount(0)
+  // Revisión propia (R7): la lista a la que remite el aviso está: cada pago con su total exacto y el total sin cifra.
+  await summary.locator('details.explain > summary').click()
+  await expect(summary.getByText(/Diario 0 · \d+ ×/)).toBeVisible()
+  await expect(summary.getByText('Sin cifra exacta').first()).toBeVisible()
   await expectNoHorizontalScroll(page, 'calendario con importes fuera de rango')
 
   // Un año más adelante la proyección ya no es exacta: esos días no tienen cifra (y la pantalla sigue abierta).
