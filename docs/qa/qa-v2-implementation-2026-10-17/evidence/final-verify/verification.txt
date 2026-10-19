@@ -1,0 +1,55 @@
+Verificación de 23c2021 (QA V2 + auditoría independiente del PR #15) · 2026-10-18 · Chromium preinstalado, --workers=2 --fail-on-flaky-tests
+
+SHA 23c202157ab1879f0eb021e45237d275fa8a061a status: 0 changes
+started 2026-10-18T02:02:25Z · finished 2026-10-18T02:34:46Z
+4679bb9 (worktree): tsc exit 0 · oxlint exit 0 · vitest exit 0 ·       Tests  1018 passed | 1 skipped (1019)
+a720d19 (worktree): tsc exit 0 · oxlint exit 0 · vitest exit 0 ·       Tests  1025 passed | 1 skipped (1026)
+f99a93d (worktree): tsc exit 0 · oxlint exit 0 · vitest exit 0 ·       Tests  1028 passed | 1 skipped (1029)
+check EXIT 0
+build EXIT 0
+size EXIT 0
+audit EXIT 0
+e2e celular EXIT 0
+e2e celular-pequeno EXIT 0
+e2e escritorio EXIT 0
+shots sch01 EXIT 0
+DONE
+
+== npm run check (typecheck, oxlint, i18n literals, Vitest)
+ Test Files  104 passed (104)
+      Tests  1028 passed | 1 skipped (1029)
+
+== npm run build (identified build)
+✓ 227 modules transformed.
+✓ built in 1.90s
+dist id (sha256 of the sorted sha256 list of every dist file): 98be79c16e9775b421af52662f41ee5017da1cec74d7bbca95c5280eee3eb9e9 · 70 files
+
+== npm run size
+JS inicial: 842.0 KB en 11 archivos (gzip 252.0 KB)
+Referencia: 767.8 KB · límite 844.6 KB · cambio +9.7 %
+
+== npm audit --audit-level=high
+found 0 vulnerabilities
+
+== Playwright, full matrix, one project at a time, --workers=2 --fail-on-flaky-tests, one preview of the build above
+-- celular
+  1 skipped
+  343 passed (9.3m)
+Inicio con 10k: cifra principal a los 358 / 409 ms
+-- celular-pequeno
+  344 passed (8.6m)
+Inicio con 10k: cifra principal a los 340 / 328 ms
+-- escritorio
+  3 skipped
+  341 passed (9.4m)
+Inicio con 10k: cifra principal a los 518 / 391 ms
+
+== SCH-01 «after» screenshots (celular, QA_V2_SHOTS)
+  1 passed (4.2s)
+
+== performance-10k sola sobre la misma compilación (--workers=1; evidencia adicional, no sustituye la matriz)
+Inicio con 10k: cifra principal a los 314 / 273 ms
+Inicio con 10k: cifra principal a los 274 / 262 ms
+Inicio con 10k: cifra principal a los 317 / 274 ms
+  3 passed (11.8s)
+exit 0

@@ -1,0 +1,260 @@
+{
+  "cur01": [
+    {
+      "input": "coffee USD $10",
+      "amountMinor": 1000,
+      "foreignCurrency": null
+    },
+    {
+      "input": "coffee $10 USD",
+      "amountMinor": 1000,
+      "foreignCurrency": "USD"
+    },
+    {
+      "input": "café USD $ 10",
+      "amountMinor": 1000,
+      "foreignCurrency": null
+    },
+    {
+      "input": "coffee EUR $10",
+      "amountMinor": 1000,
+      "foreignCurrency": null
+    },
+    {
+      "input": "coffee $10",
+      "amountMinor": 1000,
+      "foreignCurrency": null
+    },
+    {
+      "input": "coffee CAD $10",
+      "amountMinor": 1000,
+      "foreignCurrency": null
+    }
+  ],
+  "cur02": [
+    {
+      "input": "USD 10 CAD",
+      "strip": {
+        "text": "10",
+        "mark": {
+          "code": "CAD"
+        }
+      },
+      "parseMoney": {
+        "ok": true,
+        "minor": 1000
+      },
+      "shortcut": {
+        "ok": true,
+        "minor": 1000
+      }
+    },
+    {
+      "input": "€10 CAD",
+      "strip": {
+        "text": "10",
+        "mark": {
+          "code": "CAD"
+        }
+      },
+      "parseMoney": {
+        "ok": true,
+        "minor": 1000
+      },
+      "shortcut": {
+        "ok": true,
+        "minor": 1000
+      }
+    },
+    {
+      "input": "GBP 10 CAD",
+      "strip": {
+        "text": "10",
+        "mark": {
+          "code": "CAD"
+        }
+      },
+      "parseMoney": {
+        "ok": true,
+        "minor": 1000
+      },
+      "shortcut": {
+        "ok": true,
+        "minor": 1000
+      }
+    },
+    {
+      "input": "US$10 CAD",
+      "strip": {
+        "text": "10",
+        "mark": {
+          "code": "CAD"
+        }
+      },
+      "parseMoney": {
+        "ok": true,
+        "minor": 1000
+      },
+      "shortcut": {
+        "ok": true,
+        "minor": 1000
+      }
+    },
+    {
+      "input": "CAD 10 USD",
+      "strip": {
+        "text": "10",
+        "mark": {
+          "code": "USD"
+        }
+      },
+      "parseMoney": {
+        "ok": false,
+        "error": "currencyMismatch",
+        "digits": 2,
+        "found": "USD",
+        "expected": "CAD"
+      },
+      "shortcut": {
+        "ok": true,
+        "minor": 1000,
+        "foreignCurrency": "USD"
+      }
+    },
+    {
+      "input": "-USD 10 CAD",
+      "strip": {
+        "text": "-10",
+        "mark": {
+          "code": "CAD"
+        }
+      },
+      "parseMoney": {
+        "ok": true,
+        "minor": -1000
+      },
+      "shortcut": {
+        "ok": false
+      }
+    },
+    {
+      "input": "CAD 10 CAD",
+      "strip": {
+        "text": "10",
+        "mark": {
+          "code": "CAD"
+        }
+      },
+      "parseMoney": {
+        "ok": true,
+        "minor": 1000
+      },
+      "shortcut": {
+        "ok": true,
+        "minor": 1000
+      }
+    },
+    {
+      "input": "$10 CAD",
+      "strip": {
+        "text": "10",
+        "mark": {
+          "code": "CAD"
+        }
+      },
+      "parseMoney": {
+        "ok": true,
+        "minor": 1000
+      },
+      "shortcut": {
+        "ok": true,
+        "minor": 1000
+      }
+    },
+    {
+      "input": "10 CAD",
+      "strip": {
+        "text": "10",
+        "mark": {
+          "code": "CAD"
+        }
+      },
+      "parseMoney": {
+        "ok": true,
+        "minor": 1000
+      },
+      "shortcut": {
+        "ok": true,
+        "minor": 1000
+      }
+    }
+  ],
+  "cur02csv": [
+    {
+      "line": 1,
+      "status": "new",
+      "amountMinor": 1000,
+      "kind": "expense",
+      "error": null,
+      "currency": "CAD"
+    },
+    {
+      "line": 2,
+      "status": "new",
+      "amountMinor": 1000,
+      "kind": "income",
+      "error": null,
+      "currency": "CAD"
+    },
+    {
+      "line": 3,
+      "status": "new",
+      "amountMinor": 1000,
+      "kind": "expense",
+      "error": null,
+      "currency": "CAD"
+    }
+  ],
+  "cur02assistant": [
+    {
+      "input": "coffee USD 10 CAD",
+      "amountMinor": 1000,
+      "foreignCurrency": "USD"
+    },
+    {
+      "input": "coffee €10 CAD",
+      "amountMinor": 1000,
+      "foreignCurrency": "€"
+    }
+  ],
+  "cur03": [
+    {
+      "input": "SHOP\nTOTAL PEN 10.00",
+      "totalMinor": 1000,
+      "foreignCurrency": null
+    },
+    {
+      "input": "SHOP\nTOTAL RUB 10.00",
+      "totalMinor": 1000,
+      "foreignCurrency": null
+    },
+    {
+      "input": "SHOP\nPEN 2.99\nTOTAL 2.99",
+      "totalMinor": 299,
+      "foreignCurrency": null
+    },
+    {
+      "input": "SHOP\nTOTAL USD 10.00",
+      "totalMinor": 1000,
+      "foreignCurrency": "USD"
+    },
+    {
+      "input": "SHOP\nTOTAL 10.00 €",
+      "totalMinor": 1000,
+      "foreignCurrency": "€"
+    }
+  ],
+  "fin01": {
+    "threw": "floorDiv requiere enteros y divisor distinto de cero"
+  }
+}

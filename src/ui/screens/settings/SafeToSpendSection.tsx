@@ -1,5 +1,5 @@
-/** Ajustes › Safe to spend (§7.7): mostrar en Inicio, granularidad, qué se descuenta y explicación. */
-import { useMemo } from 'react'
+/** Ajustes › Safe to spend (§7.7): mostrar en Inicio, granularidad, qué se descuenta, colchón de seguridad y explicación. */
+import { useMemo, useState } from 'react'
 import { computeBudget } from '../../../domain/budget'
 import { updateSettings } from '../../../domain/operations'
 import { committedFor, safeToSpend } from '../../../domain/periods'
@@ -9,9 +9,10 @@ import { useRun, useToday } from '../../../state/hooks'
 import { useData } from '../../../state/store'
 import { Toggle } from '../../components/base'
 import { Card, Explain } from '../../components/common'
-import { Segmented } from '../../components/fields'
+import { MoneyField, Segmented } from '../../components/fields'
 import { useToast } from '../../components/toastContext'
 import { useFormat } from '../../format'
+import { moneyErrorMessage, parseMoneyText } from '../../moneyText'
 
 export function SafeToSpendSection() {
   const { t } = useT()
@@ -28,6 +29,16 @@ export function SafeToSpendSection() {
     if (!saved) toast({ message: t('save.error.generic'), tone: 'critical' })
   }
   const amount = preview ? (settings.granularity === 'day' ? preview.perDayMinor : settings.granularity === 'week' ? preview.perWeekMinor : preview.perPeriodMinor) : null
+  // Colchón de seguridad (Clara 2.0 §10): vacío = sin colchón; nunca negativo.
+  const [bufferText, setBufferText] = useState(() => (settings.bufferMinor > 0 ? fmt.moneyInput(settings.bufferMinor) : ''))
+  const [bufferError, setBufferError] = useState<string | null>(null)
+  const saveBuffer = async () => {
+    const parsed = bufferText.trim() === '' ? ({ ok: true, minor: 0 } as const) : parseMoneyText(bufferText, fmt, { allowZero: true })
+    setBufferError(moneyErrorMessage(t, parsed))
+    if (!parsed.ok) return
+    const { saved } = await run((d, c) => updateSettings(d, { safeToSpend: { ...d.settings.safeToSpend, bufferMinor: parsed.minor } }, c))
+    toast(saved ? { message: t('safe.bufferSaved'), tone: 'good' } : { message: t('save.error.generic'), tone: 'critical' })
+  }
   return (
     <Card labelledBy="safe-title">
       <h2 id="safe-to-spend" className="card__title">
@@ -48,6 +59,18 @@ export function SafeToSpendSection() {
       />
       <Toggle checked={settings.subtractScheduled} onChange={(v) => void set({ subtractScheduled: v })} label={t('safe.subtractScheduled')} hint={t('safe.subtractScheduledHint')} />
       <Toggle checked={settings.subtractGoalContributions} onChange={(v) => void set({ subtractGoalContributions: v })} label={t('safe.subtractGoals')} hint={t('safe.subtractGoalsHint')} />
+      <form
+        className="stack-sm"
+        onSubmit={(e) => {
+          e.preventDefault()
+          void saveBuffer()
+        }}
+      >
+        <MoneyField label={t('safe.buffer')} hint={t('safe.bufferHint')} value={bufferText} onChange={setBufferText} error={bufferError} fmt={fmt} name="safety-buffer" />
+        <button type="submit" className="btn btn--secondary" data-testid="save-buffer">
+          {t('safe.bufferSave')}
+        </button>
+      </form>
       <p className="stat__label">{t('safe.preview')}</p>
       <p className="stat__value" data-testid="safe-preview">
         {amount === null ? t('safe.noPeriod') : fmt.money(amount)}

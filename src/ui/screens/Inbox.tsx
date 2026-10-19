@@ -17,7 +17,7 @@ import { Icon, type IconName } from '../components/Icon'
 import { useToast } from '../components/toastContext'
 import { MarkPaidDialog } from '../dialogs'
 import { useFormat } from '../format'
-import { accountName, categoryLabel, planItemName, planTitle, transactionTitle } from '../labels'
+import { accountName, categoryLabel, frequencyLabel, planItemName, planTitle, transactionTitle } from '../labels'
 import { href, withQuery } from '../router'
 
 const KIND_ICON: Record<InboxItem['kind'], IconName> = {
@@ -27,6 +27,7 @@ const KIND_ICON: Record<InboxItem['kind'], IconName> = {
   duplicate: 'list',
   uncategorized: 'star',
   integrity: 'shield',
+  suggestion: 'repeat',
 }
 
 const SNOOZE_DAYS = 7
@@ -151,7 +152,9 @@ function ItemText({ item }: { item: InboxItem }) {
   const rule = item.ruleId ? data.categoryRules.find((r) => r.id === item.ruleId) : undefined
   const plan = item.planId ? data.plans.find((p) => p.id === item.planId) : undefined
   const name =
-    item.planItem
+    item.label
+      ? item.label
+      : item.planItem
       ? planItemName(item.planItem, t)
       : plan
         ? planTitle(t, plan)
@@ -174,6 +177,8 @@ function ItemText({ item }: { item: InboxItem }) {
     category: categoryLabel(t, item.categoryId),
     lastMovement: item.lastMovementDate ? fmt.date(item.lastMovementDate, { compact: true, today }) : t('inbox.none'),
     verified: item.verifiedDate ? fmt.date(item.verifiedDate, { compact: true, today }) : t('inbox.never'),
+    count: item.count ?? 0,
+    frequency: item.frequency ? frequencyLabel(t, item.frequency) : '',
   }
   return (
     <span className="item__main">
@@ -270,6 +275,25 @@ function InboxCard({ item, onPay, onSnooze, onDismiss }: { item: InboxItem; onPa
             {t('inbox.action.settle')}
           </button>
         )}
+        {item.reason === 'recurringCandidate' && (
+          // Clara 2.0 fase 3: abre el formulario ya relleno; programarlo es un paso explícito de la persona.
+          <a
+            className="btn btn--primary btn--small"
+            href={href(
+              withQuery('/plan/programado/nuevo', {
+                kind: 'expense',
+                name: item.label,
+                amount: item.amountMinor,
+                frequency: item.frequency,
+                start: item.date,
+                category: item.categoryId,
+                account: item.accountId,
+              }),
+            )}
+          >
+            {t('inbox.action.schedule')}
+          </a>
+        )}
         {(item.reason === 'distributionIncomeChanged' || item.reason === 'distributionIncomeMissing') && (
           <a
             className="btn btn--primary btn--small"
@@ -285,7 +309,7 @@ function InboxCard({ item, onPay, onSnooze, onDismiss }: { item: InboxItem; onPa
         {item.canDismiss && (
           <button type="button" className="btn btn--ghost btn--small" onClick={onDismiss}>
             <Icon name="check" size={16} />
-            {t(item.kind === 'duplicate' ? 'inbox.action.notDuplicate' : item.kind === 'integrity' ? 'inbox.action.reviewed' : 'inbox.action.keep')}
+            {t(item.kind === 'duplicate' ? 'inbox.action.notDuplicate' : item.kind === 'integrity' ? 'inbox.action.reviewed' : item.kind === 'suggestion' ? 'inbox.action.notRecurring' : 'inbox.action.keep')}
           </button>
         )}
       </div>

@@ -13,7 +13,7 @@ import { parseReceiptText } from '../../domain/receipt'
 import { compressReceipt, ocrAvailable, recognizeText } from '../ocr'
 import { resolveCategories } from '../../domain/categories'
 import { newId } from '../../domain/ids'
-import { parseMoney } from '../../domain/money'
+import { parseMoney, withCurrencyMark, withCurrencyMarks } from '../../domain/money'
 import { countEntries, learnCategories, MAX_PARSER_LINES, type ParsedEntry } from '../../domain/parser'
 import { computeBudget } from '../../domain/budget'
 import { implausibilityRatio, isImplausibleAmount } from '../../domain/plausibility'
@@ -29,7 +29,9 @@ import { CategoryPicker } from '../components/CategoryPicker'
 import { Icon } from '../components/Icon'
 import { useToast } from '../components/toastContext'
 import { useFormat } from '../format'
-import { accountOptions, issueMessage } from '../labels'
+import { accountOptions, categoryLabel, issueMessage } from '../labels'
+import { suggestRulesFromCorrections, type RuleSuggestion } from '../../domain/rules'
+import { deleteCategoryRules, saveCategoryRules } from '../../domain/operations'
 import { reviewProposals } from '../../domain/review'
 import { ProposalReviewView } from '../components/ProposalReview'
 import { moneyErrorMessage } from '../moneyText'
@@ -55,19 +57,23 @@ interface Line {
 }
 
 /**
- * Texto inicial del importe. Si la persona escribió otra moneda («café USD 10» en CAD), se deja
- * escrita en el campo: así el campo explica el error y nada se guarda en la moneda equivocada (AS-01).
+ * Texto inicial del importe. Si la persona escribió otra moneda («café USD 10», «coffee 10€»,
+ * «EUR ten» en CAD) o el recibo la trae impresa, se deja escrita en el campo con la misma marca que
+ * lee `parseMoney`: así el campo explica el error y nada se guarda en la moneda equivocada (AS-01, RT-01).
  */
 function initialAmountText(entry: ParsedEntry, fmt: { moneyInput: (minor: number) => string }): string {
   if (entry.amountMinor === null) return ''
   const amount = fmt.moneyInput(entry.amountMinor)
-  if (!entry.foreignCurrency) return amount
-  return /^[A-Za-z]{3}$/.test(entry.foreignCurrency) ? `${amount} ${entry.foreignCurrency}` : `${entry.foreignCurrency}${amount}`
+  // QA V2: dos monedas que se contradicen se conservan las dos («USD 10.00 CAD»).
+  if (entry.currencyConflict) return withCurrencyMarks(amount, entry.currencyConflict)
+  return entry.foreignCurrency ? withCurrencyMark(amount, entry.foreignCurrency) : amount
 }
 
-/** Moneda escrita en el campo que no es la del presupuesto (o `undefined`). */
-function writtenCurrencyOf(result: ReturnType<typeof parseMoney>): string | undefined {
-  return !result.ok && (result.error === 'currencyMismatch' || result.error === 'unknownCurrency') ? result.found : undefined
+/** Moneda escrita en el campo que no es la del presupuesto, o las dos que se contradicen («USD y CAD»); si no, `undefined`. */
+function writtenCurrencyOf(result: ReturnType<typeof parseMoney>, list: (items: readonly string[]) => string): string | undefined {
+  if (result.ok) return undefined
+  if (result.error === 'currencyConflict') return list([result.found ?? '', result.other ?? ''])
+  return result.error === 'currencyMismatch' || result.error === 'unknownCurrency' ? result.found : undefined
 }
 
 type SpeechCtor = new () => { lang: string; interimResults: boolean; continuous: boolean; onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onend: (() => void) | null; onerror: (() => void) | null; start: () => void; stop: () => void }
@@ -138,8 +144,10 @@ export function Assistant({ route }: { route: Route }) {
         confidence: receipt?.confidence ?? 0,
         raw: t('assistant.photoRaw', { name: file.name || 'foto' }),
         hints,
+        ...(receipt?.foreignCurrency ? { foreignCurrency: receipt.foreignCurrency } : {}),
+        ...(receipt?.currencyConflict ? { currencyConflict: receipt.currencyConflict } : {}),
       }
-      const line: Line = { id: newId(), entry, kind: 'expense', amountText: entry.amountMinor === null ? '' : fmt.moneyInput(entry.amountMinor), categoryId: entry.categoryId ?? 'other_expense', date: entry.date, note: entry.description, receiptUri }
+      const line: Line = { id: newId(), entry, kind: 'expense', amountText: initialAmountText(entry, fmt), categoryId: entry.categoryId ?? 'other_expense', date: entry.date, note: entry.description, receiptUri }
       setLines((ls) => [...(ls ?? []), line])
       setIssues([])
     } catch {
@@ -198,7 +206,7 @@ export function Assistant({ route }: { route: Route }) {
       data,
       lines.map((l) => {
         const parsed = parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale)
-        const written = writtenCurrencyOf(parsed)
+        const written = writtenCurrencyOf(parsed, fmt.list)
         return {
           id: l.id,
           source: l.receiptUri ? ('ai_photo' as const) : ('ai_text' as const),
@@ -217,12 +225,12 @@ export function Assistant({ route }: { route: Route }) {
       // Lo disponible antes/después se simula con la misma operación que al registrar.
       { now: makeContext(data.settings.timeZone).now },
     )
-  }, [lines, data, accountId, today])
+  }, [lines, data, accountId, today, fmt.list])
   const reviewOf = (id: string) => reviewed?.reviews.find((r) => r.id === id)
 
   const transferRows = lines?.filter((l) => l.review === 'transfer').length ?? 0
   // AS-01: una línea con otra moneda escrita no se registra (ni se convierte) hasta corregir el importe.
-  const foreignRows = lines?.filter((l) => !!writtenCurrencyOf(parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale))).length ?? 0
+  const foreignRows = lines?.filter((l) => !!writtenCurrencyOf(parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale), fmt.list)).length ?? 0
   const availableMinor = useMemo(() => computeBudget(data, today).availableMinor, [data, today])
   const implausibleTimes = (l: Line): number | null | false => {
     if (l.kind !== 'expense') return false
@@ -238,7 +246,7 @@ export function Assistant({ route }: { route: Route }) {
     lines.forEach((l, i) => {
       const parsed = parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale)
       if (!parsed.ok) {
-        const written = writtenCurrencyOf(parsed)
+        const written = writtenCurrencyOf(parsed, fmt.list)
         errs.push(written ? { path: `entries[${i}].amountMinor`, code: 'writtenCurrency', params: { found: written, expected: data.settings.currency } } : { path: `entries[${i}].amountMinor`, code: 'invalidAmount' })
         return
       }
@@ -249,6 +257,11 @@ export function Assistant({ route }: { route: Route }) {
       setIssues(errs)
       return
     }
+    // Clara 2.0 §7: si la persona cambió la categoría que se proponía, se OFRECE recordarla (nunca sola).
+    const learn = suggestRulesFromCorrections(
+      data,
+      lines.map((l) => ({ note: l.entry.merchant || l.note, kind: l.kind, categoryId: l.categoryId, previousCategoryId: l.entry.categoryId })),
+    )
     setBusy(true)
     const { result, saved } = await run((d, c) => saveConfirmedEntries(d, entries, c))
     setBusy(false)
@@ -256,8 +269,26 @@ export function Assistant({ route }: { route: Route }) {
       setIssues(result.issues)
       return
     }
-    toast({ message: saved ? tn('assistant.recorded', entries.length) : t('save.error.generic'), tone: saved ? 'good' : 'critical' })
+    const recorded = tn('assistant.recorded', entries.length)
+    toast({
+      message: !saved ? t('save.error.generic') : learn.length === 1 ? t('rules.learn.offer', { saved: recorded, category: categoryLabel(t, learn[0]!.categoryId), pattern: learn[0]!.pattern }) : learn.length > 1 ? t('rules.learn.offerMany', { saved: recorded, count: learn.length }) : recorded,
+      tone: saved ? 'good' : 'critical',
+      ...(saved && learn.length > 0 ? { action: { label: t('rules.learn.remember'), onClick: () => void rememberRules(learn) } } : {}),
+    })
     if (saved) leave(returnTo)
+  }
+
+  /** Guarda las reglas que la persona aceptó recordar, todas o ninguna; se pueden deshacer desde el aviso. */
+  const rememberRules = async (learn: RuleSuggestion[]) => {
+    const drafts = learn.map((s) => ({ id: newId(), ...s }))
+    const { result, saved } = await run((d, c) => saveCategoryRules(d, drafts, c))
+    if (!result.ok || !saved) return void toast({ message: t(result.ok ? 'save.error.generic' : 'rules.learn.failed'), tone: 'critical' })
+    const ids = drafts.map((d) => d.id)
+    toast({
+      message: drafts.length === 1 ? t('rules.learn.saved', { pattern: drafts[0]!.pattern, category: categoryLabel(t, drafts[0]!.categoryId) }) : t('rules.learn.savedMany', { count: drafts.length }),
+      tone: 'good',
+      action: { label: t('common.undo'), onClick: () => void run((d, c) => deleteCategoryRules(d, ids, c)) },
+    })
   }
 
   // D8: nivel de la voz (AnalyserNode) y tiempo transcurrido mientras se graba; con
@@ -443,7 +474,7 @@ export function Assistant({ route }: { route: Route }) {
                   </Badge>
                 </div>
                 <Segmented legend={t('fields.kind')} name={`kind-${l.id}`} value={l.kind} onChange={(k) => update(l.id, { kind: k, review: undefined, categoryId: k === 'income' ? 'salary' : 'other_expense' })} options={[{ value: 'expense', label: t('txKind.expense') }, { value: 'income', label: t('txKind.income') }]} />
-                <MoneyField label={t('fields.amount')} value={l.amountText} onChange={(v) => update(l.id, { amountText: v })} fmt={fmt} error={lineError(i, 'amountMinor') || writtenCurrencyOf(parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale)) ? (moneyErrorMessage(t, parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale)) ?? t('issue.invalidAmount')) : null} />
+                <MoneyField label={t('fields.amount')} value={l.amountText} onChange={(v) => update(l.id, { amountText: v })} fmt={fmt} error={lineError(i, 'amountMinor') || writtenCurrencyOf(parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale), fmt.list) ? (moneyErrorMessage(t, parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale)) ?? t('issue.invalidAmount')) : null} />
                 <CategoryPicker label={t('fields.category')} kind={l.kind} data={data} value={l.categoryId} onChange={(id) => update(l.id, { categoryId: id })} keep={l.categoryId} allowNew />
                 <TextField label={t('fields.date')} type="date" value={l.date} max={today} onChange={(e) => update(l.id, { date: e.target.value })} error={lineError(i, 'date') ? issueMessage(t, fmt, lineError(i, 'date')!) : undefined} />
                 <TextField label={t('fields.noteOptional')} value={l.note} maxLength={120} onChange={(e) => update(l.id, { note: e.target.value })} />

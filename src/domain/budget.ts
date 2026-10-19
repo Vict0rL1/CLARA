@@ -47,6 +47,8 @@ export interface BudgetResult {
   /** Parte de cada pago reservado ya cubierta por un gasto planificado (clave = PlanItem.key). */
   coveredByGoals: Map<string, number>
   goalsReservedMinor: number
+  /** Colchón de seguridad de los ajustes (Clara 2.0 §10): se resta siempre, 0 si no hay. */
+  safetyBufferMinor: number
   availableMinor: number
   dailyMinor: number | null
   weeklyMinor: number | null
@@ -122,7 +124,9 @@ export function computeBudget(data: AppData, today: LocalDate): BudgetResult {
   const reservedTotalMinor = sumMinor(reservedItems.map((i) => -i.budgetEffectMinor - (coveredByGoals.get(i.key) ?? 0)))
   const overdueBills = reservedItems.filter((i) => i.state === 'overdue')
 
-  const availableMinor = baseMinor - reservedTotalMinor - goalsReservedMinor
+  // Clara 2.0 §10: el colchón que la persona quiere conservar nunca se ofrece para gastar.
+  const safetyBufferMinor = Math.max(0, data.settings.safeToSpend?.bufferMinor ?? 0)
+  const availableMinor = baseMinor - reservedTotalMinor - goalsReservedMinor - safetyBufferMinor
 
   let dailyMinor: number | null = null
   let weeklyMinor: number | null = null
@@ -153,6 +157,7 @@ export function computeBudget(data: AppData, today: LocalDate): BudgetResult {
     coveredByGoals,
     goalReservations,
     goalsReservedMinor,
+    safetyBufferMinor,
     availableMinor,
     dailyMinor,
     weeklyMinor,

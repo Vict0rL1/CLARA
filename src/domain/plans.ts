@@ -17,10 +17,10 @@ import { MAX_AMOUNT_MINOR, mulDivFloor, sumMinor } from './money'
 import { getPeriod } from './periods'
 import { categoryAllocations } from './splits'
 import type { OpContext, OpResult } from './operations'
-import type { AppData, BudgetPeriodType, LocalDate, Plan, PlanResult, PlanRollover, Settings, Transaction } from './types'
+import type { AppData, BudgetPeriodType, LocalDate, Plan, PlanEarlyAlertLevel, PlanResult, PlanRollover, Settings, Transaction } from './types'
 import { validatePlan, type Issue } from './validation'
 
-export type PlanDraft = Pick<Plan, 'id' | 'name' | 'categoryIds' | 'amountMinor' | 'periodType' | 'recurring' | 'alertAt80' | 'alertAt100'> & { startDate?: LocalDate; endDate?: LocalDate; rollover?: PlanRollover }
+export type PlanDraft = Pick<Plan, 'id' | 'name' | 'categoryIds' | 'amountMinor' | 'periodType' | 'recurring' | 'alertAt80' | 'alertAt100'> & { startDate?: LocalDate; endDate?: LocalDate; rollover?: PlanRollover; alertLevels?: PlanEarlyAlertLevel[] }
 
 export interface PlanCycle {
   start: LocalDate
@@ -79,7 +79,7 @@ export function planTransactions(data: AppData, plan: Plan, cycle: PlanCycle): T
 }
 
 /** Gastado neto del plan hasta `upTo` (incluido); nunca negativo. */
-export function planSpent(data: AppData, plan: Plan, cycle: PlanCycle, upTo: LocalDate = cycle.end): number {
+export function planSpent(data: AppData, plan: Pick<Plan, 'categoryIds'>, cycle: PlanCycle, upTo: LocalDate = cycle.end): number {
   const categories = planCategories(plan)
   const total = data.transactions.filter((tx) => tx.date >= cycle.start && tx.date <= upTo && tx.date <= cycle.end && matchesPlan(tx, categories)).reduce((s, tx) => s + planAmount(tx, categories), 0)
   return Math.max(0, total)
@@ -121,7 +121,7 @@ export function planProgress(data: AppData, plan: Plan, today: LocalDate): PlanP
     limitMinor: limit,
     remainingMinor: remaining,
     fraction: limit > 0 ? spent / limit : 0,
-    percent: limit > 0 ? Math.floor((spent * 100) / limit) : 0,
+    percent: limit > 0 ? mulDivFloor(spent, 100, limit) : 0,
     state,
     daysTotal,
     daysLeft,
@@ -198,6 +198,8 @@ function buildPlan(data: AppData, draft: PlanDraft, ctx: OpContext, existing?: P
     ...(existing?.previousPlanId ? { previousPlanId: existing.previousPlanId } : {}),
     alertAt80: draft.alertAt80,
     alertAt100: draft.alertAt100,
+    // v13: sin `alertLevels` en el borrador se conservan los del límite; una lista vacía los quita.
+    ...earlyLevels(draft.alertLevels ?? existing?.alertLevels),
     ...(existing?.result ? { result: existing.result } : {}),
     // v12: el arrastre se elige al crear o editar; lo que este ciclo ya recibió del anterior no cambia al editar.
     rollover: draft.rollover ?? existing?.rollover ?? 'none',
@@ -441,21 +443,42 @@ export function plansSummary(data: AppData, today: LocalDate): PlansSummary {
   return { active, completed, exceeded, near, goals: goals.length, goalsComplete, goalsPercent: goals.length ? Math.floor((goalsComplete * 100) / goals.length) : null }
 }
 
+export type PlanAlertLevel = PlanEarlyAlertLevel | 80 | 100
+
 export interface PlanAlert {
   plan: Plan
-  level: 80 | 100
+  level: PlanAlertLevel
   progress: PlanProgress
 }
 
-/** Alertas que corresponden hoy según los umbrales activados en cada plan. */
+function earlyLevels(levels: readonly PlanEarlyAlertLevel[] | undefined): { alertLevels?: PlanEarlyAlertLevel[] } {
+  return levels && levels.length > 0 ? { alertLevels: [...new Set(levels)].sort((a, b) => a - b) } : {}
+}
+
+/** Umbrales activados de un límite, de menor a mayor (50/75/90 opcionales, 80 y 100 como siempre). */
+export function planAlertLevels(plan: Pick<Plan, 'alertAt80' | 'alertAt100' | 'alertLevels'>): PlanAlertLevel[] {
+  const levels: PlanAlertLevel[] = [...(plan.alertLevels ?? [])]
+  if (plan.alertAt80) levels.push(80)
+  if (plan.alertAt100) levels.push(100)
+  return [...new Set(levels)].sort((a, b) => a - b)
+}
+
+/**
+ * Alertas que corresponden hoy: por límite, solo el umbral activado MÁS ALTO que ya se alcanzó (si
+ * el gasto salta del 40 % al 95 % se avisa una vez, del 90 %). Comparación entera:
+ * gastado × 100 ≥ límite × umbral. Quien avisa deduplica por umbral y ciclo.
+ */
 export function planAlerts(data: AppData, today: LocalDate): PlanAlert[] {
   const out: PlanAlert[] = []
   for (const plan of data.plans) {
     if (plan.status !== 'active') continue
+    const levels = planAlertLevels(plan)
+    if (levels.length === 0) continue
     const progress = planProgress(data, plan, today)
     if (!progress.cycle) continue
-    if (plan.alertAt100 && progress.spentMinor >= plan.amountMinor) out.push({ plan, level: 100, progress })
-    else if (plan.alertAt80 && progress.spentMinor * 5 >= plan.amountMinor * 4) out.push({ plan, level: 80, progress })
+    const reached = levels.filter((l) => progress.spentMinor * 100 >= plan.amountMinor * l)
+    const level = reached[reached.length - 1]
+    if (level !== undefined) out.push({ plan, level, progress })
   }
   return out
 }

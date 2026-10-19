@@ -14,18 +14,31 @@
 import { canChangeCurrency } from './currencyChange'
 import { newId } from './ids'
 import type { OpContext, OpResult } from './operations'
-import type { AppData, HistoryChange, HistoryCollection, HistoryEntry, HistorySource, Settings } from './types'
+import type { AppData, HistoryChange, HistoryCollection, HistoryEntry, HistorySource, LocalDate, Settings } from './types'
 
 /** Como mucho se conservan estas entradas; al superarlas sale la más antigua. */
 export const HISTORY_MAX_ENTRIES = 1000
 
 type ListCollection = Exclude<HistoryCollection, 'settings'>
-const LISTS: readonly ListCollection[] = ['accounts', 'transactions', 'schedules', 'goals', 'trash', 'reconciliations', 'incomeDistributions', 'periodBudgets']
+// v14 (auditoría del PR #15, QA-05): también plantillas, escenarios y aplazamientos de la bandeja, que partir un
+// programado reescribe; sin ellos, revertir la partición dejaba referencias al programado que desaparecía.
+const LISTS: readonly ListCollection[] = ['accounts', 'transactions', 'schedules', 'goals', 'trash', 'reconciliations', 'incomeDistributions', 'periodBudgets', 'templates', 'scenarios', 'inboxSnoozed']
 /** Ajustes que cambian cifras (el idioma o el formato de fecha no). */
-const FINANCIAL_SETTINGS = ['currency', 'timeZone', 'fallbackHorizonDays'] as const
+// v13: `safeToSpend` lleva el colchón de seguridad, que cambia el disponible: sin registrarlo, «¿Qué cambió?» no lo vería.
+const FINANCIAL_SETTINGS = ['currency', 'timeZone', 'fallbackHorizonDays', 'safeToSpend'] as const
 const SETTINGS_ID = 'settings'
 
 type WithId = { id: string }
+
+/** La lista de una colección del historial (`inboxSnoozed` vive dentro de `inbox`). */
+function listOf(data: AppData, collection: ListCollection): WithId[] {
+  return collection === 'inboxSnoozed' ? data.inbox.snoozed : (data[collection] as WithId[])
+}
+
+function withList(data: AppData, collection: ListCollection, list: WithId[]): AppData {
+  if (collection === 'inboxSnoozed') return { ...data, inbox: { ...data.inbox, snoozed: list as AppData['inbox']['snoozed'] } }
+  return { ...data, [collection]: list }
+}
 
 /**
  * Igualdad de valores guardados, sin depender del orden de las claves (al recargar, el
@@ -57,8 +70,8 @@ function financialSettings(s: Settings) {
 export function diffForHistory(prev: AppData, next: AppData): HistoryChange[] {
   const changes: HistoryChange[] = []
   for (const collection of LISTS) {
-    const a = prev[collection] as WithId[]
-    const b = next[collection] as WithId[]
+    const a = listOf(prev, collection)
+    const b = listOf(next, collection)
     if (a === b) continue
     const before = new Map(a.map((x) => [x.id, x]))
     const seen = new Set<string>()
@@ -76,6 +89,9 @@ export function diffForHistory(prev: AppData, next: AppData): HistoryChange[] {
     const b = financialSettings(next.settings)
     if (!same(a, b)) changes.push({ collection: 'settings', id: SETTINGS_ID, before: a, after: b })
   }
+  // Revisión propia (R5): los aplazamientos de la bandeja solo acompañan a otros cambios (p. ej. los que renombra
+  // partir un programado). Posponer o retirar un aviso no es un cambio financiero: no gasta entradas del historial.
+  if (changes.length > 0 && changes.every((c) => c.collection === 'inboxSnoozed')) return []
   return changes
 }
 
@@ -111,29 +127,53 @@ export function recordHistory(prev: AppData | null, next: AppData, now: string, 
 
 function currentValue(data: AppData, collection: HistoryCollection, id: string): unknown {
   if (collection === 'settings') return financialSettings(data.settings)
-  return (data[collection] as WithId[]).find((x) => x.id === id) ?? null
+  return listOf(data, collection).find((x) => x.id === id) ?? null
 }
 
 export function setValue(data: AppData, collection: HistoryCollection, id: string, value: unknown): AppData {
   if (collection === 'settings') return { ...data, settings: { ...data.settings, ...(value as Partial<Settings>) } }
-  const list = data[collection] as WithId[]
+  const list = listOf(data, collection)
   const index = list.findIndex((x) => x.id === id)
   let next: WithId[]
   if (value === null) next = list.filter((x) => x.id !== id)
   else if (index >= 0) next = list.map((x, i) => (i === index ? (value as WithId) : x))
   else next = [...list, value as WithId]
-  return { ...data, [collection]: next }
+  return withList(data, collection, next)
+}
+
+/**
+ * Valor actual comparable con lo que registró un cambio. En ajustes solo cuentan las claves que la
+ * entrada guardó: una entrada anterior a v13 no tiene `safeToSpend` y sigue pudiendo revertirse.
+ */
+function currentValueFor(data: AppData, c: HistoryChange): unknown {
+  const current = currentValue(data, c.collection, c.id)
+  if (c.collection !== 'settings' || !c.after || typeof c.after !== 'object') return current
+  const all = current as Record<string, unknown>
+  return Object.fromEntries(Object.keys(c.after).map((k) => [k, all[k] ?? null]))
+}
+
+/**
+ * Un aplazamiento que la entrada dejó y que ya caducó puede haberse retirado solo (posponer otro aviso limpia los
+ * caducados, `inbox.ts`): no es un cambio de la persona y no bloquea revertir (R5). Sin `today` no se aplica.
+ */
+function expiredSnoozeGone(data: AppData, c: HistoryChange, today: LocalDate | undefined): boolean {
+  if (c.collection !== 'inboxSnoozed' || !today || !c.after || typeof c.after !== 'object') return false
+  const until = (c.after as { until?: unknown }).until
+  return typeof until === 'string' && until <= today && currentValue(data, c.collection, c.id) === null
 }
 
 /** Registros de la entrada que cambiaron después (impiden revertir sin pisar otros cambios). */
-export function revertConflicts(data: AppData, entry: HistoryEntry): HistoryChange[] {
-  return entry.changes.filter((c) => !same(currentValue(data, c.collection, c.id), c.after))
+export function revertConflicts(data: AppData, entry: HistoryEntry, today?: LocalDate): HistoryChange[] {
+  return entry.changes.filter((c) => !same(currentValueFor(data, c), c.after) && !expiredSnoozeGone(data, c, today))
 }
 
-export function canRevert(data: AppData, entry: HistoryEntry): 'ok' | 'notRevertible' | 'alreadyReverted' | 'conflict' {
+export function canRevert(data: AppData, entry: HistoryEntry, today?: LocalDate): 'ok' | 'notRevertible' | 'alreadyReverted' | 'conflict' {
   if (entry.source === 'replace' || entry.changes.length === 0) return 'notRevertible'
+  // Una entrada SOLO de aplazamientos (grabada antes de R5) no se revierte: su reversión no dejaría rastro (no es un
+  // cambio financiero) y la entrada volvería a ofrecerse como pendiente.
+  if (entry.changes.every((c) => c.collection === 'inboxSnoozed')) return 'notRevertible'
   if (data.history.some((e) => e.revertOf === entry.id)) return 'alreadyReverted'
-  return revertConflicts(data, entry).length ? 'conflict' : 'ok'
+  return revertConflicts(data, entry, today).length ? 'conflict' : 'ok'
 }
 
 /**
@@ -144,12 +184,16 @@ export function canRevert(data: AppData, entry: HistoryEntry): 'ok' | 'notRevert
 export function revertEntry(data: AppData, entryId: string, ctx: OpContext): OpResult<HistoryEntry> {
   const entry = data.history.find((e) => e.id === entryId)
   if (!entry) return { ok: false, issues: [{ path: 'history', code: 'notFound' }] }
-  const status = canRevert(data, entry)
+  const status = canRevert(data, entry, ctx.today)
   if (status === 'notRevertible') return { ok: false, issues: [{ path: 'history', code: 'notRevertible' }] }
   if (status === 'alreadyReverted') return { ok: false, issues: [{ path: 'history', code: 'alreadyReverted' }] }
-  if (status === 'conflict') return { ok: false, issues: [{ path: 'history', code: 'revertConflict', params: { count: revertConflicts(data, entry).length } }] }
+  if (status === 'conflict') return { ok: false, issues: [{ path: 'history', code: 'revertConflict', params: { count: revertConflicts(data, entry, ctx.today).length } }] }
   let next = data
   for (const change of [...entry.changes].reverse()) next = setValue(next, change.collection, change.id, change.before)
+  // R5: un aplazamiento devuelto por ESTA entrada que ya caducó no se resucita (la bandeja lo ignoraría y otro
+  // aplazamiento lo limpiaría); los demás no se tocan.
+  const touched = new Set(entry.changes.filter((c) => c.collection === 'inboxSnoozed').map((c) => c.id))
+  if (touched.size > 0) next = { ...next, inbox: { ...next.inbox, snoozed: next.inbox.snoozed.filter((s) => !touched.has(s.id) || s.until > ctx.today) } }
   // QA-01: deshacer un cambio de moneda es otro cambio de moneda: solo si no hay importes guardados.
   if (next.settings.currency !== data.settings.currency && !canChangeCurrency(data)) {
     return { ok: false, issues: [{ path: 'history', code: 'currencyMismatch', params: { expected: data.settings.currency } }] }
@@ -196,7 +240,7 @@ export function setValues(data: AppData, values: { collection: HistoryCollection
       for (const value of m.values()) next = setValue(next, 'settings', SETTINGS_ID, value)
       continue
     }
-    const list = next[collection] as WithId[]
+    const list = listOf(next, collection)
     const seen = new Set<string>()
     const out: WithId[] = []
     for (const item of list) {
@@ -208,7 +252,7 @@ export function setValues(data: AppData, values: { collection: HistoryCollection
       }
     }
     for (const [id, value] of m) if (!seen.has(id) && value !== null) out.push(value as WithId)
-    next = { ...next, [collection]: out }
+    next = withList(next, collection, out)
   }
   return next
 }

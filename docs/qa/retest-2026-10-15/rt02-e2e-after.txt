@@ -1,0 +1,10 @@
+
+Running 6 tests using 2 workers
+
+[1/6] [celular] › tests/e2e/retest.spec.ts:92:1 › RT-02 · importar una copia que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar
+[2/6] [celular] › tests/e2e/retest.spec.ts:102:1 › RT-02 · restaurar una copia local que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar
+[3/6] [celular] › tests/e2e/retest.spec.ts:92:1 › RT-02 · importar una copia que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar
+[4/6] [celular] › tests/e2e/retest.spec.ts:102:1 › RT-02 · restaurar una copia local que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar
+[5/6] [celular] › tests/e2e/retest.spec.ts:92:1 › RT-02 · importar una copia que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar
+[6/6] [celular] › tests/e2e/retest.spec.ts:102:1 › RT-02 · restaurar una copia local que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar
+  6 passed (1.2m)

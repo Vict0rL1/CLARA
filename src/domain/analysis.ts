@@ -8,7 +8,7 @@ import { backupStatus } from './backupReminder'
 import { addDays, addMonthsClamped, daysBetween, startOfMonth } from './dates'
 import { goalPace } from './goalChart'
 import { periodSummary } from './insights'
-import { floorDiv, sumMinor } from './money'
+import { floorDiv, mulDivFloor, sumMinor } from './money'
 import { planItems } from './planItems'
 import { planProgress } from './plans'
 import { projectBalance } from './projection'
@@ -208,7 +208,7 @@ export function analysisItems(data: AppData, today: LocalDate): AnalysisItem[] {
   const total = sumMinor(positive.map((c) => c.netMinor))
   const top = positive.reduce<(typeof positive)[number] | null>((best, c) => (!best || c.netMinor > best.netMinor ? c : best), null)
   if (top && total > 0) {
-    const share = floorDiv(top.netMinor * 100, total)
+    const share = mulDivFloor(top.netMinor, 100, total)
     if (share >= TOP_CATEGORY_SHARE) {
       out.push({
         key: `topCategory:${top.categoryId}`,

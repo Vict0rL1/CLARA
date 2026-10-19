@@ -23,7 +23,8 @@ export default defineConfig({
   // En CI, un reintento: si una prueba falla y luego pasa, `--fail-on-flaky-tests` la marca como
   // inestable y el trabajo falla igual (no se esconde). El informe HTML se sube como artefacto.
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : [['list']],
+  // En CI también JUnit (`test-results/junit.xml`), para leer el resultado de una ejecución remota (QA V2).
+  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }], ['junit', { outputFile: 'test-results/junit.xml' }]] : [['list']],
   use: {
     baseURL,
     trace: 'retain-on-failure',

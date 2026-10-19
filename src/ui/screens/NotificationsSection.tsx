@@ -60,7 +60,7 @@ export function NotificationsSection() {
       {settings.dailyReminder && <TimePickerRow label={t('settings.notifications.time')} value={settings.dailyReminderTime} onChange={(v) => void set({ dailyReminderTime: v })} />}
       <Toggle checked={settings.dailySummary} onChange={(v) => void set({ dailySummary: v })} label={t('settings.notifications.summary')} />
       {settings.dailySummary && <TimePickerRow label={t('settings.notifications.time')} value={settings.dailySummaryTime} onChange={(v) => void set({ dailySummaryTime: v })} />}
-      <Toggle checked={settings.planAlerts} onChange={(v) => void set({ planAlerts: v })} label={t('settings.notifications.plans')} />
+      <Toggle checked={settings.planAlerts} onChange={(v) => void set({ planAlerts: v })} label={t('settings.notifications.plans')} hint={t('settings.notifications.plansHint')} />
       <Toggle checked={settings.quietHours} onChange={(v) => void set({ quietHours: v })} label={t('settings.notifications.quiet')} />
       {settings.quietHours && (
         <>

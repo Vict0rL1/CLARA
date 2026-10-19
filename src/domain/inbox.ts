@@ -16,16 +16,18 @@ import { distributionIncomeState } from './incomeDistribution'
 import { findSettlement, openItemsUntil, type PlanItem } from './planItems'
 import { lastVerified, reconciliationsFor, reconciliationState } from './reconcile'
 import { planProgress } from './plans'
-import { normalizeText, RULE_PATTERN_MIN } from './rules'
+import { normalizeText, RULE_PATTERN_MIN, ruleMatchesText } from './rules'
 import { cardSummary } from './cards'
 import { overstatedAutoConfirms } from './scheduledJobs'
 import { goalProgress, goalSavedMinor } from './goals'
+import { detectRecurring, type DetectedFrequency } from './recurringDetect'
 import type { OpContext, OpResult } from './operations'
 import type { AppData, InboxState, LocalDate, Transaction } from './types'
 
-export type InboxKind = 'uncategorized' | 'overdue' | 'duplicate' | 'balance' | 'attention' | 'integrity'
+/** `suggestion` (Clara 2.0 fase 3): no es un problema; solo una propuesta que la persona acepta o descarta. */
+export type InboxKind = 'uncategorized' | 'overdue' | 'duplicate' | 'balance' | 'attention' | 'integrity' | 'suggestion'
 
-export const INBOX_KINDS: readonly InboxKind[] = ['overdue', 'balance', 'attention', 'duplicate', 'uncategorized', 'integrity']
+export const INBOX_KINDS: readonly InboxKind[] = ['overdue', 'balance', 'attention', 'duplicate', 'uncategorized', 'integrity', 'suggestion']
 
 export type InboxReason =
   | 'otherCategory'
@@ -45,6 +47,7 @@ export type InboxReason =
   | 'ruleCategoryUnavailable'
   | 'ruleUnused'
   | 'autoConfirmOverstated'
+  | 'recurringCandidate'
 
 export interface InboxItem {
   /** Estable: el mismo problema siempre tiene el mismo id. */
@@ -66,6 +69,10 @@ export interface InboxItem {
   /** Fechas para explicar el porqué (p. ej. último movimiento vs. última verificación). */
   lastMovementDate?: LocalDate | null
   verifiedDate?: LocalDate | null
+  /** Sugerencias: nombre propuesto, cadencia y cuántas veces se vio. */
+  label?: string
+  frequency?: DetectedFrequency
+  count?: number
   canDismiss: boolean
 }
 
@@ -271,7 +278,8 @@ function ruleItems(data: AppData, today: LocalDate): InboxItem[] {
     if (pattern.length < RULE_PATTERN_MIN) continue
     const created = localDateInTimeZone(new Date(rule.createdAt), data.settings.timeZone)
     if (daysBetween(created, today) < RULE_UNUSED_DAYS) continue
-    const matches = notes.filter((n) => n.kind === rule.kind && n.text.includes(pattern))
+    // Mismo criterio que al proponer categorías (texto tal cual o clave de comercio, fase 2).
+    const matches = notes.filter((n) => n.kind === rule.kind && ruleMatchesText(n.text, rule.pattern))
     if (matches.some((n) => n.date >= since && n.date <= today)) continue
     const last = matches.reduce<LocalDate | null>((max, n) => (max === null || n.date > max ? n.date : max), null)
     items.push({ ...base, id: `rule:${rule.id}:unused`, reason: 'ruleUnused', fingerprint: `${pattern}|${rule.categoryId}`, lastMovementDate: last })
@@ -334,9 +342,31 @@ function integrity(data: AppData): InboxItem[] {
   return items
 }
 
+/**
+ * Pagos que parecen fijos y no están programados (`recurringDetect.ts`). La huella es el propio
+ * comercio, importe y cadencia: descartarla la oculta aunque lleguen más pagos iguales.
+ */
+function suggestions(data: AppData, today: LocalDate): InboxItem[] {
+  return detectRecurring(data, today).map((c) => ({
+    id: `sug:recurring:${c.key}:${c.amountMinor}:${c.frequency}`,
+    kind: 'suggestion',
+    reason: 'recurringCandidate',
+    fingerprint: `${c.key}|${c.amountMinor}|${c.frequency}`,
+    date: c.nextDate,
+    amountMinor: c.amountMinor,
+    txIds: c.txIds,
+    accountId: c.accountId,
+    categoryId: c.categoryId,
+    label: c.label,
+    frequency: c.frequency,
+    count: c.dates.length,
+    canDismiss: true,
+  }))
+}
+
 /** Todos los pendientes calculados (sin aplicar posponer/descartar). */
 export function computeInbox(data: AppData, today: LocalDate): InboxItem[] {
-  return [...overdue(data, today), ...balances(data, today), ...attention(data, today), ...duplicates(data), ...uncategorized(data), ...integrity(data)]
+  return [...overdue(data, today), ...balances(data, today), ...attention(data, today), ...duplicates(data), ...uncategorized(data), ...integrity(data), ...suggestions(data, today)]
 }
 
 export function inboxView(data: AppData, today: LocalDate): InboxView {

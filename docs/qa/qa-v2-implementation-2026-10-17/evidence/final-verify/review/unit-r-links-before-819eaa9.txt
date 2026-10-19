@@ -1,0 +1,24 @@
+     × sueldo mensual del 31-ene, hoy 15-feb: se propone el 28-feb y la serie nueva sigue el día 31 (31-mar, 30-abr, 31-may) 13ms
+     × caso financiero: con el sueldo partido, el pago del 30-mar sigue reservado por el ingreso del 31-mar (disponible 10 000, reservado 90 000) 25ms
+     × dos veces al mes (1 y 20) desde el 20-oct: se guarda sin arreglar el segundo día a mano y conserva 1 y 20; desde el 1-nov también 2ms
+     × vínculos hacia delante: un gasto planificado ligado al 31-mar pasa al tramo nuevo porque esa fecha sigue existiendo; ligado a una fecha que no es de la serie, la partición se rechaza 2ms
+     × guardar dos veces el mismo tramo (mismo id, como al reintentar el formulario) conserva la fecha que fija la serie 1ms
+     × mensual del 31 (febrero bisiesto): se propone la fecha movida y la serie nueva vuelve al día nominal 1ms
+     × mensual del 30: se propone la fecha movida y la serie nueva vuelve al día nominal 1ms
+     × mensual del 29 (febrero no bisiesto): se propone la fecha movida y la serie nueva vuelve al día nominal 1ms
+     × trimestral del 30-nov: se propone la fecha movida y la serie nueva vuelve al día nominal 2ms
+     × anual del 29-feb: se propone la fecha movida y la serie nueva vuelve al día nominal 2ms
+     × omitidas, fecha de fin y pagos registrados: lo anterior no cambia y las guardas siguen 4ms
+⎯⎯⎯⎯⎯⎯ Failed Tests 11 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected [ '2026-02-28', '2026-03-28', …(3) ] to deeply equal [ '2026-02-28', '2026-03-31', …(3) ]
+AssertionError: expected [ '2026-03-28', +0, 100000 ] to deeply equal [ '2026-03-31', 90000, 10000 ]
+AssertionError: [{"path":"secondDay","code":"semimonthlyDays"}]: expected false to be true // Object.is equality
+Error: split: [{"path":"startDate","code":"splitLinkedGoal","params":{"name":"Seguro","date":"2026-03-31"}}]
+AssertionError: expected undefined to be '2026-01-31' // Object.is equality
+AssertionError: expected [ '2028-02-29', '2028-03-29', …(2) ] to deeply equal [ '2028-02-29', '2028-03-31', …(2) ]
+AssertionError: expected [ '2026-02-28', '2026-03-28', …(2) ] to deeply equal [ '2026-02-28', '2026-03-30', …(2) ]
+AssertionError: expected [ '2026-02-28', '2026-03-28', …(1) ] to deeply equal [ '2026-02-28', '2026-03-29', …(1) ]
+AssertionError: expected [ '2026-02-28', '2026-05-28', …(2) ] to deeply equal [ '2026-02-28', '2026-05-30', …(2) ]
+AssertionError: expected [ '2029-02-28', '2030-02-28', …(2) ] to deeply equal [ '2029-02-28', '2030-02-28', …(2) ]
+AssertionError: expected [ '2026-02-28', '2026-03-28', …(9) ] to include '2026-04-30'
+      Tests  11 failed | 1 passed (12)

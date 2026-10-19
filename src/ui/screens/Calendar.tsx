@@ -8,10 +8,11 @@ import { CategoryIcon } from '../components/CategoryIcon'
 import { planItems, type PlanItem } from '../../domain/planItems'
 import { CALENDAR_PROJECTION_MAX_DAYS, dayBalance, projectBalance, type ProjectionDay } from '../../domain/projection'
 import { linkSettlement, unlinkedSettlements } from '../../domain/reconcileSchedules'
+import { recurringCosts } from '../../domain/recurringCosts'
 import { useT, type MessageKey } from '../../i18n'
 import { useRun, useToday } from '../../state/hooks'
 import { useData } from '../../state/store'
-import { Alert, Badge, Card, EmptyState, Explain, Why, type Tone } from '../components/common'
+import { Alert, Badge, CalcRow, Card, EmptyState, Explain, StatTile, Why, type Tone } from '../components/common'
 import { MoneyField } from '../components/fields'
 import { moneyErrorMessage, parseMoneyText } from '../moneyText'
 import { Icon } from '../components/Icon'
@@ -53,7 +54,8 @@ export function Calendar() {
   // aunque caiga en el mes siguiente. Los días pasados no se proyectan: el saldo real vive en Cuentas.
   const projectionEnd = maxDate(monthEnd, addDays(today, MIN_PROJECTION_DAYS - 1))
   const projectionDays = Math.min(CALENDAR_PROJECTION_MAX_DAYS, daysBetween(today, projectionEnd) + 1)
-  const projection = useMemo(() => projectBalance(data, today, { days: projectionDays }), [data, today, projectionDays])
+  // QA V2 (FIN-01): con importes extremos la proyección acaba en el último día exacto; después no hay cifra.
+  const projection = useMemo(() => projectBalance(data, today, { days: projectionDays, stopWhenOutOfRange: true }), [data, today, projectionDays])
   const byDate = useMemo(() => new Map<string, ProjectionDay>(projection.days.map((d) => [d.date, d])), [projection])
   const lastProjected = projection.days[projection.days.length - 1]?.date ?? today
   const firstNegative = projection.firstNegativeDate ? byDate.get(projection.firstNegativeDate) : undefined
@@ -62,12 +64,14 @@ export function Calendar() {
   const simParsed = simText.trim() ? parseMoneyText(simText, fmt) : null
   const simMinor = simParsed?.ok ? simParsed.minor : 0
   // Un mes de proyección es barato: se recalcula al escribir, sin memorizar.
-  const simulated = simMinor > 0 ? projectBalance(data, today, { days: projectionDays, extraOutflows: [{ date: simDay, amountMinor: simMinor }] }) : null
-  const simDayResult = simulated?.days.find((d) => d.date === simDay)
-  // Más allá de la proyección no hay cifra: se dice, no se muestra la del último día calculado.
-  const simBeyond = simMinor > 0 && simDay > lastProjected
+  const simulated = simMinor > 0 ? projectBalance(data, today, { days: projectionDays, extraOutflows: [{ date: simDay, amountMinor: simMinor }], stopWhenOutOfRange: true }) : null
+  // Lo que se dice del día simulado sale de ESA simulación, con la misma regla que el día elegido (`dayBalance`): más
+  // allá de sus días o desde que deja de ser exacta no hay cifra (revisión propia, R3).
+  const simBalance = simulated ? dayBalance(simulated, simDay) : null
+  const simDayResult = simBalance?.state === 'projected' ? simBalance : undefined
   const selectedBalance = selectedDay ? dayBalance(projection, selectedDay) : null
   const monthBeyond = monthEnd > lastProjected
+  const outOfRangeFrom = projection.outOfRangeFrom
   const simNegative = simulated?.firstNegativeDate ? simulated.days.find((d) => d.date === simulated.firstNegativeDate) : undefined
   // Conciliación: movimientos ya registrados que parecen una ocurrencia abierta sin vincular.
   const unlinked = useMemo(() => unlinkedSettlements(data, today), [data, today])
@@ -354,7 +358,10 @@ export function Calendar() {
         </table>
         {monthBeyond && (
           <p className="note" data-testid="calendar-beyond-note">
-            <Icon name="info" size={14} /> {t('calendar.flow.beyondNote', { date: fmt.date(lastProjected, { compact: true, today }) })}
+            <Icon name="info" size={14} />{' '}
+            {outOfRangeFrom && monthEnd >= outOfRangeFrom
+              ? t('calendar.flow.outOfRangeNote', { date: fmt.date(outOfRangeFrom, { compact: true, today }) })
+              : t('calendar.flow.beyondNote', { date: fmt.date(lastProjected, { compact: true, today }) })}
           </p>
         )}
       </Card>
@@ -372,9 +379,11 @@ export function Calendar() {
           <p className="item__meta" data-testid="day-balance" data-state={selectedBalance?.state}>
             {selectedBalance?.state === 'projected'
               ? t('calendar.flow.dayBalance', { amount: fmt.money(selectedBalance.endMinor) })
-              : selectedBalance?.state === 'beyond'
-                ? t('calendar.flow.beyond', { date: fmt.date(selectedBalance.lastDate, { compact: true, today }), days: CALENDAR_PROJECTION_MAX_DAYS })
-                : t('calendar.flow.past')}
+              : selectedBalance?.state === 'outOfRange'
+                ? t('calendar.flow.outOfRange', { date: fmt.date(selectedBalance.from, { compact: true, today }) })
+                : selectedBalance?.state === 'beyond'
+                  ? t('calendar.flow.beyond', { date: fmt.date(selectedBalance.lastDate, { compact: true, today }), days: CALENDAR_PROJECTION_MAX_DAYS })
+                  : t('calendar.flow.past')}
           </p>
         )}
         {listed.length === 0 ? <EmptyState compact icon="calendar" title={t('calendar.empty')} /> : <ul className="item-list">{listed.map(renderItem)}</ul>}
@@ -387,10 +396,12 @@ export function Calendar() {
         </h2>
         <p className="note">{t('calendar.sim.hint')}</p>
         <MoneyField label={t('calendar.sim.amount')} hint={fmt.date(simDay, { weekday: true, compact: true, today })} value={simText} onChange={setSimText} error={simParsed ? moneyErrorMessage(t, simParsed) : null} fmt={fmt} name="simulate" />
-        {simBeyond && (
+        {simBalance && simBalance.state !== 'projected' && (
           <p className="flow-line" data-testid="sim-beyond" aria-live="polite">
             <Icon name="info" size={16} />
-            {t('calendar.sim.beyond', { date: fmt.date(lastProjected, { compact: true, today }) })}
+            {simBalance.state === 'outOfRange'
+              ? t('calendar.flow.outOfRange', { date: fmt.date(simBalance.from, { compact: true, today }) })
+              : t('calendar.sim.beyond', { date: fmt.date(simBalance.state === 'beyond' ? simBalance.lastDate : lastProjected, { compact: true, today }) })}
           </p>
         )}
         {simulated && simDayResult && (
@@ -423,6 +434,7 @@ export function Calendar() {
         <h2 id="schedules-title" className="card__title">
           {t('calendar.allSchedules')}
         </h2>
+        <RecurringSummary />
         {data.schedules.length === 0 ? (
           <EmptyState compact icon="calendar" title={t('calendar.noSchedules')} />
         ) : (
@@ -436,7 +448,12 @@ export function Calendar() {
                     <span className="item__main">
                       <span className="item__title">{s.name}</span>
                       <span className="item__meta">
-                        {frequencyLabel(t, s.frequency)} · {next ? t('calendar.nextOn', { date: fmt.date(next, { compact: true, today }) }) : t('calendar.noNext')}
+                        {frequencyLabel(t, s.frequency)} ·{' '}
+                        {next
+                          ? t('calendar.nextOn', { date: fmt.date(next, { compact: true, today }) })
+                          : s.endDate
+                            ? t(s.endDate < today ? 'calendar.endedOn' : 'calendar.endsOn', { date: fmt.date(s.endDate, { compact: true, today }) })
+                            : t('calendar.noNext')}
                       </span>
                     </span>
                     <span className="item__amount">
@@ -454,6 +471,53 @@ export function Calendar() {
       {payItem && <MarkPaidDialog key={payItem.key} item={payItem} onClose={() => setPayItem(null)} />}
 
       {sheetFor && <ScheduleSheet scheduleId={sheetFor} onClose={() => setSheetFor(null)} onPay={(item) => { setSheetFor(null); setPayItem(item) }} />}
+    </div>
+  )
+}
+
+/**
+ * Clara 2.0 fase 3: cuánto cuestan los pagos recurrentes. Ocurrencias reales de los próximos 12 meses ×
+ * importe (`recurringCosts`), con su explicación; solo informa.
+ */
+function RecurringSummary() {
+  const { t, tn } = useT()
+  const fmt = useFormat()
+  const data = useData()
+  const today = useToday()
+  const expenses = useMemo(() => recurringCosts(data, today, 'expense'), [data, today])
+  const incomes = useMemo(() => recurringCosts(data, today, 'income'), [data, today])
+  if (expenses.items.length === 0 && incomes.items.length === 0) return null
+  const approx = (minor: number, estimate: boolean) => `${estimate ? '≈ ' : ''}${fmt.money(minor)}`
+  const range = { from: fmt.date(expenses.from), to: fmt.date(expenses.to) }
+  return (
+    <div className="stack-sm" data-testid="recurring-summary">
+      <div className="stats">
+        {expenses.ok && expenses.items.length > 0 && (
+          <>
+            <StatTile label={t('recurring.monthly')} value={approx(expenses.monthlyMinor, expenses.hasEstimates)} hint={t('recurring.monthlyHint')} />
+            <StatTile label={t('recurring.year')} value={approx(expenses.totalMinor, expenses.hasEstimates)} hint={tn('recurring.payments', expenses.items.reduce((n, i) => n + i.occurrences, 0))} />
+          </>
+        )}
+        {incomes.ok && incomes.items.length > 0 && <StatTile label={t('recurring.incomeMonthly')} value={approx(incomes.monthlyMinor, incomes.hasEstimates)} hint={t('recurring.monthlyHint')} />}
+      </div>
+      {/* QA V2 (FIN-01): un total que no cabe en un entero exacto no se muestra (ni recortado ni redondeado). */}
+      {(!expenses.ok || !incomes.ok) && (
+        <p className="note" data-testid="recurring-out-of-range">
+          <Icon name="info" size={14} /> {t('recurring.outOfRange')}
+        </p>
+      )}
+      {expenses.pausedCount > 0 && <p className="note">{tn('recurring.paused', expenses.pausedCount)}</p>}
+      {/* Revisión propia (R7): la lista sale también cuando el total no cabe (el aviso remite a ella); sin cifra donde no la hay. */}
+      {expenses.items.length > 0 && (
+        <Explain>
+          <p>{t('recurring.explain', range)}</p>
+          {expenses.items.map((i) => (
+            <CalcRow key={i.schedule.id} op="+" label={t('recurring.row', { name: i.schedule.name, count: i.occurrences, amount: approx(i.schedule.amountMinor, i.schedule.amountIsEstimate) })} value={i.totalMinor === null ? t('recurring.noFigure') : fmt.money(i.totalMinor)} />
+          ))}
+          <CalcRow op="=" label={t('recurring.year')} value={expenses.ok ? approx(expenses.totalMinor, expenses.hasEstimates) : t('recurring.noFigure')} strong />
+          <CalcRow label={t('recurring.perMonth')} value={expenses.ok ? approx(expenses.monthlyMinor, expenses.hasEstimates) : t('recurring.noFigure')} />
+        </Explain>
+      )}
     </div>
   )
 }

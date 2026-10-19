@@ -6,7 +6,7 @@
  */
 import { isValidLocalDate, toLocalDate } from './dates'
 import { parseEntry, type ParseContext } from './parser'
-import { currencyDigits } from './money'
+import { currencyDigits, currencyMarksAround, currencyMarksIn, markLabel, markMatchesCurrency, reconcileMarks, type TextMark } from './money'
 import type { LocalDate } from './types'
 
 export interface ReceiptResult {
@@ -18,10 +18,19 @@ export interface ReceiptResult {
   confidence: number
   /** Importes vistos, de mayor a menor (para ofrecer alternativas). */
   amountsMinor: number[]
+  /**
+   * Moneda impresa que no es la del presupuesto («12,50 €», «GBP 18.20» en CAD): el total se
+   * propone con ella escrita y la línea queda bloqueada hasta corregirla. Nunca se convierte (RT-01).
+   */
+  foreignCurrency?: string
+  /** Dos monedas distintas impresas en el recibo («TOTAL USD 10.00» y «CASH PEN 37.00»): tampoco se elige una (QA V2). */
+  currencyConflict?: readonly [string, string]
 }
 
 const TOTAL_WORDS = /\b(total|importe|monto|amount\s*due|amount|montant|a\s*pagar|to\s*pay|à\s*payer|valor|sum[a]?)\b/i
 const NOT_TOTAL = /\b(sub\s*-?total|iva|tax|tip|propina|cambio|change|vuelto|descuento|discount|efectivo|cash|tarjeta|card|pts?|puntos|points)\b/i
+/** Pago y cobro (además de los de `NOT_TOTAL`): en estas líneas, un código junto al importe es la moneda. */
+const TENDER_WORDS = /\b(visa|mastercard|amex|d[eé]bito|debit|cr[eé]dito|credit|pago|paid|payment|tendered|troco|dinheiro|esp[eè]ces|monnaie|rendu|igv)\b/i
 const AMOUNT = /(?<![\d,.])(\d{1,3}(?:[.,\s]\d{3})+|\d+)(?:[.,](\d{1,2}))?(?![\d])/g
 
 function toMinor(whole: string, frac: string | undefined, digits: number): number | null {
@@ -114,10 +123,28 @@ export function parseReceiptText(text: string, ctx: ParseContext): ReceiptResult
   }
   const sorted = [...new Set(amounts)].sort((a, b) => b - a)
   if (total === null && sorted.length > 0) total = sorted[0]!
+  // Todas las monedas impresas, en orden de lectura, unidas como en un importe (QA V2, CUR-03).
+  const mark = reconcileMarks(lines.flatMap(receiptMarks).map((m) => m.mark))
+  const written: Pick<ReceiptResult, 'foreignCurrency' | 'currencyConflict'> =
+    !mark || markMatchesCurrency(mark, ctx.currency) ? {} : 'conflict' in mark ? { currencyConflict: [markLabel(mark.conflict[0]), markLabel(mark.conflict[1])] } : { foreignCurrency: markLabel(mark) }
   const date = dateInText(text, ctx.today)
   const merchant = merchantInLines(lines)
   const category = merchant ? parseEntry(merchant, ctx) : null
   const categoryId = category && category.hints.some((h) => h === 'categoryDictionary' || h === 'categoryLearned' || h === 'categoryRule') ? (category.categoryId ?? null) : null
   const confidence = (total !== null ? (totalScore > 0 ? 0.5 : 0.3) : 0) + (date ? 0.25 : 0) + (merchant ? 0.25 : 0)
-  return { totalMinor: total, date, merchant, categoryId, confidence, amountsMinor: sorted }
+  return { totalMinor: total, date, merchant, categoryId, confidence, amountsMinor: sorted, ...written }
+}
+
+/**
+ * Monedas impresas en una línea del recibo: pegadas a un importe o un símbolo suelto. En una línea de
+ * total, subtotal, impuestos, propina o pago, un código junto al importe es la moneda aunque sea una
+ * palabra («TOTAL PEN 10.00») o una moneda que la app no admite («TOTAL RUB 10.00»): QA V2, CUR-03. En
+ * una línea de artículo no («PEN 2.99» es un bolígrafo).
+ */
+function receiptMarks(line: string): TextMark[] {
+  const money = TOTAL_WORDS.test(line) || NOT_TOTAL.test(line) || TENDER_WORDS.test(line)
+  const options = { receipt: !money }
+  const out = currencyMarksIn(line, options)
+  for (const m of line.matchAll(AMOUNT)) out.push(...currencyMarksAround(line, m.index!, m.index! + m[0].length, options))
+  return out.sort((a, b) => a.start - b.start)
 }

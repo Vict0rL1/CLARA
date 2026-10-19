@@ -8,7 +8,7 @@ import { canRevert, revertConflicts, revertEntry } from '../../domain/history'
 import type { HistoryEntry } from '../../domain/types'
 import type { Issue } from '../../domain/validation'
 import { useT } from '../../i18n'
-import { useRun } from '../../state/hooks'
+import { useRun, useToday } from '../../state/hooks'
 import { useData } from '../../state/store'
 import { validateAppData } from '../../storage/backup'
 import { Alert, Badge, Card, EmptyState, PageHeader } from '../components/common'
@@ -27,6 +27,7 @@ export function History() {
   const fmt = useFormat()
   const data = useData()
   const run = useRun()
+  const today = useToday()
   const toast = useToast()
   const [limit, setLimit] = useState(PAGE)
   const [confirm, setConfirm] = useState<HistoryEntry | null>(null)
@@ -65,8 +66,8 @@ export function History() {
         <ul className="item-list history-list" aria-label={t('history.title')}>
           {shown.map((entry) => {
             const lines = entry.changes.map((c) => describeChange(c, entry, data, t, fmt)).filter((l): l is Line => l !== null)
-            const status = canRevert(data, entry)
-            const conflicts = status === 'conflict' ? revertConflicts(data, entry) : []
+            const status = canRevert(data, entry, today)
+            const conflicts = status === 'conflict' ? revertConflicts(data, entry, today) : []
             const original = entry.revertOf ? data.history.find((e) => e.id === entry.revertOf) : undefined
             return (
               <li key={entry.id}>

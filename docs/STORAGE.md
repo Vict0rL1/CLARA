@@ -99,6 +99,12 @@ Probado en `src/storage/indexedDb.test.ts` y en la prueba de navegador `data-saf
 - Límite: 1000 entradas. Detalle de reglas en `docs/FORMULAS.md` §26.
 - Las versiones anteriores a v8 empiezan con historial vacío: la migración no inventa cambios
   pasados (`historyStartedAt` = última fecha de guardado conocida).
+- v14 (auditoría del PR #15, QA-05): cada entrada registra también `templates`, `scenarios` e
+  `inboxSnoozed` (los aplazamientos de `inbox.snoozed`), que partir un programado reescribe. Así
+  revertir la partición los devuelve y un cambio posterior en ellos es un conflicto. Las entradas
+  anteriores no los tienen y siguen pudiendo revertirse; una copia v13 se restaura sin cambios. Los
+  aplazamientos solo acompañan a otros cambios (posponer o retirar un aviso no crea entrada) y uno
+  caducado que ya no está no cuenta como conflicto ni se resucita al revertir (revisión propia, R5).
 
 ## Copias locales automáticas (v2)
 
