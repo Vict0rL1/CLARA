@@ -19,7 +19,8 @@ working clone until the user authorizes a push.
 | `23c2021` | Browser acceptance QA-01/02/03/05, QA-04 criteria, evidence, AGENTS.md | 5 |
 | `40eb75e` | This report (first version), the verification logs of §6 and the re-captured SCH-01 screenshots (docs only) | 22 |
 | `e785381` … `a91d1bd` | Self-review follow-ups R1–R7, one commit each (§8) | — |
-| (next) | §8 docs (CLAUDE.md, FORMULAS), evidence of the reproductions, this addendum; then the re-verification logs (docs only) | — |
+| `053f023` | §8 docs (CLAUDE.md, FORMULAS), evidence of the reproductions, this addendum | — |
+| (next) | The re-verification logs of §8.2 (docs only) | — |
 
 Each of `4679bb9`, `a720d19` and `f99a93d` was checked on its own in a temporary worktree (`tsc -b`, `oxlint`, full
 Vitest run; `evidence/final-verify/worktree-*.txt`). That check is why the four commits were re-created once before
@@ -168,4 +169,21 @@ QA V2 it was silently registered in EUR (`review/r4-baseline-819eaa9.txt`).
 
 ### 8.2 Re-verification at the final SHA
 
-«R_VERIFICATION»
+Run at `053f023` (`053f023aeeb31006b927d230d095ae2e56c9e1ac`) on 2026-10-19, 01:08–01:41 UTC, same container and
+settings as §6, strictly sequential. Logs: `evidence/final-verify-review/` (`verification.txt` is the summary).
+
+| Step | Result |
+|---|---|
+| Each follow-up commit standalone (`e785381`, `706bf38`, `e788ee4`, `cb19294`, `868ddbe`, `edc5742`, `a91d1bd`): `tsc -b`, `oxlint`, `vitest run` | all exit 0 · 1029 / 1029 / 1032 / 1033 / 1036 / 1038 / 1038 passed, 1 skipped each |
+| `npm run check` | exit 0 · 106 files, **1038 passed, 1 skipped** (1039) |
+| `npm run build` | exit 0 · 228 modules · build id `a2b421165ee7793086a797f02dae79e1c2b79a5b4e97edda8644a6552ef1e27d` (70 files) |
+| `npm run size` | exit 0 · initial JS **842.7 KB** in 11 files (gzip 252.1 KB) · limit 844.6 KB unchanged (+0.7 KB vs §6: the simulation helper, the text-mark kind and the always-rendered list) |
+| `npm audit --audit-level=high` | exit 0 · 0 vulnerabilities |
+| Playwright `celular` — `--workers=2 --fail-on-flaky-tests` | exit 0 · 344 passed, 1 skipped, 0 failed, 0 flaky (8.7 min) |
+| Playwright `celular-pequeno` | exit 0 · 345 passed, 0 skipped (8.4 min) |
+| Playwright `escritorio` | exit 0 · 342 passed, 3 skipped (8.5 min) |
+| 10 000-movement main figure (best of two loads, as the test is written) | celular 376 / 314 ms · celular-pequeno 247 / 207 ms · escritorio 324 / 268 ms — all under 500 ms on both loads |
+| SCH-01 «after» screenshots | 1 passed; byte-identical to the §6 captures (nothing to commit) |
+
+The skips are the same pre-existing conditions as in §6. One more browser test than in §6 (the R2 test, three
+viewports); the FIN-01 test gained the R7 assertions. Firefox/WebKit did not run (§7).
