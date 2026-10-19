@@ -124,4 +124,24 @@ describe('R5 (revisión propia) · aplazamientos en el historial: solo acompaña
     expect(canRevert(tracked, entry, '2026-10-05')).toBe('conflict')
     expect(revertEntry(tracked, entry.id, at('2026-10-05'))).toMatchObject({ ok: false, issues: [{ path: 'history', code: 'revertConflict' }] })
   })
+
+  it('una entrada antigua solo de aplazamientos (grabada por una compilación v14 anterior a R5) no se ofrece como revertible: revertirla no dejaría rastro', () => {
+    const d = seed()
+    const legacy = { id: 'legacy', at: EARLIER, source: 'app' as const, changes: [{ collection: 'inboxSnoozed' as const, id: 'backup:reminder', before: null, after: { id: 'backup:reminder', until: '2026-12-01', at: EARLIER } }] }
+    const withLegacy: AppData = { ...d, history: [...d.history, legacy], inbox: { ...d.inbox, snoozed: [...d.inbox.snoozed, { id: 'backup:reminder', until: '2026-12-01', at: EARLIER }] } }
+    expect(canRevert(withLegacy, legacy, '2026-09-28')).toBe('notRevertible')
+    expect(revertEntry(withLegacy, 'legacy', at('2026-09-28'))).toMatchObject({ ok: false, issues: [{ path: 'history', code: 'notRevertible' }] })
+  })
+
+  it('revertir una partición solo limpia los aplazamientos caducados que la propia entrada tocó; uno ajeno caducado sigue ahí (la bandeja lo limpiará cuando toque)', () => {
+    const d = seed()
+    const withOther: AppData = { ...d, inbox: { ...d.inbox, snoozed: [...d.inbox.snoozed, { id: 'other:expired', until: '2026-10-01', at: EARLIER }] } }
+    const after = splitAndRecord(withOther)
+    const entry = after.history.at(-1)!
+    const back = revertEntry(after, entry.id, at('2026-10-21'))
+    if (!back.ok) throw new Error(JSON.stringify(back.issues))
+    expect(back.data.inbox.snoozed.map((s) => s.id)).toEqual(['other:expired'])
+    const tracked = recordHistory(after, back.data, '2026-10-21T12:00:00.000Z', { source: 'revert', revertOf: entry.id })
+    expect(tracked.history.at(-1)!.changes.some((c) => c.collection === 'inboxSnoozed' && c.id === 'other:expired')).toBe(false)
+  })
 })

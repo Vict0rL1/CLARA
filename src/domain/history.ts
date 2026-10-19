@@ -169,6 +169,9 @@ export function revertConflicts(data: AppData, entry: HistoryEntry, today?: Loca
 
 export function canRevert(data: AppData, entry: HistoryEntry, today?: LocalDate): 'ok' | 'notRevertible' | 'alreadyReverted' | 'conflict' {
   if (entry.source === 'replace' || entry.changes.length === 0) return 'notRevertible'
+  // Una entrada SOLO de aplazamientos (grabada antes de R5) no se revierte: su reversión no dejaría rastro (no es un
+  // cambio financiero) y la entrada volvería a ofrecerse como pendiente.
+  if (entry.changes.every((c) => c.collection === 'inboxSnoozed')) return 'notRevertible'
   if (data.history.some((e) => e.revertOf === entry.id)) return 'alreadyReverted'
   return revertConflicts(data, entry, today).length ? 'conflict' : 'ok'
 }
@@ -187,8 +190,10 @@ export function revertEntry(data: AppData, entryId: string, ctx: OpContext): OpR
   if (status === 'conflict') return { ok: false, issues: [{ path: 'history', code: 'revertConflict', params: { count: revertConflicts(data, entry, ctx.today).length } }] }
   let next = data
   for (const change of [...entry.changes].reverse()) next = setValue(next, change.collection, change.id, change.before)
-  // R5: un aplazamiento devuelto que ya caducó no se resucita (la bandeja lo ignoraría y otro aplazamiento lo limpiaría).
-  if (entry.changes.some((c) => c.collection === 'inboxSnoozed')) next = { ...next, inbox: { ...next.inbox, snoozed: next.inbox.snoozed.filter((s) => s.until > ctx.today) } }
+  // R5: un aplazamiento devuelto por ESTA entrada que ya caducó no se resucita (la bandeja lo ignoraría y otro
+  // aplazamiento lo limpiaría); los demás no se tocan.
+  const touched = new Set(entry.changes.filter((c) => c.collection === 'inboxSnoozed').map((c) => c.id))
+  if (touched.size > 0) next = { ...next, inbox: { ...next.inbox, snoozed: next.inbox.snoozed.filter((s) => !touched.has(s.id) || s.until > ctx.today) } }
   // QA-01: deshacer un cambio de moneda es otro cambio de moneda: solo si no hay importes guardados.
   if (next.settings.currency !== data.settings.currency && !canChangeCurrency(data)) {
     return { ok: false, issues: [{ path: 'history', code: 'currencyMismatch', params: { expected: data.settings.currency } }] }
