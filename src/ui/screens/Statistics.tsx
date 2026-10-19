@@ -51,15 +51,17 @@ export function Statistics({ route }: { route: Route }) {
   const defaultType: StatsPeriodType = data.settings.budgetPeriod.type === 'untilIncome' ? 'month' : data.settings.budgetPeriod.type
   const type: StatsPeriodType = CHIPS.includes(queryType as StatsPeriodType) ? (queryType as StatsPeriodType) : defaultType
   const anchor = route.query.get('fecha') ?? today
-  // Revisión propia (R2): la dirección manda. Al navegar en el periodo personalizado (chips, «Hoy», atrás/adelante) las
-  // fechas escritas se alinean con ella (estado ajustado durante el render, sin efecto); escribirlas cambia el estado y
-  // actualiza la dirección sin navegar (`setCustom`), así nunca se contradicen. Hoy la pantalla se vuelve a montar con
-  // cada dirección (App.tsx la clava por ruta y consulta); esta guarda no depende de eso.
-  const urlDates = `${route.query.get('desde') ?? ''}|${route.query.get('hasta') ?? ''}`
-  const [custom, setCustomState] = useState({ from: urlDates, start: route.query.get('desde') ?? '', end: route.query.get('hasta') ?? '' })
-  if (type === 'custom' && custom.from !== urlDates) setCustomState({ from: urlDates, start: route.query.get('desde') ?? '', end: route.query.get('hasta') ?? '' })
-  const customStart = type === 'custom' && custom.from !== urlDates ? (route.query.get('desde') ?? '') : custom.start
-  const customEnd = type === 'custom' && custom.from !== urlDates ? (route.query.get('hasta') ?? '') : custom.end
+  // Revisión propia (R2): la dirección manda. Al navegar (chips, «Hoy», atrás/adelante) las fechas escritas se alinean
+  // con las de la dirección —también cuando no las hay— (estado ajustado durante el render, sin efecto); escribirlas
+  // cambia el estado y actualiza la dirección sin navegar (`setCustom`), así nunca se contradicen. Hoy la pantalla se
+  // vuelve a montar con cada dirección (App.tsx la clava por ruta y consulta); esta guarda vale igual sin eso.
+  const urlStart = route.query.get('desde') ?? ''
+  const urlEnd = route.query.get('hasta') ?? ''
+  const urlDates = `${urlStart}|${urlEnd}`
+  const [custom, setCustomState] = useState({ from: urlDates, start: urlStart, end: urlEnd })
+  if (custom.from !== urlDates) setCustomState({ from: urlDates, start: urlStart, end: urlEnd })
+  const customStart = custom.from === urlDates ? custom.start : urlStart
+  const customEnd = custom.from === urlDates ? custom.end : urlEnd
   const range = useMemo(() => statsRange(type, data.settings, anchor, customStart && customEnd && customEnd >= customStart ? { start: customStart, end: customEnd } : undefined), [type, data.settings, anchor, customStart, customEnd])
   // Clara 2.0 fase 4: filtros por cuenta, etiqueta y comercio (en la dirección, como el periodo). Solo se
   // filtran los movimientos; cada cifra se calcula igual. Un valor que ya no existe se ignora.
