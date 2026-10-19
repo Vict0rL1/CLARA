@@ -92,6 +92,32 @@ describe('CUR-01 · un código explícito manda sobre un símbolo genérico en e
     expect(one('coffee USD $10', 'en', 'USD').parsed).toEqual({ ok: true, minor: 1000 })
   })
 
+  it('un nombre o un símbolo a dos pasos del importe es texto corriente: «Cafe Euro $12» se registra en CAD (revisión propia, R4)', () => {
+    for (const [text, minor, description] of [
+      ['Cafe Euro $12', 1200, 'Cafe Euro'],
+      ['Sushi Yen $25', 2500, 'Sushi Yen'],
+      ['Peso $10', 1000, 'Peso'],
+    ] as const) {
+      const { entry, parsed } = one(text, 'en')
+      expect(entry.amountMinor, text).toBe(minor)
+      expect(entry.foreignCurrency, text).toBeUndefined()
+      expect(entry.currencyConflict, text).toBeUndefined()
+      expect(entry.description, text).toBe(description)
+      expect(parsed, text).toEqual({ ok: true, minor })
+    }
+    // Un nombre PEGADO al importe sigue contando (RT-01): «$12 Euro Market» es «$» contra «euro», un conflicto que se
+    // enseña (antes de QA V2 se registraba en EUR sin más, evidence/final-verify/review/r4-baseline-819eaa9.txt).
+    expect(one('$12 Euro Market', 'en').entry.currencyConflict).toEqual(['$', 'EUR'])
+    // Un código a dos pasos sigue contando (CUR-01), y un nombre pegado al importe también (RT-01).
+    expect(one('coffee ten dollars USD', 'en').entry.foreignCurrency).toBe('USD')
+    expect(one('coffee USD $10', 'en').entry.foreignCurrency).toBe('USD')
+    expect(one('Cafe Euro 12', 'en').entry.foreignCurrency).toBe('EUR')
+    // El lector de los campos de importe aplica la misma regla: «10 € EUR» sigue siendo EUR y «USD $10», USD.
+    expect(parseMoney('10 € EUR', 'EUR', 'en-CA')).toEqual({ ok: true, minor: 1000 })
+    expect(parseMoney('10 € EUR', 'CAD', 'en-CA')).toMatchObject({ ok: false, error: 'currencyMismatch', found: 'EUR' })
+    expect(parseMoney('USD $10', 'CAD', 'en-CA')).toMatchObject({ ok: false, error: 'currencyMismatch', found: 'USD' })
+  })
+
   it('varias entradas: solo se bloquea la que trae otra moneda', () => {
     const entries = parseText('coffee USD $10\ntea $4\nbagel 3 CAD', parseCtx('en'))
     expect(entries.map((e) => [e.amountMinor, e.foreignCurrency ?? null, e.currencyConflict ?? null])).toEqual([

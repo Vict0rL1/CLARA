@@ -472,11 +472,13 @@ export interface TextMarkOptions {
   receipt?: boolean
 }
 
-/** Una marca de moneda encontrada en un texto libre y dónde está. */
+/** Una marca de moneda encontrada en un texto libre, dónde está y cómo se escribió. */
 export interface TextMark {
   mark: CurrencyMark
   start: number
   end: number
+  /** Código («USD», «US$»), símbolo («$», «€») o nombre («euros», «dollars», «kr»): un nombre resuelto a un código sigue siendo un nombre. */
+  kind: 'code' | 'symbol' | 'name'
 }
 
 function codeMark(raw: string, options: TextMarkOptions): CurrencyMark | null {
@@ -494,30 +496,30 @@ function nameMark(words: string): { mark: CurrencyMark; far: boolean } | undefin
 /** La marca pegada al final de `before` (lo que hay antes de `at`): dólar con letras, símbolo, código o nombre. */
 function markBefore(before: string, at: number, options: TextMarkOptions): TextMark | null {
   const dollar = /(?<![\p{L}\p{N}])([A-Za-z]{1,3})\$\s*$/u.exec(before)
-  if (dollar) return { mark: dollarMark(dollar[1]!), start: dollar.index, end: at }
+  if (dollar) return { mark: dollarMark(dollar[1]!), start: dollar.index, end: at, kind: 'code' }
   const symbol = /(\p{Sc})\s*$/u.exec(before)
-  if (symbol) return { mark: { symbol: symbol[1]! }, start: symbol.index, end: at }
+  if (symbol) return { mark: { symbol: symbol[1]! }, start: symbol.index, end: at, kind: 'symbol' }
   const code = /(?<![\p{L}\p{N}])([A-Za-z]{3})\s*$/u.exec(before)
   const codeBefore = code ? codeMark(code[1]!, options) : null
-  if (codeBefore) return { mark: codeBefore, start: code!.index, end: at }
+  if (codeBefore) return { mark: codeBefore, start: code!.index, end: at, kind: 'code' }
   const two = /(?<![\p{L}\p{N}])(\p{L}+\s+\p{L}+)\s*$/u.exec(before)
   const one = /(?<![\p{L}\p{N}])(\p{L}+)\s*$/u.exec(before)
   const found = (two && nameMark(two[1]!) ? two : null) ?? (one && nameMark(one[1]!) ? one : null)
-  return found ? { mark: nameMark(found[1]!)!.mark, start: found.index, end: at } : null
+  return found ? { mark: nameMark(found[1]!)!.mark, start: found.index, end: at, kind: 'name' } : null
 }
 
 /** La marca pegada justo después de `from`: símbolo, código o nombre. */
 function markAfter(text: string, from: number, options: TextMarkOptions): TextMark | null {
   const after = text.slice(from)
   const symbol = /^\s*(\p{Sc})/u.exec(after)
-  if (symbol) return { mark: { symbol: symbol[1]! }, start: from, end: from + symbol[0].length }
+  if (symbol) return { mark: { symbol: symbol[1]! }, start: from, end: from + symbol[0].length, kind: 'symbol' }
   const code = /^\s*([A-Za-z]{3})(?![\p{L}\p{N}])/u.exec(after)
   const codeAfter = code ? codeMark(code[1]!, options) : null
-  if (codeAfter) return { mark: codeAfter, start: from, end: from + code![0].length }
+  if (codeAfter) return { mark: codeAfter, start: from, end: from + code![0].length, kind: 'code' }
   const two = /^\s*(\p{L}+\s+\p{L}+)(?![\p{L}\p{N}])/u.exec(after)
   const one = /^\s*(\p{L}+)(?![\p{L}\p{N}])/u.exec(after)
   const found = (two && nameMark(two[1]!) ? two : null) ?? (one && nameMark(one[1]!) ? one : null)
-  return found ? { mark: nameMark(found[1]!)!.mark, start: from, end: from + found[0].length } : null
+  return found ? { mark: nameMark(found[1]!)!.mark, start: from, end: from + found[0].length, kind: 'name' } : null
 }
 
 /**
@@ -532,19 +534,23 @@ export function currencyMarksAround(text: string, start: number, end: number, op
   let at = start
   for (let i = 0; i < 2; i++) {
     const found = markBefore(text.slice(0, at), at, options)
-    if (!found) break
+    if (!found || (i > 0 && found.kind !== 'code' && out[0]!.kind !== 'code')) break
     out.unshift(found)
     at = found.start
   }
   let to = end
   for (let i = 0; i < 2; i++) {
     const found = markAfter(text, to, options)
-    if (!found) break
+    if (!found || (i > 0 && found.kind !== 'code' && out[out.length - 1]!.kind !== 'code')) break
     out.push(found)
     to = found.end
   }
   return out
 }
+
+// En texto libre, la segunda marca de un lado solo cuenta si una de las dos se escribió como código («USD $10»,
+// «10$ USD», «ten dollars USD»): un nombre junto a un símbolo a dos pasos del importe es texto corriente («Cafe Euro
+// $12», «Peso $10» son 12 y 10 de la moneda del presupuesto, como antes de QA V2). Revisión propia (R4).
 
 /**
  * Marcas explícitas en cualquier parte de un texto libre, lejos del importe: símbolos, códigos
@@ -555,12 +561,12 @@ export function currencyMarksAround(text: string, start: number, end: number, op
 export function currencyMarksIn(text: string, options: TextMarkOptions = {}): TextMark[] {
   const out: TextMark[] = []
   for (const m of text.matchAll(/(?<![\p{L}\p{N}])([A-Za-z]{1,3})\$|\p{Sc}/gu)) {
-    out.push({ mark: m[1] !== undefined ? dollarMark(m[1]) : { symbol: m[0] }, start: m.index!, end: m.index! + m[0].length })
+    out.push({ mark: m[1] !== undefined ? dollarMark(m[1]) : { symbol: m[0] }, start: m.index!, end: m.index! + m[0].length, kind: m[1] !== undefined ? 'code' : 'symbol' })
   }
   if (options.receipt) return out.sort((a, b) => a.start - b.start)
   for (const m of text.matchAll(/(?<![\p{L}\p{N}])([A-Za-z]{3})(?![\p{L}\p{N}])/gu)) {
     const mark = m[1] === m[1]!.toUpperCase() ? codeMark(m[1]!, options) : null
-    if (mark && 'code' in mark) out.push({ mark, start: m.index!, end: m.index! + 3 })
+    if (mark && 'code' in mark) out.push({ mark, start: m.index!, end: m.index! + 3, kind: 'code' })
   }
   // Cada palabra, sola y junto a la siguiente («pounds sterling»): ninguna queda sin mirar.
   const words = [...text.matchAll(/(?<![\p{L}\p{N}])\p{L}+/gu)]
@@ -571,7 +577,7 @@ export function currencyMarksIn(text: string, options: TextMarkOptions = {}): Te
     const two = pairEnd === null ? undefined : nameMark(text.slice(word.index!, pairEnd))
     const found = two ?? nameMark(word[0])
     if (!found?.far) continue
-    out.push({ mark: found.mark, start: word.index!, end: two ? pairEnd! : word.index! + word[0].length })
+    out.push({ mark: found.mark, start: word.index!, end: two ? pairEnd! : word.index! + word[0].length, kind: 'name' })
     if (two) i++
   }
   return out.sort((a, b) => a.start - b.start)
@@ -590,7 +596,8 @@ export function stripCurrencyMark(input: string): { text: string; mark: Currency
     sign = s[0]!
     s = s.slice(1).trim()
   }
-  // Detrás, de fuera hacia dentro (hasta dos: «10 € EUR», «10 USD dollars»); delante, igual («USD $10»).
+  // Detrás, de fuera hacia dentro (hasta dos: «10 € EUR», «10 USD dollars»); delante, igual («USD $10»). En un campo
+  // las dos marcas son deliberadas (el asistente escribe las dos de un conflicto y aquí se vuelven a leer).
   const after: CurrencyMark[] = []
   for (let i = 0; i < 2; i++) {
     const found = suffixMark(s)
