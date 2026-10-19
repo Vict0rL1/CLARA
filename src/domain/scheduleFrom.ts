@@ -103,7 +103,10 @@ export function saveScheduleFrom(data: AppData, scheduleId: string, draft: Sched
   if (draft.id === old.id) return fail([{ path: 'id', code: 'notFound' }])
   // Guardar dos veces (el id del nuevo se genera al abrir el formulario): el nuevo ya existe y se actualiza.
   if (data.schedules.some((s) => s.id === draft.id)) {
-    const r = saveSchedule(data, draft, ctx)
+    // Revisión propia (R1): también al reintentar el tramo conserva la fecha que fija la serie; guardar el
+    // borrador tal cual la perdía y la serie nueva volvía a contarse desde la fecha elegida.
+    const anchor = splitAnchor(old, draft)
+    const r = saveSchedule(data, { ...draft, anchorDate: anchor !== draft.startDate ? anchor : undefined }, ctx)
     return r.ok ? { ...r, value: { ended: old, next: r.value } } : r
   }
   if (old.frequency === 'once') return fail([{ path: 'startDate', code: 'splitNotRecurring' }])

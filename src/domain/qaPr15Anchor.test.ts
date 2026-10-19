@@ -64,6 +64,20 @@ describe('QA-01 · partir un programado cambiando solo el importe conserva las f
     expect(occurrencesBetween(r2.value.next, '2026-11-01', '2026-12-31')).toEqual(['2026-11-01', '2026-11-20', '2026-12-01', '2026-12-20'])
   })
 
+  it('guardar dos veces el mismo tramo (mismo id, como al reintentar el formulario) conserva la fecha que fija la serie', () => {
+    const d = data([salary('2026-01-31')])
+    const draft = amountOnly(d.schedules[0]!, '2026-02-28', 320000)
+    const first = split(d, 'salary', draft, '2026-02-15')
+    expect(first.value.next.anchorDate).toBe('2026-01-31')
+    // Revisión propia (R1): la rama idempotente (el id del nuevo ya existe) guardaba el borrador tal cual y perdía el ancla.
+    const again = split(first.data, 'salary', draft, '2026-02-15')
+    expect(again.value.next.anchorDate).toBe('2026-01-31')
+    expect(occurrencesBetween(again.value.next, '2026-02-28', '2026-05-31')).toEqual(['2026-02-28', '2026-03-31', '2026-04-30', '2026-05-31'])
+    expect(again.data.schedules.map((s) => s.id)).toEqual(['salary', 'next'])
+    expect(again.value.ended.endDate).toBe('2026-02-27')
+    expect(validateAppData(again.data).ok).toBe(true)
+  })
+
   it.each([
     ['mensual del 31 (febrero bisiesto)', income('2028-01-31', 1000, { id: 's', frequency: 'monthly' }), '2028-02-15', '2028-02-29', ['2028-02-29', '2028-03-31', '2028-04-30', '2028-05-31']],
     ['mensual del 30', income('2026-01-30', 1000, { id: 's', frequency: 'monthly' }), '2026-02-10', '2026-02-28', ['2026-02-28', '2026-03-30', '2026-04-30', '2026-05-30']],
