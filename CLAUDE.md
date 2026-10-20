@@ -137,7 +137,9 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   financiero que cambió (máx. 1000 entradas; desde v14 también plantillas, escenarios y aplazamientos de la
   bandeja, para que revertir una partición no deje referencias colgadas: PR #15, QA-05; posponer o retirar un aviso
   por sí solo no crea entrada y un aplazamiento caducado que ya no está no bloquea revertir ni se resucita, R5). Revertir solo si nada cambió después y validando
-  todo; importar/demo = corte `replace`. Es local, no una auditoría inviolable.
+  todo; importar/demo = corte `replace`. Es local, no una auditoría inviolable. El id de cada cambio sigue el contrato
+  de SU colección (`isValidHistoryChangeId`: `inboxSnoozed` → id de la bandeja, hasta `INBOX_ID_MAX` = 300; el resto
+  ≤ 64): lo que se guarda tiene que volver a leerse (F-01).
 - Deshacer importar/restaurar (`state/replaceUndo.ts`): ligado a la revisión que fija el propio reemplazo
   (`AppStore.commitTracked`, antes de esperar al almacenamiento), nunca a lo último guardado. Cualquier
   cambio posterior —de la persona o automático, aunque su escritura siga pendiente— lo invalida (RT-02).

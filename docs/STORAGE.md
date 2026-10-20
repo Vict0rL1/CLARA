@@ -105,6 +105,27 @@ Probado en `src/storage/indexedDb.test.ts` y en la prueba de navegador `data-saf
   anteriores no los tienen y siguen pudiendo revertirse; una copia v13 se restaura sin cambios. Los
   aplazamientos solo acompañan a otros cambios (posponer o retirar un aviso no crea entrada) y uno
   caducado que ya no está no cuenta como conflicto ni se resucita al revertir (revisión propia, R5).
+- **Contrato de id por colección (auditoría de seguimiento, F-01).** `validateHistory` exigía ≤ 64
+  caracteres a TODOS los ids de cambio, pero los de `inboxSnoozed` son ids de la bandeja
+  (`due:schedule:<id del programado>:<fecha>`, hasta 300): partir un programado con un id de 41 o más
+  caracteres y un aviso pospuesto se guardaba («Guardado» era cierto: IndexedDB tenía los datos
+  completos y correctos) y al recargar la validación entera los clasificaba como dañados; la copia
+  exportada tampoco se podía importar. Ahora el id de cada cambio valida con el contrato de SU
+  colección (`isValidHistoryChangeId`; `INBOX_ID_MAX` es el mismo límite que usa `validateInbox`).
+  - *Recuperación de lo ya guardado por la versión con el fallo.* No hace falta migración ni
+    reparación: los datos escritos eran correctos, solo la lectura los rechazaba. Con esta versión,
+    el mismo almacenamiento vuelve a cargar tal cual (la pantalla «No pudimos leer tus datos
+    guardados» nunca borra ni reemplaza nada: solo «Empezar de nuevo», con confirmación, lo hace, y
+    antes guarda la copia interna) y las copias exportadas por aquella versión se importan sin
+    cambios. No se acortan ids, no se descartan entradas ni aplazamientos y no se inventa ningún valor.
+    `SCHEMA_VERSION` no sube: el formato no cambió.
+  - *Por qué no hay una validación entera al guardar.* Validar `AppData` completo en cada `commit`
+    cuesta O(registros) (con 10 000–50 000 movimientos rompería el presupuesto de 500 ms y convertiría
+    un error del validador en «no se puede guardar»), y descartar la entrada o recortar el id serían
+    justo los atajos prohibidos. En su lugar los dos contratos comparten la misma constante y una
+    prueba fija cada colección en su límite exacto (64/65 y 300/301, `qaFollowUp.test.ts`), más la
+    prueba de navegador partir → guardar → recargar → deshacer → exportar → reimportar con ids de 64
+    y 47 en los tres tamaños.
 
 ## Copias locales automáticas (v2)
 

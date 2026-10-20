@@ -703,18 +703,25 @@ function validateSplits(tx: Transaction, ctx: ValidationContext): Issue[] {
 }
 
 const INBOX_MAX = 5000
+/**
+ * Los ids de la bandeja son compuestos («due:schedule:<id del programado>:<fecha>», «dup:<id>:<id>»…), así que no
+ * caben en los 64 caracteres de un id de registro. Es el mismo contrato que usa el historial para `inboxSnoozed`
+ * (`isValidHistoryChangeId`): un aviso pospuesto que se guarda tiene que poder volver a leerse.
+ */
+export const INBOX_ID_MAX = 300
+export const isValidInboxId = (id: unknown): id is string => typeof id === 'string' && id.length > 0 && id.length <= INBOX_ID_MAX
 
 export function validateInbox(inbox: InboxState, prefix = 'inbox.'): Issue[] {
   const issues: Issue[] = []
   if (!inbox || typeof inbox !== 'object' || !Array.isArray(inbox.snoozed) || !Array.isArray(inbox.dismissed)) return [{ path: prefix.slice(0, -1), code: 'invalidValue' }]
   if (inbox.snoozed.length > INBOX_MAX || inbox.dismissed.length > INBOX_MAX) issues.push({ path: prefix.slice(0, -1), code: 'tooMany', params: { max: INBOX_MAX } })
   inbox.snoozed.forEach((s, i) => {
-    if (!s || typeof s.id !== 'string' || s.id.length === 0 || s.id.length > 300) issues.push({ path: `${prefix}snoozed[${i}].id`, code: 'invalidId' })
+    if (!s || !isValidInboxId(s.id)) issues.push({ path: `${prefix}snoozed[${i}].id`, code: 'invalidId' })
     checkDate(s?.until, `${prefix}snoozed[${i}].until`, issues)
     if (!isValidTimestamp(s?.at)) issues.push({ path: `${prefix}snoozed[${i}].at`, code: 'invalidTimestamp' })
   })
   inbox.dismissed.forEach((d, i) => {
-    if (!d || typeof d.id !== 'string' || d.id.length === 0 || d.id.length > 300) issues.push({ path: `${prefix}dismissed[${i}].id`, code: 'invalidId' })
+    if (!d || !isValidInboxId(d.id)) issues.push({ path: `${prefix}dismissed[${i}].id`, code: 'invalidId' })
     if (typeof d?.fingerprint !== 'string' || d.fingerprint.length > 500) issues.push({ path: `${prefix}dismissed[${i}].fingerprint`, code: 'invalidValue' })
     if (!isValidTimestamp(d?.at)) issues.push({ path: `${prefix}dismissed[${i}].at`, code: 'invalidTimestamp' })
   })
@@ -1018,6 +1025,19 @@ const HISTORY_SOURCES: readonly HistorySource[] = ['app', 'revert', 'plan', 'rep
 /** Margen de seguridad al importar (la app conserva como mucho HISTORY_MAX_ENTRIES). */
 const HISTORY_IMPORT_MAX = 5000
 
+/** Longitud máxima de un id de registro (`isValidId`); el historial no exige el alfabeto porque guarda valores pasados. */
+const RECORD_ID_MAX = 64
+
+/**
+ * El id de un cambio del historial sigue el contrato de SU colección: `inboxSnoozed` guarda ids de la bandeja
+ * (`isValidInboxId`, hasta `INBOX_ID_MAX`); el resto, ids de registro (hasta 64). Antes se exigían 64 a todos y un
+ * aviso pospuesto de un programado con id largo (≥ 41 caracteres) se guardaba pero no volvía a cargar (F-01).
+ */
+export function isValidHistoryChangeId(collection: HistoryCollection, id: unknown): id is string {
+  if (collection === 'inboxSnoozed') return isValidInboxId(id)
+  return typeof id === 'string' && id.length > 0 && id.length <= RECORD_ID_MAX
+}
+
 /**
  * Entrada del historial. Las instantáneas (antes/después) no se validan a fondo: son valores
  * pasados. Revertir siempre vuelve a validar los datos completos antes de guardar.
@@ -1039,9 +1059,7 @@ export function validateHistory(history: HistoryEntry[], prefix = 'history'): Is
         c &&
         typeof c === 'object' &&
         HISTORY_COLLECTIONS.includes(c.collection) &&
-        typeof c.id === 'string' &&
-        c.id.length > 0 &&
-        c.id.length <= 64 &&
+        isValidHistoryChangeId(c.collection, c.id) &&
         (c.before === null || typeof c.before === 'object') &&
         (c.after === null || typeof c.after === 'object')
       if (!ok) issues.push({ path: `${p}changes[${j}]`, code: 'invalidValue' })
