@@ -481,6 +481,15 @@ export interface TextMark {
   kind: 'code' | 'symbol' | 'name'
 }
 
+/**
+ * Puntuación «monetaria» que puede separar un código del importe sin cambiar lo que dice («(RUB) 10», «RUB: 10»,
+ * «10, RUB»; también con un símbolo: «(RUB) $10»): un paréntesis o corchete alrededor del código y, como mucho, dos
+ * puntos, un igual o una coma entre medias (auditoría independiente 2026-10-19, P1). Acotado a propósito: más lejos
+ * del importe un código no cuenta («AMD GPU 500» no es el dram) y un ISO no admitido solo cuenta pegado así.
+ */
+const CODE_BEFORE = /(?<![\p{L}\p{N}])[([]?([A-Za-z]{3})[)\]]?\s*[:=,]?\s*$/u
+const CODE_AFTER = /^\s*[:=,]?\s*[([]?([A-Za-z]{3})[)\]]?(?![\p{L}\p{N}])/u
+
 function codeMark(raw: string, options: TextMarkOptions): CurrencyMark | null {
   const code = raw.toUpperCase()
   const upper = raw === code
@@ -499,7 +508,7 @@ function markBefore(before: string, at: number, options: TextMarkOptions): TextM
   if (dollar) return { mark: dollarMark(dollar[1]!), start: dollar.index, end: at, kind: 'code' }
   const symbol = /(\p{Sc})\s*$/u.exec(before)
   if (symbol) return { mark: { symbol: symbol[1]! }, start: symbol.index, end: at, kind: 'symbol' }
-  const code = /(?<![\p{L}\p{N}])([A-Za-z]{3})\s*$/u.exec(before)
+  const code = CODE_BEFORE.exec(before)
   const codeBefore = code ? codeMark(code[1]!, options) : null
   if (codeBefore) return { mark: codeBefore, start: code!.index, end: at, kind: 'code' }
   const two = /(?<![\p{L}\p{N}])(\p{L}+\s+\p{L}+)\s*$/u.exec(before)
@@ -513,7 +522,7 @@ function markAfter(text: string, from: number, options: TextMarkOptions): TextMa
   const after = text.slice(from)
   const symbol = /^\s*(\p{Sc})/u.exec(after)
   if (symbol) return { mark: { symbol: symbol[1]! }, start: from, end: from + symbol[0].length, kind: 'symbol' }
-  const code = /^\s*([A-Za-z]{3})(?![\p{L}\p{N}])/u.exec(after)
+  const code = CODE_AFTER.exec(after)
   const codeAfter = code ? codeMark(code[1]!, options) : null
   if (codeAfter) return { mark: codeAfter, start: from, end: from + code![0].length, kind: 'code' }
   const two = /^\s*(\p{L}+\s+\p{L}+)(?![\p{L}\p{N}])/u.exec(after)
@@ -523,11 +532,12 @@ function markAfter(text: string, from: number, options: TextMarkOptions): TextMa
 }
 
 /**
- * Marcas de moneda pegadas (solo espacios entre medias) al importe que ocupa `[start, end)` de un
- * texto libre: delante («GBP 10», «US$10», «€ 10», «EUR ten») y detrás («10€», «10 gbp»,
- * «ten euros», «10 pounds sterling»). Hasta dos seguidas a cada lado («USD $10», «10$ USD», «ten
- * dollars USD»): un código escrito junto a un símbolo nunca queda escondido detrás de él (QA V2,
- * CUR-01). Mismas definiciones que `stripCurrencyMark` (RT-01). En orden de lectura.
+ * Marcas de moneda pegadas (solo espacios entre medias; un código también a través de la puntuación acotada de
+ * `CODE_BEFORE`/`CODE_AFTER`) al importe que ocupa `[start, end)` de un texto libre: delante («GBP 10», «US$10»,
+ * «€ 10», «EUR ten», «(RUB) 10», «RUB: 10») y detrás («10€», «10 gbp», «ten euros», «10 pounds sterling»). Hasta dos
+ * seguidas a cada lado («USD $10», «10$ USD», «ten dollars USD», «(RUB) $10»): un código escrito junto a un símbolo
+ * nunca queda escondido detrás de él (QA V2, CUR-01). Mismas definiciones que `stripCurrencyMark` (RT-01). En orden
+ * de lectura.
  */
 export function currencyMarksAround(text: string, start: number, end: number, options: TextMarkOptions = {}): TextMark[] {
   const out: TextMark[] = []
@@ -632,8 +642,8 @@ function suffixMark(s: string): { mark: CurrencyMark; rest: string } | null {
     const name = m ? nameMark(m[2]!) : undefined
     if (m && name) return { mark: name.mark, rest: m[1]!.trim() }
   }
-  // Código: una palabra entera de tres letras («dollars» no es «ARS»).
-  const code = /^(.*\d.*?)\s*(?<![A-Za-z])([A-Za-z]{3})$/.exec(s)
+  // Código: una palabra entera de tres letras («dollars» no es «ARS»), también tras la puntuación acotada («10, RUB», «10 (RUB)»).
+  const code = /^(.*\d.*?)\s*[:=,]?\s*[([]?(?<![A-Za-z])([A-Za-z]{3})[)\]]?$/.exec(s)
   if (code) return { mark: codeMarkOf(code[2]!), rest: code[1]!.trim() }
   const symbol = /^(.*\d.*?)\s*(\p{Sc})$/u.exec(s)
   if (symbol) return { mark: { symbol: symbol[2]! }, rest: symbol[1]!.trim() }
@@ -644,7 +654,8 @@ function suffixMark(s: string): { mark: CurrencyMark; rest: string } | null {
 function prefixMark(s: string): { mark: CurrencyMark; rest: string } | null {
   const dollar = /^([A-Za-z]{0,3})\$\s*/.exec(s)
   if (dollar) return { mark: dollarMark(dollar[1]!), rest: s.slice(dollar[0].length) }
-  const code = /^([A-Za-z]{3})\s*(?=[-−+]?[\d.,]|\p{Sc})/u.exec(s)
+  // «CAD 12», «(RUB) 10», «RUB: 10»: la misma puntuación acotada que el texto libre; el signo sigue siendo del número.
+  const code = /^[([]?([A-Za-z]{3})[)\]]?\s*[:=,]?\s*(?=[-−+]?[\d.,]|\p{Sc})/u.exec(s)
   if (code) return { mark: codeMarkOf(code[1]!), rest: s.slice(code[0].length) }
   const symbol = /^(\p{Sc})\s*/u.exec(s)
   if (symbol) return { mark: { symbol: symbol[1]! }, rest: s.slice(symbol[0].length) }

@@ -101,7 +101,10 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   libre la segunda marca de un lado solo cuenta si una de las dos se escribió como código (`TextMark.kind`): «Cafe
   Euro $12» y «Peso $10» son 12 y 10 de la moneda del presupuesto (R4). En un
   recibo, en líneas de total/pago un código junto al importe cuenta aunque sea palabra («TOTAL PEN 10.00») o ISO no
-  admitido; en líneas de artículo no (CUR-03). Reglas de categoría: un solo resolutor
+  admitido; en líneas de artículo no (CUR-03). Un código pegado al importe también a través de la puntuación acotada de `CODE_BEFORE`/`CODE_AFTER`
+  («(RUB) 10», «RUB: 10», «10, RUB», «(RUB) $10», «TOTAL RUB: 10.00») cuenta en todos los lectores (`markBefore`,
+  `markAfter`, `prefixMark`, `suffixMark`); más lejos («AMD GPU 500», «(RUB) coffee 10») no, y un ISO no admitido
+  nunca cuenta lejos del importe (auditoría 2026-10-19, P1). Reglas de categoría: un solo resolutor
   (`rankRuleMatches`: patrón más largo, a igualdad la más antigua) para asistente, revisión y Ajustes; coincide
   el texto tal cual o la clave de comercio (`domain/merchants.ts`: sin prefijo «SQ *», signos ni códigos de
   referencia), siempre un superconjunto de lo de antes.
