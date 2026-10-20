@@ -1,10 +1,11 @@
 import { readFileSync } from 'node:fs'
+import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { MAX_AMOUNT_MINOR } from '../../src/domain/money'
 import { saveScheduleFrom } from '../../src/domain/scheduleFrom'
 import type { AppData, HistoryEntry, Schedule } from '../../src/domain/types'
 import { account, baseData, bill, EARLIER, income, NOW, tx } from '../../src/test/fixtures'
-import { available, expectNoHorizontalScroll, go, openApp, seedStoredData, storedData, waitForSaved, writeStoredData } from './helpers'
+import { available, expectNoHorizontalScroll, go, openApp, seedStoredData, settleAnimations, storedData, waitForSaved, writeStoredData } from './helpers'
 
 /**
  * Aceptación de navegador de la auditoría independiente de seguimiento (cabeza 46fe617). Datos sintéticos; reloj
@@ -158,6 +159,85 @@ test('F-03 · 1 gasto de MAX_AMOUNT_MINOR el 10-ago frente a 100 el 10-sep: Aná
   await go(page, '/analisis')
   await expect(page.getByText(/Este mes llevas un 9[\s.,\u00a0]?900 % más de gasto/)).toBeVisible()
   await expectNoHorizontalScroll(page, 'análisis con un porcentaje enorme')
+})
+
+/* ------------------------------------------------------------------ */
+/* F-04 · «Sin comparación» con contraste AA en oscuro                  */
+/* ------------------------------------------------------------------ */
+
+const STATS_JULY = '/estadisticas?periodo=custom&desde=2026-07-01&hasta=2026-07-31'
+const statsData = () =>
+  baseData({
+    accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 500000, date: '2026-01-01', setAt: '2026-01-01T12:00:00.000Z' } })],
+    // Solo gastos: ningún ingreso en julio ni antes, así la cifra de ingresos dice «Sin comparación».
+    transactions: [tx({ id: 'e1', date: '2026-07-10', amountMinor: 12345, kind: 'expense', status: 'realized' }), tx({ id: 'e2', date: '2026-06-05', amountMinor: 2000, kind: 'expense', status: 'realized' })],
+  })
+
+/** Contraste calculado del texto sobre el primer fondo opaco que lo rodea (WCAG 2.x). */
+async function textContrast(page: Page, selector: string) {
+  return page.evaluate((sel) => {
+    const el = document.querySelector(sel) as HTMLElement | null
+    if (!el) throw new Error(`no hay ${sel}`)
+    const parse = (c: string) => {
+      const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/.exec(c)
+      return m ? { r: +m[1]!, g: +m[2]!, b: +m[3]!, a: m[4] === undefined ? 1 : +m[4] } : null
+    }
+    const fg = parse(getComputedStyle(el).color)!
+    let node: HTMLElement | null = el
+    let bg = null as ReturnType<typeof parse>
+    while (node && (!bg || bg.a === 0)) {
+      bg = parse(getComputedStyle(node).backgroundColor)
+      node = node.parentElement
+    }
+    const lum = (c: { r: number; g: number; b: number }) => {
+      const f = (v: number) => {
+        const s = v / 255
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
+      }
+      return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b)
+    }
+    const [a, b] = [lum(fg), lum(bg!)]
+    return { fg: getComputedStyle(el).color, bg: `rgb(${bg!.r}, ${bg!.g}, ${bg!.b})`, ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05), fontSize: getComputedStyle(el).fontSize, fontWeight: getComputedStyle(el).fontWeight }
+  }, selector)
+}
+
+async function expectNeutralDeltaAA(page: Page, label: string) {
+  await go(page, STATS_JULY)
+  const neutral = page.locator('.stat__delta--neutral').first()
+  await expect(neutral, label).toBeVisible()
+  await expect(neutral, label).toHaveText('Sin comparación')
+  await settleAnimations(page)
+  const c = await textContrast(page, '.stat__delta--neutral')
+  expect(c.ratio, `${label}: ${c.fg} sobre ${c.bg} (${c.fontSize}/${c.fontWeight})`).toBeGreaterThanOrEqual(4.5)
+  const results = await new AxeBuilder({ page }).include('#main').withRules(['color-contrast']).analyze()
+  expect(results.violations.map((v) => v.nodes.map((n) => n.target.join(' ')).join(' | ')), label).toEqual([])
+}
+
+test('F-04 · tema «Oscuro» explícito: «Sin comparación» (julio personalizado sin ingresos previos) cumple AA y axe no encuentra fallos de contraste', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('clara.theme', 'dark'))
+  await seedStoredData(page, statsData())
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await expectNeutralDeltaAA(page, 'oscuro explícito')
+})
+
+test.describe('F-04 · tema «Sistema» con el sistema en oscuro', () => {
+  test.use({ colorScheme: 'dark' })
+  test('«Sin comparación» cumple AA y axe no encuentra fallos de contraste', async ({ page }) => {
+    // «Sistema» explícito (la app arranca en «Oscuro» si no hay preferencia): sin `data-theme`, manda el sistema.
+    await page.addInitScript(() => localStorage.setItem('clara.theme', 'system'))
+    await seedStoredData(page, statsData())
+    await expect(page.locator('html')).not.toHaveAttribute('data-theme', /./)
+    await expectNeutralDeltaAA(page, 'sistema oscuro')
+  })
+})
+
+test('F-04 · en claro sigue cumpliendo AA y las variaciones positiva y negativa conservan su color', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('clara.theme', 'light'))
+  await seedStoredData(page, statsData())
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+  await expectNeutralDeltaAA(page, 'claro')
+  // El gasto de julio (123,45) frente al de junio (20,00): variación con tono, no neutra.
+  await expect(page.locator('.stat__delta--bad, .stat__delta--good').first()).toBeVisible()
 })
 
 /* ------------------------------------------------------------------ */

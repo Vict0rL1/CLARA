@@ -195,7 +195,9 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
 - Guardas de maquetación (`tests/e2e/layout-guards.spec.ts`): palabras partidas, controles recortados,
   solapamientos y lo que cabe en la primera pantalla; corren en los tres tamaños.
 - Gráficos: seguir la paleta validada (`--series-*`), etiquetas selectivas, tabla alternativa. Valores con signo
-  (`signedScale`): el cero dentro del eje, nunca alturas negativas; gráfico y tabla dicen la misma cifra.
+  (`signedScale`): el cero dentro del eje, nunca alturas negativas; gráfico y tabla dicen la misma cifra. «Sin comparación» y cualquier texto
+  pequeño sobre tarjeta usan tokens con AA calculado en claro y oscuro (`themeTokens.test.ts`; `--text-muted` no
+  llega sobre `--card` en oscuro, F-04).
 - Calendario: proyecta hasta `CALENDAR_PROJECTION_MAX_DAYS` (400); más allá no hay cifra (`dayBalance` → `beyond`; fuera del
   rango exacto → `outOfRange`; la simulación usa la misma regla, R3),
   nunca el saldo del último día calculado.

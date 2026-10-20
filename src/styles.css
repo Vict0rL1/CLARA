@@ -5078,7 +5078,7 @@ li.is-selected > .item--select {
   color: var(--critical-text);
 }
 .stat__delta--neutral {
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 .donut {
   display: grid;
