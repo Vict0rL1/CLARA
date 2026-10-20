@@ -3352,4 +3352,11 @@ export const en: Record<keyof typeof es, string> = {
   'splitRepair.confirmText': 'The next dates will become {dates}. Only the date that anchors the series changes: amount, end and skipped dates stay the same. A local copy is kept first and the change goes into the history, so it can be reverted.',
   'splitRepair.done': 'Usual dates restored',
   'splitRepair.kept': 'Left as it is',
+  'history.dependents_one': 'Cannot revert: {count} record would still point to a scheduled payment this change would remove. Change or delete it first.',
+  'history.dependents_other': 'Cannot revert: {count} records would still point to a scheduled payment this change would remove. Change or delete them first.',
+  'history.dependent.template': 'Template "{name}"',
+  'history.dependent.scenario': 'Scenario "{name}"',
+  'history.dependent.goal': 'Planned expense "{name}"',
+  'history.dependent.snooze': 'Snoozed reminder for {date}',
+  'issue.revertDependents': 'Cannot revert: {count} record(s) would still point to a scheduled payment this change would remove. Change or delete them first.',
 }

@@ -167,13 +167,69 @@ export function revertConflicts(data: AppData, entry: HistoryEntry, today?: Loca
   return entry.changes.filter((c) => !same(currentValueFor(data, c), c.after) && !expiredSnoozeGone(data, c, today))
 }
 
-export function canRevert(data: AppData, entry: HistoryEntry, today?: LocalDate): 'ok' | 'notRevertible' | 'alreadyReverted' | 'conflict' {
+/**
+ * Estado candidato tras revertir la entrada (sin comprobar conflictos): cada registro vuelve a su valor anterior y,
+ * R5, un aplazamiento devuelto por ESTA entrada que ya caducó no se resucita (la bandeja lo ignoraría y otro
+ * aplazamiento lo limpiaría); los demás no se tocan. `today` solo hace falta para esa poda.
+ */
+function revertedState(data: AppData, entry: HistoryEntry, today?: LocalDate): AppData {
+  let next = data
+  for (const change of [...entry.changes].reverse()) next = setValue(next, change.collection, change.id, change.before)
+  const touched = new Set(entry.changes.filter((c) => c.collection === 'inboxSnoozed').map((c) => c.id))
+  if (touched.size > 0 && today) next = { ...next, inbox: { ...next.inbox, snoozed: next.inbox.snoozed.filter((s) => !touched.has(s.id) || s.until > today) } }
+  return next
+}
+
+/** Un registro que seguiría apuntando a un programado que la reversión eliminaría (F-02). */
+export interface RevertDependent {
+  kind: 'template' | 'scenario' | 'goal' | 'snooze'
+  id: string
+  /** Nombre del registro (plantilla, escenario o meta); la fecha de la ocurrencia para un aplazamiento. */
+  name: string
+  scheduleId: string
+}
+
+/** Referencias de `data` a programados por id (las que la partición mueve y una reversión puede dejar colgadas). */
+function scheduleReferences(data: AppData): RevertDependent[] {
+  const out: RevertDependent[] = []
+  for (const tpl of data.templates) {
+    if (tpl.kind !== 'distribution') continue
+    for (const l of tpl.lines) if (l.target.kind === 'payment') out.push({ kind: 'template', id: tpl.id, name: tpl.name, scheduleId: l.target.scheduleId })
+  }
+  for (const sc of data.scenarios) for (const c of sc.changes) if (c.type === 'scheduleAmount') out.push({ kind: 'scenario', id: sc.id, name: sc.name, scheduleId: c.scheduleId })
+  for (const g of data.goals) if (g.plan?.link) out.push({ kind: 'goal', id: g.id, name: g.name, scheduleId: g.plan.link.scheduleId })
+  for (const s of data.inbox.snoozed) {
+    const m = /^due:schedule:(.+):(\d{4}-\d{2}-\d{2})$/.exec(s.id)
+    if (m) out.push({ kind: 'snooze', id: s.id, name: m[2]!, scheduleId: m[1]! })
+  }
+  return out
+}
+
+/**
+ * Auditoría de seguimiento (F-02): registros que, tras revertir, seguirían apuntando a un programado que la reversión
+ * elimina (plantillas de distribución, escenarios, gastos planificados vinculados y aplazamientos). Pasa con una
+ * entrada de partición grabada antes de v14 (solo instantáneas de programados) y con una plantilla o escenario creados
+ * DESPUÉS de una partición corregida: las instantáneas de la entrada no los cubren. Solo cuentan las referencias que
+ * hoy resuelven y dejarían de resolver (una línea que ya apuntaba a un programado borrado sigue siendo lo que era).
+ * Vacío si la entrada no elimina ningún programado (ni se calcula el estado candidato).
+ */
+export function revertDependents(data: AppData, entry: HistoryEntry, today?: LocalDate): RevertDependent[] {
+  if (!entry.changes.some((c) => c.collection === 'schedules' && c.before === null)) return []
+  const next = revertedState(data, entry, today)
+  const remaining = new Set(next.schedules.map((s) => s.id))
+  const removed = new Set(data.schedules.filter((s) => !remaining.has(s.id)).map((s) => s.id))
+  if (removed.size === 0) return []
+  return scheduleReferences(next).filter((r) => removed.has(r.scheduleId))
+}
+
+export function canRevert(data: AppData, entry: HistoryEntry, today?: LocalDate): 'ok' | 'notRevertible' | 'alreadyReverted' | 'conflict' | 'dependents' {
   if (entry.source === 'replace' || entry.changes.length === 0) return 'notRevertible'
   // Una entrada SOLO de aplazamientos (grabada antes de R5) no se revierte: su reversión no dejaría rastro (no es un
   // cambio financiero) y la entrada volvería a ofrecerse como pendiente.
   if (entry.changes.every((c) => c.collection === 'inboxSnoozed')) return 'notRevertible'
   if (data.history.some((e) => e.revertOf === entry.id)) return 'alreadyReverted'
-  return revertConflicts(data, entry, today).length ? 'conflict' : 'ok'
+  if (revertConflicts(data, entry, today).length) return 'conflict'
+  return revertDependents(data, entry, today).length ? 'dependents' : 'ok'
 }
 
 /**
@@ -188,12 +244,9 @@ export function revertEntry(data: AppData, entryId: string, ctx: OpContext): OpR
   if (status === 'notRevertible') return { ok: false, issues: [{ path: 'history', code: 'notRevertible' }] }
   if (status === 'alreadyReverted') return { ok: false, issues: [{ path: 'history', code: 'alreadyReverted' }] }
   if (status === 'conflict') return { ok: false, issues: [{ path: 'history', code: 'revertConflict', params: { count: revertConflicts(data, entry, ctx.today).length } }] }
-  let next = data
-  for (const change of [...entry.changes].reverse()) next = setValue(next, change.collection, change.id, change.before)
-  // R5: un aplazamiento devuelto por ESTA entrada que ya caducó no se resucita (la bandeja lo ignoraría y otro
-  // aplazamiento lo limpiaría); los demás no se tocan.
-  const touched = new Set(entry.changes.filter((c) => c.collection === 'inboxSnoozed').map((c) => c.id))
-  if (touched.size > 0) next = { ...next, inbox: { ...next.inbox, snoozed: next.inbox.snoozed.filter((s) => !touched.has(s.id) || s.until > ctx.today) } }
+  // F-02: nunca se elimina un programado al que otros registros seguirían apuntando; se dice cuántos y nada cambia.
+  if (status === 'dependents') return { ok: false, issues: [{ path: 'history', code: 'revertDependents', params: { count: revertDependents(data, entry, ctx.today).length } }] }
+  const next = revertedState(data, entry, ctx.today)
   // QA-01: deshacer un cambio de moneda es otro cambio de moneda: solo si no hay importes guardados.
   if (next.settings.currency !== data.settings.currency && !canChangeCurrency(data)) {
     return { ok: false, issues: [{ path: 'history', code: 'currencyMismatch', params: { expected: data.settings.currency } }] }

@@ -960,6 +960,18 @@ Código: `src/domain/history.ts`. Pantalla: `Ajustes › Historial de cambios`.
 - **Límites.** Como mucho 1000 entradas (`HISTORY_MAX_ENTRIES`); al superarlas sale la más
   antigua y `historyStartedAt` avanza. El historial es local, viaja en las copias y se puede
   editar: **no es una auditoría inviolable**.
+- **Reversión sin referencias colgadas (auditoría de seguimiento, F-02).** Antes de eliminar un programado
+  que la entrada creó, `revertDependents` calcula el estado candidato y busca lo que seguiría apuntando a
+  él: líneas de plantillas de distribución (`target.kind: 'payment'`), cambios de escenarios
+  (`scheduleAmount`), gastos planificados vinculados (`plan.link`) y aplazamientos (`due:schedule:<id>:`).
+  Si hay alguno, `canRevert` devuelve `dependents`, la pantalla lista cada registro (plantilla, escenario,
+  gasto planificado o aviso del {fecha}) y `revertEntry` rechaza con `revertDependents` sin cambiar nada.
+  Pasa con una entrada grabada antes de v14 (solo instantáneas de programados, aunque la partición movió
+  plantillas, escenarios y aplazamientos) y con una plantilla, escenario o meta creados DESPUÉS de una
+  partición corregida. Solo cuentan las referencias que hoy resuelven y dejarían de resolver: una línea
+  que ya apuntaba a un programado borrado no bloquea (semántica de destino ausente intacta), y una entrada
+  que no elimina programados no calcula nada. No se inventan instantáneas: la persona cambia o borra esos
+  registros y entonces la reversión vuelve a ofrecerse.
 
 ## 27. «¿Qué cambió?»
 

@@ -110,6 +110,7 @@ export type IssueCode =
   | 'revertConflict'
   | 'alreadyReverted'
   | 'notRevertible'
+  | 'revertDependents'
 
 export interface Issue {
   /** Campo afectado, por ejemplo 'amountMinor' o 'transactions[3].date'. */

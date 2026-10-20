@@ -3350,4 +3350,11 @@ export const fr: Record<keyof typeof es, string> = {
   'splitRepair.confirmText': 'Les prochaines dates deviendront {dates}. Seule la date qui fixe la série change : montant, fin et dates omises restent identiques. Une copie locale est conservée d\'abord et le changement figure dans l\'historique, il peut donc être annulé.',
   'splitRepair.done': 'Dates habituelles rétablies',
   'splitRepair.kept': 'Laissé tel quel',
+  'history.dependents_one': 'Impossible d\'annuler : {count} enregistrement pointerait encore vers un paiement programmé que ce changement supprimerait. Modifiez-le ou supprimez-le d\'abord.',
+  'history.dependents_other': 'Impossible d\'annuler : {count} enregistrements pointeraient encore vers un paiement programmé que ce changement supprimerait. Modifiez-les ou supprimez-les d\'abord.',
+  'history.dependent.template': 'Modèle « {name} »',
+  'history.dependent.scenario': 'Scénario « {name} »',
+  'history.dependent.goal': 'Dépense planifiée « {name} »',
+  'history.dependent.snooze': 'Rappel reporté du {date}',
+  'issue.revertDependents': 'Impossible d\'annuler : {count} enregistrement(s) pointeraient encore vers un paiement programmé que ce changement supprimerait. Modifiez-les ou supprimez-les d\'abord.',
 }

@@ -3351,4 +3351,11 @@ export const es = {
   'splitRepair.confirmText': 'Las próximas fechas pasarán a ser {dates}. Solo cambia la fecha que fija la serie: importe, fin y fechas omitidas siguen igual. Antes se guarda una copia local y el cambio queda en el historial, así que se puede revertir.',
   'splitRepair.done': 'Fechas de siempre restauradas',
   'splitRepair.kept': 'Se deja como está',
+  'history.dependents_one': 'No se puede revertir: {count} registro seguiría apuntando a un programado que este cambio eliminaría. Cámbialo o bórralo primero.',
+  'history.dependents_other': 'No se puede revertir: {count} registros seguirían apuntando a un programado que este cambio eliminaría. Cámbialos o bórralos primero.',
+  'history.dependent.template': 'Plantilla «{name}»',
+  'history.dependent.scenario': 'Escenario «{name}»',
+  'history.dependent.goal': 'Gasto planificado «{name}»',
+  'history.dependent.snooze': 'Aviso aplazado del {date}',
+  'issue.revertDependents': 'No se puede revertir: {count} registro(s) seguirían apuntando a un programado que este cambio eliminaría. Cámbialos o bórralos primero.',
 } as const

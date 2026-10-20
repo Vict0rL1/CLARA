@@ -3350,4 +3350,11 @@ export const pt: Record<keyof typeof es, string> = {
   'splitRepair.confirmText': 'As próximas datas passarão a ser {dates}. Só muda a data que fixa a série: valor, fim e datas omitidas continuam iguais. Antes é guardada uma cópia local e a alteração fica no histórico, por isso pode ser revertida.',
   'splitRepair.done': 'Datas de sempre restauradas',
   'splitRepair.kept': 'Fica como está',
+  'history.dependents_one': 'Não é possível reverter: {count} registro continuaria apontando para um agendamento que esta alteração eliminaria. Altere-o ou exclua-o primeiro.',
+  'history.dependents_other': 'Não é possível reverter: {count} registros continuariam apontando para um agendamento que esta alteração eliminaria. Altere-os ou exclua-os primeiro.',
+  'history.dependent.template': 'Modelo "{name}"',
+  'history.dependent.scenario': 'Cenário "{name}"',
+  'history.dependent.goal': 'Despesa planejada "{name}"',
+  'history.dependent.snooze': 'Aviso adiado de {date}',
+  'issue.revertDependents': 'Não é possível reverter: {count} registro(s) continuariam apontando para um agendamento que esta alteração eliminaria. Altere-os ou exclua-os primeiro.',
 }

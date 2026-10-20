@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
-import { account, baseData, bill, income } from '../../src/test/fixtures'
+import { saveScheduleFrom } from '../../src/domain/scheduleFrom'
+import type { AppData, HistoryEntry, Schedule } from '../../src/domain/types'
+import { account, baseData, bill, EARLIER, income, NOW } from '../../src/test/fixtures'
 import { available, expectNoHorizontalScroll, go, openApp, seedStoredData, storedData, waitForSaved, writeStoredData } from './helpers'
 
 /**
@@ -94,6 +96,49 @@ for (const oldLen of [64, 47]) {
     await expectNoHorizontalScroll(page, 'inicio tras reimportar la copia')
   })
 }
+
+/* ------------------------------------------------------------------ */
+/* F-02 · deshacer no elimina una serie a la que otros registros apuntan */
+/* ------------------------------------------------------------------ */
+
+test('F-02 · una partición grabada por una versión anterior (solo instantáneas de programados): el historial explica qué seguiría apuntando a la serie que desaparecería, no ofrece «Revertir» y nada cambia', async ({ page }) => {
+  const rent = bill('2026-06-01', 65000, { id: 'old', name: 'Renta', frequency: 'monthly', categoryId: 'housing' })
+  const base = baseData({
+    accounts: [account({ id: 'main', name: 'Principal', anchor: anchor(100000) })],
+    schedules: [rent],
+    templates: [{ id: 't', name: 'Quincena', kind: 'distribution', lines: [{ target: { kind: 'payment', scheduleId: 'old' }, amount: { mode: 'fixed', amountMinor: 65000 } }], createdAt: EARLIER, updatedAt: EARLIER }],
+    scenarios: [{ id: 'sc', name: 'Si sube', changes: [{ type: 'scheduleAmount', scheduleId: 'old', newAmountMinor: 72000 }], baseFingerprint: 'x', createdAt: EARLIER, updatedAt: EARLIER }],
+    inbox: { snoozed: [{ id: 'due:schedule:old:2026-10-01', until: '2026-10-20', at: EARLIER }], dismissed: [] },
+  })
+  const { createdAt: _c, updatedAt: _u, currency: _cur, skippedDates: _k, ...rest } = rent as Schedule
+  const split = saveScheduleFrom(base, 'old', { ...rest, id: 'next', startDate: '2026-10-01', amountMinor: 70000 }, { today: '2026-09-28', now: NOW })
+  if (!split.ok) throw new Error(JSON.stringify(split.issues))
+  const legacy: HistoryEntry = {
+    id: 'h-legacy',
+    at: NOW,
+    source: 'app',
+    changes: [
+      { collection: 'schedules', id: 'old', before: rent, after: split.data.schedules.find((s) => s.id === 'old')! },
+      { collection: 'schedules', id: 'next', before: null, after: split.data.schedules.find((s) => s.id === 'next')! },
+    ],
+  }
+  const data: AppData = { ...split.data, history: [legacy] }
+  await seedStoredData(page, data)
+  await go(page, '/ajustes/historial')
+  const entry = page.locator('article.history-entry', { hasText: 'Renta' }).first()
+  const note = entry.getByTestId('history-dependents')
+  await expect(note).toContainText('No se puede revertir: 3 registros seguirían apuntando a un programado que este cambio eliminaría')
+  await expect(note).toContainText('Plantilla «Quincena»')
+  await expect(note).toContainText('Escenario «Si sube»')
+  await expect(note).toContainText('Aviso aplazado del 1 oct')
+  await expect(entry.getByRole('button', { name: 'Revertir' })).toHaveCount(0)
+  await expectNoHorizontalScroll(page, 'historial con una partición antigua no revertible')
+  await page.reload()
+  const stored = JSON.parse((await storedData(page)) ?? '{}') as Stored
+  expect(stored.schedules.map((s) => s.id).sort()).toEqual(['next', 'old'])
+  expect(stored.templates[0]!.lines[0]!.target).toEqual({ kind: 'payment', scheduleId: 'next' })
+  expect(stored.inbox.snoozed.map((s) => s.id)).toEqual(['due:schedule:next:2026-10-01'])
+})
 
 /* ------------------------------------------------------------------ */
 /* QA-01 histórico · revisión y reparación de particiones antiguas      */

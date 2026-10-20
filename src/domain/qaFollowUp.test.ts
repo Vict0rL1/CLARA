@@ -4,7 +4,7 @@
  * aquí a partir de su descripción.
  */
 import { describe, expect, it } from 'vitest'
-import { recordHistory, revertEntry } from './history'
+import { canRevert, recordHistory, revertDependents, revertEntry } from './history'
 import { snoozeInboxItem } from './inbox'
 import { saveScheduleFrom } from './scheduleFrom'
 import { type ScheduleDraft } from './operations'
@@ -15,7 +15,7 @@ import { backupText, parseBackup, validateAppData } from '../storage/backup'
 import { computeBudget } from './budget'
 import { dismissSplitRepair, driftedSplits, repairSplit } from './splitRepair'
 import { occurrencesBetween } from './recurrence'
-import { account, baseData, bill, income, NOW } from '../test/fixtures'
+import { account, baseData, bill, EARLIER, goal, income, NOW } from '../test/fixtures'
 
 const persisted = (d: AppData): AppData => JSON.parse(JSON.stringify(d)) as AppData
 const idOf = (n: number) => 'a'.repeat(n)
@@ -106,6 +106,79 @@ describe('F-01 · recuperación: lo que guardó la versión con el fallo (ids de
     expect(imported.ok ? [] : imported.issues).toEqual([])
     // Sin migración ni reparación: los datos eran correctos, solo la lectura los rechazaba.
     expect(imported.ok && imported.data).toEqual(written)
+  })
+})
+
+describe('F-02 · deshacer no elimina un programado al que otros registros seguirían apuntando', () => {
+  const rent = bill('2026-06-01', 65000, { id: 'old', name: 'Renta', frequency: 'monthly', categoryId: 'housing' })
+  const seed = (): AppData =>
+    baseData({
+      schedules: [rent],
+      templates: [{ id: 't', name: 'Quincena', kind: 'distribution', lines: [{ target: { kind: 'payment', scheduleId: 'old' }, amount: { mode: 'fixed', amountMinor: 65000 } }], createdAt: EARLIER, updatedAt: EARLIER }],
+      scenarios: [{ id: 'sc', name: 'Si sube', changes: [{ type: 'scheduleAmount', scheduleId: 'old', newAmountMinor: 72000 }], baseFingerprint: 'x', createdAt: EARLIER, updatedAt: EARLIER }],
+      inbox: { snoozed: [{ id: 'due:schedule:old:2026-10-01', until: '2026-10-20', at: EARLIER }], dismissed: [] },
+    })
+  const draft = (): ScheduleDraft => amountOnly(rent, '2026-10-01', 70000, 'next')
+  const split = (d: AppData) => {
+    const r = saveScheduleFrom(d, 'old', draft(), at('2026-09-28'))
+    if (!r.ok) throw new Error(JSON.stringify(r.issues))
+    return r.data
+  }
+  const ctx = at('2026-09-28')
+
+  it('entrada antigua (esquema 13: solo instantáneas de programados): revertir se rechaza, se dice qué apunta a la serie que desaparecería y nada cambia', () => {
+    const d = seed()
+    const after = split(d)
+    // Lo que 819eaa9 grababa: la partición sin las plantillas, escenarios ni aplazamientos que movió.
+    const legacy: HistoryEntry = {
+      id: 'h-legacy',
+      at: NOW,
+      source: 'app',
+      changes: [
+        { collection: 'schedules', id: 'old', before: d.schedules[0]!, after: after.schedules.find((s) => s.id === 'old')! },
+        { collection: 'schedules', id: 'next', before: null, after: after.schedules.find((s) => s.id === 'next')! },
+      ],
+    }
+    const stored = persisted({ ...after, history: [legacy] })
+    const serialized = JSON.stringify(stored)
+    expect(canRevert(stored, legacy, ctx.today)).toBe('dependents')
+    expect(revertDependents(stored, legacy, ctx.today)).toEqual([
+      { kind: 'template', id: 't', name: 'Quincena', scheduleId: 'next' },
+      { kind: 'scenario', id: 'sc', name: 'Si sube', scheduleId: 'next' },
+      { kind: 'snooze', id: 'due:schedule:next:2026-10-01', name: '2026-10-01', scheduleId: 'next' },
+    ])
+    expect(revertEntry(stored, 'h-legacy', ctx)).toEqual({ ok: false, issues: [{ path: 'history', code: 'revertDependents', params: { count: 3 } }] })
+    expect(JSON.stringify(stored)).toBe(serialized)
+  })
+
+  it('una plantilla, un escenario o un gasto planificado creados DESPUÉS de una partición corregida (v14) también la bloquean; la de siempre (QA-05) sigue revirtiéndose', () => {
+    const d = seed()
+    const tracked = recordHistory(d, split(d), NOW)
+    const entry = tracked.history.at(-1)!
+    expect(canRevert(tracked, entry, ctx.today)).toBe('ok')
+    const laterTemplate: AppData = { ...tracked, templates: [...tracked.templates, { id: 't2', name: 'Nueva', kind: 'distribution', lines: [{ target: { kind: 'payment', scheduleId: 'next' }, amount: { mode: 'fixed', amountMinor: 100 } }], createdAt: NOW, updatedAt: NOW }] }
+    const withTemplate = recordHistory(tracked, laterTemplate, NOW)
+    expect(canRevert(withTemplate, entry, ctx.today)).toBe('dependents')
+    expect(revertDependents(withTemplate, entry, ctx.today)).toEqual([{ kind: 'template', id: 't2', name: 'Nueva', scheduleId: 'next' }])
+    expect(revertEntry(withTemplate, entry.id, ctx)).toMatchObject({ ok: false, issues: [{ code: 'revertDependents', params: { count: 1 } }] })
+
+    const laterGoal: AppData = {
+      ...tracked,
+      goals: [...tracked.goals, goal({ id: 'g', name: 'Seguro', kind: 'expense', targetMinor: 20000, targetDate: '2026-11-01', plan: { link: { scheduleId: 'next', occurrenceDate: '2026-11-01' }, history: [] } })],
+    }
+    expect(revertDependents(recordHistory(tracked, laterGoal, NOW), entry, ctx.today)).toMatchObject([{ kind: 'goal', id: 'g', name: 'Seguro' }])
+  })
+
+  it('una referencia que ya no resolvía antes no cuenta (semántica de destino ausente intacta) y una entrada que no elimina programados no calcula nada', () => {
+    const base = seed()
+    const d: AppData = { ...base, templates: [...base.templates, { id: 'ghost', name: 'Vieja', kind: 'distribution', lines: [{ target: { kind: 'payment', scheduleId: 'borrado' }, amount: { mode: 'fixed', amountMinor: 100 } }], createdAt: EARLIER, updatedAt: EARLIER }] }
+    const tracked = recordHistory(d, split(d), NOW)
+    const entry = tracked.history.at(-1)!
+    expect(revertDependents(tracked, entry, ctx.today)).toEqual([])
+    expect(canRevert(tracked, entry, ctx.today)).toBe('ok')
+    // Un cambio de importe sin partir: la entrada no crea programados, así que no hay nada que evaluar.
+    const edited = recordHistory(tracked, { ...tracked, schedules: tracked.schedules.map((s) => (s.id === 'next' ? { ...s, amountMinor: 71000, updatedAt: NOW } : s)) }, NOW)
+    expect(revertDependents(edited, edited.history.at(-1)!, ctx.today)).toEqual([])
   })
 })
 
