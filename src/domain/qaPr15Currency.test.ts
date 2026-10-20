@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest'
 import { computeBudget } from './budget'
 import { canChangeCurrency, monetaryRecords } from './currencyChange'
-import { revertEntry } from './history'
+import { revertEntry } from './historyRevert'
 import { changeCurrency } from './operations'
 import type { AppData, HistoryEntry } from './types'
 import { account, baseData, ctx, EARLIER, TODAY } from '../test/fixtures'

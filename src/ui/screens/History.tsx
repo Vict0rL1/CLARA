@@ -4,7 +4,7 @@
  * después; si no, se explica qué registro cambió. Ver domain/history.ts.
  */
 import { useMemo, useState } from 'react'
-import { canRevert, revertConflicts, revertDependents, revertEntry } from '../../domain/history'
+import { canRevert, revertConflicts, revertDependents, revertEntry } from '../../domain/historyRevert'
 import type { HistoryEntry } from '../../domain/types'
 import type { Issue } from '../../domain/validation'
 import { useT } from '../../i18n'

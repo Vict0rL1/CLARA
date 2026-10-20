@@ -283,7 +283,8 @@ describe('REC-02 · los metadatos de una copia se validan antes de darla por bue
 /* ------------------------------------------------------------------ */
 /* 6 · Historial tras recargar                                         */
 /* ------------------------------------------------------------------ */
-import { canRevert, recordHistory, revertEntry, sameValue } from './history'
+import { recordHistory, sameValue } from './history'
+import { canRevert, revertEntry } from './historyRevert'
 import { saveAccount, saveGoal, saveSchedule } from './operations'
 
 describe('6 · revertir tras recargar: el orden de las claves no es un cambio', () => {

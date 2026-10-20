@@ -4,7 +4,8 @@
  * aquí a partir de su descripción.
  */
 import { describe, expect, it } from 'vitest'
-import { canRevert, recordHistory, revertDependents, revertEntry } from './history'
+import { recordHistory } from './history'
+import { canRevert, revertDependents, revertEntry } from './historyRevert'
 import { snoozeInboxItem } from './inbox'
 import { saveScheduleFrom } from './scheduleFrom'
 import { type ScheduleDraft } from './operations'

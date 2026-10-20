@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { canChangeCurrency, monetaryRecords } from './currencyChange'
-import { recordHistory, revertEntry } from './history'
+import { recordHistory } from './history'
+import { revertEntry } from './historyRevert'
 import { changeCurrency, updateSettings } from './operations'
 import { validateAppData } from '../storage/backup'
 import { account, baseData, ctx, EARLIER, goal, NOW, TODAY, tx } from '../test/fixtures'

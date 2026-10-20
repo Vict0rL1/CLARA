@@ -4,7 +4,8 @@
  * (= CUR-02) están en `qaV2.test.ts` y `tests/e2e/qa-v2.spec.ts`; la aceptación de navegador en `tests/e2e/qa-pr15.spec.ts`.
  */
 import { describe, expect, it } from 'vitest'
-import { canRevert, diffForHistory, recordHistory, revertEntry } from './history'
+import { diffForHistory, recordHistory } from './history'
+import { canRevert, revertEntry } from './historyRevert'
 import { snoozeInboxItem, unsnoozeInboxItem } from './inbox'
 import { saveTransaction, type ScheduleDraft } from './operations'
 import { saveScheduleFrom } from './scheduleFrom'

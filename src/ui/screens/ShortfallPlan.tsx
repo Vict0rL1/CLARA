@@ -5,7 +5,7 @@
  */
 import { useMemo, useState } from 'react'
 import { isValidLocalDate } from '../../domain/dates'
-import { revertEntry } from '../../domain/history'
+import { revertEntry } from '../../domain/historyRevert'
 import { estimateDailySpend } from '../../domain/projection'
 import { analyzeShortfall, applyShortfallPlan, evaluateLevers, leverBasis, type ShortfallLever } from '../../domain/shortfall'
 import type { AppData, IncomeScenario } from '../../domain/types'
