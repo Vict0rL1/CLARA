@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
-import { account, baseData, bill } from '../../src/test/fixtures'
-import { expectNoHorizontalScroll, go, seedStoredData, storedData, waitForSaved } from './helpers'
+import { account, baseData, bill, income } from '../../src/test/fixtures'
+import { available, expectNoHorizontalScroll, go, openApp, seedStoredData, storedData, waitForSaved, writeStoredData } from './helpers'
 
 /**
  * Aceptación de navegador de la auditoría independiente de seguimiento (cabeza 46fe617). Datos sintéticos; reloj
@@ -95,3 +95,91 @@ for (const oldLen of [64, 47]) {
   })
 }
 
+/* ------------------------------------------------------------------ */
+/* QA-01 histórico · revisión y reparación de particiones antiguas      */
+/* ------------------------------------------------------------------ */
+
+const MARCH = new Date('2026-03-15T12:00:00-04:00')
+/** La auditoría (esquema 13, hecho por 819eaa9): saldo CAD 1 800, seguro de 1 250 el 29-mar, sueldo del 31 partido el 28-feb solo por importe. */
+const v13Audit = () => ({
+  ...baseData({
+    accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 180000, date: '2026-03-01', setAt: '2026-03-01T12:00:00.000Z' } })],
+    schedules: [
+      income('2026-01-31', 300000, { id: 'salary-old', name: 'Sueldo', frequency: 'monthly', endDate: '2026-02-27' }),
+      income('2026-02-28', 320000, { id: 'salary-new', name: 'Sueldo', frequency: 'monthly' }),
+      bill('2026-03-29', 125000, { id: 'bill', name: 'Seguro', frequency: 'once' }),
+    ],
+  }),
+  schemaVersion: 13,
+})
+
+async function seedV13(page: Page) {
+  await openApp(page, MARCH)
+  await expect(page.getByRole('heading', { name: 'Hola, esto es Clara' })).toBeVisible()
+  await writeStoredData(page, v13Audit())
+  await page.reload()
+  await expect(page.getByTestId('available')).toBeVisible()
+}
+
+test('QA-01 histórico · datos v13 con el sueldo del 31 partido el 28-feb: tras migrar, Ajustes › Datos lo muestra (28-mar frente a 31-mar); restaurar deja 1 250 reservados y $550.00 disponibles tras recargar y en la copia', async ({ page }) => {
+  await seedV13(page)
+  // Lo que vio la auditoría: horizonte 28-mar, el seguro del 29 fuera, 1 800 disponibles.
+  await expect(await available(page)).toHaveText('$1,800.00')
+  await go(page, '/ajustes/datos')
+  const card = page.getByTestId('split-repair')
+  await expect(card).toBeVisible()
+  await expect(card.getByTestId('split-repair-current')).toContainText('28 mar')
+  await expect(card.getByTestId('split-repair-proposed')).toContainText('31 mar')
+  await expect(card.getByTestId('split-repair-proposed')).toContainText('30 abr')
+  await expectNoHorizontalScroll(page, 'revisión de particiones antiguas')
+  await card.getByRole('button', { name: 'Restaurar las fechas de siempre' }).click()
+  const dialog = page.getByRole('dialog', { name: '¿Restaurar las fechas de siempre de «Sueldo»?' })
+  await expect(dialog).toContainText('31 mar')
+  await dialog.getByRole('button', { name: 'Restaurar las fechas de siempre' }).click()
+  await expect(page.getByText('Fechas de siempre restauradas').first()).toBeVisible()
+  await waitForSaved(page)
+  await expect(card).toHaveCount(0)
+  const stored = JSON.parse((await storedData(page)) ?? '{}') as Stored
+  expect(stored.schedules.find((s) => s.id === 'salary-new')).toMatchObject({ startDate: '2026-02-28', anchorDate: '2026-01-31', amountMinor: 320000 })
+  expect(stored.schedules.find((s) => s.id === 'salary-old')).toMatchObject({ startDate: '2026-01-31', endDate: '2026-02-27' })
+  expect(stored.schedules.find((s) => s.id === 'salary-old')?.anchorDate).toBeUndefined()
+
+  await page.reload()
+  await go(page, '/')
+  await expect(await available(page)).toHaveText('$550.00')
+  await expect(page.getByTestId('split-repair')).toHaveCount(0)
+  // El cambio queda en el historial (se puede revertir) y la copia local previa existe.
+  await go(page, '/ajustes/historial')
+  await expect(page.locator('article.history-entry').first()).toContainText('Sueldo')
+  await expect(page.locator('article.history-entry').first().getByRole('button', { name: 'Revertir' })).toBeVisible()
+  await go(page, '/ajustes/copias-locales')
+  await expect(page.locator('#main')).toContainText(/Antes de restaurar|antes de restaurar/)
+  // Exportar e importar la copia conserva la reparación.
+  const backup = await exportBackup(page)
+  expect(backup.data.schedules.find((s) => s.id === 'salary-new')?.anchorDate).toBe('2026-01-31')
+  await page.getByTestId('import-file').setInputFiles({ name: 'copia.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(backup)) })
+  await page.getByRole('dialog', { name: '¿Reemplazar tus datos con esta copia?' }).getByRole('button', { name: 'Reemplazar datos' }).click()
+  await expect(page.getByText('Copia importada').first()).toBeVisible()
+  await waitForSaved(page)
+  await go(page, '/')
+  await expect(await available(page)).toHaveText('$550.00')
+})
+
+test('QA-01 histórico · «Dejar como está» conserva el 28 a propósito: la revisión desaparece, sigue sin aparecer tras recargar y el disponible sigue siendo $1,800.00', async ({ page }) => {
+  await seedV13(page)
+  await go(page, '/ajustes/datos')
+  const card = page.getByTestId('split-repair')
+  await expect(card).toBeVisible()
+  await card.getByRole('button', { name: 'Dejar como está' }).click()
+  await expect(page.getByText('Se deja como está').first()).toBeVisible()
+  await waitForSaved(page)
+  await expect(card).toHaveCount(0)
+  await page.reload()
+  await go(page, '/ajustes/datos')
+  await expect(page.getByTestId('split-repair')).toHaveCount(0)
+  const stored = JSON.parse((await storedData(page)) ?? '{}') as Stored
+  expect(stored.schedules.find((s) => s.id === 'salary-new')?.anchorDate).toBeUndefined()
+  expect(stored.inbox.dismissed.map((d) => d.id)).toEqual(['int:split:salary-new'])
+  await go(page, '/')
+  await expect(await available(page)).toHaveText('$1,800.00')
+})

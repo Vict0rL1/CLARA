@@ -12,7 +12,10 @@ import type { AppData, Schedule } from './types'
 import { HISTORY_COLLECTIONS, INBOX_ID_MAX, isValidHistoryChangeId, validateHistory } from './validation'
 import type { HistoryEntry } from './types'
 import { backupText, parseBackup, validateAppData } from '../storage/backup'
-import { account, baseData, bill, NOW } from '../test/fixtures'
+import { computeBudget } from './budget'
+import { dismissSplitRepair, driftedSplits, repairSplit } from './splitRepair'
+import { occurrencesBetween } from './recurrence'
+import { account, baseData, bill, income, NOW } from '../test/fixtures'
 
 const persisted = (d: AppData): AppData => JSON.parse(JSON.stringify(d)) as AppData
 const idOf = (n: number) => 'a'.repeat(n)
@@ -106,3 +109,92 @@ describe('F-01 · recuperación: lo que guardó la versión con el fallo (ids de
   })
 })
 
+describe('QA-01 histórico · particiones hechas por 819eaa9 (esquema 13, sin `anchorDate`): revisión y reparación confirmada', () => {
+  const TODAY = '2026-03-15'
+  const c = at(TODAY)
+  /** La auditoría: saldo CAD 1 800, factura de 1 250 el 29-mar, sueldo mensual del 31 partido el 28-feb (el 31 movido) solo por importe. */
+  const audit = (): AppData =>
+    baseData({
+      accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 180000, date: '2026-03-01', setAt: '2026-03-01T12:00:00.000Z' } })],
+      schedules: [
+        income('2026-01-31', 300000, { id: 'salary-old', name: 'Sueldo', frequency: 'monthly', endDate: '2026-02-27' }),
+        income('2026-02-28', 320000, { id: 'salary-new', name: 'Sueldo', frequency: 'monthly' }),
+        bill('2026-03-29', 125000, { id: 'bill', name: 'Seguro', frequency: 'once' }),
+      ],
+    })
+
+  it('se detecta: hoy cuenta desde el 28 (28-mar, 28-abr, 28-may) y con la fecha de siempre sería 31-mar, 30-abr, 31-may', () => {
+    const d = audit()
+    expect(driftedSplits(d, TODAY)).toEqual([
+      { scheduleId: 'salary-new', endedId: 'salary-old', name: 'Sueldo', anchor: '2026-01-31', startDate: '2026-02-28', current: ['2026-03-28', '2026-04-28', '2026-05-28'], proposed: ['2026-03-31', '2026-04-30', '2026-05-31'] },
+    ])
+    // El efecto financiero del deslizamiento (lo que vio la auditoría tras importar): horizonte 28-mar, nada reservado, 1 800 disponibles.
+    const before = computeBudget(d, TODAY)
+    expect([before.horizon?.endDate, before.reservedTotalMinor, before.availableMinor]).toEqual(['2026-03-28', 0, 180000])
+  })
+
+  it('reparar (confirmado) devuelve la fecha de siempre al tramo nuevo y nada más: horizonte 31-mar, 1 250 reservados, 550 disponibles; persiste en la copia', () => {
+    const d = audit()
+    const r = repairSplit(d, 'salary-new', c)
+    if (!r.ok) throw new Error(JSON.stringify(r.issues))
+    expect(r.value).toMatchObject({ id: 'salary-new', anchorDate: '2026-01-31', startDate: '2026-02-28', amountMinor: 320000 })
+    expect(r.data.schedules.find((s) => s.id === 'salary-old')).toEqual(d.schedules[0])
+    expect(occurrencesBetween(r.value, TODAY, '2026-06-30')).toEqual(['2026-03-31', '2026-04-30', '2026-05-31', '2026-06-30'])
+    const after = computeBudget(r.data, TODAY)
+    expect([after.horizon?.endDate, after.reservedTotalMinor, after.availableMinor]).toEqual(['2026-03-31', 125000, 55000])
+    expect(driftedSplits(r.data, TODAY)).toEqual([])
+    // Guardar, recargar, exportar y reimportar: la reparación se conserva y sigue validando.
+    const stored = persisted(recordHistory(d, r.data, c.now))
+    expect(validateAppData(stored).ok).toBe(true)
+    const imported = parseBackup(backupText(stored, new Date(c.now), 'test'))
+    expect(imported.ok && computeBudget(imported.data, TODAY).availableMinor).toBe(55000)
+    // Es una edición normal del programado: se puede revertir desde el historial.
+    const back = revertEntry(stored, stored.history.at(-1)!.id, c)
+    expect(back.ok && back.data.schedules.find((s) => s.id === 'salary-new')?.anchorDate).toBeUndefined()
+  })
+
+  it('«Dejar como está» conserva el 28 a propósito, deja de proponerse (descarte con huella) y vuelve a proponerse solo si el tramo cambia de fechas', () => {
+    const d = audit()
+    const r = dismissSplitRepair(d, 'salary-new', c)
+    if (!r.ok) throw new Error(JSON.stringify(r.issues))
+    expect(r.data.schedules).toEqual(d.schedules)
+    expect(r.data.inbox.dismissed).toEqual([{ id: 'int:split:salary-new', fingerprint: '2026-02-28||2026-01-31', at: c.now }])
+    expect(driftedSplits(r.data, TODAY)).toEqual([])
+    expect(computeBudget(r.data, TODAY).horizon?.endDate).toBe('2026-03-28')
+    expect(repairSplit(r.data, 'salary-new', c)).toMatchObject({ ok: false, issues: [{ code: 'notFound' }] })
+    expect(validateAppData(persisted(r.data)).ok).toBe(true)
+  })
+
+  it('no se señalan: una partición hecha por v14 (con `anchorDate`), un reanclaje explícito en una fecha ajena a la serie, un tramo ya terminado ni una serie sin partir', () => {
+    const d = audit()
+    const fixed: AppData = { ...d, schedules: d.schedules.map((s) => (s.id === 'salary-new' ? { ...s, anchorDate: '2026-01-31' } : s)) }
+    expect(driftedSplits(fixed, TODAY)).toEqual([])
+    // Partida el 15-feb (no es fecha de la serie del 31): la persona cambió el día adrede.
+    const explicit: AppData = { ...d, schedules: d.schedules.map((s) => (s.id === 'salary-old' ? { ...s, endDate: '2026-02-14' } : s.id === 'salary-new' ? { ...s, startDate: '2026-02-15' } : s)) }
+    expect(driftedSplits(explicit, TODAY)).toEqual([])
+    const ended: AppData = { ...d, schedules: d.schedules.map((s) => (s.id === 'salary-new' ? { ...s, endDate: '2026-03-01' } : s)) }
+    expect(driftedSplits(ended, TODAY)).toEqual([])
+    expect(driftedSplits(baseData({ schedules: [income('2026-01-31', 300000, { id: 'salary', name: 'Sueldo', frequency: 'monthly' })] }), TODAY)).toEqual([])
+  })
+
+  it('una cadena de particiones antiguas (31 → 28-feb → 28-abr) propone la fecha del primer tramo (el 31) para el último', () => {
+    const d = audit()
+    const chain: AppData = {
+      ...d,
+      schedules: [
+        ...d.schedules.map((s) => (s.id === 'salary-new' ? { ...s, endDate: '2026-04-27' } : s)),
+        income('2026-04-28', 330000, { id: 'salary-3', name: 'Sueldo', frequency: 'monthly' }),
+      ],
+    }
+    const found = driftedSplits(chain, '2026-04-20')
+    expect(found.map((f) => [f.scheduleId, f.anchor, f.proposed[0]])).toEqual([['salary-3', '2026-01-31', '2026-04-30']])
+  })
+
+  it('una partición nueva hecha hoy con la versión corregida no aparece nunca en la revisión', () => {
+    const d = baseData({ schedules: [income('2026-01-31', 300000, { id: 'salary', name: 'Sueldo', frequency: 'monthly' })] })
+    const r = saveScheduleFrom(d, 'salary', amountOnly(d.schedules[0]!, '2026-02-28', 320000, 'salary-2'), at('2026-02-20'))
+    if (!r.ok) throw new Error(JSON.stringify(r.issues))
+    expect(r.data.schedules.find((s) => s.id === 'salary-2')?.anchorDate).toBe('2026-01-31')
+    expect(driftedSplits(r.data, '2026-03-15')).toEqual([])
+  })
+})

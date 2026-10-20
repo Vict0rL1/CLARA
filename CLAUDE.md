@@ -61,7 +61,12 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   (frecuencia, intervalo, segundo día) y en una fecha de la serie, el tramo nuevo conserva la fecha que fija la serie
   (`anchorDate`, v14; `splitKeepsAnchor`): el 31 sigue siendo el 31 aunque empiece un 28-feb movido y «1 y 20»
   siguen siendo 1 y 20 (PR #15, QA-01). `startDate` es solo el límite desde el que cuenta; las fechas, la validación
-  de «dos veces al mes» y la ayuda salen de `anchorOf`.
+  de «dos veces al mes» y la ayuda salen de `anchorOf`. Las particiones hechas ANTES de v14 (sin `anchorDate`) no se
+  reescriben al migrar: `domain/splitRepair.ts` (`driftedSplits`) las detecta de forma conservadora (tramo activo sin
+  `anchorDate`, antecesor del mismo nombre, tipo y regla que termina el día antes, partido en una fecha de la serie y
+  con fechas distintas a las de siempre) y Ajustes › Datos las muestra con fechas actuales y propuestas; reparar
+  (`repairSplit`) solo pone `anchorDate`, con confirmación, copia local previa y entrada en el historial; «Dejar como
+  está» (`dismissSplitRepair`) es un descarte de la bandeja con huella y nunca cambia fechas.
 - Operaciones idempotentes: el id se genera al abrir el formulario; guardar dos veces
   actualiza el mismo registro.
 - Importación CSV (`domain/bankImport.ts`): huella `importRef` (referencia del banco o descripción

@@ -1450,3 +1450,30 @@ compactos ni se redondean para calcular.
   copia del origen) vive dentro del centro; `/ajustes/almacenamiento` sigue llegando. Nunca hay
   sincronización ni cuenta: si el navegador borra sus datos, solo se recupera lo exportado.
 
+## 44. Revisión y reparación de particiones antiguas (`domain/splitRepair.ts`, auditoría de seguimiento, QA-01 histórico)
+
+- **Qué pasó.** Antes de v14, partir una serie «desde una fecha» cambiando solo el importe dejaba el tramo
+  nuevo contando desde la fecha elegida: un sueldo del 31 partido el 28-feb (el 31 movido) pasaba a
+  cobrarse el 28. La migración 13 → 14 no lo corrige a ciegas (no adivina intenciones ni reescribe
+  fechas): el dato que lo arregla (`anchorDate`) lo decide la persona.
+- **Detección** (`driftedSplits(data, hoy)`), conservadora (ante la duda, nada): un tramo B que repite,
+  sin `anchorDate` y activo (sin fin o con fin ≥ hoy); un tramo A del mismo nombre, tipo y regla
+  (frecuencia, intervalo, segundo día) que termina el día antes de que B empiece; B empieza en una
+  fecha de la serie de A (si no, fue un reanclaje explícito y se respeta); y con la fecha de siempre las
+  próximas ocurrencias de B (400 días) serían otras. La fecha de siempre es `anchorOf` del primer tramo
+  de la cadena (A pudo ser a su vez un tramo partido: 31 → 28-feb → 28-abr propone el 31). Lo que la
+  versión corregida parte nunca aparece (lleva `anchorDate` o no se desplaza).
+- **Qué se muestra** (Ajustes › Datos): nombre, «hoy cuenta desde el {fecha}: próximas 3 fechas» y
+  «como siempre (la serie se fija el {fecha}): próximas 3 fechas», con «Descargar copia antes».
+- **Reparar** (`repairSplit`, con confirmación): pone `anchorDate` = fecha de siempre en B y nada más
+  (importe, fin, omitidas y el tramo A siguen igual); antes se guarda una copia local «antes de
+  restaurar» (si no se puede guardar, no se repara) y el cambio queda en el historial como cualquier
+  edición de un programado, así que se puede revertir. La auditoría: saldo CAD 1 800, seguro de 1 250 el
+  29-mar, sueldo del 31 partido el 28-feb: antes horizonte 28-mar, 0 reservados, 1 800 disponibles;
+  reparado, horizonte 31-mar, 1 250 reservados, 550 disponibles, también tras recargar y en la copia.
+- **Dejar como está** (`dismissSplitRepair`): descarte de la bandeja (`int:split:<id>`) con huella
+  `startDate|anchorDate|fecha de siempre`; no cambia ninguna fecha y deja de proponerse mientras el
+  tramo no cambie de fechas.
+- **Límite declarado.** Solo se revisan particiones reconocibles por su forma; una partición antigua
+  cuyo tramo anterior se borró, se renombró o cambió de regla no se puede distinguir de una serie
+  nueva y no se propone (la persona la edita a mano: «Repetir» muestra la fecha que fija la serie).
