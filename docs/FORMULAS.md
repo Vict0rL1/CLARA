@@ -1245,10 +1245,15 @@ Pruebas: `ui/preferences.test.ts` y e2e `personalize.spec.ts`.
 - **Comercio**: primera de las seis primeras líneas con ≥ 60 % de mayúsculas (o capitalizada), con letras, sin importes
   ni palabras de total/identificación fiscal. La categoría se sugiere pasando el comercio por el parser (diccionario,
   aprendizaje y reglas); sin coincidencia, «otros gastos».
-- **Moneda impresa** (RT-01; QA V2, CUR-03): en una línea de total, subtotal, impuesto, propina, cambio o pago (efectivo,
-  tarjeta, Visa…) un código junto al importe es la moneda, aunque sea una palabra corriente («TOTAL PEN 10.00») o una
-  moneda que la app no admite («TOTAL RUB 10.00»); en una línea de artículo no («PEN 2.99» es un bolígrafo). Los
-  símbolos cuentan en cualquier línea. Todas las marcas se unen como en un importe (§1): distinta de la del
+- **Moneda impresa** (RT-01; QA V2, CUR-03): junto al importe que una palabra de total, subtotal, impuesto, propina,
+  cambio o pago (efectivo, tarjeta, Visa…) ETIQUETA, un código es la moneda, aunque sea una palabra corriente
+  («TOTAL PEN 10.00», «TOTAL 10.00 PEN») o una moneda que la app no admite («TOTAL RUB 10.00», y a través de la
+  puntuación acotada de §32: «TOTAL RUB: 10.00», «TOTAL (RUB) 10.00»); en una línea de artículo no («PEN 2.99» es un
+  bolígrafo). Cada palabra etiqueta el primer importe que la sigue en su línea (o, si no hay ninguno detrás, el
+  último que la precede): lo que va antes de la palabra es mercancía aunque comparta línea («PEN 2.99 TAX 0.10» con
+  «TOTAL CAD 3.09» propone 3,09 CAD sin conflicto; auditoría independiente 2026-10-19, P2). Las palabras se reconocen
+  con límites de letra Unicode («À PAYER», «ESPÈCES» también al principio; `\b` era solo ASCII). Los símbolos cuentan
+  en cualquier línea. Todas las marcas se unen como en un importe (§1): distinta de la del
   presupuesto → `foreignCurrency` (el total se propone con ella escrita y la línea queda bloqueada); dos distintas →
   `currencyConflict`. Nunca se convierte. Las pruebas usan texto OCR sintético: no prueban una cámara ni un servicio
   de OCR reales.

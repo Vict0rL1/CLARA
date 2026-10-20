@@ -27,10 +27,12 @@ export interface ReceiptResult {
   currencyConflict?: readonly [string, string]
 }
 
-const TOTAL_WORDS = /\b(total|importe|monto|amount\s*due|amount|montant|a\s*pagar|to\s*pay|à\s*payer|valor|sum[a]?)\b/i
-const NOT_TOTAL = /\b(sub\s*-?total|iva|tax|tip|propina|cambio|change|vuelto|descuento|discount|efectivo|cash|tarjeta|card|pts?|puntos|points)\b/i
+// Palabras enteras con límites de letra Unicode (`\b` es solo ASCII y dejaba fuera «À PAYER» o «ÉSPÈCES» al principio
+// de la palabra; auditoría independiente 2026-10-19, P2).
+const TOTAL_WORDS = /(?<!\p{L})(total|importe|monto|amount\s*due|amount|montant|a\s*pagar|to\s*pay|à\s*payer|valor|sum[a]?)(?!\p{L})/iu
+const NOT_TOTAL = /(?<!\p{L})(sub\s*-?total|iva|tax|tip|propina|cambio|change|vuelto|descuento|discount|efectivo|cash|tarjeta|card|pts?|puntos|points)(?!\p{L})/iu
 /** Pago y cobro (además de los de `NOT_TOTAL`): en estas líneas, un código junto al importe es la moneda. */
-const TENDER_WORDS = /\b(visa|mastercard|amex|d[eé]bito|debit|cr[eé]dito|credit|pago|paid|payment|tendered|troco|dinheiro|esp[eè]ces|monnaie|rendu|igv)\b/i
+const TENDER_WORDS = /(?<!\p{L})(visa|mastercard|amex|d[eé]bito|debit|cr[eé]dito|credit|pago|paid|payment|tendered|troco|dinheiro|esp[eè]ces|monnaie|rendu|igv)(?!\p{L})/iu
 const AMOUNT = /(?<![\d,.])(\d{1,3}(?:[.,\s]\d{3})+|\d+)(?:[.,](\d{1,2}))?(?![\d])/g
 
 function toMinor(whole: string, frac: string | undefined, digits: number): number | null {
@@ -135,16 +137,29 @@ export function parseReceiptText(text: string, ctx: ParseContext): ReceiptResult
   return { totalMinor: total, date, merchant, categoryId, confidence, amountsMinor: sorted, ...written }
 }
 
+/** Palabras de total, subtotal, impuestos, propina, cambio y pago, con su posición en la línea. */
+const MONEY_WORDS = new RegExp(`${TOTAL_WORDS.source}|${NOT_TOTAL.source}|${TENDER_WORDS.source}`, 'giu')
+
 /**
- * Monedas impresas en una línea del recibo: pegadas a un importe o un símbolo suelto. En una línea de
- * total, subtotal, impuestos, propina o pago, un código junto al importe es la moneda aunque sea una
- * palabra («TOTAL PEN 10.00») o una moneda que la app no admite («TOTAL RUB 10.00»): QA V2, CUR-03. En
- * una línea de artículo no («PEN 2.99» es un bolígrafo).
+ * Monedas impresas en una línea del recibo: pegadas a un importe o un símbolo suelto. Junto al importe que una
+ * palabra de total, subtotal, impuestos, propina o pago ETIQUETA, un código es la moneda aunque sea una palabra
+ * («TOTAL PEN 10.00», «TOTAL 10.00 PEN») o una moneda que la app no admite («TOTAL RUB 10.00», «TOTAL (RUB) 10.00»,
+ * «TOTAL RUB: 10.00»): QA V2, CUR-03. Cada palabra etiqueta el primer importe que la sigue (o, si no hay ninguno
+ * detrás, el último que la precede): lo que va antes de la palabra es mercancía, aunque esté en la misma línea
+ * («PEN 2.99 TAX 0.10» es un bolígrafo con su impuesto en otra columna; auditoría independiente 2026-10-19, P2), y en
+ * una línea de artículo un código que es palabra o un ISO no admitido no cuenta («PEN 2.99»).
  */
 function receiptMarks(line: string): TextMark[] {
-  const money = TOTAL_WORDS.test(line) || NOT_TOTAL.test(line) || TENDER_WORDS.test(line)
-  const options = { receipt: !money }
-  const out = currencyMarksIn(line, options)
-  for (const m of line.matchAll(AMOUNT)) out.push(...currencyMarksAround(line, m.index!, m.index! + m[0].length, options))
+  const amounts = [...line.matchAll(AMOUNT)].map((m) => ({ start: m.index!, end: m.index! + m[0].length }))
+  const labeled = new Set<number>()
+  for (const k of line.matchAll(MONEY_WORDS)) {
+    const end = k.index! + k[0].length
+    const next = amounts.findIndex((a) => a.start >= end)
+    if (next >= 0) labeled.add(next)
+    else if (amounts.length > 0) labeled.add(amounts.length - 1)
+  }
+  // Símbolos sueltos siempre; códigos y nombres solo pegados a su importe, según lo que ese importe sea.
+  const out = currencyMarksIn(line, { receipt: true })
+  amounts.forEach((a, i) => out.push(...currencyMarksAround(line, a.start, a.end, { receipt: !labeled.has(i) })))
   return out.sort((a, b) => a.start - b.start)
 }

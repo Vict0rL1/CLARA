@@ -97,3 +97,41 @@ describe('P1 · una moneda no admitida separada del importe por puntuación se c
   })
 })
 
+describe('P2 · un artículo «PEN» con su impuesto en la misma línea no es el sol peruano', () => {
+  it('«SHOP / PEN 2.99 TAX 0.10 / TOTAL CAD 3.09» propone 3.09 sin conflicto', () => {
+    expect(written(receipt('SHOP\nPEN 2.99 TAX 0.10\nTOTAL CAD 3.09'))).toEqual([309, null, null])
+  })
+  it('la variante sin el total escrito en CAD propone 3.09 sin moneda (también con «IVA» y «TPS»)', () => {
+    expect(written(receipt('SHOP\nPEN 2.99 TAX 0.10\nTOTAL 3.09'))).toEqual([309, null, null])
+    expect(written(receipt('TIENDA\nPEN 2.99 IVA 0.10\nTOTAL 3.09', 'es'))).toEqual([309, null, null])
+    expect(written(receipt('SHOP\nPEN 2.99 TIP 0.10\nTOTAL 3.09'))).toEqual([309, null, null])
+  })
+  it('controles: la moneda junto al importe que etiqueta el total, el subtotal o el pago sigue contando', () => {
+    expect(written(receipt('SHOP\nTOTAL PEN 10.00'))).toEqual([1000, 'PEN', null])
+    expect(written(receipt('SHOP\nSUBTOTAL PEN 9.00\nIGV 1.00\nTOTAL 10.00'))).toEqual([1000, 'PEN', null])
+    expect(written(receipt('SHOP\nTOTAL 10.00\nCASH USD 20.00'))).toEqual([1000, 'USD', null])
+    expect(written(receipt('SHOP\nTOTAL 10.00\nVISA RUB 10.00'))).toEqual([1000, 'RUB', null])
+    expect(written(receipt('SHOP\nTOTAL 10.00 PEN'))).toEqual([1000, 'PEN', null])
+    expect(written(receipt('SHOP\nTAX PEN 0.10\nTOTAL 3.09'))).toEqual([309, 'PEN', null])
+    // Dos monedas impresas: conflicto, nunca la del presupuesto.
+    expect(written(receipt('SHOP\nTOTAL USD 10.00\nCASH PEN 37.00'))).toEqual([1000, null, ['USD', 'PEN']])
+    expect(written(receipt('SHOP\nPEN 2.99 TAX 0.10\nTOTAL USD 3.09'))).toEqual([309, 'USD', null])
+  })
+  it('etiquetas en es/en/pt/fr, también con acento al principio de la palabra («À PAYER», «ESPÈCES»)', () => {
+    expect(written(receipt('CAFÉ\nPEN 2.99 TAXE 0.10\nTOTAL À PAYER CAD 3.09', 'fr'))).toEqual([309, null, null])
+    expect(written(receipt('CAFÉ\nÀ PAYER RUB 10.00', 'fr'))).toEqual([1000, 'RUB', null])
+    expect(written(receipt('CAFÉ\nTOTAL 10.00\nESPÈCES USD 20.00', 'fr'))).toEqual([1000, 'USD', null])
+    expect(written(receipt('LOJA\nTOTAL 10.00\nDÉBITO PEN 10.00', 'pt'))).toEqual([1000, 'PEN', null])
+    expect(written(receipt('LOJA\nTOTAL 10.00\nTROCO PEN 1.00', 'pt'))).toEqual([1000, 'PEN', null])
+    expect(written(receipt('TIENDA\nIMPORTE PEN 10,00', 'es'))).toEqual([1000, 'PEN', null])
+    expect(written(receipt('TIENDA\nMONTO (RUB) 10,00', 'es'))).toEqual([1000, 'RUB', null])
+  })
+  it('controles de nombres de artículo y texto engañoso que ya existían', () => {
+    for (const text of ['STAPLES\nPEN 2.99\nTOTAL 2.99', 'PEN SHOP\nTOTAL 10.00', 'SHOP\nTRY OUR APP\nTOTAL 10.00', 'SHOP\nBOB CASHIER\nTOTAL 10.00', 'SHOP\nTOTAL PENS 10.00', 'SHOP\nTOTAL ITEMS 3\nTOTAL 10.00']) {
+      const r = receipt(text)
+      expect(r.foreignCurrency, text).toBeUndefined()
+      expect(r.currencyConflict, text).toBeUndefined()
+    }
+    expect(receipt('STAPLES\nPEN 2.99\nTOTAL PEN 2.99').foreignCurrency).toBe('PEN')
+  })
+})

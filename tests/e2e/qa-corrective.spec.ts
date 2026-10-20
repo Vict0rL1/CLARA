@@ -93,3 +93,34 @@ for (const total of ['TOTAL RUB: 10.00', 'TOTAL (RUB) 10.00']) {
   })
 }
 
+for (const lines of [
+  ['SHOP', 'PEN 2.99 TAX 0.10', 'TOTAL CAD 3.09'],
+  ['SHOP', 'PEN 2.99 TAX 0.10', 'TOTAL 3.09'],
+] as const) {
+  test(`P2 · foto (OCR sintético): «${lines[1]}» con «${lines[2]}» propone 3.09 en CAD sin conflicto y se registra`, async ({ page }) => {
+    await fakeTextDetector(page, lines)
+    await startDemo(page)
+    await go(page, '/asistente')
+    await page.getByTestId('photo-input').setInputFiles({ name: 'recibo.png', mimeType: 'image/png', buffer: tinyPng(8) })
+    const line = page.getByTestId('assistant-preview').locator('.assistant__line').first()
+    await expect(line.getByLabel('Importe')).toHaveValue('3.09')
+    await expect(page.getByTestId('assistant-currency-blocked')).toHaveCount(0)
+    await expect(line.getByText(/No se convierte/)).toHaveCount(0)
+    const register = page.getByRole('button', { name: 'Registrar 1 movimiento' })
+    await expect(register).toBeEnabled()
+    await register.click()
+    await expect(page.getByText('1 movimiento registrado').first()).toBeVisible()
+    await reloadWhenSaved(page)
+    await expect(page.getByTestId('available')).toBeVisible()
+    expect((await stored(page)).transactions.find((t) => t.amountMinor === 309)).toMatchObject({ currency: 'CAD' })
+  })
+}
+
+test('P2 · control (OCR sintético): «TOTAL PEN 10.00» sigue bloqueado como moneda extranjera', async ({ page }) => {
+  await fakeTextDetector(page, ['SHOP', 'PEN 2.99 TAX 0.10', 'TOTAL PEN 10.00'])
+  await startDemo(page)
+  await go(page, '/asistente')
+  await page.getByTestId('photo-input').setInputFiles({ name: 'recibo.png', mimeType: 'image/png', buffer: tinyPng(8) })
+  const line = page.getByTestId('assistant-preview').locator('.assistant__line').first()
+  await expectBlocked(page, line, '10.00 PEN', 'El importe está en PEN; este presupuesto usa CAD. No se convierte.')
+})
