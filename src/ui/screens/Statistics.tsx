@@ -96,13 +96,22 @@ export function Statistics({ route }: { route: Route }) {
   const label = (p: SeriesPoint) => (p.range.period ? periodLabel(t, fmt, p.range.period) : t('home.period.range', { from: fmt.date(p.range.start, { compact: true }), to: fmt.date(p.range.end, { compact: true }) }))
   const title = label({ range, incomeMinor: 0, expensesMinor: 0 })
   // Eje de las barras: etiqueta corta («sep», «T3», «2026», «28 sep»); la completa va en el tooltip y la tabla.
-  const axisLabel = (p: SeriesPoint) => {
+  // F-05: para semanas, quincenas y periodos personalizados se ofrecen dos formas (fecha compacta —sin el año si es el
+  // de hoy— y «día mes» en el estilo de fecha elegido) y el gráfico dibuja la más larga que cabe en cada hueco.
+  const dayMonth = (date: string) => {
+    if (data.settings.dateStyle === 'iso') return date.slice(5)
+    const locale = DATE_LOCALE[data.settings.language]
+    const d = new Date(`${date}T12:00:00Z`)
+    if (data.settings.dateStyle === 'short') return new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit', timeZone: 'UTC' }).format(d)
+    return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(d).replace(/\./g, '').replace(/ de /g, ' ')
+  }
+  const axisLabel = (p: SeriesPoint): string | readonly string[] => {
     const per = p.range.period
     if (per?.type === 'year') return String(per.anchorYear)
     if (per?.type === 'month') return new Intl.DateTimeFormat(DATE_LOCALE[data.settings.language], { month: 'short', timeZone: 'UTC' }).format(new Date(`${p.range.start}T12:00:00Z`)).replace('.', '')
     if (per?.type === 'quarter') return t('stats.axisQuarter', { n: Math.floor((per.anchorMonth - 1) / 3) + 1 })
     if (per?.type === 'semester') return t('stats.axisSemester', { n: per.anchorMonth <= 6 ? 1 : 2 })
-    return fmt.date(p.range.start, { compact: true })
+    return [fmt.date(p.range.start, { compact: true, today }), dayMonth(p.range.start)]
   }
   // QA V2 (STAT-01): las fechas de un periodo personalizado viven en la dirección como el resto; cambiar un filtro
   // las conserva y escribirlas las actualiza (sin navegar), así sobreviven a recargar y a compartir el enlace.

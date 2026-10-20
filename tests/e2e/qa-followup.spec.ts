@@ -5,7 +5,7 @@ import { MAX_AMOUNT_MINOR } from '../../src/domain/money'
 import { saveScheduleFrom } from '../../src/domain/scheduleFrom'
 import type { AppData, HistoryEntry, Schedule } from '../../src/domain/types'
 import { account, baseData, bill, EARLIER, income, NOW, tx } from '../../src/test/fixtures'
-import { available, expectNoHorizontalScroll, go, openApp, seedStoredData, settleAnimations, storedData, waitForSaved, writeStoredData } from './helpers'
+import { available, expectNoHorizontalScroll, go, openApp, seedStoredData, setLanguage, settleAnimations, storedData, waitForSaved, writeStoredData, type UiLanguage } from './helpers'
 
 /**
  * Aceptación de navegador de la auditoría independiente de seguimiento (cabeza 46fe617). Datos sintéticos; reloj
@@ -238,6 +238,52 @@ test('F-04 · en claro sigue cumpliendo AA y las variaciones positiva y negativa
   await expectNeutralDeltaAA(page, 'claro')
   // El gasto de julio (123,45) frente al de junio (20,00): variación con tono, no neutra.
   await expect(page.locator('.stat__delta--bad, .stat__delta--good').first()).toBeVisible()
+})
+
+/* ------------------------------------------------------------------ */
+/* F-05 · etiquetas del eje sin solaparse (es/en/pt/fr)                 */
+/* ------------------------------------------------------------------ */
+
+test('F-05 · periodo personalizado 1–31 de julio, seis puntos: las etiquetas del eje no se solapan ni se recortan en es/en/pt/fr; tooltip, nombre accesible y tabla conservan la fecha completa', async ({ page }) => {
+  test.setTimeout(120_000)
+  await seedStoredData(page, statsData())
+  for (const language of ['Español', 'English', 'Português', 'Français'] as UiLanguage[]) {
+    await setLanguage(page, language)
+    await go(page, STATS_JULY)
+    await expect(page.locator('.bars__svg')).toBeVisible()
+    await settleAnimations(page)
+    const where = `${language} ${test.info().project.name}`
+    const layout = await page.evaluate(() => {
+      const svg = document.querySelector('.bars__svg')!
+      const box = svg.getBoundingClientRect()
+      const labels = Array.from(svg.querySelectorAll('text.stats-axis')).map((t) => {
+        const r = t.getBoundingClientRect()
+        return { text: t.textContent ?? '', left: r.left, right: r.right }
+      })
+      const hits = Array.from(svg.querySelectorAll('.bars__hit')).map((h) => h.getAttribute('aria-label') ?? '')
+      return { box: { left: box.left, right: box.right }, labels: labels.sort((a, b) => a.left - b.left), hits }
+    })
+    expect(layout.labels.map((l) => l.text), where).toHaveLength(6)
+    for (let i = 1; i < layout.labels.length; i++) {
+      expect(layout.labels[i]!.left, `${where}: «${layout.labels[i - 1]!.text}» y «${layout.labels[i]!.text}»`).toBeGreaterThanOrEqual(layout.labels[i - 1]!.right + 1)
+    }
+    for (const l of layout.labels) {
+      expect(l.left, `${where}: «${l.text}» recortada`).toBeGreaterThanOrEqual(layout.box.left - 0.5)
+      expect(l.right, `${where}: «${l.text}» recortada`).toBeLessThanOrEqual(layout.box.right + 0.5)
+    }
+    // La fecha completa sigue en la tabla (se abre con su botón «Ver tabla», el único con `aria-expanded` del gráfico),
+    // en el nombre accesible de cada grupo y en el tooltip.
+    await page.locator('.bars button[aria-expanded="false"]').click({ timeout: 5000 })
+    await expect(page.locator('.bars .data-table')).toBeVisible()
+    const periods = await page.locator('.bars .data-table tbody tr td:first-child').allTextContents()
+    expect(periods, where).toHaveLength(6)
+    for (let i = 0; i < 6; i++) {
+      expect(periods[i]!.length, where).toBeGreaterThan(layout.labels[i]!.text.length)
+      expect(layout.hits[i], where).toContain(periods[i]!)
+    }
+    await expect(page.getByTestId('bars-tooltip'), where).toContainText(periods[5]!)
+    await expectNoHorizontalScroll(page, where)
+  }
 })
 
 /* ------------------------------------------------------------------ */
