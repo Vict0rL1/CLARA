@@ -62,3 +62,8 @@ Responde «Sí» o «No» y por qué (código de salida 0 o 1).
 4. Si el fallo estaba en la migración misma, la copia previa (`margen.data.before-v12` en el
    navegador de cada persona) sigue ahí: el arreglo puede volver a migrar desde ella. Nunca se borra
    para «solucionar» una incompatibilidad.
+5. Suelo de la auditoría de seguimiento (F-01): el esquema 14 no cambió, pero las versiones anteriores
+   a `7e5e5d0` rechazaban al recargar un historial con ids de aviso de más de 64 caracteres (los de
+   `inboxSnoozed`, hasta 300) que ellas mismas habían guardado. Volver a un despliegue anterior a ese
+   commit volvería a dejar esos presupuestos como «datos dañados» (sin borrar nada), así que ante un
+   problema en v14 se corrige hacia delante: nunca por debajo de `7e5e5d0`.

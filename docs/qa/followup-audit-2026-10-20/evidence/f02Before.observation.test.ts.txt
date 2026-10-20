@@ -1,0 +1,38 @@
+/** Evidencia «antes» (46fe617): revertir una entrada antigua elimina la serie nueva y deja plantilla, escenario y aplazamiento apuntando a ella. */
+import { describe, expect, it } from 'vitest'
+import { canRevert, revertEntry } from './history'
+import { saveScheduleFrom } from './scheduleFrom'
+import type { ScheduleDraft } from './operations'
+import type { AppData, HistoryEntry, Schedule } from './types'
+import { baseData, bill, EARLIER, NOW } from '../test/fixtures'
+
+describe('F-02 antes del arreglo', () => {
+  it('revertEntry acepta la entrada antigua y deja referencias colgadas', () => {
+    const rent = bill('2026-06-01', 65000, { id: 'old', name: 'Renta', frequency: 'monthly', categoryId: 'housing' })
+    const d: AppData = baseData({
+      schedules: [rent],
+      templates: [{ id: 't', name: 'Quincena', kind: 'distribution', lines: [{ target: { kind: 'payment', scheduleId: 'old' }, amount: { mode: 'fixed', amountMinor: 65000 } }], createdAt: EARLIER, updatedAt: EARLIER }],
+      scenarios: [{ id: 'sc', name: 'Si sube', changes: [{ type: 'scheduleAmount', scheduleId: 'old', newAmountMinor: 72000 }], baseFingerprint: 'x', createdAt: EARLIER, updatedAt: EARLIER }],
+      inbox: { snoozed: [{ id: 'due:schedule:old:2026-10-01', until: '2026-10-20', at: EARLIER }], dismissed: [] },
+    })
+    const { createdAt: _c, updatedAt: _u, currency: _cur, skippedDates: _k, ...rest } = rent as Schedule
+    const draft: ScheduleDraft = { ...rest, id: 'next', startDate: '2026-10-01', amountMinor: 70000 }
+    const r = saveScheduleFrom(d, 'old', draft, { today: '2026-09-28', now: NOW })
+    if (!r.ok) throw new Error('split')
+    const legacy: HistoryEntry = { id: 'h', at: NOW, source: 'app', changes: [
+      { collection: 'schedules', id: 'old', before: rent, after: r.data.schedules.find((s) => s.id === 'old')! },
+      { collection: 'schedules', id: 'next', before: null, after: r.data.schedules.find((s) => s.id === 'next')! },
+    ] }
+    const stored: AppData = { ...r.data, history: [legacy] }
+    expect(canRevert(stored, legacy, '2026-09-28')).toBe('ok')
+    const back = revertEntry(stored, 'h', { today: '2026-09-28', now: NOW })
+    if (!back.ok) throw new Error('revert refused')
+    expect(back.data.schedules.map((s) => s.id)).toEqual(['old'])
+    const tpl = back.data.templates[0]!
+    const target = tpl.kind === 'distribution' ? tpl.lines[0]!.target : null
+    // Lo que queda colgado tras revertir:
+    expect(target).toEqual({ kind: 'payment', scheduleId: 'next' })
+    expect(back.data.scenarios[0]!.changes[0]).toMatchObject({ scheduleId: 'next' })
+    expect(back.data.inbox.snoozed.map((s) => s.id)).toEqual(['due:schedule:next:2026-10-01'])
+  })
+})

@@ -1,0 +1,1037 @@
+before run: whole follow-up spec against the build of 46fe617b98c93902751bcf1949b226adfed65dce (2026-10-20T05:32:02Z)
+
+Running 30 tests using 2 workers
+
+  ✘   1 [celular] › tests/e2e/qa-followup.spec.ts:45:3 › F-01 · factura CAD 400 con id de 47 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta (7.7s)
+  ✘   2 [celular] › tests/e2e/qa-followup.spec.ts:45:3 › F-01 · factura CAD 400 con id de 64 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta (7.8s)
+  ✘   3 [celular] › tests/e2e/qa-followup.spec.ts:106:1 › F-02 · una partición grabada por una versión anterior (solo instantáneas de programados): el historial explica qué seguiría apuntando a la serie que desaparecería, no ofrece «Revertir» y nada cambia (7.2s)
+  ✘   4 [celular] › tests/e2e/qa-followup.spec.ts:149:1 › F-03 · 1 gasto de MAX_AMOUNT_MINOR el 10-ago frente a 100 el 10-sep: Análisis muestra 9 900 % en vez de fallar (7.4s)
+  ✘   5 [celular] › tests/e2e/qa-followup.spec.ts:216:1 › F-04 · tema «Oscuro» explícito: «Sin comparación» (julio personalizado sin ingresos previos) cumple AA y axe no encuentra fallos de contraste (2.2s)
+  ✘   6 [celular] › tests/e2e/qa-followup.spec.ts:225:3 › F-04 · tema «Sistema» con el sistema en oscuro › «Sin comparación» cumple AA y axe no encuentra fallos de contraste (2.3s)
+  ✘   7 [celular] › tests/e2e/qa-followup.spec.ts:231:1 › F-04 · en claro sigue cumpliendo AA y las variaciones positiva y negativa conservan su color (2.3s)
+  ✘   8 [celular] › tests/e2e/qa-followup.spec.ts:242:1 › F-05 · periodo personalizado 1–31 de julio, seis puntos: las etiquetas del eje no se solapan ni se recortan en es/en/pt/fr; tooltip, nombre accesible y tabla conservan la fecha completa (3.0s)
+  ✘   9 [celular] › tests/e2e/qa-followup.spec.ts:310:1 › QA-01 histórico · datos v13 con el sueldo del 31 partido el 28-feb: tras migrar, Ajustes › Datos lo muestra (28-mar frente a 31-mar); restaurar deja 1 250 reservados y $550.00 disponibles tras recargar y en la copia (7.1s)
+  ✘  10 [celular] › tests/e2e/qa-followup.spec.ts:354:1 › QA-01 histórico · «Dejar como está» conserva el 28 a propósito: la revisión desaparece, sigue sin aparecer tras recargar y el disponible sigue siendo $1,800.00 (6.8s)
+  ✘  11 [celular-pequeno] › tests/e2e/qa-followup.spec.ts:45:3 › F-01 · factura CAD 400 con id de 64 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta (7.6s)
+  ✘  12 [celular-pequeno] › tests/e2e/qa-followup.spec.ts:45:3 › F-01 · factura CAD 400 con id de 47 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta (7.4s)
+  ✘  13 [celular-pequeno] › tests/e2e/qa-followup.spec.ts:106:1 › F-02 · una partición grabada por una versión anterior (solo instantáneas de programados): el historial explica qué seguiría apuntando a la serie que desaparecería, no ofrece «Revertir» y nada cambia (6.9s)
+  ✘  14 [celular-pequeno] › tests/e2e/qa-followup.spec.ts:149:1 › F-03 · 1 gasto de MAX_AMOUNT_MINOR el 10-ago frente a 100 el 10-sep: Análisis muestra 9 900 % en vez de fallar (6.7s)
+  ✘  15 [celular-pequeno] › tests/e2e/qa-followup.spec.ts:216:1 › F-04 · tema «Oscuro» explícito: «Sin comparación» (julio personalizado sin ingresos previos) cumple AA y axe no encuentra fallos de contraste (2.1s)
+  ✘  16 [celular-pequeno] › tests/e2e/qa-followup.spec.ts:225:3 › F-04 · tema «Sistema» con el sistema en oscuro › «Sin comparación» cumple AA y axe no encuentra fallos de contraste (2.2s)
+  ✘  17 [celular-pequeno] › tests/e2e/qa-followup.spec.ts:231:1 › F-04 · en claro sigue cumpliendo AA y las variaciones positiva y negativa conservan su color (2.1s)
+  ✘  18 [celular-pequeno] › tests/e2e/qa-followup.spec.ts:242:1 › F-05 · periodo personalizado 1–31 de julio, seis puntos: las etiquetas del eje no se solapan ni se recortan en es/en/pt/fr; tooltip, nombre accesible y tabla conservan la fecha completa (2.9s)
+  ✘  19 [celular-pequeno] › tests/e2e/qa-followup.spec.ts:310:1 › QA-01 histórico · datos v13 con el sueldo del 31 partido el 28-feb: tras migrar, Ajustes › Datos lo muestra (28-mar frente a 31-mar); restaurar deja 1 250 reservados y $550.00 disponibles tras recargar y en la copia (7.0s)
+  ✘  20 [celular-pequeno] › tests/e2e/qa-followup.spec.ts:354:1 › QA-01 histórico · «Dejar como está» conserva el 28 a propósito: la revisión desaparece, sigue sin aparecer tras recargar y el disponible sigue siendo $1,800.00 (6.7s)
+  ✘  21 [escritorio] › tests/e2e/qa-followup.spec.ts:45:3 › F-01 · factura CAD 400 con id de 64 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta (7.9s)
+  ✘  22 [escritorio] › tests/e2e/qa-followup.spec.ts:45:3 › F-01 · factura CAD 400 con id de 47 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta (7.4s)
+  ✘  23 [escritorio] › tests/e2e/qa-followup.spec.ts:106:1 › F-02 · una partición grabada por una versión anterior (solo instantáneas de programados): el historial explica qué seguiría apuntando a la serie que desaparecería, no ofrece «Revertir» y nada cambia (7.0s)
+  ✘  24 [escritorio] › tests/e2e/qa-followup.spec.ts:149:1 › F-03 · 1 gasto de MAX_AMOUNT_MINOR el 10-ago frente a 100 el 10-sep: Análisis muestra 9 900 % en vez de fallar (7.0s)
+  ✘  25 [escritorio] › tests/e2e/qa-followup.spec.ts:216:1 › F-04 · tema «Oscuro» explícito: «Sin comparación» (julio personalizado sin ingresos previos) cumple AA y axe no encuentra fallos de contraste (2.2s)
+  ✘  26 [escritorio] › tests/e2e/qa-followup.spec.ts:225:3 › F-04 · tema «Sistema» con el sistema en oscuro › «Sin comparación» cumple AA y axe no encuentra fallos de contraste (2.1s)
+  ✘  27 [escritorio] › tests/e2e/qa-followup.spec.ts:231:1 › F-04 · en claro sigue cumpliendo AA y las variaciones positiva y negativa conservan su color (2.3s)
+  ✘  28 [escritorio] › tests/e2e/qa-followup.spec.ts:242:1 › F-05 · periodo personalizado 1–31 de julio, seis puntos: las etiquetas del eje no se solapan ni se recortan en es/en/pt/fr; tooltip, nombre accesible y tabla conservan la fecha completa (3.0s)
+  ✘  29 [escritorio] › tests/e2e/qa-followup.spec.ts:310:1 › QA-01 histórico · datos v13 con el sueldo del 31 partido el 28-feb: tras migrar, Ajustes › Datos lo muestra (28-mar frente a 31-mar); restaurar deja 1 250 reservados y $550.00 disponibles tras recargar y en la copia (7.4s)
+  ✘  30 [escritorio] › tests/e2e/qa-followup.spec.ts:354:1 › QA-01 histórico · «Dejar como está» conserva el 28 a propósito: la revisión desaparece, sigue sin aparecer tras recargar y el disponible sigue siendo $1,800.00 (6.9s)
+
+
+  1) [celular] › tests/e2e/qa-followup.spec.ts:45:3 › F-01 · factura CAD 400 con id de 64 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta 
+
+    Error: tras partir
+
+    expect(locator).toHaveCount(expected) failed
+
+    Locator:  getByText('No pudimos leer tus datos guardados')
+    Expected: 0
+    Received: 1
+    Timeout:  5000ms
+
+    Call log:
+      - tras partir getByText('No pudimos leer tus datos guardados') with timeout 5000ms
+      - waiting for getByText('No pudimos leer tus datos guardados')
+        14 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      36 |   await page.reload()
+      37 |   // Primero el síntoma del fallo (la pantalla de datos dañados), con su etiqueta; luego el Inicio entero.
+    > 38 |   await expect(page.getByText('No pudimos leer tus datos guardados'), label).toHaveCount(0)
+         |                                                                              ^
+      39 |   await expect(page.locator('#page-title'), label).toBeVisible()
+      40 |   await go(page, '/')
+      41 |   await expect(page.getByTestId('available'), label).toBeVisible()
+        at expectLoadsClean (/tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:38:78)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:74:5
+
+    Error Context: test-results/followup-before/qa-followup-F-01-·-factura-a901e-e-se-exporta-y-se-reimporta-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-F-01-·-factura-a901e-e-se-exporta-y-se-reimporta-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-F-01-·-factura-a901e-e-se-exporta-y-se-reimporta-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [celular] › tests/e2e/qa-followup.spec.ts:45:3 › F-01 · factura CAD 400 con id de 47 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta 
+
+    Error: tras partir
+
+    expect(locator).toHaveCount(expected) failed
+
+    Locator:  getByText('No pudimos leer tus datos guardados')
+    Expected: 0
+    Received: 1
+    Timeout:  5000ms
+
+    Call log:
+      - tras partir getByText('No pudimos leer tus datos guardados') with timeout 5000ms
+      - waiting for getByText('No pudimos leer tus datos guardados')
+        14 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      36 |   await page.reload()
+      37 |   // Primero el síntoma del fallo (la pantalla de datos dañados), con su etiqueta; luego el Inicio entero.
+    > 38 |   await expect(page.getByText('No pudimos leer tus datos guardados'), label).toHaveCount(0)
+         |                                                                              ^
+      39 |   await expect(page.locator('#page-title'), label).toBeVisible()
+      40 |   await go(page, '/')
+      41 |   await expect(page.getByTestId('available'), label).toBeVisible()
+        at expectLoadsClean (/tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:38:78)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:74:5
+
+    Error Context: test-results/followup-before/qa-followup-F-01-·-factura-71453-e-se-exporta-y-se-reimporta-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-F-01-·-factura-71453-e-se-exporta-y-se-reimporta-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-F-01-·-factura-71453-e-se-exporta-y-se-reimporta-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [celular] › tests/e2e/qa-followup.spec.ts:106:1 › F-02 · una partición grabada por una versión anterior (solo instantáneas de programados): el historial explica qué seguiría apuntando a la serie que desaparecería, no ofrece «Revertir» y nada cambia 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: locator('article.history-entry').filter({ hasText: 'Renta' }).first().getByTestId('history-dependents')
+    Expected substring: "No se puede revertir: 3 registros seguirían apuntando a un programado que este cambio eliminaría"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toContainText" locator('article.history-entry').filter({ hasText: 'Renta' }).first().getByTestId('history-dependents') with timeout 5000ms
+      - waiting for locator('article.history-entry').filter({ hasText: 'Renta' }).first().getByTestId('history-dependents')
+
+
+      130 |   const entry = page.locator('article.history-entry', { hasText: 'Renta' }).first()
+      131 |   const note = entry.getByTestId('history-dependents')
+    > 132 |   await expect(note).toContainText('No se puede revertir: 3 registros seguirían apuntando a un programado que este cambio eliminaría')
+          |                      ^
+      133 |   await expect(note).toContainText('Plantilla «Quincena»')
+      134 |   await expect(note).toContainText('Escenario «Si sube»')
+      135 |   await expect(note).toContainText('Aviso aplazado del 1 oct')
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:132:22
+
+    Error Context: test-results/followup-before/qa-followup-F-02-·-una-par-34d7f-ce-«Revertir»-y-nada-cambia-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-F-02-·-una-par-34d7f-ce-«Revertir»-y-nada-cambia-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-F-02-·-una-par-34d7f-ce-«Revertir»-y-nada-cambia-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [celular] › tests/e2e/qa-followup.spec.ts:149:1 › F-03 · 1 gasto de MAX_AMOUNT_MINOR el 10-ago frente a 100 el 10-sep: Análisis muestra 9 900 % en vez de fallar 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText(/Este mes llevas un 9[\s.,\u00a0]?900 % más de gasto/)
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText(/Este mes llevas un 9[\s.,\u00a0]?900 % más de gasto/) with timeout 5000ms
+      - waiting for getByText(/Este mes llevas un 9[\s.,\u00a0]?900 % más de gasto/)
+
+
+      158 |   await seedStoredData(page, data)
+      159 |   await go(page, '/analisis')
+    > 160 |   await expect(page.getByText(/Este mes llevas un 9[\s.,\u00a0]?900 % más de gasto/)).toBeVisible()
+          |                                                                                       ^
+      161 |   await expectNoHorizontalScroll(page, 'análisis con un porcentaje enorme')
+      162 | })
+      163 |
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:160:87
+
+    Error Context: test-results/followup-before/qa-followup-F-03-·-1-gasto-347b6-stra-9-900-en-vez-de-fallar-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-F-03-·-1-gasto-347b6-stra-9-900-en-vez-de-fallar-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-F-03-·-1-gasto-347b6-stra-9-900-en-vez-de-fallar-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [celular] › tests/e2e/qa-followup.spec.ts:216:1 › F-04 · tema «Oscuro» explícito: «Sin comparación» (julio personalizado sin ingresos previos) cumple AA y axe no encuentra fallos de contraste 
+
+    Error: oscuro explícito: rgb(100, 116, 139) sobre rgb(18, 26, 42) (14px/600)
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 4.5
+    Received:    3.6563076568668715
+
+      209 |   await settleAnimations(page)
+      210 |   const c = await textContrast(page, '.stat__delta--neutral')
+    > 211 |   expect(c.ratio, `${label}: ${c.fg} sobre ${c.bg} (${c.fontSize}/${c.fontWeight})`).toBeGreaterThanOrEqual(4.5)
+          |                                                                                      ^
+      212 |   const results = await new AxeBuilder({ page }).include('#main').withRules(['color-contrast']).analyze()
+      213 |   expect(results.violations.map((v) => v.nodes.map((n) => n.target.join(' ')).join(' | ')), label).toEqual([])
+      214 | }
+        at expectNeutralDeltaAA (/tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:211:86)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:220:3
+
+    Error Context: test-results/followup-before/qa-followup-F-04-·-tema-«O-2546c-cuentra-fallos-de-contraste-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-F-04-·-tema-«O-2546c-cuentra-fallos-de-contraste-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-F-04-·-tema-«O-2546c-cuentra-fallos-de-contraste-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) [celular] › tests/e2e/qa-followup.spec.ts:225:3 › F-04 · tema «Sistema» con el sistema en oscuro › «Sin comparación» cumple AA y axe no encuentra fallos de contraste 
+
+    Error: sistema oscuro: rgb(100, 116, 139) sobre rgb(18, 26, 42) (14px/600)
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 4.5
+    Received:    3.6563076568668715
+
+      209 |   await settleAnimations(page)
+      210 |   const c = await textContrast(page, '.stat__delta--neutral')
+    > 211 |   expect(c.ratio, `${label}: ${c.fg} sobre ${c.bg} (${c.fontSize}/${c.fontWeight})`).toBeGreaterThanOrEqual(4.5)
+          |                                                                                      ^
+      212 |   const results = await new AxeBuilder({ page }).include('#main').withRules(['color-contrast']).analyze()
+      213 |   expect(results.violations.map((v) => v.nodes.map((n) => n.target.join(' ')).join(' | ')), label).toEqual([])
+      214 | }
+        at expectNeutralDeltaAA (/tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:211:86)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:227:5
+
+    Error Context: test-results/followup-before/qa-followup-F-04-·-tema-«S-0a01d-cuentra-fallos-de-contraste-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-F-04-·-tema-«S-0a01d-cuentra-fallos-de-contraste-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-F-04-·-tema-«S-0a01d-cuentra-fallos-de-contraste-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  7) [celular] › tests/e2e/qa-followup.spec.ts:231:1 › F-04 · en claro sigue cumpliendo AA y las variaciones positiva y negativa conservan su color 
+
+    Error: claro: rgb(100, 116, 139) sobre rgb(18, 26, 42) (14px/600)
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 4.5
+    Received:    3.6563076568668715
+
+      209 |   await settleAnimations(page)
+      210 |   const c = await textContrast(page, '.stat__delta--neutral')
+    > 211 |   expect(c.ratio, `${label}: ${c.fg} sobre ${c.bg} (${c.fontSize}/${c.fontWeight})`).toBeGreaterThanOrEqual(4.5)
+          |                                                                                      ^
+      212 |   const results = await new AxeBuilder({ page }).include('#main').withRules(['color-contrast']).analyze()
+      213 |   expect(results.violations.map((v) => v.nodes.map((n) => n.target.join(' ')).join(' | ')), label).toEqual([])
+      214 | }
+        at expectNeutralDeltaAA (/tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:211:86)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:233:3
+
+    Error Context: test-results/followup-before/qa-followup-F-04-·-en-clar-27f23-negativa-conservan-su-color-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-F-04-·-en-clar-27f23-negativa-conservan-su-color-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-F-04-·-en-clar-27f23-negativa-conservan-su-color-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8) [celular] › tests/e2e/qa-followup.spec.ts:242:1 › F-05 · periodo personalizado 1–31 de julio, seis puntos: las etiquetas del eje no se solapan ni se recortan en es/en/pt/fr; tooltip, nombre accesible y tabla conservan la fecha completa 
+
+    Error: Español celular: «27 ene 2026» y «27 feb 2026»
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 107.24683380126953
+    Received:    88.20152282714844
+
+      261 |     expect(layout.labels.map((l) => l.text), where).toHaveLength(6)
+      262 |     for (let i = 1; i < layout.labels.length; i++) {
+    > 263 |       expect(layout.labels[i]!.left, `${where}: «${layout.labels[i - 1]!.text}» y «${layout.labels[i]!.text}»`).toBeGreaterThanOrEqual(layout.labels[i - 1]!.right + 1)
+          |                                                                                                                 ^
+      264 |     }
+      265 |     for (const l of layout.labels) {
+      266 |       expect(l.left, `${where}: «${l.text}» recortada`).toBeGreaterThanOrEqual(layout.box.left - 0.5)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:263:113
+
+    Error Context: test-results/followup-before/qa-followup-F-05-·-periodo-b8a84-conservan-la-fecha-completa-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-F-05-·-periodo-b8a84-conservan-la-fecha-completa-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-F-05-·-periodo-b8a84-conservan-la-fecha-completa-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  9) [celular] › tests/e2e/qa-followup.spec.ts:310:1 › QA-01 histórico · datos v13 con el sueldo del 31 partido el 28-feb: tras migrar, Ajustes › Datos lo muestra (28-mar frente a 31-mar); restaurar deja 1 250 reservados y $550.00 disponibles tras recargar y en la copia 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('split-repair')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('split-repair') with timeout 5000ms
+      - waiting for getByTestId('split-repair')
+
+
+      314 |   await go(page, '/ajustes/datos')
+      315 |   const card = page.getByTestId('split-repair')
+    > 316 |   await expect(card).toBeVisible()
+          |                      ^
+      317 |   await expect(card.getByTestId('split-repair-current')).toContainText('28 mar')
+      318 |   await expect(card.getByTestId('split-repair-proposed')).toContainText('31 mar')
+      319 |   await expect(card.getByTestId('split-repair-proposed')).toContainText('30 abr')
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:316:22
+
+    Error Context: test-results/followup-before/qa-followup-QA-01-históric-d2f1f-tras-recargar-y-en-la-copia-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-QA-01-históric-d2f1f-tras-recargar-y-en-la-copia-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-QA-01-históric-d2f1f-tras-recargar-y-en-la-copia-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  10) [celular] › tests/e2e/qa-followup.spec.ts:354:1 › QA-01 histórico · «Dejar como está» conserva el 28 a propósito: la revisión desaparece, sigue sin aparecer tras recargar y el disponible sigue siendo $1,800.00 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('split-repair')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('split-repair') with timeout 5000ms
+      - waiting for getByTestId('split-repair')
+
+
+      356 |   await go(page, '/ajustes/datos')
+      357 |   const card = page.getByTestId('split-repair')
+    > 358 |   await expect(card).toBeVisible()
+          |                      ^
+      359 |   await card.getByRole('button', { name: 'Dejar como está' }).click()
+      360 |   await expect(page.getByText('Se deja como está').first()).toBeVisible()
+      361 |   await waitForSaved(page)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:358:22
+
+    Error Context: test-results/followup-before/qa-followup-QA-01-históric-2ad7e-nible-sigue-siendo-1-800-00-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-QA-01-históric-2ad7e-nible-sigue-siendo-1-800-00-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-QA-01-históric-2ad7e-nible-sigue-siendo-1-800-00-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  11) [celular-pequeno] › tests/e2e/qa-followup.spec.ts:45:3 › F-01 · factura CAD 400 con id de 64 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta 
+
+    Error: tras partir
+
+    expect(locator).toHaveCount(expected) failed
+
+    Locator:  getByText('No pudimos leer tus datos guardados')
+    Expected: 0
+    Received: 1
+    Timeout:  5000ms
+
+    Call log:
+      - tras partir getByText('No pudimos leer tus datos guardados') with timeout 5000ms
+      - waiting for getByText('No pudimos leer tus datos guardados')
+        14 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      36 |   await page.reload()
+      37 |   // Primero el síntoma del fallo (la pantalla de datos dañados), con su etiqueta; luego el Inicio entero.
+    > 38 |   await expect(page.getByText('No pudimos leer tus datos guardados'), label).toHaveCount(0)
+         |                                                                              ^
+      39 |   await expect(page.locator('#page-title'), label).toBeVisible()
+      40 |   await go(page, '/')
+      41 |   await expect(page.getByTestId('available'), label).toBeVisible()
+        at expectLoadsClean (/tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:38:78)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:74:5
+
+    Error Context: test-results/followup-before/qa-followup-F-01-·-factura-a901e-e-se-exporta-y-se-reimporta-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-F-01-·-factura-a901e-e-se-exporta-y-se-reimporta-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-F-01-·-factura-a901e-e-se-exporta-y-se-reimporta-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  12) [celular-pequeno] › tests/e2e/qa-followup.spec.ts:45:3 › F-01 · factura CAD 400 con id de 47 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta 
+
+    Error: tras partir
+
+    expect(locator).toHaveCount(expected) failed
+
+    Locator:  getByText('No pudimos leer tus datos guardados')
+    Expected: 0
+    Received: 1
+    Timeout:  5000ms
+
+    Call log:
+      - tras partir getByText('No pudimos leer tus datos guardados') with timeout 5000ms
+      - waiting for getByText('No pudimos leer tus datos guardados')
+        14 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      36 |   await page.reload()
+      37 |   // Primero el síntoma del fallo (la pantalla de datos dañados), con su etiqueta; luego el Inicio entero.
+    > 38 |   await expect(page.getByText('No pudimos leer tus datos guardados'), label).toHaveCount(0)
+         |                                                                              ^
+      39 |   await expect(page.locator('#page-title'), label).toBeVisible()
+      40 |   await go(page, '/')
+      41 |   await expect(page.getByTestId('available'), label).toBeVisible()
+        at expectLoadsClean (/tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:38:78)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:74:5
+
+    Error Context: test-results/followup-before/qa-followup-F-01-·-factura-71453-e-se-exporta-y-se-reimporta-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-F-01-·-factura-71453-e-se-exporta-y-se-reimporta-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-F-01-·-factura-71453-e-se-exporta-y-se-reimporta-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  13) [celular-pequeno] › tests/e2e/qa-followup.spec.ts:106:1 › F-02 · una partición grabada por una versión anterior (solo instantáneas de programados): el historial explica qué seguiría apuntando a la serie que desaparecería, no ofrece «Revertir» y nada cambia 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: locator('article.history-entry').filter({ hasText: 'Renta' }).first().getByTestId('history-dependents')
+    Expected substring: "No se puede revertir: 3 registros seguirían apuntando a un programado que este cambio eliminaría"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toContainText" locator('article.history-entry').filter({ hasText: 'Renta' }).first().getByTestId('history-dependents') with timeout 5000ms
+      - waiting for locator('article.history-entry').filter({ hasText: 'Renta' }).first().getByTestId('history-dependents')
+
+
+      130 |   const entry = page.locator('article.history-entry', { hasText: 'Renta' }).first()
+      131 |   const note = entry.getByTestId('history-dependents')
+    > 132 |   await expect(note).toContainText('No se puede revertir: 3 registros seguirían apuntando a un programado que este cambio eliminaría')
+          |                      ^
+      133 |   await expect(note).toContainText('Plantilla «Quincena»')
+      134 |   await expect(note).toContainText('Escenario «Si sube»')
+      135 |   await expect(note).toContainText('Aviso aplazado del 1 oct')
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:132:22
+
+    Error Context: test-results/followup-before/qa-followup-F-02-·-una-par-34d7f-ce-«Revertir»-y-nada-cambia-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-F-02-·-una-par-34d7f-ce-«Revertir»-y-nada-cambia-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-F-02-·-una-par-34d7f-ce-«Revertir»-y-nada-cambia-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  14) [celular-pequeno] › tests/e2e/qa-followup.spec.ts:149:1 › F-03 · 1 gasto de MAX_AMOUNT_MINOR el 10-ago frente a 100 el 10-sep: Análisis muestra 9 900 % en vez de fallar 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText(/Este mes llevas un 9[\s.,\u00a0]?900 % más de gasto/)
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText(/Este mes llevas un 9[\s.,\u00a0]?900 % más de gasto/) with timeout 5000ms
+      - waiting for getByText(/Este mes llevas un 9[\s.,\u00a0]?900 % más de gasto/)
+
+
+      158 |   await seedStoredData(page, data)
+      159 |   await go(page, '/analisis')
+    > 160 |   await expect(page.getByText(/Este mes llevas un 9[\s.,\u00a0]?900 % más de gasto/)).toBeVisible()
+          |                                                                                       ^
+      161 |   await expectNoHorizontalScroll(page, 'análisis con un porcentaje enorme')
+      162 | })
+      163 |
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:160:87
+
+    Error Context: test-results/followup-before/qa-followup-F-03-·-1-gasto-347b6-stra-9-900-en-vez-de-fallar-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-F-03-·-1-gasto-347b6-stra-9-900-en-vez-de-fallar-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-F-03-·-1-gasto-347b6-stra-9-900-en-vez-de-fallar-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  15) [celular-pequeno] › tests/e2e/qa-followup.spec.ts:216:1 › F-04 · tema «Oscuro» explícito: «Sin comparación» (julio personalizado sin ingresos previos) cumple AA y axe no encuentra fallos de contraste 
+
+    Error: oscuro explícito: rgb(100, 116, 139) sobre rgb(18, 26, 42) (14px/600)
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 4.5
+    Received:    3.6563076568668715
+
+      209 |   await settleAnimations(page)
+      210 |   const c = await textContrast(page, '.stat__delta--neutral')
+    > 211 |   expect(c.ratio, `${label}: ${c.fg} sobre ${c.bg} (${c.fontSize}/${c.fontWeight})`).toBeGreaterThanOrEqual(4.5)
+          |                                                                                      ^
+      212 |   const results = await new AxeBuilder({ page }).include('#main').withRules(['color-contrast']).analyze()
+      213 |   expect(results.violations.map((v) => v.nodes.map((n) => n.target.join(' ')).join(' | ')), label).toEqual([])
+      214 | }
+        at expectNeutralDeltaAA (/tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:211:86)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:220:3
+
+    Error Context: test-results/followup-before/qa-followup-F-04-·-tema-«O-2546c-cuentra-fallos-de-contraste-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-F-04-·-tema-«O-2546c-cuentra-fallos-de-contraste-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-F-04-·-tema-«O-2546c-cuentra-fallos-de-contraste-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  16) [celular-pequeno] › tests/e2e/qa-followup.spec.ts:225:3 › F-04 · tema «Sistema» con el sistema en oscuro › «Sin comparación» cumple AA y axe no encuentra fallos de contraste 
+
+    Error: sistema oscuro: rgb(100, 116, 139) sobre rgb(18, 26, 42) (14px/600)
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 4.5
+    Received:    3.6563076568668715
+
+      209 |   await settleAnimations(page)
+      210 |   const c = await textContrast(page, '.stat__delta--neutral')
+    > 211 |   expect(c.ratio, `${label}: ${c.fg} sobre ${c.bg} (${c.fontSize}/${c.fontWeight})`).toBeGreaterThanOrEqual(4.5)
+          |                                                                                      ^
+      212 |   const results = await new AxeBuilder({ page }).include('#main').withRules(['color-contrast']).analyze()
+      213 |   expect(results.violations.map((v) => v.nodes.map((n) => n.target.join(' ')).join(' | ')), label).toEqual([])
+      214 | }
+        at expectNeutralDeltaAA (/tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:211:86)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:227:5
+
+    Error Context: test-results/followup-before/qa-followup-F-04-·-tema-«S-0a01d-cuentra-fallos-de-contraste-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-F-04-·-tema-«S-0a01d-cuentra-fallos-de-contraste-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-F-04-·-tema-«S-0a01d-cuentra-fallos-de-contraste-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  17) [celular-pequeno] › tests/e2e/qa-followup.spec.ts:231:1 › F-04 · en claro sigue cumpliendo AA y las variaciones positiva y negativa conservan su color 
+
+    Error: claro: rgb(100, 116, 139) sobre rgb(18, 26, 42) (14px/600)
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 4.5
+    Received:    3.6563076568668715
+
+      209 |   await settleAnimations(page)
+      210 |   const c = await textContrast(page, '.stat__delta--neutral')
+    > 211 |   expect(c.ratio, `${label}: ${c.fg} sobre ${c.bg} (${c.fontSize}/${c.fontWeight})`).toBeGreaterThanOrEqual(4.5)
+          |                                                                                      ^
+      212 |   const results = await new AxeBuilder({ page }).include('#main').withRules(['color-contrast']).analyze()
+      213 |   expect(results.violations.map((v) => v.nodes.map((n) => n.target.join(' ')).join(' | ')), label).toEqual([])
+      214 | }
+        at expectNeutralDeltaAA (/tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:211:86)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:233:3
+
+    Error Context: test-results/followup-before/qa-followup-F-04-·-en-clar-27f23-negativa-conservan-su-color-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-F-04-·-en-clar-27f23-negativa-conservan-su-color-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-F-04-·-en-clar-27f23-negativa-conservan-su-color-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  18) [celular-pequeno] › tests/e2e/qa-followup.spec.ts:242:1 › F-05 · periodo personalizado 1–31 de julio, seis puntos: las etiquetas del eje no se solapan ni se recortan en es/en/pt/fr; tooltip, nombre accesible y tabla conservan la fecha completa 
+
+    Error: Español celular-pequeno: «27 ene 2026» y «27 feb 2026»
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 87.9068374633789
+    Received:    73.52484130859375
+
+      261 |     expect(layout.labels.map((l) => l.text), where).toHaveLength(6)
+      262 |     for (let i = 1; i < layout.labels.length; i++) {
+    > 263 |       expect(layout.labels[i]!.left, `${where}: «${layout.labels[i - 1]!.text}» y «${layout.labels[i]!.text}»`).toBeGreaterThanOrEqual(layout.labels[i - 1]!.right + 1)
+          |                                                                                                                 ^
+      264 |     }
+      265 |     for (const l of layout.labels) {
+      266 |       expect(l.left, `${where}: «${l.text}» recortada`).toBeGreaterThanOrEqual(layout.box.left - 0.5)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:263:113
+
+    Error Context: test-results/followup-before/qa-followup-F-05-·-periodo-b8a84-conservan-la-fecha-completa-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-F-05-·-periodo-b8a84-conservan-la-fecha-completa-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-F-05-·-periodo-b8a84-conservan-la-fecha-completa-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  19) [celular-pequeno] › tests/e2e/qa-followup.spec.ts:310:1 › QA-01 histórico · datos v13 con el sueldo del 31 partido el 28-feb: tras migrar, Ajustes › Datos lo muestra (28-mar frente a 31-mar); restaurar deja 1 250 reservados y $550.00 disponibles tras recargar y en la copia 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('split-repair')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('split-repair') with timeout 5000ms
+      - waiting for getByTestId('split-repair')
+
+
+      314 |   await go(page, '/ajustes/datos')
+      315 |   const card = page.getByTestId('split-repair')
+    > 316 |   await expect(card).toBeVisible()
+          |                      ^
+      317 |   await expect(card.getByTestId('split-repair-current')).toContainText('28 mar')
+      318 |   await expect(card.getByTestId('split-repair-proposed')).toContainText('31 mar')
+      319 |   await expect(card.getByTestId('split-repair-proposed')).toContainText('30 abr')
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:316:22
+
+    Error Context: test-results/followup-before/qa-followup-QA-01-históric-d2f1f-tras-recargar-y-en-la-copia-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-QA-01-históric-d2f1f-tras-recargar-y-en-la-copia-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-QA-01-históric-d2f1f-tras-recargar-y-en-la-copia-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  20) [celular-pequeno] › tests/e2e/qa-followup.spec.ts:354:1 › QA-01 histórico · «Dejar como está» conserva el 28 a propósito: la revisión desaparece, sigue sin aparecer tras recargar y el disponible sigue siendo $1,800.00 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('split-repair')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('split-repair') with timeout 5000ms
+      - waiting for getByTestId('split-repair')
+
+
+      356 |   await go(page, '/ajustes/datos')
+      357 |   const card = page.getByTestId('split-repair')
+    > 358 |   await expect(card).toBeVisible()
+          |                      ^
+      359 |   await card.getByRole('button', { name: 'Dejar como está' }).click()
+      360 |   await expect(page.getByText('Se deja como está').first()).toBeVisible()
+      361 |   await waitForSaved(page)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:358:22
+
+    Error Context: test-results/followup-before/qa-followup-QA-01-históric-2ad7e-nible-sigue-siendo-1-800-00-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-QA-01-históric-2ad7e-nible-sigue-siendo-1-800-00-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-QA-01-históric-2ad7e-nible-sigue-siendo-1-800-00-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  21) [escritorio] › tests/e2e/qa-followup.spec.ts:45:3 › F-01 · factura CAD 400 con id de 64 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta 
+
+    Error: tras partir
+
+    expect(locator).toHaveCount(expected) failed
+
+    Locator:  getByText('No pudimos leer tus datos guardados')
+    Expected: 0
+    Received: 1
+    Timeout:  5000ms
+
+    Call log:
+      - tras partir getByText('No pudimos leer tus datos guardados') with timeout 5000ms
+      - waiting for getByText('No pudimos leer tus datos guardados')
+        14 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      36 |   await page.reload()
+      37 |   // Primero el síntoma del fallo (la pantalla de datos dañados), con su etiqueta; luego el Inicio entero.
+    > 38 |   await expect(page.getByText('No pudimos leer tus datos guardados'), label).toHaveCount(0)
+         |                                                                              ^
+      39 |   await expect(page.locator('#page-title'), label).toBeVisible()
+      40 |   await go(page, '/')
+      41 |   await expect(page.getByTestId('available'), label).toBeVisible()
+        at expectLoadsClean (/tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:38:78)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:74:5
+
+    Error Context: test-results/followup-before/qa-followup-F-01-·-factura-a901e-e-se-exporta-y-se-reimporta-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-F-01-·-factura-a901e-e-se-exporta-y-se-reimporta-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-F-01-·-factura-a901e-e-se-exporta-y-se-reimporta-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  22) [escritorio] › tests/e2e/qa-followup.spec.ts:45:3 › F-01 · factura CAD 400 con id de 47 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta 
+
+    Error: tras partir
+
+    expect(locator).toHaveCount(expected) failed
+
+    Locator:  getByText('No pudimos leer tus datos guardados')
+    Expected: 0
+    Received: 1
+    Timeout:  5000ms
+
+    Call log:
+      - tras partir getByText('No pudimos leer tus datos guardados') with timeout 5000ms
+      - waiting for getByText('No pudimos leer tus datos guardados')
+        14 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      36 |   await page.reload()
+      37 |   // Primero el síntoma del fallo (la pantalla de datos dañados), con su etiqueta; luego el Inicio entero.
+    > 38 |   await expect(page.getByText('No pudimos leer tus datos guardados'), label).toHaveCount(0)
+         |                                                                              ^
+      39 |   await expect(page.locator('#page-title'), label).toBeVisible()
+      40 |   await go(page, '/')
+      41 |   await expect(page.getByTestId('available'), label).toBeVisible()
+        at expectLoadsClean (/tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:38:78)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:74:5
+
+    Error Context: test-results/followup-before/qa-followup-F-01-·-factura-71453-e-se-exporta-y-se-reimporta-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-F-01-·-factura-71453-e-se-exporta-y-se-reimporta-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-F-01-·-factura-71453-e-se-exporta-y-se-reimporta-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  23) [escritorio] › tests/e2e/qa-followup.spec.ts:106:1 › F-02 · una partición grabada por una versión anterior (solo instantáneas de programados): el historial explica qué seguiría apuntando a la serie que desaparecería, no ofrece «Revertir» y nada cambia 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: locator('article.history-entry').filter({ hasText: 'Renta' }).first().getByTestId('history-dependents')
+    Expected substring: "No se puede revertir: 3 registros seguirían apuntando a un programado que este cambio eliminaría"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toContainText" locator('article.history-entry').filter({ hasText: 'Renta' }).first().getByTestId('history-dependents') with timeout 5000ms
+      - waiting for locator('article.history-entry').filter({ hasText: 'Renta' }).first().getByTestId('history-dependents')
+
+
+      130 |   const entry = page.locator('article.history-entry', { hasText: 'Renta' }).first()
+      131 |   const note = entry.getByTestId('history-dependents')
+    > 132 |   await expect(note).toContainText('No se puede revertir: 3 registros seguirían apuntando a un programado que este cambio eliminaría')
+          |                      ^
+      133 |   await expect(note).toContainText('Plantilla «Quincena»')
+      134 |   await expect(note).toContainText('Escenario «Si sube»')
+      135 |   await expect(note).toContainText('Aviso aplazado del 1 oct')
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:132:22
+
+    Error Context: test-results/followup-before/qa-followup-F-02-·-una-par-34d7f-ce-«Revertir»-y-nada-cambia-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-F-02-·-una-par-34d7f-ce-«Revertir»-y-nada-cambia-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-F-02-·-una-par-34d7f-ce-«Revertir»-y-nada-cambia-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  24) [escritorio] › tests/e2e/qa-followup.spec.ts:149:1 › F-03 · 1 gasto de MAX_AMOUNT_MINOR el 10-ago frente a 100 el 10-sep: Análisis muestra 9 900 % en vez de fallar 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText(/Este mes llevas un 9[\s.,\u00a0]?900 % más de gasto/)
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText(/Este mes llevas un 9[\s.,\u00a0]?900 % más de gasto/) with timeout 5000ms
+      - waiting for getByText(/Este mes llevas un 9[\s.,\u00a0]?900 % más de gasto/)
+
+
+      158 |   await seedStoredData(page, data)
+      159 |   await go(page, '/analisis')
+    > 160 |   await expect(page.getByText(/Este mes llevas un 9[\s.,\u00a0]?900 % más de gasto/)).toBeVisible()
+          |                                                                                       ^
+      161 |   await expectNoHorizontalScroll(page, 'análisis con un porcentaje enorme')
+      162 | })
+      163 |
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:160:87
+
+    Error Context: test-results/followup-before/qa-followup-F-03-·-1-gasto-347b6-stra-9-900-en-vez-de-fallar-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-F-03-·-1-gasto-347b6-stra-9-900-en-vez-de-fallar-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-F-03-·-1-gasto-347b6-stra-9-900-en-vez-de-fallar-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  25) [escritorio] › tests/e2e/qa-followup.spec.ts:216:1 › F-04 · tema «Oscuro» explícito: «Sin comparación» (julio personalizado sin ingresos previos) cumple AA y axe no encuentra fallos de contraste 
+
+    Error: oscuro explícito: rgb(100, 116, 139) sobre rgb(18, 26, 42) (14px/600)
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 4.5
+    Received:    3.6563076568668715
+
+      209 |   await settleAnimations(page)
+      210 |   const c = await textContrast(page, '.stat__delta--neutral')
+    > 211 |   expect(c.ratio, `${label}: ${c.fg} sobre ${c.bg} (${c.fontSize}/${c.fontWeight})`).toBeGreaterThanOrEqual(4.5)
+          |                                                                                      ^
+      212 |   const results = await new AxeBuilder({ page }).include('#main').withRules(['color-contrast']).analyze()
+      213 |   expect(results.violations.map((v) => v.nodes.map((n) => n.target.join(' ')).join(' | ')), label).toEqual([])
+      214 | }
+        at expectNeutralDeltaAA (/tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:211:86)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:220:3
+
+    Error Context: test-results/followup-before/qa-followup-F-04-·-tema-«O-2546c-cuentra-fallos-de-contraste-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-F-04-·-tema-«O-2546c-cuentra-fallos-de-contraste-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-F-04-·-tema-«O-2546c-cuentra-fallos-de-contraste-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  26) [escritorio] › tests/e2e/qa-followup.spec.ts:225:3 › F-04 · tema «Sistema» con el sistema en oscuro › «Sin comparación» cumple AA y axe no encuentra fallos de contraste 
+
+    Error: sistema oscuro: rgb(100, 116, 139) sobre rgb(18, 26, 42) (14px/600)
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 4.5
+    Received:    3.6563076568668715
+
+      209 |   await settleAnimations(page)
+      210 |   const c = await textContrast(page, '.stat__delta--neutral')
+    > 211 |   expect(c.ratio, `${label}: ${c.fg} sobre ${c.bg} (${c.fontSize}/${c.fontWeight})`).toBeGreaterThanOrEqual(4.5)
+          |                                                                                      ^
+      212 |   const results = await new AxeBuilder({ page }).include('#main').withRules(['color-contrast']).analyze()
+      213 |   expect(results.violations.map((v) => v.nodes.map((n) => n.target.join(' ')).join(' | ')), label).toEqual([])
+      214 | }
+        at expectNeutralDeltaAA (/tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:211:86)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:227:5
+
+    Error Context: test-results/followup-before/qa-followup-F-04-·-tema-«S-0a01d-cuentra-fallos-de-contraste-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-F-04-·-tema-«S-0a01d-cuentra-fallos-de-contraste-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-F-04-·-tema-«S-0a01d-cuentra-fallos-de-contraste-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  27) [escritorio] › tests/e2e/qa-followup.spec.ts:231:1 › F-04 · en claro sigue cumpliendo AA y las variaciones positiva y negativa conservan su color 
+
+    Error: claro: rgb(100, 116, 139) sobre rgb(18, 26, 42) (14px/600)
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 4.5
+    Received:    3.6563076568668715
+
+      209 |   await settleAnimations(page)
+      210 |   const c = await textContrast(page, '.stat__delta--neutral')
+    > 211 |   expect(c.ratio, `${label}: ${c.fg} sobre ${c.bg} (${c.fontSize}/${c.fontWeight})`).toBeGreaterThanOrEqual(4.5)
+          |                                                                                      ^
+      212 |   const results = await new AxeBuilder({ page }).include('#main').withRules(['color-contrast']).analyze()
+      213 |   expect(results.violations.map((v) => v.nodes.map((n) => n.target.join(' ')).join(' | ')), label).toEqual([])
+      214 | }
+        at expectNeutralDeltaAA (/tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:211:86)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:233:3
+
+    Error Context: test-results/followup-before/qa-followup-F-04-·-en-clar-27f23-negativa-conservan-su-color-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-F-04-·-en-clar-27f23-negativa-conservan-su-color-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-F-04-·-en-clar-27f23-negativa-conservan-su-color-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  28) [escritorio] › tests/e2e/qa-followup.spec.ts:242:1 › F-05 · periodo personalizado 1–31 de julio, seis puntos: las etiquetas del eje no se solapan ni se recortan en es/en/pt/fr; tooltip, nombre accesible y tabla conservan la fecha completa 
+
+    Error: Español escritorio: «27 ene 2026» y «27 feb 2026»
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 484.71600341796875
+    Received:    435.1686706542969
+
+      261 |     expect(layout.labels.map((l) => l.text), where).toHaveLength(6)
+      262 |     for (let i = 1; i < layout.labels.length; i++) {
+    > 263 |       expect(layout.labels[i]!.left, `${where}: «${layout.labels[i - 1]!.text}» y «${layout.labels[i]!.text}»`).toBeGreaterThanOrEqual(layout.labels[i - 1]!.right + 1)
+          |                                                                                                                 ^
+      264 |     }
+      265 |     for (const l of layout.labels) {
+      266 |       expect(l.left, `${where}: «${l.text}» recortada`).toBeGreaterThanOrEqual(layout.box.left - 0.5)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:263:113
+
+    Error Context: test-results/followup-before/qa-followup-F-05-·-periodo-b8a84-conservan-la-fecha-completa-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-F-05-·-periodo-b8a84-conservan-la-fecha-completa-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-F-05-·-periodo-b8a84-conservan-la-fecha-completa-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  29) [escritorio] › tests/e2e/qa-followup.spec.ts:310:1 › QA-01 histórico · datos v13 con el sueldo del 31 partido el 28-feb: tras migrar, Ajustes › Datos lo muestra (28-mar frente a 31-mar); restaurar deja 1 250 reservados y $550.00 disponibles tras recargar y en la copia 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('split-repair')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('split-repair') with timeout 5000ms
+      - waiting for getByTestId('split-repair')
+
+
+      314 |   await go(page, '/ajustes/datos')
+      315 |   const card = page.getByTestId('split-repair')
+    > 316 |   await expect(card).toBeVisible()
+          |                      ^
+      317 |   await expect(card.getByTestId('split-repair-current')).toContainText('28 mar')
+      318 |   await expect(card.getByTestId('split-repair-proposed')).toContainText('31 mar')
+      319 |   await expect(card.getByTestId('split-repair-proposed')).toContainText('30 abr')
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:316:22
+
+    Error Context: test-results/followup-before/qa-followup-QA-01-históric-d2f1f-tras-recargar-y-en-la-copia-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-QA-01-históric-d2f1f-tras-recargar-y-en-la-copia-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-QA-01-históric-d2f1f-tras-recargar-y-en-la-copia-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  30) [escritorio] › tests/e2e/qa-followup.spec.ts:354:1 › QA-01 histórico · «Dejar como está» conserva el 28 a propósito: la revisión desaparece, sigue sin aparecer tras recargar y el disponible sigue siendo $1,800.00 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('split-repair')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('split-repair') with timeout 5000ms
+      - waiting for getByTestId('split-repair')
+
+
+      356 |   await go(page, '/ajustes/datos')
+      357 |   const card = page.getByTestId('split-repair')
+    > 358 |   await expect(card).toBeVisible()
+          |                      ^
+      359 |   await card.getByRole('button', { name: 'Dejar como está' }).click()
+      360 |   await expect(page.getByText('Se deja como está').first()).toBeVisible()
+      361 |   await waitForSaved(page)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:358:22
+
+    Error Context: test-results/followup-before/qa-followup-QA-01-históric-2ad7e-nible-sigue-siendo-1-800-00-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-before/qa-followup-QA-01-históric-2ad7e-nible-sigue-siendo-1-800-00-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-before/qa-followup-QA-01-históric-2ad7e-nible-sigue-siendo-1-800-00-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  30 failed
+    [celular] › tests/e2e/qa-followup.spec.ts:45:3 › F-01 · factura CAD 400 con id de 64 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta 
+    [celular] › tests/e2e/qa-followup.spec.ts:45:3 › F-01 · factura CAD 400 con id de 47 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta 
+    [celular] › tests/e2e/qa-followup.spec.ts:106:1 › F-02 · una partición grabada por una versión anterior (solo instantáneas de programados): el historial explica qué seguiría apuntando a la serie que desaparecería, no ofrece «Revertir» y nada cambia 
+    [celular] › tests/e2e/qa-followup.spec.ts:149:1 › F-03 · 1 gasto de MAX_AMOUNT_MINOR el 10-ago frente a 100 el 10-sep: Análisis muestra 9 900 % en vez de fallar 
+    [celular] › tests/e2e/qa-followup.spec.ts:216:1 › F-04 · tema «Oscuro» explícito: «Sin comparación» (julio personalizado sin ingresos previos) cumple AA y axe no encuentra fallos de contraste 
+    [celular] › tests/e2e/qa-followup.spec.ts:225:3 › F-04 · tema «Sistema» con el sistema en oscuro › «Sin comparación» cumple AA y axe no encuentra fallos de contraste 
+    [celular] › tests/e2e/qa-followup.spec.ts:231:1 › F-04 · en claro sigue cumpliendo AA y las variaciones positiva y negativa conservan su color 
+    [celular] › tests/e2e/qa-followup.spec.ts:242:1 › F-05 · periodo personalizado 1–31 de julio, seis puntos: las etiquetas del eje no se solapan ni se recortan en es/en/pt/fr; tooltip, nombre accesible y tabla conservan la fecha completa 
+    [celular] › tests/e2e/qa-followup.spec.ts:310:1 › QA-01 histórico · datos v13 con el sueldo del 31 partido el 28-feb: tras migrar, Ajustes › Datos lo muestra (28-mar frente a 31-mar); restaurar deja 1 250 reservados y $550.00 disponibles tras recargar y en la copia 
+    [celular] › tests/e2e/qa-followup.spec.ts:354:1 › QA-01 histórico · «Dejar como está» conserva el 28 a propósito: la revisión desaparece, sigue sin aparecer tras recargar y el disponible sigue siendo $1,800.00 
+    [celular-pequeno] › tests/e2e/qa-followup.spec.ts:45:3 › F-01 · factura CAD 400 con id de 64 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta 
+    [celular-pequeno] › tests/e2e/qa-followup.spec.ts:45:3 › F-01 · factura CAD 400 con id de 47 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta 
+    [celular-pequeno] › tests/e2e/qa-followup.spec.ts:106:1 › F-02 · una partición grabada por una versión anterior (solo instantáneas de programados): el historial explica qué seguiría apuntando a la serie que desaparecería, no ofrece «Revertir» y nada cambia 
+    [celular-pequeno] › tests/e2e/qa-followup.spec.ts:149:1 › F-03 · 1 gasto de MAX_AMOUNT_MINOR el 10-ago frente a 100 el 10-sep: Análisis muestra 9 900 % en vez de fallar 
+    [celular-pequeno] › tests/e2e/qa-followup.spec.ts:216:1 › F-04 · tema «Oscuro» explícito: «Sin comparación» (julio personalizado sin ingresos previos) cumple AA y axe no encuentra fallos de contraste 
+    [celular-pequeno] › tests/e2e/qa-followup.spec.ts:225:3 › F-04 · tema «Sistema» con el sistema en oscuro › «Sin comparación» cumple AA y axe no encuentra fallos de contraste 
+    [celular-pequeno] › tests/e2e/qa-followup.spec.ts:231:1 › F-04 · en claro sigue cumpliendo AA y las variaciones positiva y negativa conservan su color 
+    [celular-pequeno] › tests/e2e/qa-followup.spec.ts:242:1 › F-05 · periodo personalizado 1–31 de julio, seis puntos: las etiquetas del eje no se solapan ni se recortan en es/en/pt/fr; tooltip, nombre accesible y tabla conservan la fecha completa 
+    [celular-pequeno] › tests/e2e/qa-followup.spec.ts:310:1 › QA-01 histórico · datos v13 con el sueldo del 31 partido el 28-feb: tras migrar, Ajustes › Datos lo muestra (28-mar frente a 31-mar); restaurar deja 1 250 reservados y $550.00 disponibles tras recargar y en la copia 
+    [celular-pequeno] › tests/e2e/qa-followup.spec.ts:354:1 › QA-01 histórico · «Dejar como está» conserva el 28 a propósito: la revisión desaparece, sigue sin aparecer tras recargar y el disponible sigue siendo $1,800.00 
+    [escritorio] › tests/e2e/qa-followup.spec.ts:45:3 › F-01 · factura CAD 400 con id de 64 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta 
+    [escritorio] › tests/e2e/qa-followup.spec.ts:45:3 › F-01 · factura CAD 400 con id de 47 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta 
+    [escritorio] › tests/e2e/qa-followup.spec.ts:106:1 › F-02 · una partición grabada por una versión anterior (solo instantáneas de programados): el historial explica qué seguiría apuntando a la serie que desaparecería, no ofrece «Revertir» y nada cambia 
+    [escritorio] › tests/e2e/qa-followup.spec.ts:149:1 › F-03 · 1 gasto de MAX_AMOUNT_MINOR el 10-ago frente a 100 el 10-sep: Análisis muestra 9 900 % en vez de fallar 
+    [escritorio] › tests/e2e/qa-followup.spec.ts:216:1 › F-04 · tema «Oscuro» explícito: «Sin comparación» (julio personalizado sin ingresos previos) cumple AA y axe no encuentra fallos de contraste 
+    [escritorio] › tests/e2e/qa-followup.spec.ts:225:3 › F-04 · tema «Sistema» con el sistema en oscuro › «Sin comparación» cumple AA y axe no encuentra fallos de contraste 
+    [escritorio] › tests/e2e/qa-followup.spec.ts:231:1 › F-04 · en claro sigue cumpliendo AA y las variaciones positiva y negativa conservan su color 
+    [escritorio] › tests/e2e/qa-followup.spec.ts:242:1 › F-05 · periodo personalizado 1–31 de julio, seis puntos: las etiquetas del eje no se solapan ni se recortan en es/en/pt/fr; tooltip, nombre accesible y tabla conservan la fecha completa 
+    [escritorio] › tests/e2e/qa-followup.spec.ts:310:1 › QA-01 histórico · datos v13 con el sueldo del 31 partido el 28-feb: tras migrar, Ajustes › Datos lo muestra (28-mar frente a 31-mar); restaurar deja 1 250 reservados y $550.00 disponibles tras recargar y en la copia 
+    [escritorio] › tests/e2e/qa-followup.spec.ts:354:1 › QA-01 histórico · «Dejar como está» conserva el 28 a propósito: la revisión desaparece, sigue sin aparecer tras recargar y el disponible sigue siendo $1,800.00 
+before exit 1

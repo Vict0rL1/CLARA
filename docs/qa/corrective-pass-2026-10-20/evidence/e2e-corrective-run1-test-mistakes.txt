@@ -1,0 +1,633 @@
+corrective spec on 1e23b8eb5796a6874d43b7e9d899f15c00592b5c + working tree (2026-10-20T05:56:00Z)
+
+Running 24 tests using 2 workers
+
+  ✘   1 [celular] › tests/e2e/qa-corrective.spec.ts:60:3 › P1 · asistente: «coffee (RUB) 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD (7.5s)
+  ✘   2 [celular] › tests/e2e/qa-corrective.spec.ts:60:3 › P1 · asistente: «coffee RUB: 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD (7.3s)
+  ✘   3 [celular] › tests/e2e/qa-corrective.spec.ts:83:3 › P1 · foto (OCR sintético): «TOTAL RUB: 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD (7.4s)
+  ✘   5 [celular] › tests/e2e/qa-corrective.spec.ts:83:3 › P1 · foto (OCR sintético): «TOTAL (RUB) 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD (6.9s)
+  ✓   6 [celular] › tests/e2e/qa-corrective.spec.ts:99:3 › P2 · foto (OCR sintético): «PEN 2.99 TAX 0.10» con «TOTAL CAD 3.09» propone 3.09 en CAD sin conflicto y se registra (2.1s)
+  ✓   7 [celular] › tests/e2e/qa-corrective.spec.ts:99:3 › P2 · foto (OCR sintético): «PEN 2.99 TAX 0.10» con «TOTAL 3.09» propone 3.09 en CAD sin conflicto y se registra (2.1s)
+  ✘   4 [celular] › tests/e2e/qa-corrective.spec.ts:72:1 › P1 · asistente: «coffee (RUB) $10» tiene dos monedas que se contradicen: el campo conserva las dos y la línea se bloquea (30.4s)
+  ✘   9 [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:60:3 › P1 · asistente: «coffee (RUB) 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD (6.9s)
+  ✘  10 [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:60:3 › P1 · asistente: «coffee RUB: 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD (6.9s)
+  ✘   8 [celular] › tests/e2e/qa-corrective.spec.ts:118:1 › P2 · control (OCR sintético): «TOTAL PEN 10.00» sigue bloqueado como moneda extranjera (30.3s)
+  ✘  12 [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:83:3 › P1 · foto (OCR sintético): «TOTAL RUB: 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD (6.9s)
+  ✘  13 [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:83:3 › P1 · foto (OCR sintético): «TOTAL (RUB) 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD (6.8s)
+  ✓  14 [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:99:3 › P2 · foto (OCR sintético): «PEN 2.99 TAX 0.10» con «TOTAL CAD 3.09» propone 3.09 en CAD sin conflicto y se registra (2.8s)
+  ✓  15 [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:99:3 › P2 · foto (OCR sintético): «PEN 2.99 TAX 0.10» con «TOTAL 3.09» propone 3.09 en CAD sin conflicto y se registra (2.5s)
+  ✘  11 [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:72:1 › P1 · asistente: «coffee (RUB) $10» tiene dos monedas que se contradicen: el campo conserva las dos y la línea se bloquea (30.5s)
+  ✘  17 [escritorio] › tests/e2e/qa-corrective.spec.ts:60:3 › P1 · asistente: «coffee (RUB) 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD (7.4s)
+  ✘  18 [escritorio] › tests/e2e/qa-corrective.spec.ts:60:3 › P1 · asistente: «coffee RUB: 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD (7.5s)
+  ✘  16 [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:118:1 › P2 · control (OCR sintético): «TOTAL PEN 10.00» sigue bloqueado como moneda extranjera (30.3s)
+  ✘  20 [escritorio] › tests/e2e/qa-corrective.spec.ts:83:3 › P1 · foto (OCR sintético): «TOTAL RUB: 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD (7.3s)
+  ✘  21 [escritorio] › tests/e2e/qa-corrective.spec.ts:83:3 › P1 · foto (OCR sintético): «TOTAL (RUB) 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD (7.2s)
+  ✓  22 [escritorio] › tests/e2e/qa-corrective.spec.ts:99:3 › P2 · foto (OCR sintético): «PEN 2.99 TAX 0.10» con «TOTAL CAD 3.09» propone 3.09 en CAD sin conflicto y se registra (2.6s)
+  ✘  19 [escritorio] › tests/e2e/qa-corrective.spec.ts:72:1 › P1 · asistente: «coffee (RUB) $10» tiene dos monedas que se contradicen: el campo conserva las dos y la línea se bloquea (30.6s)
+  ✓  23 [escritorio] › tests/e2e/qa-corrective.spec.ts:99:3 › P2 · foto (OCR sintético): «PEN 2.99 TAX 0.10» con «TOTAL 3.09» propone 3.09 en CAD sin conflicto y se registra (2.4s)
+  ✘  24 [escritorio] › tests/e2e/qa-corrective.spec.ts:118:1 › P2 · control (OCR sintético): «TOTAL PEN 10.00» sigue bloqueado como moneda extranjera (30.4s)
+
+
+  1) [celular] › tests/e2e/qa-corrective.spec.ts:60:3 › P1 · asistente: «coffee (RUB) 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.')
+
+
+      26 | async function expectBlocked(page: Page, line: ReturnType<Page['locator']>, field: string, message: string | RegExp) {
+      27 |   await expect(line.getByLabel('Importe')).toHaveValue(field)
+    > 28 |   await expect(line.getByText(message)).toBeVisible()
+         |                                         ^
+      29 |   await expect(page.getByTestId('assistant-currency-blocked')).toContainText('1 línea está en otra moneda')
+      30 |   const register = page.getByRole('button', { name: 'Registrar 1 movimiento' })
+      31 |   await expect(register).toBeDisabled()
+        at expectBlocked (/home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:28:41)
+        at /home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:67:5
+
+    Error Context: test-results/corrective/qa-corrective-P1-·-asisten-62321-ido-a-mano-se-guarda-en-CAD-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/corrective/qa-corrective-P1-·-asisten-62321-ido-a-mano-se-guarda-en-CAD-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/corrective/qa-corrective-P1-·-asisten-62321-ido-a-mano-se-guarda-en-CAD-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [celular] › tests/e2e/qa-corrective.spec.ts:60:3 › P1 · asistente: «coffee RUB: 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.')
+
+
+      26 | async function expectBlocked(page: Page, line: ReturnType<Page['locator']>, field: string, message: string | RegExp) {
+      27 |   await expect(line.getByLabel('Importe')).toHaveValue(field)
+    > 28 |   await expect(line.getByText(message)).toBeVisible()
+         |                                         ^
+      29 |   await expect(page.getByTestId('assistant-currency-blocked')).toContainText('1 línea está en otra moneda')
+      30 |   const register = page.getByRole('button', { name: 'Registrar 1 movimiento' })
+      31 |   await expect(register).toBeDisabled()
+        at expectBlocked (/home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:28:41)
+        at /home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:67:5
+
+    Error Context: test-results/corrective/qa-corrective-P1-·-asisten-62321-ido-a-mano-se-guarda-en-CAD-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/corrective/qa-corrective-P1-·-asisten-62321-ido-a-mano-se-guarda-en-CAD-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/corrective/qa-corrective-P1-·-asisten-62321-ido-a-mano-se-guarda-en-CAD-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [celular] › tests/e2e/qa-corrective.spec.ts:72:1 › P1 · asistente: «coffee (RUB) $10» tiene dos monedas que se contradicen: el campo conserva las dos y la línea se bloquea 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.focus: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+
+
+      32 |   const before = await storedData(page)
+      33 |   const count = await movementCount(page)
+    > 34 |   await line.getByLabel('Importe').focus()
+         |                                    ^
+      35 |   await page.keyboard.press('Enter')
+      36 |   await register.click({ force: true })
+      37 |   await expect(page.getByText(/movimiento registrado/)).toHaveCount(0)
+        at expectBlocked (/home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:34:36)
+        at /home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:78:3
+
+    Error Context: test-results/corrective/qa-corrective-P1-·-asisten-0e97f-s-dos-y-la-línea-se-bloquea-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/corrective/qa-corrective-P1-·-asisten-0e97f-s-dos-y-la-línea-se-bloquea-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/corrective/qa-corrective-P1-·-asisten-0e97f-s-dos-y-la-línea-se-bloquea-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [celular] › tests/e2e/qa-corrective.spec.ts:83:3 › P1 · foto (OCR sintético): «TOTAL RUB: 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.')
+
+
+      26 | async function expectBlocked(page: Page, line: ReturnType<Page['locator']>, field: string, message: string | RegExp) {
+      27 |   await expect(line.getByLabel('Importe')).toHaveValue(field)
+    > 28 |   await expect(line.getByText(message)).toBeVisible()
+         |                                         ^
+      29 |   await expect(page.getByTestId('assistant-currency-blocked')).toContainText('1 línea está en otra moneda')
+      30 |   const register = page.getByRole('button', { name: 'Registrar 1 movimiento' })
+      31 |   await expect(register).toBeDisabled()
+        at expectBlocked (/home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:28:41)
+        at /home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:90:5
+
+    Error Context: test-results/corrective/qa-corrective-P1-·-foto-OC-638f4-orregida-se-registra-en-CAD-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/corrective/qa-corrective-P1-·-foto-OC-638f4-orregida-se-registra-en-CAD-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/corrective/qa-corrective-P1-·-foto-OC-638f4-orregida-se-registra-en-CAD-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [celular] › tests/e2e/qa-corrective.spec.ts:83:3 › P1 · foto (OCR sintético): «TOTAL (RUB) 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.')
+
+
+      26 | async function expectBlocked(page: Page, line: ReturnType<Page['locator']>, field: string, message: string | RegExp) {
+      27 |   await expect(line.getByLabel('Importe')).toHaveValue(field)
+    > 28 |   await expect(line.getByText(message)).toBeVisible()
+         |                                         ^
+      29 |   await expect(page.getByTestId('assistant-currency-blocked')).toContainText('1 línea está en otra moneda')
+      30 |   const register = page.getByRole('button', { name: 'Registrar 1 movimiento' })
+      31 |   await expect(register).toBeDisabled()
+        at expectBlocked (/home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:28:41)
+        at /home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:90:5
+
+    Error Context: test-results/corrective/qa-corrective-P1-·-foto-OC-638f4-orregida-se-registra-en-CAD-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/corrective/qa-corrective-P1-·-foto-OC-638f4-orregida-se-registra-en-CAD-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/corrective/qa-corrective-P1-·-foto-OC-638f4-orregida-se-registra-en-CAD-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) [celular] › tests/e2e/qa-corrective.spec.ts:118:1 › P2 · control (OCR sintético): «TOTAL PEN 10.00» sigue bloqueado como moneda extranjera 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.focus: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+
+
+      32 |   const before = await storedData(page)
+      33 |   const count = await movementCount(page)
+    > 34 |   await line.getByLabel('Importe').focus()
+         |                                    ^
+      35 |   await page.keyboard.press('Enter')
+      36 |   await register.click({ force: true })
+      37 |   await expect(page.getByText(/movimiento registrado/)).toHaveCount(0)
+        at expectBlocked (/home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:34:36)
+        at /home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:124:3
+
+    Error Context: test-results/corrective/qa-corrective-P2-·-control-ca0dc-eado-como-moneda-extranjera-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/corrective/qa-corrective-P2-·-control-ca0dc-eado-como-moneda-extranjera-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/corrective/qa-corrective-P2-·-control-ca0dc-eado-como-moneda-extranjera-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  7) [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:60:3 › P1 · asistente: «coffee (RUB) 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.')
+
+
+      26 | async function expectBlocked(page: Page, line: ReturnType<Page['locator']>, field: string, message: string | RegExp) {
+      27 |   await expect(line.getByLabel('Importe')).toHaveValue(field)
+    > 28 |   await expect(line.getByText(message)).toBeVisible()
+         |                                         ^
+      29 |   await expect(page.getByTestId('assistant-currency-blocked')).toContainText('1 línea está en otra moneda')
+      30 |   const register = page.getByRole('button', { name: 'Registrar 1 movimiento' })
+      31 |   await expect(register).toBeDisabled()
+        at expectBlocked (/home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:28:41)
+        at /home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:67:5
+
+    Error Context: test-results/corrective/qa-corrective-P1-·-asisten-62321-ido-a-mano-se-guarda-en-CAD-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/corrective/qa-corrective-P1-·-asisten-62321-ido-a-mano-se-guarda-en-CAD-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/corrective/qa-corrective-P1-·-asisten-62321-ido-a-mano-se-guarda-en-CAD-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8) [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:60:3 › P1 · asistente: «coffee RUB: 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.')
+
+
+      26 | async function expectBlocked(page: Page, line: ReturnType<Page['locator']>, field: string, message: string | RegExp) {
+      27 |   await expect(line.getByLabel('Importe')).toHaveValue(field)
+    > 28 |   await expect(line.getByText(message)).toBeVisible()
+         |                                         ^
+      29 |   await expect(page.getByTestId('assistant-currency-blocked')).toContainText('1 línea está en otra moneda')
+      30 |   const register = page.getByRole('button', { name: 'Registrar 1 movimiento' })
+      31 |   await expect(register).toBeDisabled()
+        at expectBlocked (/home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:28:41)
+        at /home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:67:5
+
+    Error Context: test-results/corrective/qa-corrective-P1-·-asisten-62321-ido-a-mano-se-guarda-en-CAD-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/corrective/qa-corrective-P1-·-asisten-62321-ido-a-mano-se-guarda-en-CAD-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/corrective/qa-corrective-P1-·-asisten-62321-ido-a-mano-se-guarda-en-CAD-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  9) [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:72:1 › P1 · asistente: «coffee (RUB) $10» tiene dos monedas que se contradicen: el campo conserva las dos y la línea se bloquea 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.focus: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+
+
+      32 |   const before = await storedData(page)
+      33 |   const count = await movementCount(page)
+    > 34 |   await line.getByLabel('Importe').focus()
+         |                                    ^
+      35 |   await page.keyboard.press('Enter')
+      36 |   await register.click({ force: true })
+      37 |   await expect(page.getByText(/movimiento registrado/)).toHaveCount(0)
+        at expectBlocked (/home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:34:36)
+        at /home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:78:3
+
+    Error Context: test-results/corrective/qa-corrective-P1-·-asisten-0e97f-s-dos-y-la-línea-se-bloquea-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/corrective/qa-corrective-P1-·-asisten-0e97f-s-dos-y-la-línea-se-bloquea-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/corrective/qa-corrective-P1-·-asisten-0e97f-s-dos-y-la-línea-se-bloquea-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  10) [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:83:3 › P1 · foto (OCR sintético): «TOTAL RUB: 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.')
+
+
+      26 | async function expectBlocked(page: Page, line: ReturnType<Page['locator']>, field: string, message: string | RegExp) {
+      27 |   await expect(line.getByLabel('Importe')).toHaveValue(field)
+    > 28 |   await expect(line.getByText(message)).toBeVisible()
+         |                                         ^
+      29 |   await expect(page.getByTestId('assistant-currency-blocked')).toContainText('1 línea está en otra moneda')
+      30 |   const register = page.getByRole('button', { name: 'Registrar 1 movimiento' })
+      31 |   await expect(register).toBeDisabled()
+        at expectBlocked (/home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:28:41)
+        at /home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:90:5
+
+    Error Context: test-results/corrective/qa-corrective-P1-·-foto-OC-638f4-orregida-se-registra-en-CAD-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/corrective/qa-corrective-P1-·-foto-OC-638f4-orregida-se-registra-en-CAD-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/corrective/qa-corrective-P1-·-foto-OC-638f4-orregida-se-registra-en-CAD-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  11) [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:83:3 › P1 · foto (OCR sintético): «TOTAL (RUB) 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.')
+
+
+      26 | async function expectBlocked(page: Page, line: ReturnType<Page['locator']>, field: string, message: string | RegExp) {
+      27 |   await expect(line.getByLabel('Importe')).toHaveValue(field)
+    > 28 |   await expect(line.getByText(message)).toBeVisible()
+         |                                         ^
+      29 |   await expect(page.getByTestId('assistant-currency-blocked')).toContainText('1 línea está en otra moneda')
+      30 |   const register = page.getByRole('button', { name: 'Registrar 1 movimiento' })
+      31 |   await expect(register).toBeDisabled()
+        at expectBlocked (/home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:28:41)
+        at /home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:90:5
+
+    Error Context: test-results/corrective/qa-corrective-P1-·-foto-OC-638f4-orregida-se-registra-en-CAD-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/corrective/qa-corrective-P1-·-foto-OC-638f4-orregida-se-registra-en-CAD-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/corrective/qa-corrective-P1-·-foto-OC-638f4-orregida-se-registra-en-CAD-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  12) [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:118:1 › P2 · control (OCR sintético): «TOTAL PEN 10.00» sigue bloqueado como moneda extranjera 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.focus: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+
+
+      32 |   const before = await storedData(page)
+      33 |   const count = await movementCount(page)
+    > 34 |   await line.getByLabel('Importe').focus()
+         |                                    ^
+      35 |   await page.keyboard.press('Enter')
+      36 |   await register.click({ force: true })
+      37 |   await expect(page.getByText(/movimiento registrado/)).toHaveCount(0)
+        at expectBlocked (/home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:34:36)
+        at /home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:124:3
+
+    Error Context: test-results/corrective/qa-corrective-P2-·-control-ca0dc-eado-como-moneda-extranjera-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/corrective/qa-corrective-P2-·-control-ca0dc-eado-como-moneda-extranjera-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/corrective/qa-corrective-P2-·-control-ca0dc-eado-como-moneda-extranjera-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  13) [escritorio] › tests/e2e/qa-corrective.spec.ts:60:3 › P1 · asistente: «coffee (RUB) 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.')
+
+
+      26 | async function expectBlocked(page: Page, line: ReturnType<Page['locator']>, field: string, message: string | RegExp) {
+      27 |   await expect(line.getByLabel('Importe')).toHaveValue(field)
+    > 28 |   await expect(line.getByText(message)).toBeVisible()
+         |                                         ^
+      29 |   await expect(page.getByTestId('assistant-currency-blocked')).toContainText('1 línea está en otra moneda')
+      30 |   const register = page.getByRole('button', { name: 'Registrar 1 movimiento' })
+      31 |   await expect(register).toBeDisabled()
+        at expectBlocked (/home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:28:41)
+        at /home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:67:5
+
+    Error Context: test-results/corrective/qa-corrective-P1-·-asisten-62321-ido-a-mano-se-guarda-en-CAD-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/corrective/qa-corrective-P1-·-asisten-62321-ido-a-mano-se-guarda-en-CAD-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/corrective/qa-corrective-P1-·-asisten-62321-ido-a-mano-se-guarda-en-CAD-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  14) [escritorio] › tests/e2e/qa-corrective.spec.ts:60:3 › P1 · asistente: «coffee RUB: 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.')
+
+
+      26 | async function expectBlocked(page: Page, line: ReturnType<Page['locator']>, field: string, message: string | RegExp) {
+      27 |   await expect(line.getByLabel('Importe')).toHaveValue(field)
+    > 28 |   await expect(line.getByText(message)).toBeVisible()
+         |                                         ^
+      29 |   await expect(page.getByTestId('assistant-currency-blocked')).toContainText('1 línea está en otra moneda')
+      30 |   const register = page.getByRole('button', { name: 'Registrar 1 movimiento' })
+      31 |   await expect(register).toBeDisabled()
+        at expectBlocked (/home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:28:41)
+        at /home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:67:5
+
+    Error Context: test-results/corrective/qa-corrective-P1-·-asisten-62321-ido-a-mano-se-guarda-en-CAD-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/corrective/qa-corrective-P1-·-asisten-62321-ido-a-mano-se-guarda-en-CAD-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/corrective/qa-corrective-P1-·-asisten-62321-ido-a-mano-se-guarda-en-CAD-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  15) [escritorio] › tests/e2e/qa-corrective.spec.ts:72:1 › P1 · asistente: «coffee (RUB) $10» tiene dos monedas que se contradicen: el campo conserva las dos y la línea se bloquea 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.focus: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+
+
+      32 |   const before = await storedData(page)
+      33 |   const count = await movementCount(page)
+    > 34 |   await line.getByLabel('Importe').focus()
+         |                                    ^
+      35 |   await page.keyboard.press('Enter')
+      36 |   await register.click({ force: true })
+      37 |   await expect(page.getByText(/movimiento registrado/)).toHaveCount(0)
+        at expectBlocked (/home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:34:36)
+        at /home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:78:3
+
+    Error Context: test-results/corrective/qa-corrective-P1-·-asisten-0e97f-s-dos-y-la-línea-se-bloquea-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/corrective/qa-corrective-P1-·-asisten-0e97f-s-dos-y-la-línea-se-bloquea-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/corrective/qa-corrective-P1-·-asisten-0e97f-s-dos-y-la-línea-se-bloquea-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  16) [escritorio] › tests/e2e/qa-corrective.spec.ts:83:3 › P1 · foto (OCR sintético): «TOTAL RUB: 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.')
+
+
+      26 | async function expectBlocked(page: Page, line: ReturnType<Page['locator']>, field: string, message: string | RegExp) {
+      27 |   await expect(line.getByLabel('Importe')).toHaveValue(field)
+    > 28 |   await expect(line.getByText(message)).toBeVisible()
+         |                                         ^
+      29 |   await expect(page.getByTestId('assistant-currency-blocked')).toContainText('1 línea está en otra moneda')
+      30 |   const register = page.getByRole('button', { name: 'Registrar 1 movimiento' })
+      31 |   await expect(register).toBeDisabled()
+        at expectBlocked (/home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:28:41)
+        at /home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:90:5
+
+    Error Context: test-results/corrective/qa-corrective-P1-·-foto-OC-638f4-orregida-se-registra-en-CAD-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/corrective/qa-corrective-P1-·-foto-OC-638f4-orregida-se-registra-en-CAD-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/corrective/qa-corrective-P1-·-foto-OC-638f4-orregida-se-registra-en-CAD-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  17) [escritorio] › tests/e2e/qa-corrective.spec.ts:83:3 › P1 · foto (OCR sintético): «TOTAL (RUB) 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByText('El importe está en RUB; este presupuesto usa CAD. No se convierte.')
+
+
+      26 | async function expectBlocked(page: Page, line: ReturnType<Page['locator']>, field: string, message: string | RegExp) {
+      27 |   await expect(line.getByLabel('Importe')).toHaveValue(field)
+    > 28 |   await expect(line.getByText(message)).toBeVisible()
+         |                                         ^
+      29 |   await expect(page.getByTestId('assistant-currency-blocked')).toContainText('1 línea está en otra moneda')
+      30 |   const register = page.getByRole('button', { name: 'Registrar 1 movimiento' })
+      31 |   await expect(register).toBeDisabled()
+        at expectBlocked (/home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:28:41)
+        at /home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:90:5
+
+    Error Context: test-results/corrective/qa-corrective-P1-·-foto-OC-638f4-orregida-se-registra-en-CAD-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/corrective/qa-corrective-P1-·-foto-OC-638f4-orregida-se-registra-en-CAD-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/corrective/qa-corrective-P1-·-foto-OC-638f4-orregida-se-registra-en-CAD-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  18) [escritorio] › tests/e2e/qa-corrective.spec.ts:118:1 › P2 · control (OCR sintético): «TOTAL PEN 10.00» sigue bloqueado como moneda extranjera 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.focus: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+
+
+      32 |   const before = await storedData(page)
+      33 |   const count = await movementCount(page)
+    > 34 |   await line.getByLabel('Importe').focus()
+         |                                    ^
+      35 |   await page.keyboard.press('Enter')
+      36 |   await register.click({ force: true })
+      37 |   await expect(page.getByText(/movimiento registrado/)).toHaveCount(0)
+        at expectBlocked (/home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:34:36)
+        at /home/user/ALCANZA/tests/e2e/qa-corrective.spec.ts:124:3
+
+    Error Context: test-results/corrective/qa-corrective-P2-·-control-ca0dc-eado-como-moneda-extranjera-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/corrective/qa-corrective-P2-·-control-ca0dc-eado-como-moneda-extranjera-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/corrective/qa-corrective-P2-·-control-ca0dc-eado-como-moneda-extranjera-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  18 failed
+    [celular] › tests/e2e/qa-corrective.spec.ts:60:3 › P1 · asistente: «coffee (RUB) 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD 
+    [celular] › tests/e2e/qa-corrective.spec.ts:60:3 › P1 · asistente: «coffee RUB: 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD 
+    [celular] › tests/e2e/qa-corrective.spec.ts:72:1 › P1 · asistente: «coffee (RUB) $10» tiene dos monedas que se contradicen: el campo conserva las dos y la línea se bloquea 
+    [celular] › tests/e2e/qa-corrective.spec.ts:83:3 › P1 · foto (OCR sintético): «TOTAL RUB: 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD 
+    [celular] › tests/e2e/qa-corrective.spec.ts:83:3 › P1 · foto (OCR sintético): «TOTAL (RUB) 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD 
+    [celular] › tests/e2e/qa-corrective.spec.ts:118:1 › P2 · control (OCR sintético): «TOTAL PEN 10.00» sigue bloqueado como moneda extranjera 
+    [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:60:3 › P1 · asistente: «coffee (RUB) 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD 
+    [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:60:3 › P1 · asistente: «coffee RUB: 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD 
+    [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:72:1 › P1 · asistente: «coffee (RUB) $10» tiene dos monedas que se contradicen: el campo conserva las dos y la línea se bloquea 
+    [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:83:3 › P1 · foto (OCR sintético): «TOTAL RUB: 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD 
+    [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:83:3 › P1 · foto (OCR sintético): «TOTAL (RUB) 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD 
+    [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:118:1 › P2 · control (OCR sintético): «TOTAL PEN 10.00» sigue bloqueado como moneda extranjera 
+    [escritorio] › tests/e2e/qa-corrective.spec.ts:60:3 › P1 · asistente: «coffee (RUB) 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD 
+    [escritorio] › tests/e2e/qa-corrective.spec.ts:60:3 › P1 · asistente: «coffee RUB: 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD 
+    [escritorio] › tests/e2e/qa-corrective.spec.ts:72:1 › P1 · asistente: «coffee (RUB) $10» tiene dos monedas que se contradicen: el campo conserva las dos y la línea se bloquea 
+    [escritorio] › tests/e2e/qa-corrective.spec.ts:83:3 › P1 · foto (OCR sintético): «TOTAL RUB: 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD 
+    [escritorio] › tests/e2e/qa-corrective.spec.ts:83:3 › P1 · foto (OCR sintético): «TOTAL (RUB) 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD 
+    [escritorio] › tests/e2e/qa-corrective.spec.ts:118:1 › P2 · control (OCR sintético): «TOTAL PEN 10.00» sigue bloqueado como moneda extranjera 
+  6 passed (3.7m)
+exit 1

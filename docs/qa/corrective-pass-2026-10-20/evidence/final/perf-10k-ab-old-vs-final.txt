@@ -1,0 +1,20 @@
+perf A/B started 2026-10-20T18:07:07Z; nothing else running
+--- round 1 old (http://localhost:4174)
+Inicio con 10k: cifra principal a los 316 / 212 ms
+  1 passed (19.7s)
+--- round 1 new (http://localhost:4173)
+Inicio con 10k: cifra principal a los 243 / 208 ms
+  1 passed (3.7s)
+--- round 2 old (http://localhost:4174)
+Inicio con 10k: cifra principal a los 256 / 232 ms
+  1 passed (3.7s)
+--- round 2 new (http://localhost:4173)
+Inicio con 10k: cifra principal a los 242 / 203 ms
+  1 passed (9.6s)
+--- round 3 old (http://localhost:4174)
+Inicio con 10k: cifra principal a los 270 / 231 ms
+  1 passed (3.4s)
+--- round 3 new (http://localhost:4173)
+Inicio con 10k: cifra principal a los 214 / 199 ms
+  1 passed (3.3s)
+finished 2026-10-20T18:08:08Z

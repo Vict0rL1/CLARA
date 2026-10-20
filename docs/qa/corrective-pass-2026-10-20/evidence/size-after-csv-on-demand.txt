@@ -1,0 +1,16 @@
+  theme.js                                             0.5 KB (gzip 0.3 KB)
+  assets/index-BisNpbQt.js                           461.2 KB (gzip 136.6 KB)
+  assets/common-CvX7wVFk.js                          243.7 KB (gzip 74.2 KB)
+  assets/money-BLwodv-b.js                            15.1 KB (gzip 5.5 KB)
+  assets/localStorageRepository-NHt0a0Io.js           64.2 KB (gzip 16.9 KB)
+  assets/store-CLrQqgvz.js                             9.8 KB (gzip 3.5 KB)
+  assets/balances-DRlHI5Qs.js                          2.6 KB (gzip 0.9 KB)
+  assets/goals-BGNsxxSe.js                             1.1 KB (gzip 0.5 KB)
+  assets/budget-CDQE6-9c.js                           10.5 KB (gzip 4.0 KB)
+  assets/categoryOps-BjbWKdmh.js                       5.2 KB (gzip 1.8 KB)
+  assets/operations-vqu4VBgz.js                       25.3 KB (gzip 7.0 KB)
+  assets/plannedExpenses-DmzyOOd2.js                   5.6 KB (gzip 1.9 KB)
+JS inicial: 844.8 KB en 12 archivos (gzip 253.1 KB)
+Referencia: 767.8 KB · límite 844.6 KB · cambio +10.0 %
+El JS inicial creció más de un 10 % sobre la referencia. Reduce el tamaño (p. ej. carga diferida) o, si el aumento es intencionado, actualiza la referencia con `npm run size -- --update` en su propio commit.
+size exit 1

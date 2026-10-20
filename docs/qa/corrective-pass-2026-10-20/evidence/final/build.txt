@@ -1,0 +1,76 @@
+
+> clara@1.0.0-beta.1 build
+> tsc -b && vite build
+
+vite v8.3.1 building client environment for production...
+transforming...
+✓ 231 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                           2.34 kB │ gzip:   0.87 kB
+dist/sw.js                                                4.52 kB
+dist/assets/inter-latin-wght-normal-Dx4kXJAl.woff2       48.25 kB
+dist/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2   85.06 kB
+dist/assets/index-shu3FO6Y.css                           77.14 kB │ gzip:  15.63 kB
+dist/assets/useEncryptedExport-DZQuJ-R5.js                0.64 kB │ gzip:   0.41 kB
+dist/assets/Legal-RWuCTFcK.js                             0.75 kB │ gzip:   0.42 kB
+dist/assets/InsightsTabs-zPdf7WsF.js                      0.76 kB │ gzip:   0.44 kB
+dist/assets/currencyChange-D2ZMcZPQ.js                    0.94 kB │ gzip:   0.38 kB
+dist/assets/formatters-CXfjV1AM.js                        1.06 kB │ gzip:   0.56 kB
+dist/assets/goals-BGNsxxSe.js                             1.08 kB │ gzip:   0.51 kB
+dist/assets/goalChart-CvNk-Mm3.js                         1.68 kB │ gzip:   0.77 kB
+dist/assets/csvExport-D3a75RYq.js                         1.74 kB │ gzip:   0.85 kB
+dist/assets/Account-DaVnZ4_f.js                           2.05 kB │ gzip:   0.81 kB
+dist/assets/Pro-DsCemvuN.js                               2.13 kB │ gzip:   0.98 kB
+dist/assets/balances-DRlHI5Qs.js                          2.62 kB │ gzip:   0.96 kB
+dist/assets/projection-ClADaR3q.js                        2.85 kB │ gzip:   1.33 kB
+dist/assets/review-CxgBQDm2.js                            2.88 kB │ gzip:   1.29 kB
+dist/assets/historyRevert-DUdeEYut.js                     3.05 kB │ gzip:   1.16 kB
+dist/assets/scheduleFrom-DTMBzcbY.js                      3.27 kB │ gzip:   1.32 kB
+dist/assets/Favorites-4wgNIL5U.js                         3.34 kB │ gzip:   1.19 kB
+dist/assets/Trash-C7E4ZcWY.js                             3.58 kB │ gzip:   1.39 kB
+dist/assets/PassphraseDialog-D8j9Lg-F.js                  3.76 kB │ gzip:   1.60 kB
+dist/assets/historyText-BBK9VV9v.js                       3.82 kB │ gzip:   1.34 kB
+dist/assets/History-CL2aF6K0.js                           4.01 kB │ gzip:   1.58 kB
+dist/assets/RulesSection-Dyemz4K7.js                      4.58 kB │ gzip:   1.81 kB
+dist/assets/ocr-SwfXrQwQ.js                               4.76 kB │ gzip:   2.18 kB
+dist/assets/categoryOps-BjbWKdmh.js                       5.36 kB │ gzip:   1.80 kB
+dist/assets/plannedExpenses-C2vMGqey.js                   5.73 kB │ gzip:   1.99 kB
+dist/assets/store-bzC0PBUS.js                             6.22 kB │ gzip:   2.48 kB
+dist/assets/Search-APk9ArRC.js                            6.56 kB │ gzip:   2.52 kB
+dist/assets/Insights-oZ8AVNlL.js                          7.88 kB │ gzip:   2.85 kB
+dist/assets/WeeklyReview-3HHomu4k.js                      7.89 kB │ gzip:   2.37 kB
+dist/assets/Afford-sei8eF88.js                            8.18 kB │ gzip:   2.62 kB
+dist/assets/Inbox-DAKt3gqI.js                             8.64 kB │ gzip:   2.69 kB
+dist/assets/Reconcile-B9IQDDpb.js                         8.73 kB │ gzip:   2.91 kB
+dist/assets/ScheduleForm-CLy8WB1L.js                      9.07 kB │ gzip:   3.23 kB
+dist/assets/demoData-C2Bekzbn.js                          9.45 kB │ gzip:   3.34 kB
+dist/assets/Gallery-DI-YyQ2X.js                          10.58 kB │ gzip:   3.04 kB
+dist/assets/IncomeDistribution-DwfeM5d0.js               10.67 kB │ gzip:   3.30 kB
+dist/assets/Categories-C4-NnWK7.js                       10.74 kB │ gzip:   3.16 kB
+dist/assets/budget-CDQE6-9c.js                           10.79 kB │ gzip:   4.11 kB
+dist/assets/Templates-BKVw2U0R.js                        10.88 kB │ gzip:   3.73 kB
+dist/assets/WhatChanged-D113nQVQ.js                      12.72 kB │ gzip:   4.02 kB
+dist/assets/statsCharts-BJxLiYZl.js                      13.28 kB │ gzip:   3.72 kB
+dist/assets/Statistics-Cfow_GJN.js                       15.29 kB │ gzip:   4.98 kB
+dist/assets/money-BLwodv-b.js                            15.48 kB │ gzip:   5.67 kB
+dist/assets/ShortfallPlan-DbVMYUl-.js                    15.87 kB │ gzip:   4.87 kB
+dist/assets/PeriodBudgets-DBCM7k4D.js                    16.67 kB │ gzip:   4.84 kB
+dist/assets/Scenarios-li5N-tWm.js                        19.02 kB │ gzip:   5.71 kB
+dist/assets/Setup-CY6rWkC9.js                            20.12 kB │ gzip:   5.98 kB
+dist/assets/Assistant-CJMtPLlr.js                        22.16 kB │ gzip:   8.06 kB
+dist/assets/Plans-D8z0K9qE.js                            24.15 kB │ gzip:   7.08 kB
+dist/assets/Goals-C4Hru0fk.js                            25.11 kB │ gzip:   6.82 kB
+dist/assets/BankImport-DAblAxO7.js                       25.35 kB │ gzip:   8.30 kB
+dist/assets/operations-BdvWs2lf.js                       25.93 kB │ gzip:   7.27 kB
+dist/assets/Plan-_df_VYfc.js                             31.22 kB │ gzip:   8.39 kB
+dist/assets/localStorageRepository-NHt0a0Io.js           65.71 kB │ gzip:  17.42 kB
+dist/assets/Settings-Czy4G1hd.js                         87.78 kB │ gzip:  22.24 kB
+dist/assets/en-D_Z3YRZJ.js                              218.65 kB │ gzip:  63.57 kB
+dist/assets/pt-lNLSAZCm.js                              227.35 kB │ gzip:  66.78 kB
+dist/assets/fr-D8IY_oGE.js                              247.83 kB │ gzip:  70.36 kB
+dist/assets/common-CvX7wVFk.js                          249.56 kB │ gzip:  76.80 kB
+dist/assets/index-DPBWKBXK.js                           472.34 kB │ gzip: 141.45 kB
+
+✓ built in 1.39s
+exit 0

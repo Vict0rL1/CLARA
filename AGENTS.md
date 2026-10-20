@@ -34,7 +34,7 @@ relative to today, everything is marked as demo). «Ajustes › Demostración y 
 ## 3. Automated checks (run all of these before declaring a change done)
 
 ```bash
-npm run check        # typecheck + oxlint + i18n literal check + Vitest (≈1 040 unit tests, incl. qa/, the QA V2, the PR #15 audit and the self-review contracts)
+npm run check        # typecheck + oxlint + i18n literal check + Vitest (≈1 080 unit tests, incl. qa/, the QA V2, the PR #15 audit, the self-review contracts and the follow-up audit)
 npm run build        # production build
 npm run size         # initial JS budget: must stay ≤ 844.6 KB (currently ≈ 844 KB: ~0.5 KB of headroom after QA V2) — do not raise it
 npm audit --audit-level=high   # dependency audit (CI fails on a high/critical vulnerability)
@@ -77,6 +77,8 @@ Notes for reliable runs:
 | `src/domain/qaV2.test.ts`, `src/ui/secondDay.test.ts`, `tests/e2e/qa-v2.spec.ts` | QA V2 contracts (CUR-01/02/03, FIN-01, STAT-01, SCH-01); the CUR-01 browser test is also `@smoke` |
 | `src/domain/qaPr15{Anchor,Currency,Undo}.test.ts`, `tests/e2e/qa-pr15.spec.ts` | PR #15 audit contracts: QA-01 series anchor (schema 14, forward links), QA-02 buffer guard, QA-05 split undo (snooze rules R5/S1); browser acceptance incl. QA-03 filters and the R2 address rule |
 | `src/domain/percentExact.test.ts`, `src/domain/dayBalance.test.ts` | Self-review contracts: exact integer percentages (R6); one rule for what a calendar day says, base or simulated (`outOfRange`, R3/S3) |
+| `src/domain/qaCorrective.test.ts`, `tests/e2e/qa-corrective.spec.ts` | Corrective pass (independent audit 2026-10-19): P1 unsupported currency through bounded punctuation («coffee (RUB) 10», «TOTAL RUB: 10.00») blocks the line in the assistant, receipts, fields, CSV and shortcuts; P2 receipt keyword span classification («PEN 2.99 TAX 0.10» is an item). Report: `docs/qa/corrective-pass-2026-10-20/REPORT.md` |
+| `src/domain/qaFollowUp.test.ts`, `src/ui/components/axisLabels.test.ts`, `src/ui/themeTokens.test.ts` (F-04), `tests/e2e/qa-followup.spec.ts` | Follow-up audit (head 46fe617): F-01 history ids per collection and recovery of data written by the faulty version; QA-01 historical split review/repair (`domain/splitRepair.ts`); F-02 dependency-safe undo; F-03 exact Analysis percentage; F-04 computed contrast of «Sin comparación»; F-05 axis labels by slot width. Report: `docs/qa/followup-audit-2026-10-20/REPORT.md` |
 | `docs/qa/qa-v2-implementation-2026-10-17/` | QA V2 implementation report, before/after evidence (JSON, logs) and screenshots |
 | `docs/STABILIZATION-2026-10-13.md` | What was fixed, before/after evidence, known limits, later roadmap |
 | `docs/screenshots/stabilization-2026-10-13/` | Before (audited `e7c9d87`) / after screenshots |
