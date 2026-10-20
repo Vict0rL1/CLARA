@@ -3358,4 +3358,6 @@ export const es = {
   'history.dependent.goal': 'Gasto planificado «{name}»',
   'history.dependent.snooze': 'Aviso aplazado del {date}',
   'issue.revertDependents': 'No se puede revertir: {count} registro(s) seguirían apuntando a un programado que este cambio eliminaría. Cámbialos o bórralos primero.',
+  'insights.spendingUp.titleNoFigure': 'Este mes llevas muchísimo más gasto que a estas alturas del mes pasado; el porcentaje exacto no cabe en una cifra',
+  'insights.spendingDown.titleNoFigure': 'Este mes llevas muchísimo menos gasto que a estas alturas del mes pasado; el porcentaje exacto no cabe en una cifra',
 } as const

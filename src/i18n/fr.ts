@@ -3357,4 +3357,6 @@ export const fr: Record<keyof typeof es, string> = {
   'history.dependent.goal': 'Dépense planifiée « {name} »',
   'history.dependent.snooze': 'Rappel reporté du {date}',
   'issue.revertDependents': 'Impossible d\'annuler : {count} enregistrement(s) pointeraient encore vers un paiement programmé que ce changement supprimerait. Modifiez-les ou supprimez-les d\'abord.',
+  'insights.spendingUp.titleNoFigure': 'Ce mois-ci, vous avez dépensé énormément plus qu\'à ce stade le mois dernier ; le pourcentage exact ne tient pas dans un chiffre',
+  'insights.spendingDown.titleNoFigure': 'Ce mois-ci, vous avez dépensé énormément moins qu\'à ce stade le mois dernier ; le pourcentage exact ne tient pas dans un chiffre',
 }

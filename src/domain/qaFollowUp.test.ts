@@ -12,10 +12,12 @@ import type { AppData, Schedule } from './types'
 import { HISTORY_COLLECTIONS, INBOX_ID_MAX, isValidHistoryChangeId, validateHistory } from './validation'
 import type { HistoryEntry } from './types'
 import { backupText, parseBackup, validateAppData } from '../storage/backup'
+import { analysisItems } from './analysis'
 import { computeBudget } from './budget'
 import { dismissSplitRepair, driftedSplits, repairSplit } from './splitRepair'
 import { occurrencesBetween } from './recurrence'
-import { account, baseData, bill, EARLIER, goal, income, NOW } from '../test/fixtures'
+import { MAX_AMOUNT_MINOR } from './money'
+import { account, baseData, bill, EARLIER, goal, income, NOW, tx } from '../test/fixtures'
 
 const persisted = (d: AppData): AppData => JSON.parse(JSON.stringify(d)) as AppData
 const idOf = (n: number) => 'a'.repeat(n)
@@ -106,6 +108,43 @@ describe('F-01 · recuperación: lo que guardó la versión con el fallo (ids de
     expect(imported.ok ? [] : imported.issues).toEqual([])
     // Sin migración ni reparación: los datos eran correctos, solo la lectura los rechazaba.
     expect(imported.ok && imported.data).toEqual(written)
+  })
+})
+
+describe('F-03 · Análisis: el porcentaje de gasto a fecha equivalente se calcula exacto y verificado', () => {
+  const MAX = MAX_AMOUNT_MINOR
+  const seed = (previousMinor: number[], currentMinor: number[]) =>
+    baseData({
+      accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 0, date: '2026-07-01', setAt: '2026-07-01T12:00:00.000Z' } })],
+      transactions: [
+        ...previousMinor.map((amountMinor, i) => tx({ id: `p${i}`, date: '2026-08-10', amountMinor, kind: 'expense', status: 'realized' })),
+        ...currentMinor.map((amountMinor, i) => tx({ id: `c${i}`, date: '2026-09-10', amountMinor, kind: 'expense', status: 'realized' })),
+      ],
+    })
+
+  it('1 gasto de MAX_AMOUNT_MINOR el 10-ago frente a 100 el 10-sep (seguimiento desde el 1-jul, al 28-sep): 9 900 % exacto en vez de fallar', () => {
+    const items = analysisItems(seed([MAX], Array.from({ length: 100 }, () => MAX)), '2026-09-28')
+    const up = items.find((i) => i.id === 'spendingUp')!
+    expect(up.params).toMatchObject({ percent: 9900, current: 100 * MAX, previous: MAX, date: '2026-08-28' })
+    expect(up.because.map((b) => [b.id, b.value])).toEqual([
+      ['currentToDate', 100 * MAX],
+      ['previousToDate', MAX],
+      ['difference', 99 * MAX],
+    ])
+  })
+
+  it('con el cociente fuera del rango exacto (1 unidad menor frente a 100 × MAX) el aviso sale sin porcentaje, nunca con una cifra inexacta', () => {
+    const items = analysisItems(seed([1], Array.from({ length: 100 }, () => MAX)), '2026-09-28')
+    const up = items.find((i) => i.id === 'spendingUp')!
+    expect(up.params.percent).toBeUndefined()
+    expect(up.params).toMatchObject({ current: 100 * MAX, previous: 1 })
+    expect(up.because.find((b) => b.id === 'difference')?.value).toBe(100 * MAX - 1)
+  })
+
+  it('bajadas y subidas normales siguen igual: 200 → 150 es −25 % (spendingDown 25); 100 → 108 no avisa (umbral 10 %)', () => {
+    const down = analysisItems(seed([20000], [15000]), '2026-09-28').find((i) => i.id === 'spendingDown')!
+    expect(down.params).toMatchObject({ percent: 25 })
+    expect(analysisItems(seed([10000], [10800]), '2026-09-28').some((i) => i.id === 'spendingUp' || i.id === 'spendingDown')).toBe(false)
   })
 })
 

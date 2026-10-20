@@ -3359,4 +3359,6 @@ export const en: Record<keyof typeof es, string> = {
   'history.dependent.goal': 'Planned expense "{name}"',
   'history.dependent.snooze': 'Snoozed reminder for {date}',
   'issue.revertDependents': 'Cannot revert: {count} record(s) would still point to a scheduled payment this change would remove. Change or delete them first.',
+  'insights.spendingUp.titleNoFigure': 'This month you have spent vastly more than at this point last month; the exact percentage does not fit in a figure',
+  'insights.spendingDown.titleNoFigure': 'This month you have spent vastly less than at this point last month; the exact percentage does not fit in a figure',
 }

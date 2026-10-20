@@ -3357,4 +3357,6 @@ export const pt: Record<keyof typeof es, string> = {
   'history.dependent.goal': 'Despesa planejada "{name}"',
   'history.dependent.snooze': 'Aviso adiado de {date}',
   'issue.revertDependents': 'Não é possível reverter: {count} registro(s) continuariam apontando para um agendamento que esta alteração eliminaria. Altere-os ou exclua-os primeiro.',
+  'insights.spendingUp.titleNoFigure': 'Este mês você já gastou muitíssimo mais do que a esta altura do mês passado; a porcentagem exata não cabe em um número',
+  'insights.spendingDown.titleNoFigure': 'Este mês você já gastou muitíssimo menos do que a esta altura do mês passado; a porcentagem exata não cabe em um número',
 }

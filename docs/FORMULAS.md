@@ -1443,7 +1443,12 @@ compactos ni se redondean para calcular.
   cubren ambos tramos y la base no es 0; aviso desde ±10 %); categoría dominante (≥ 30 % del gasto
   neto del mes); copia de seguridad pendiente (misma regla que el recordatorio; nunca en la demo).
   Nada de esto se guarda ni se posterga: la bandeja de pendientes (§24) sigue siendo el sitio de los
-  avisos accionables con posponer/descartar.
+  avisos accionables con posponer/descartar. El porcentaje del gasto a fecha equivalente se calcula
+  exacto y verificado (auditoría de seguimiento, F-03): `checkedMulDivFloor(actual − anterior, 100,
+  anterior)` con BigInt por dentro (antes `floorDiv((actual − anterior) × 100, anterior)` fallaba
+  cuando el producto pasaba de 2⁵³ − 1: un gasto de `MAX_AMOUNT_MINOR` el 10-ago frente a cien el
+  10-sep da 9 900 % exactos). Si ni el cociente cabe en un entero exacto, la señal sale sin `percent`
+  y la pantalla lo dice con los importes en «porque»; nunca una cifra inexacta ni una pantalla rota.
 - **Navegación**: «Análisis» es destino primario (barra inferior y lateral) y agrupa Avisos,
   Estadísticas, Revisión semanal y ¿Qué cambió? con pestañas; las rutas antiguas no cambian. Cada
   gráfico de Estadísticas lleva su «¿Cómo se calculó?» (categorías, barras, tendencia, comercios).

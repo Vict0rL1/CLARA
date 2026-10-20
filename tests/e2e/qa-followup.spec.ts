@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
+import { MAX_AMOUNT_MINOR } from '../../src/domain/money'
 import { saveScheduleFrom } from '../../src/domain/scheduleFrom'
 import type { AppData, HistoryEntry, Schedule } from '../../src/domain/types'
-import { account, baseData, bill, EARLIER, income, NOW } from '../../src/test/fixtures'
+import { account, baseData, bill, EARLIER, income, NOW, tx } from '../../src/test/fixtures'
 import { available, expectNoHorizontalScroll, go, openApp, seedStoredData, storedData, waitForSaved, writeStoredData } from './helpers'
 
 /**
@@ -138,6 +139,25 @@ test('F-02 · una partición grabada por una versión anterior (solo instantáne
   expect(stored.schedules.map((s) => s.id).sort()).toEqual(['next', 'old'])
   expect(stored.templates[0]!.lines[0]!.target).toEqual({ kind: 'payment', scheduleId: 'next' })
   expect(stored.inbox.snoozed.map((s) => s.id)).toEqual(['due:schedule:next:2026-10-01'])
+})
+
+/* ------------------------------------------------------------------ */
+/* F-03 · Análisis: porcentaje exacto                                   */
+/* ------------------------------------------------------------------ */
+
+test('F-03 · 1 gasto de MAX_AMOUNT_MINOR el 10-ago frente a 100 el 10-sep: Análisis muestra 9 900 % en vez de fallar', async ({ page }) => {
+  const MAX = MAX_AMOUNT_MINOR
+  const data = baseData({
+    accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 0, date: '2026-07-01', setAt: '2026-07-01T12:00:00.000Z' } })],
+    transactions: [
+      tx({ id: 'p0', date: '2026-08-10', amountMinor: MAX, kind: 'expense', status: 'realized' }),
+      ...Array.from({ length: 100 }, (_, i) => tx({ id: `c${i}`, date: '2026-09-10', amountMinor: MAX, kind: 'expense', status: 'realized' })),
+    ],
+  })
+  await seedStoredData(page, data)
+  await go(page, '/analisis')
+  await expect(page.getByText(/Este mes llevas un 9[\s.,\u00a0]?900 % más de gasto/)).toBeVisible()
+  await expectNoHorizontalScroll(page, 'análisis con un porcentaje enorme')
 })
 
 /* ------------------------------------------------------------------ */
