@@ -964,7 +964,10 @@ Código: `src/domain/history.ts`. Pantalla: `Ajustes › Historial de cambios`.
 - **Reversión sin referencias colgadas (auditoría de seguimiento, F-02).** Antes de eliminar un programado
   que la entrada creó, `revertDependents` calcula el estado candidato y busca lo que seguiría apuntando a
   él: líneas de plantillas de distribución (`target.kind: 'payment'`), cambios de escenarios
-  (`scheduleAmount`), gastos planificados vinculados (`plan.link`) y aplazamientos (`due:schedule:<id>:`).
+  (`scheduleAmount`), gastos planificados vinculados (`plan.link`) y aplazamientos (`due:schedule:<id>:`)
+  vigentes: uno caducado (`until` ≤ hoy) es inerte —la bandeja lo ignora y el siguiente aplazamiento lo
+  retira, R5— y no cuenta (revisión de seguridad y almacenamiento del 2026-10-27, S-R1; sin `today` se
+  sigue contando, como en la poda de `revertedState`).
   Si hay alguno, `canRevert` devuelve `dependents`, la pantalla lista cada registro (plantilla, escenario,
   gasto planificado o aviso del {fecha}) y `revertEntry` rechaza con `revertDependents` sin cambiar nada.
   Pasa con una entrada grabada antes de v14 (solo instantáneas de programados, aunque la partición movió

@@ -59,8 +59,13 @@ export interface RevertDependent {
   scheduleId: string
 }
 
-/** Referencias de `data` a programados por id (las que la partición mueve y una reversión puede dejar colgadas). */
-function scheduleReferences(data: AppData): RevertDependent[] {
+/**
+ * Referencias de `data` a programados por id (las que la partición mueve y una reversión puede dejar colgadas). Un
+ * aplazamiento caducado (`until` ≤ hoy) no cuenta: la bandeja lo ignora y el siguiente aplazamiento lo retira (R5), y la
+ * persona no tiene forma de quitarlo a mano (revisión de seguridad y almacenamiento del 2026-10-27, S-R1). Sin `today`
+ * no se aplica la poda, como en `revertedState`.
+ */
+function scheduleReferences(data: AppData, today?: LocalDate): RevertDependent[] {
   const out: RevertDependent[] = []
   for (const tpl of data.templates) {
     if (tpl.kind !== 'distribution') continue
@@ -69,6 +74,7 @@ function scheduleReferences(data: AppData): RevertDependent[] {
   for (const sc of data.scenarios) for (const c of sc.changes) if (c.type === 'scheduleAmount') out.push({ kind: 'scenario', id: sc.id, name: sc.name, scheduleId: c.scheduleId })
   for (const g of data.goals) if (g.plan?.link) out.push({ kind: 'goal', id: g.id, name: g.name, scheduleId: g.plan.link.scheduleId })
   for (const s of data.inbox.snoozed) {
+    if (today && s.until <= today) continue
     const m = /^due:schedule:(.+):(\d{4}-\d{2}-\d{2})$/.exec(s.id)
     if (m) out.push({ kind: 'snooze', id: s.id, name: m[2]!, scheduleId: m[1]! })
   }
@@ -89,7 +95,7 @@ export function revertDependents(data: AppData, entry: HistoryEntry, today?: Loc
   const remaining = new Set(next.schedules.map((s) => s.id))
   const removed = new Set(data.schedules.filter((s) => !remaining.has(s.id)).map((s) => s.id))
   if (removed.size === 0) return []
-  return scheduleReferences(next).filter((r) => removed.has(r.scheduleId))
+  return scheduleReferences(next, today).filter((r) => removed.has(r.scheduleId))
 }
 
 export function canRevert(data: AppData, entry: HistoryEntry, today?: LocalDate): 'ok' | 'notRevertible' | 'alreadyReverted' | 'conflict' | 'dependents' {

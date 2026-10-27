@@ -13,6 +13,8 @@
  *   sigue siendo la misma partición antigua y se sigue proponiendo (y «Dejar como está» se hereda).
  * - F-R3 (P3): la variación porcentual se trunca hacia cero en Análisis, Estadísticas y Revisión semanal: −9,99 % es −9 y no
  *   cruza el umbral «desde ±10 %» que +9,99 % tampoco cruza.
+ * - S-R1 (revisión de seguridad y almacenamiento, P3): un aplazamiento caducado (inerte, R5) no es un dependiente que
+ *   bloquee revertir; sin `today` se sigue contando.
  * Datos sintéticos; fechas explícitas.
  */
 import { readFileSync } from 'node:fs'
@@ -22,7 +24,7 @@ import { computeBudget } from './budget'
 import { recordHistory } from './history'
 import { canRevert, revertDependents, revertEntry } from './historyRevert'
 import { checkedPercentChange, MAX_AMOUNT_MINOR } from './money'
-import { type ScheduleDraft } from './operations'
+import { saveSchedule, type ScheduleDraft } from './operations'
 import { occurrencesBetween } from './recurrence'
 import { defaultSplitDate, saveScheduleFrom } from './scheduleFrom'
 import { periodStats, statsRange } from './statistics'
@@ -30,7 +32,7 @@ import { weeklyReview } from './weeklyReview'
 import { dismissSplitRepair, driftedSplits, repairSplit } from './splitRepair'
 import type { AppData, Schedule } from './types'
 import { backupText, parseBackup, validateAppData } from '../storage/backup'
-import { account, baseData, bill, goal, income, NOW, tx } from '../test/fixtures'
+import { account, baseData, bill, EARLIER, goal, income, NOW, tx } from '../test/fixtures'
 
 const persisted = (d: AppData): AppData => JSON.parse(JSON.stringify(d)) as AppData
 const at = (today: string) => ({ today, now: `${today}T12:00:00.000Z` })
@@ -433,5 +435,51 @@ describe('F-R3 (revisión financiera) · el umbral «desde ±10 %» es simétric
       transactions: [tx({ id: 'p', date: '2026-09-16', amountMinor: 10000, kind: 'expense', status: 'realized' }), tx({ id: 'c', date: '2026-09-23', amountMinor: 9001, kind: 'expense', status: 'realized' })],
     })
     expect(weeklyReview(w, '2026-09-21', '2026-09-28').spendingChange).toEqual({ diffMinor: -999, percent: -9 })
+  })
+})
+
+describe('S-R1 (revisión de seguridad) · un aplazamiento caducado no bloquea revertir', () => {
+  const TODAY = '2026-09-28'
+  const rent = bill('2026-06-01', 65000, { id: 'old', name: 'Renta', frequency: 'monthly', categoryId: 'housing' })
+  const draft = (s: Schedule, startDate: string, amountMinor: number, id: string): ScheduleDraft => {
+    const { createdAt: _c, updatedAt: _u, currency: _cur, skippedDates: _k, ...rest } = s
+    return { ...rest, id, startDate, amountMinor }
+  }
+
+  it('entrada antigua de una partición (solo programados) cuyo aplazamiento movido ya caducó: los dependientes son la plantilla y el escenario, no el aplazamiento; sin `today` se sigue contando', () => {
+    const d = baseData({
+      schedules: [rent],
+      templates: [{ id: 't', name: 'Quincena', kind: 'distribution', lines: [{ target: { kind: 'payment', scheduleId: 'old' }, amount: { mode: 'fixed', amountMinor: 65000 } }], createdAt: EARLIER, updatedAt: EARLIER }],
+      scenarios: [{ id: 'sc', name: 'Si sube', changes: [{ type: 'scheduleAmount', scheduleId: 'old', newAmountMinor: 72000 }], baseFingerprint: 'x', createdAt: EARLIER, updatedAt: EARLIER }],
+      inbox: { snoozed: [{ id: 'due:schedule:old:2026-10-01', until: '2026-09-20', at: EARLIER }], dismissed: [] },
+    })
+    const r = saveScheduleFrom(d, 'old', draft(rent, '2026-10-01', 70000, 'next'), at('2026-09-10'))
+    if (!r.ok) throw new Error(JSON.stringify(r.issues))
+    expect(r.data.inbox.snoozed.map((z) => z.id)).toEqual(['due:schedule:next:2026-10-01'])
+    const legacy = { id: 'h-legacy', at: NOW, source: 'app' as const, changes: [
+      { collection: 'schedules' as const, id: 'old', before: d.schedules[0]!, after: r.data.schedules.find((s) => s.id === 'old')! },
+      { collection: 'schedules' as const, id: 'next', before: null, after: r.data.schedules.find((s) => s.id === 'next')! },
+    ] }
+    const stored = persisted({ ...r.data, history: [legacy] })
+    expect(revertDependents(stored, legacy, TODAY).map((x) => x.kind)).toEqual(['template', 'scenario'])
+    expect(revertDependents(stored, legacy).map((x) => x.kind)).toEqual(['template', 'scenario', 'snooze'])
+    // Con el aplazamiento aún vigente sí cuenta.
+    const alive = { ...stored, inbox: { ...stored.inbox, snoozed: [{ ...stored.inbox.snoozed[0]!, until: '2026-10-05' }] } }
+    expect(revertDependents(alive, legacy, TODAY).map((x) => x.kind)).toEqual(['template', 'scenario', 'snooze'])
+  })
+
+  it('crear un programado, posponer después su aviso (sin entrada, R5) y dejar que caduque: la creación se puede revertir y el aplazamiento caducado no se resucita', () => {
+    const d = baseData()
+    const created = saveSchedule(d, draft(bill('2026-09-01', 5000, { id: 's1', name: 'Gimnasio', frequency: 'monthly' }), '2026-09-01', 5000, 's1'), at('2026-09-01'))
+    if (!created.ok) throw new Error(JSON.stringify(created.issues))
+    const tracked = recordHistory(d, created.data, '2026-09-01T12:00:00.000Z')
+    const entry = tracked.history.at(-1)!
+    const snoozed: AppData = { ...tracked, inbox: { snoozed: [{ id: 'due:schedule:s1:2026-09-01', until: '2026-09-20', at: '2026-09-05T12:00:00.000Z' }], dismissed: [] } }
+    expect(canRevert(snoozed, entry, '2026-09-10')).toBe('dependents')
+    expect(canRevert(snoozed, entry, TODAY)).toBe('ok')
+    const back = revertEntry(snoozed, entry.id, at(TODAY))
+    expect(back.ok && back.data.schedules).toEqual([])
+    expect(back.ok && back.data.inbox.snoozed.map((z) => z.id)).toEqual(['due:schedule:s1:2026-09-01'])
+    expect(back.ok && validateAppData(persisted(back.data)).ok).toBe(true)
   })
 })

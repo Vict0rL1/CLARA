@@ -160,7 +160,7 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   ≤ 64): lo que se guarda tiene que volver a leerse (F-01). Revertir nunca elimina un programado al que plantillas,
   escenarios, gastos planificados vinculados o aplazamientos seguirían apuntando (`revertDependents`, estado
   `dependents` en `canRevert`, código `revertDependents`): se explica qué registros son y nada cambia (F-02); una
-  referencia que ya no resolvía antes no cuenta.
+  referencia que ya no resolvía antes no cuenta, ni un aplazamiento ya caducado (inerte, R5; revisión S-R1).
 - Deshacer importar/restaurar (`state/replaceUndo.ts`): ligado a la revisión que fija el propio reemplazo
   (`AppStore.commitTracked`, antes de esperar al almacenamiento), nunca a lo último guardado. Cualquier
   cambio posterior —de la persona o automático, aunque su escritura siga pendiente— lo invalida (RT-02).
