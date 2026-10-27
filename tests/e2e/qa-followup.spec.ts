@@ -6,6 +6,7 @@ import { saveScheduleFrom } from '../../src/domain/scheduleFrom'
 import type { AppData, HistoryEntry, Schedule } from '../../src/domain/types'
 import { account, baseData, bill, EARLIER, income, NOW, tx } from '../../src/test/fixtures'
 import { available, expectNoHorizontalScroll, go, openApp, seedStoredData, setLanguage, settleAnimations, storedData, waitForSaved, writeStoredData, type UiLanguage } from './helpers'
+import { shot } from './shots'
 
 /**
  * Aceptación de navegador de la auditoría independiente de seguimiento (cabeza 46fe617). Datos sintéticos; reloj
@@ -73,6 +74,7 @@ for (const oldLen of [64, 47]) {
     // Recarga desde IndexedDB: el presupuesto carga entero (antes: «No pudimos leer tus datos guardados»).
     await expectLoadsClean(page, 'tras partir')
     await expect(page.getByTestId('available')).toHaveText('$1,000.00')
+    await shot(page, `f01-reloaded-after-split-id${oldLen}`)
 
     // Deshacer desde el historial y volver a cargar.
     await go(page, '/ajustes/historial')
@@ -134,6 +136,7 @@ test('F-02 · una partición grabada por una versión anterior (solo instantáne
   await expect(note).toContainText('Escenario «Si sube»')
   await expect(note).toContainText('Aviso aplazado del 1 oct')
   await expect(entry.getByRole('button', { name: 'Revertir' })).toHaveCount(0)
+  await shot(page, 'f02-history-refusal', entry)
   await expectNoHorizontalScroll(page, 'historial con una partición antigua no revertible')
   await page.reload()
   const stored = JSON.parse((await storedData(page)) ?? '{}') as Stored
@@ -158,6 +161,7 @@ test('F-03 · 1 gasto de MAX_AMOUNT_MINOR el 10-ago frente a 100 el 10-sep: Aná
   await seedStoredData(page, data)
   await go(page, '/analisis')
   await expect(page.getByText(/Este mes llevas un 9[\s.,\u00a0]?900 % más de gasto/)).toBeVisible()
+  await shot(page, 'f03-analysis-9900', page.getByText(/9[\s.,\u00a0]?900 %/))
   await expectNoHorizontalScroll(page, 'análisis con un porcentaje enorme')
 })
 
@@ -211,6 +215,7 @@ async function expectNeutralDeltaAA(page: Page, label: string) {
   expect(c.ratio, `${label}: ${c.fg} sobre ${c.bg} (${c.fontSize}/${c.fontWeight})`).toBeGreaterThanOrEqual(4.5)
   const results = await new AxeBuilder({ page }).include('#main').withRules(['color-contrast']).analyze()
   expect(results.violations.map((v) => v.nodes.map((n) => n.target.join(' ')).join(' | ')), label).toEqual([])
+  await shot(page, `f04-${label.replace(/\s+/g, '-')}`, neutral)
 }
 
 test('F-04 · tema «Oscuro» explícito: «Sin comparación» (julio personalizado sin ingresos previos) cumple AA y axe no encuentra fallos de contraste', async ({ page }) => {
@@ -282,6 +287,7 @@ test('F-05 · periodo personalizado 1–31 de julio, seis puntos: las etiquetas 
       expect(layout.hits[i], where).toContain(periods[i]!)
     }
     await expect(page.getByTestId('bars-tooltip'), where).toContainText(periods[5]!)
+    await shot(page, `f05-axis-${language.toLowerCase().slice(0, 2)}`, page.locator('.bars__svg'))
     await expectNoHorizontalScroll(page, where)
   }
 })
@@ -322,6 +328,7 @@ test('QA-01 histórico · datos v13 con el sueldo del 31 partido el 28-feb: tras
   await expect(card.getByTestId('split-repair-current')).toContainText('28 mar')
   await expect(card.getByTestId('split-repair-proposed')).toContainText('31 mar')
   await expect(card.getByTestId('split-repair-proposed')).toContainText('30 abr')
+  await shot(page, 'qa01-repair-card', card)
   await expectNoHorizontalScroll(page, 'revisión de particiones antiguas')
   await card.getByRole('button', { name: 'Restaurar las fechas de siempre' }).click()
   const dialog = page.getByRole('dialog', { name: '¿Restaurar las fechas de siempre de «Sueldo»?' })

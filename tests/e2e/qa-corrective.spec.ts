@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { go, reloadWhenSaved, startDemo, storedData } from './helpers'
 import { tinyPng } from './png'
+import { shot } from './shots'
 
 /**
  * Auditoría independiente 2026-10-19, pasada correctiva (aceptación de navegador). P1: una moneda no admitida separada
@@ -29,6 +30,7 @@ async function expectBlocked(page: Page, line: ReturnType<Page['locator']>, fiel
   await expect(page.getByTestId('assistant-currency-blocked')).toContainText('1 línea está en otra moneda')
   const register = page.getByRole('button', { name: 'Registrar 1 movimiento' })
   await expect(register).toBeDisabled()
+  await shot(page, `p1-blocked-${field.replace(/[^a-z0-9]+/gi, '-')}`, line)
   // Intentos de registrar por teclado (Enter en el campo) y con un clic forzado sobre el botón desactivado: nada
   // guardado cambia (se compara el almacenamiento entero antes y después).
   const before = await storedData(page)
@@ -108,6 +110,7 @@ for (const lines of [
     await expect(line.getByText(/No se convierte/)).toHaveCount(0)
     const register = page.getByRole('button', { name: 'Registrar 1 movimiento' })
     await expect(register).toBeEnabled()
+    await shot(page, `p2-receipt-${lines[2].replace(/[^a-z0-9]+/gi, '-')}`, line)
     await register.click()
     await expect(page.getByText('1 movimiento registrado').first()).toBeVisible()
     await reloadWhenSaved(page)
