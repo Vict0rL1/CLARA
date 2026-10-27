@@ -27,23 +27,38 @@ export function SplitRepairCard() {
   const toast = useToast()
   const exportData = useExportBackup()
   const [confirm, setConfirm] = useState<DriftedSplit | null>(null)
+  // Mientras se guarda, los botones no aceptan un segundo toque (revisión de seguridad O-4: el segundo intento ya no
+  // encontraba la partición y avisaba de un error que no era tal).
+  const [busy, setBusy] = useState(false)
   const drifts = useMemo(() => driftedSplits(data, today), [data, today])
   if (drifts.length === 0) return null
 
   const dates = (list: string[]) => fmt.list(list.map((d) => fmt.date(d, { compact: true, today })))
   const restore = async (d: DriftedSplit) => {
     setConfirm(null)
-    // Copia local de lo actual antes de tocar fechas (como al importar); si no se puede guardar, no se repara.
-    const copy = await keepCopyBeforeReplace(getStore().data)
-    if (copy === 'failed') return toast({ message: t('localBackup.failed'), tone: 'critical' })
-    // El id del tramo nuevo (si lo pagado obliga a partir) se genera aquí, como en cualquier formulario.
-    const nextId = newId()
-    const { result, saved } = await run((current, c) => repairSplit(current, d.scheduleId, c, nextId))
-    toast(result.ok && saved ? { message: t('splitRepair.done'), tone: 'good' } : { message: t('save.error.generic'), tone: 'critical' })
+    if (busy) return
+    setBusy(true)
+    try {
+      // Copia local de lo actual antes de tocar fechas (como al importar); si no se puede guardar, no se repara.
+      const copy = await keepCopyBeforeReplace(getStore().data)
+      if (copy === 'failed') return toast({ message: t('localBackup.failed'), tone: 'critical' })
+      // El id del tramo nuevo (si lo pagado obliga a partir) se genera aquí, como en cualquier formulario.
+      const nextId = newId()
+      const { result, saved } = await run((current, c) => repairSplit(current, d.scheduleId, c, nextId))
+      toast(result.ok && saved ? { message: t('splitRepair.done'), tone: 'good' } : { message: t('save.error.generic'), tone: 'critical' })
+    } finally {
+      setBusy(false)
+    }
   }
   const keep = async (d: DriftedSplit) => {
-    const { result, saved } = await run((current, c) => dismissSplitRepair(current, d.scheduleId, c))
-    toast(result.ok && saved ? { message: t('splitRepair.kept'), tone: 'good' } : { message: t('save.error.generic'), tone: 'critical' })
+    if (busy) return
+    setBusy(true)
+    try {
+      const { result, saved } = await run((current, c) => dismissSplitRepair(current, d.scheduleId, c))
+      toast(result.ok && saved ? { message: t('splitRepair.kept'), tone: 'good' } : { message: t('save.error.generic'), tone: 'critical' })
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -64,11 +79,11 @@ export function SplitRepairCard() {
                 {t('splitRepair.proposed', { date: fmt.date(d.anchor, { compact: true, today }), dates: dates(d.proposed) })}
               </p>
               <div className="button-row">
-                <button type="button" className="btn btn--primary btn--small" onClick={() => setConfirm(d)}>
+                <button type="button" className="btn btn--primary btn--small" disabled={busy} onClick={() => setConfirm(d)}>
                   <Icon name="calendar" size={16} />
                   {t('splitRepair.restore')}
                 </button>
-                <button type="button" className="btn btn--secondary btn--small" onClick={() => void keep(d)}>
+                <button type="button" className="btn btn--secondary btn--small" disabled={busy} onClick={() => void keep(d)}>
                   {t('splitRepair.keep')}
                 </button>
                 <button type="button" className="btn btn--ghost btn--small" onClick={() => void exportData()}>

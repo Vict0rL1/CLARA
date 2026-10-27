@@ -151,9 +151,16 @@ export function Movements({ route }: { route?: Route }) {
     setSource('all')
   }
 
-  // El CSV se carga al exportar (presupuesto de tamaño del JS inicial: `npm run size`); la acción es la misma.
+  // El CSV se carga al exportar (presupuesto de tamaño del JS inicial: `npm run size`); la acción es la misma. Si el
+  // módulo no llega (sin conexión antes de que el service worker lo guardara, o tras un despliegue), se dice.
   const exportCsv = async () => {
-    const { transactionsToCsv } = await import('../../domain/csvExport')
+    let transactionsToCsv: typeof import('../../domain/csvExport').transactionsToCsv
+    try {
+      ;({ transactionsToCsv } = await import('../../domain/csvExport'))
+    } catch {
+      toast({ message: t('export.failed'), tone: 'critical' })
+      return
+    }
     const csv = transactionsToCsv([...planned, ...realized], {
       headers: (['date', 'kind', 'status', 'amount', 'currency', 'category', 'account', 'toAccount', 'note', 'merchant', 'id', 'source'] as const).map((k) => t(`csv.${k}` as MessageKey)),
       kind: (tx) => t(`txKind.${tx.kind}` as MessageKey),
