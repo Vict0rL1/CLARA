@@ -1,0 +1,309 @@
+
+ RUN  v5.0.2 /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-base
+
+ ❯ src/ui/themeTokens.test.ts (6 tests | 3 failed) 17ms
+   ✓ tokens del tema oscuro (1)
+     ✓ «Sistema» (prefers-color-scheme) y «Oscuro» (data-theme) definen los mismos valores 4ms
+   ✓ tokens usados (1)
+     ✓ cada `var(--x)` sin respaldo usa una propiedad definida (12: `--text` y `--danger` no existían) 3ms
+   ❯ contraste de «Sin comparación» en Estadísticas (F-04) (4)
+     × claro: texto pequeño sobre la tarjeta ≥ 4,5:1 5ms
+     × sistema oscuro: texto pequeño sobre la tarjeta ≥ 4,5:1 1ms
+     × oscuro: texto pequeño sobre la tarjeta ≥ 4,5:1 1ms
+     ✓ la cifra de referencia: en oscuro `--text-muted` sobre la tarjeta queda por debajo de AA (por eso no se usa aquí) 1ms
+ ❯ src/ui/components/axisLabels.test.ts (0 test)
+ ❯ src/domain/qaCorrective.test.ts (12 tests | 9 failed) 104ms
+   ❯ P1 · una moneda no admitida separada del importe por puntuación se conserva y bloquea la línea (7)
+     × asistente: «coffee (RUB) 10» y «coffee RUB: 10» son 10 RUB; el campo lo escribe y lo vuelve a leer como RUB 23ms
+     × «coffee (RUB) $10»: el código y el símbolo se contradicen (el rublo no es «$»): conflicto, nunca 10 CAD 25ms
+     × recibo sintético: «TOTAL RUB: 10.00» y «TOTAL (RUB) 10.00» conservan RUB como el directo «TOTAL RUB 10.00» 4ms
+     ✓ un código admitido con la misma sintaxis sigue igual; la moneda del presupuesto con puntuación no bloquea 5ms
+     ✓ acotado: un ISO no admitido lejos del importe o con otra palabra entre medias no es una moneda 4ms
+     × lo de siempre no cambia: contradicciones, repeticiones compatibles, monedas admitidas e importes en palabras (es/en/pt/fr) 18ms
+     × el mismo lector en el campo, la importación y los atajos: «(RUB) 10» y «RUB: 10» nunca son 10 CAD; «(10.00)» no cambia 4ms
+   ❯ P2 · un artículo «PEN» con su impuesto en la misma línea no es el sol peruano (5)
+     × «SHOP / PEN 2.99 TAX 0.10 / TOTAL CAD 3.09» propone 3.09 sin conflicto 2ms
+     × la variante sin el total escrito en CAD propone 3.09 sin moneda (también con «IVA» y «TPS») 9ms
+     × controles: la moneda junto al importe que etiqueta el total, el subtotal o el pago sigue contando 3ms
+     × etiquetas en es/en/pt/fr, también con acento al principio de la palabra («À PAYER», «ESPÈCES») 2ms
+     ✓ controles de nombres de artículo y texto engañoso que ya existían 1ms
+ ❯ src/domain/qaFollowUp.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/domain/qaFollowUp.test.ts [ src/domain/qaFollowUp.test.ts ]
+Error: Cannot find module './splitRepair' imported from /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-base/src/domain/qaFollowUp.test.ts
+ ❯ src/domain/qaFollowUp.test.ts:18:1
+     16| import { analysisItems } from './analysis'
+     17| import { computeBudget } from './budget'
+     18| import { dismissSplitRepair, driftedSplits, repairSplit } from './spli…
+       | ^
+     19| import { occurrencesBetween } from './recurrence'
+     20| import { MAX_AMOUNT_MINOR } from './money'
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/14]⎯
+
+ FAIL  src/ui/components/axisLabels.test.ts [ src/ui/components/axisLabels.test.ts ]
+Error: Cannot find module './axisLabels' imported from /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-base/src/ui/components/axisLabels.test.ts
+ ❯ src/ui/components/axisLabels.test.ts:2:1
+      1| import { describe, expect, it } from 'vitest'
+      2| import { estimateAxisTextWidth, pickAxisLabels } from './axisLabels'
+       | ^
+      3|
+      4| /** Seis huecos de 320 − 16 de márgenes: lo que usa `IncomeExpenseBars…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/14]⎯
+
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 12 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/domain/qaCorrective.test.ts > P1 · una moneda no admitida separada del importe por puntuación se conserva y bloquea la línea > asistente: «coffee (RUB) 10» y «coffee RUB: 10» son 10 RUB; el campo lo escribe y lo vuelve a leer como RUB
+AssertionError: coffee (RUB) 10: expected [ 1000, null, null ] to deeply equal [ 1000, 'RUB', null ]
+
+- Expected
++ Received
+
+  [
+    1000,
+-   "RUB",
++   null,
+    null,
+  ]
+
+ ❯ src/domain/qaCorrective.test.ts:34:30
+     32|     for (const text of ['coffee (RUB) 10', 'coffee RUB: 10', 'coffee […
+     33|       const e = one(text)
+     34|       expect(marks(e), text).toEqual([1000, 'RUB', null])
+       |                              ^
+     35|       const f = field(e)
+     36|       expect(f.text, text).toBe('10.00 RUB')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/14]⎯
+
+ FAIL  src/domain/qaCorrective.test.ts > P1 · una moneda no admitida separada del importe por puntuación se conserva y bloquea la línea > «coffee (RUB) $10»: el código y el símbolo se contradicen (el rublo no es «$»): conflicto, nunca 10 CAD
+AssertionError: expected [ 1000, null, null ] to deeply equal [ 1000, null, [ 'RUB', '$' ] ]
+
+- Expected
++ Received
+
+  [
+    1000,
+    null,
+-   [
+-     "RUB",
+-     "$",
+-   ],
++   null,
+  ]
+
+ ❯ src/domain/qaCorrective.test.ts:43:22
+     41|   it('«coffee (RUB) $10»: el código y el símbolo se contradicen (el ru…
+     42|     const e = one('coffee (RUB) $10')
+     43|     expect(marks(e)).toEqual([1000, null, ['RUB', '$']])
+       |                      ^
+     44|     expect(field(e).parsed).toMatchObject({ ok: false, error: 'currenc…
+     45|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/14]⎯
+
+ FAIL  src/domain/qaCorrective.test.ts > P1 · una moneda no admitida separada del importe por puntuación se conserva y bloquea la línea > recibo sintético: «TOTAL RUB: 10.00» y «TOTAL (RUB) 10.00» conservan RUB como el directo «TOTAL RUB 10.00»
+AssertionError: TOTAL RUB: 10.00: expected [ 1000, null, null ] to deeply equal [ 1000, 'RUB', null ]
+
+- Expected
++ Received
+
+  [
+    1000,
+-   "RUB",
++   null,
+    null,
+  ]
+
+ ❯ src/domain/qaCorrective.test.ts:49:55
+     47|   it('recibo sintético: «TOTAL RUB: 10.00» y «TOTAL (RUB) 10.00» conse…
+     48|     for (const line of ['TOTAL RUB: 10.00', 'TOTAL (RUB) 10.00', 'TOTA…
+     49|       expect(written(receipt(`SHOP\n${line}`)), line).toEqual([1000, '…
+       |                                                       ^
+     50|     }
+     51|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/14]⎯
+
+ FAIL  src/domain/qaCorrective.test.ts > P1 · una moneda no admitida separada del importe por puntuación se conserva y bloquea la línea > lo de siempre no cambia: contradicciones, repeticiones compatibles, monedas admitidas e importes en palabras (es/en/pt/fr)
+AssertionError: café (RUB) diez: expected [ 1000, null, null ] to deeply equal [ 1000, 'RUB', null ]
+
+- Expected
++ Received
+
+  [
+    1000,
+-   "RUB",
++   null,
+    null,
+  ]
+
+ ❯ src/domain/qaCorrective.test.ts:78:48
+     76|     expect(marks(one('coffee 10 euros'))).toEqual([1000, 'EUR', null])
+     77|     for (const [text, language] of [['café (RUB) diez', 'es'], ['coffe…
+     78|       expect(marks(one(text, language)), text).toEqual([1000, 'RUB', n…
+       |                                                ^
+     79|     }
+     80|     for (const [text, language] of [['café (EUR) diez', 'es'], ['coffe…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/14]⎯
+
+ FAIL  src/domain/qaCorrective.test.ts > P1 · una moneda no admitida separada del importe por puntuación se conserva y bloquea la línea > el mismo lector en el campo, la importación y los atajos: «(RUB) 10» y «RUB: 10» nunca son 10 CAD; «(10.00)» no cambia
+AssertionError: (RUB) 10: expected { text: '(RUB) 10', mark: null } to deeply equal { Object (text, mark) }
+
+- Expected
++ Received
+
+  {
+-   "mark": {
+-     "unknown": "RUB",
+-   },
+-   "text": "10",
++   "mark": null,
++   "text": "(RUB) 10",
+  }
+
+ ❯ src/domain/qaCorrective.test.ts:87:45
+     85|   it('el mismo lector en el campo, la importación y los atajos: «(RUB)…
+     86|     for (const text of ['(RUB) 10', 'RUB: 10', '10, RUB', '10 (RUB)', …
+     87|       expect(stripCurrencyMark(text), text).toEqual({ text: '10', mark…
+       |                                             ^
+     88|       expect(parseMoney(text, 'CAD', 'en-CA'), text).toMatchObject({ o…
+     89|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/14]⎯
+
+ FAIL  src/domain/qaCorrective.test.ts > P2 · un artículo «PEN» con su impuesto en la misma línea no es el sol peruano > «SHOP / PEN 2.99 TAX 0.10 / TOTAL CAD 3.09» propone 3.09 sin conflicto
+AssertionError: expected [ 309, null, [ 'PEN', 'CAD' ] ] to deeply equal [ 309, null, null ]
+
+- Expected
++ Received
+
+  [
+    309,
+    null,
+-   null,
++   [
++     "PEN",
++     "CAD",
++   ],
+  ]
+
+ ❯ src/domain/qaCorrective.test.ts:102:73
+    100| describe('P2 · un artículo «PEN» con su impuesto en la misma línea no …
+    101|   it('«SHOP / PEN 2.99 TAX 0.10 / TOTAL CAD 3.09» propone 3.09 sin con…
+    102|     expect(written(receipt('SHOP\nPEN 2.99 TAX 0.10\nTOTAL CAD 3.09'))…
+       |                                                                         ^
+    103|   })
+    104|   it('la variante sin el total escrito en CAD propone 3.09 sin moneda …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/14]⎯
+
+ FAIL  src/domain/qaCorrective.test.ts > P2 · un artículo «PEN» con su impuesto en la misma línea no es el sol peruano > la variante sin el total escrito en CAD propone 3.09 sin moneda (también con «IVA» y «TPS»)
+AssertionError: expected [ 309, 'PEN', null ] to deeply equal [ 309, null, null ]
+
+- Expected
++ Received
+
+  [
+    309,
+-   null,
++   "PEN",
+    null,
+  ]
+
+ ❯ src/domain/qaCorrective.test.ts:105:69
+    103|   })
+    104|   it('la variante sin el total escrito en CAD propone 3.09 sin moneda …
+    105|     expect(written(receipt('SHOP\nPEN 2.99 TAX 0.10\nTOTAL 3.09'))).to…
+       |                                                                     ^
+    106|     expect(written(receipt('TIENDA\nPEN 2.99 IVA 0.10\nTOTAL 3.09', 'e…
+    107|     expect(written(receipt('SHOP\nPEN 2.99 TIP 0.10\nTOTAL 3.09'))).to…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/14]⎯
+
+ FAIL  src/domain/qaCorrective.test.ts > P2 · un artículo «PEN» con su impuesto en la misma línea no es el sol peruano > controles: la moneda junto al importe que etiqueta el total, el subtotal o el pago sigue contando
+AssertionError: expected [ 309, null, [ 'PEN', 'USD' ] ] to deeply equal [ 309, 'USD', null ]
+
+- Expected
++ Received
+
+  [
+    309,
++   null,
++   [
++     "PEN",
+      "USD",
+-   null,
++   ],
+  ]
+
+ ❯ src/domain/qaCorrective.test.ts:118:73
+    116|     // Dos monedas impresas: conflicto, nunca la del presupuesto.
+    117|     expect(written(receipt('SHOP\nTOTAL USD 10.00\nCASH PEN 37.00'))).…
+    118|     expect(written(receipt('SHOP\nPEN 2.99 TAX 0.10\nTOTAL USD 3.09'))…
+       |                                                                         ^
+    119|   })
+    120|   it('etiquetas en es/en/pt/fr, también con acento al principio de la …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/14]⎯
+
+ FAIL  src/domain/qaCorrective.test.ts > P2 · un artículo «PEN» con su impuesto en la misma línea no es el sol peruano > etiquetas en es/en/pt/fr, también con acento al principio de la palabra («À PAYER», «ESPÈCES»)
+AssertionError: expected [ 1000, null, null ] to deeply equal [ 1000, 'RUB', null ]
+
+- Expected
++ Received
+
+  [
+    1000,
+-   "RUB",
++   null,
+    null,
+  ]
+
+ ❯ src/domain/qaCorrective.test.ts:122:63
+    120|   it('etiquetas en es/en/pt/fr, también con acento al principio de la …
+    121|     expect(written(receipt('CAFÉ\nPEN 2.99 TAXE 0.10\nTOTAL À PAYER CA…
+    122|     expect(written(receipt('CAFÉ\nÀ PAYER RUB 10.00', 'fr'))).toEqual(…
+       |                                                               ^
+    123|     expect(written(receipt('CAFÉ\nTOTAL 10.00\nESPÈCES USD 20.00', 'fr…
+    124|     expect(written(receipt('LOJA\nTOTAL 10.00\nDÉBITO PEN 10.00', 'pt'…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/14]⎯
+
+ FAIL  src/ui/themeTokens.test.ts > contraste de «Sin comparación» en Estadísticas (F-04) > claro: texto pequeño sobre la tarjeta ≥ 4,5:1
+AssertionError: #94a3b8 sobre #ffffff: expected 2.5640413904962034 to be greater than or equal to 4.5
+ ❯ src/ui/themeTokens.test.ts:90:58
+     88|       const fg = resolveToken(fgToken, tokens)
+     89|       const bg = resolveToken(bgToken, tokens)
+     90|       expect(contrastRatio(fg, bg), `${fg} sobre ${bg}`).toBeGreaterTh…
+       |                                                          ^
+     91|     })
+     92|   }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/14]⎯
+
+ FAIL  src/ui/themeTokens.test.ts > contraste de «Sin comparación» en Estadísticas (F-04) > sistema oscuro: texto pequeño sobre la tarjeta ≥ 4,5:1
+ FAIL  src/ui/themeTokens.test.ts > contraste de «Sin comparación» en Estadísticas (F-04) > oscuro: texto pequeño sobre la tarjeta ≥ 4,5:1
+AssertionError: #64748b sobre #121a2a: expected 3.6563076568668715 to be greater than or equal to 4.5
+ ❯ src/ui/themeTokens.test.ts:90:58
+     88|       const fg = resolveToken(fgToken, tokens)
+     89|       const bg = resolveToken(bgToken, tokens)
+     90|       expect(contrastRatio(fg, bg), `${fg} sobre ${bg}`).toBeGreaterTh…
+       |                                                          ^
+     91|     })
+     92|   }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/14]⎯
+
+
+ Test Files  4 failed (4)
+      Tests  12 failed | 6 passed (18)
+   Start at  06:13:04
+   Duration  1.34s (transform 73%, tests 13%, import 12%, worker 2%)
+
+exit 1

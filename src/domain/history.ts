@@ -11,21 +11,32 @@
  * - Importar una copia o reiniciar la demo es un corte (`replace`): no se puede revertir ni
  *   reconstruir el estado anterior a ese punto.
  */
-import { canChangeCurrency } from './currencyChange'
 import { newId } from './ids'
-import type { OpContext, OpResult } from './operations'
 import type { AppData, HistoryChange, HistoryCollection, HistoryEntry, HistorySource, Settings } from './types'
 
 /** Como mucho se conservan estas entradas; al superarlas sale la más antigua. */
 export const HISTORY_MAX_ENTRIES = 1000
 
 type ListCollection = Exclude<HistoryCollection, 'settings'>
-const LISTS: readonly ListCollection[] = ['accounts', 'transactions', 'schedules', 'goals', 'trash', 'reconciliations', 'incomeDistributions', 'periodBudgets']
+// v14 (auditoría del PR #15, QA-05): también plantillas, escenarios y aplazamientos de la bandeja, que partir un
+// programado reescribe; sin ellos, revertir la partición dejaba referencias al programado que desaparecía.
+const LISTS: readonly ListCollection[] = ['accounts', 'transactions', 'schedules', 'goals', 'trash', 'reconciliations', 'incomeDistributions', 'periodBudgets', 'templates', 'scenarios', 'inboxSnoozed']
 /** Ajustes que cambian cifras (el idioma o el formato de fecha no). */
-const FINANCIAL_SETTINGS = ['currency', 'timeZone', 'fallbackHorizonDays'] as const
+// v13: `safeToSpend` lleva el colchón de seguridad, que cambia el disponible: sin registrarlo, «¿Qué cambió?» no lo vería.
+const FINANCIAL_SETTINGS = ['currency', 'timeZone', 'fallbackHorizonDays', 'safeToSpend'] as const
 const SETTINGS_ID = 'settings'
 
 type WithId = { id: string }
+
+/** La lista de una colección del historial (`inboxSnoozed` vive dentro de `inbox`). */
+function listOf(data: AppData, collection: ListCollection): WithId[] {
+  return collection === 'inboxSnoozed' ? data.inbox.snoozed : (data[collection] as WithId[])
+}
+
+function withList(data: AppData, collection: ListCollection, list: WithId[]): AppData {
+  if (collection === 'inboxSnoozed') return { ...data, inbox: { ...data.inbox, snoozed: list as AppData['inbox']['snoozed'] } }
+  return { ...data, [collection]: list }
+}
 
 /**
  * Igualdad de valores guardados, sin depender del orden de las claves (al recargar, el
@@ -57,8 +68,8 @@ function financialSettings(s: Settings) {
 export function diffForHistory(prev: AppData, next: AppData): HistoryChange[] {
   const changes: HistoryChange[] = []
   for (const collection of LISTS) {
-    const a = prev[collection] as WithId[]
-    const b = next[collection] as WithId[]
+    const a = listOf(prev, collection)
+    const b = listOf(next, collection)
     if (a === b) continue
     const before = new Map(a.map((x) => [x.id, x]))
     const seen = new Set<string>()
@@ -76,6 +87,9 @@ export function diffForHistory(prev: AppData, next: AppData): HistoryChange[] {
     const b = financialSettings(next.settings)
     if (!same(a, b)) changes.push({ collection: 'settings', id: SETTINGS_ID, before: a, after: b })
   }
+  // Revisión propia (R5): los aplazamientos de la bandeja solo acompañan a otros cambios (p. ej. los que renombra
+  // partir un programado). Posponer o retirar un aviso no es un cambio financiero: no gasta entradas del historial.
+  if (changes.length > 0 && changes.every((c) => c.collection === 'inboxSnoozed')) return []
   return changes
 }
 
@@ -109,72 +123,20 @@ export function recordHistory(prev: AppData | null, next: AppData, now: string, 
 /* Revertir                                                            */
 /* ------------------------------------------------------------------ */
 
-function currentValue(data: AppData, collection: HistoryCollection, id: string): unknown {
+export function currentValue(data: AppData, collection: HistoryCollection, id: string): unknown {
   if (collection === 'settings') return financialSettings(data.settings)
-  return (data[collection] as WithId[]).find((x) => x.id === id) ?? null
+  return listOf(data, collection).find((x) => x.id === id) ?? null
 }
 
 export function setValue(data: AppData, collection: HistoryCollection, id: string, value: unknown): AppData {
   if (collection === 'settings') return { ...data, settings: { ...data.settings, ...(value as Partial<Settings>) } }
-  const list = data[collection] as WithId[]
+  const list = listOf(data, collection)
   const index = list.findIndex((x) => x.id === id)
   let next: WithId[]
   if (value === null) next = list.filter((x) => x.id !== id)
   else if (index >= 0) next = list.map((x, i) => (i === index ? (value as WithId) : x))
   else next = [...list, value as WithId]
-  return { ...data, [collection]: next }
-}
-
-/** Registros de la entrada que cambiaron después (impiden revertir sin pisar otros cambios). */
-export function revertConflicts(data: AppData, entry: HistoryEntry): HistoryChange[] {
-  return entry.changes.filter((c) => !same(currentValue(data, c.collection, c.id), c.after))
-}
-
-export function canRevert(data: AppData, entry: HistoryEntry): 'ok' | 'notRevertible' | 'alreadyReverted' | 'conflict' {
-  if (entry.source === 'replace' || entry.changes.length === 0) return 'notRevertible'
-  if (data.history.some((e) => e.revertOf === entry.id)) return 'alreadyReverted'
-  return revertConflicts(data, entry).length ? 'conflict' : 'ok'
-}
-
-/**
- * Devuelve cada registro de la entrada a su valor anterior. Solo si nada cambió después; la
- * entrada que lo registra la añade quien guarda (`source: 'revert'`). Quien llama debe validar
- * los datos completos antes de guardar (p. ej. que no queden pagos liquidados dos veces).
- */
-export function revertEntry(data: AppData, entryId: string, ctx: OpContext): OpResult<HistoryEntry> {
-  const entry = data.history.find((e) => e.id === entryId)
-  if (!entry) return { ok: false, issues: [{ path: 'history', code: 'notFound' }] }
-  const status = canRevert(data, entry)
-  if (status === 'notRevertible') return { ok: false, issues: [{ path: 'history', code: 'notRevertible' }] }
-  if (status === 'alreadyReverted') return { ok: false, issues: [{ path: 'history', code: 'alreadyReverted' }] }
-  if (status === 'conflict') return { ok: false, issues: [{ path: 'history', code: 'revertConflict', params: { count: revertConflicts(data, entry).length } }] }
-  let next = data
-  for (const change of [...entry.changes].reverse()) next = setValue(next, change.collection, change.id, change.before)
-  // QA-01: deshacer un cambio de moneda es otro cambio de moneda: solo si no hay importes guardados.
-  if (next.settings.currency !== data.settings.currency && !canChangeCurrency(data)) {
-    return { ok: false, issues: [{ path: 'history', code: 'currencyMismatch', params: { expected: data.settings.currency } }] }
-  }
-  return { ok: true, data: { ...next, updatedAt: ctx.now }, value: entry }
-}
-
-/**
- * Estado ANTERIOR a una entrada, deshaciendo en orden inverso todas las posteriores (sin
- * comprobar conflictos: las entradas son consecutivas). `null` si hay un corte por medio.
- * Se usa para «¿Qué cambió?».
- */
-export function stateBefore(data: AppData, entryIndex: number): AppData | null {
-  const values: { collection: HistoryCollection; id: string; value: unknown }[] = []
-  // En orden inverso: el último valor que queda para cada registro es el anterior a la
-  // primera entrada deshecha.
-  for (let i = data.history.length - 1; i >= entryIndex; i--) {
-    const e = data.history[i]!
-    if (e.source === 'replace') return null
-    for (let j = e.changes.length - 1; j >= 0; j--) {
-      const change = e.changes[j]!
-      values.push({ collection: change.collection, id: change.id, value: change.before })
-    }
-  }
-  return values.length ? setValues(data, values) : data
+  return withList(data, collection, next)
 }
 
 /**
@@ -196,7 +158,7 @@ export function setValues(data: AppData, values: { collection: HistoryCollection
       for (const value of m.values()) next = setValue(next, 'settings', SETTINGS_ID, value)
       continue
     }
-    const list = next[collection] as WithId[]
+    const list = listOf(next, collection)
     const seen = new Set<string>()
     const out: WithId[] = []
     for (const item of list) {
@@ -208,7 +170,7 @@ export function setValues(data: AppData, values: { collection: HistoryCollection
       }
     }
     for (const [id, value] of m) if (!seen.has(id) && value !== null) out.push(value as WithId)
-    next = { ...next, [collection]: out }
+    next = withList(next, collection, out)
   }
   return next
 }

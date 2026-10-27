@@ -168,6 +168,23 @@ export const MIGRATIONS: Record<number, (raw: Raw) => Raw> = {
       ? { plans: raw.plans.map((p: unknown) => (p && typeof p === 'object' && !Array.isArray(p) ? { ...(p as Raw), ...((p as Raw).rollover === undefined ? { rollover: 'none' } : {}) } : p)) }
       : {}),
   }),
+  // v12 → v13 (Clara 2.0): colchón de seguridad del *safe to spend* (0 = lo de siempre). También admite
+  // tipos de cuenta y frecuencias nuevos, que no necesitan relleno: una versión anterior verá «datos de
+  // una versión más nueva» en vez de darlos por dañados. Solo se rellena lo ausente.
+  12: (raw) => {
+    const settings = raw.settings && typeof raw.settings === 'object' && !Array.isArray(raw.settings) ? (raw.settings as Raw) : null
+    const sts = settings?.safeToSpend && typeof settings.safeToSpend === 'object' && !Array.isArray(settings.safeToSpend) ? (settings.safeToSpend as Raw) : null
+    return {
+      ...raw,
+      schemaVersion: 13,
+      ...(settings && sts && sts.bufferMinor === undefined ? { settings: { ...settings, safeToSpend: { ...sts, bufferMinor: 0 } } } : {}),
+    }
+  },
+  // v13 → v14 (auditoría del PR #15, QA-01 y QA-05): `schedules[].anchorDate` (opcional; solo lo escribe partir una
+  // serie sin cambiar su regla) y el historial registra también `templates`, `scenarios` e `inboxSnoozed`. Nada que
+  // rellenar: los datos v13 valen tal cual. El número sube para que una versión anterior, que no sabe leer esos
+  // valores, vea «datos de una versión más nueva» en vez de calcular mal las fechas (docs/ROLLBACK.md).
+  13: (raw) => ({ ...raw, schemaVersion: 14 }),
 }
 
 export function migrate(raw: Raw): Raw {

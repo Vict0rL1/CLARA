@@ -53,7 +53,8 @@ export function Insights() {
         return t('insights.goalBehind.title', { name: String(p.name), behind: money('behind'), date: date('date') })
       case 'spendingUp':
       case 'spendingDown':
-        return t(`insights.${i.id}.title`, { percent: Number(p.percent) })
+        // Sin `percent` el cociente exacto no cabe en una cifra (F-03): se dice, con los importes en «¿Por qué?».
+        return p.percent === undefined ? t(`insights.${i.id}.titleNoFigure`) : t(`insights.${i.id}.title`, { percent: Number(p.percent) })
       case 'topCategory':
         return t('insights.topCategory.title', { category: categoryLabel(t, String(p.categoryId)), percent: Number(p.percent), amount: money('amount'), total: money('total') })
       case 'backupDue':

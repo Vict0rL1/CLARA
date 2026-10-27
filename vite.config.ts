@@ -122,5 +122,7 @@ export default defineConfig(({ mode }) => ({
     // `qa/`: regresiones de la auditoría 2026-10-09 (financieras y de seguridad); forman parte de `npm run check`.
     include: ['src/**/*.test.ts', 'pwa/**/*.test.ts', 'tests/config/**/*.test.ts', 'qa/**/*.test.ts'],
     environment: 'node',
+    // En CI, además del resumen, el resultado completo en JSON (artefacto `unit-results`; QA V2).
+    reporters: process.env.CI ? ['default', ['json', { outputFile: 'test-results/vitest.json' }]] : ['default'],
   },
 }))

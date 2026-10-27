@@ -1,0 +1,7 @@
+
+Running 1 test using 1 worker
+
+  ✓  1 [celular] › tests/e2e/qa-v2.spec.ts:246:1 › SCH-01 · partir un «dos veces al mes» (15 y 30) desde el 30 conserva los días sin tocar el segundo día; volver a «todas» restaura; 15 y 31 desde un 30-sep sigue siendo 15 y 31 (PR #15, QA-01) (3.1s)
+
+  1 passed (4.2s)
+exit 0

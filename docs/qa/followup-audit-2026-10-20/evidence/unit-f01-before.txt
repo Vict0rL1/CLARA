@@ -1,0 +1,73 @@
+
+ RUN  v5.0.2 /home/user/ALCANZA
+
+ ❯ src/domain/qaFollowUp.test.ts (6 tests | 3 failed) 63ms
+   ❯ F-01 · un programado con un id largo (admitido hasta 64) y su aviso pospuesto: partirlo deja datos que SE GUARDAN y vuelven a cargar (6)
+     × id anterior de 64 y nuevo de 64: partir → guardar → recargar → deshacer → recargar → exportar → reimportar 44ms
+     × id anterior de 47 y nuevo de 36: partir → guardar → recargar → deshacer → recargar → exportar → reimportar 3ms
+     × id anterior de 41 y nuevo de 36: partir → guardar → recargar → deshacer → recargar → exportar → reimportar 3ms
+     ✓ id anterior de 40 y nuevo de 36: partir → guardar → recargar → deshacer → recargar → exportar → reimportar 4ms
+     ✓ id anterior de 36 y nuevo de 36: partir → guardar → recargar → deshacer → recargar → exportar → reimportar 6ms
+     ✓ posponer un aviso de un programado con id largo (sin partir) seguía siendo válido: el límite de 64 es solo de los ids de registros 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/domain/qaFollowUp.test.ts > F-01 · un programado con un id largo (admitido hasta 64) y su aviso pospuesto: partirlo deja datos que SE GUARDAN y vuelven a cargar > id anterior de 64 y nuevo de 64: partir → guardar → recargar → deshacer → recargar → exportar → reimportar
+AssertionError: tras partir: expected [ { …(2) }, { …(2) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "code": "invalidValue",
++     "path": "history[0].changes[2]",
++   },
++   {
++     "code": "invalidValue",
++     "path": "history[0].changes[3]",
++   },
++ ]
+
+ ❯ src/domain/qaFollowUp.test.ts:42:51
+     40|       const reloaded = persisted(saved)
+     41|       const v = validateAppData(reloaded)
+     42|       expect(v.ok ? [] : v.issues, 'tras partir').toEqual([])
+       |                                                   ^
+     43|       // Deshacer desde el historial y volver a cargar.
+     44|       const back = revertEntry(reloaded, reloaded.history.at(-1)!.id, …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/domain/qaFollowUp.test.ts > F-01 · un programado con un id largo (admitido hasta 64) y su aviso pospuesto: partirlo deja datos que SE GUARDAN y vuelven a cargar > id anterior de 47 y nuevo de 36: partir → guardar → recargar → deshacer → recargar → exportar → reimportar
+ FAIL  src/domain/qaFollowUp.test.ts > F-01 · un programado con un id largo (admitido hasta 64) y su aviso pospuesto: partirlo deja datos que SE GUARDAN y vuelven a cargar > id anterior de 41 y nuevo de 36: partir → guardar → recargar → deshacer → recargar → exportar → reimportar
+AssertionError: tras partir: expected [ { …(2) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "code": "invalidValue",
++     "path": "history[0].changes[3]",
++   },
++ ]
+
+ ❯ src/domain/qaFollowUp.test.ts:42:51
+     40|       const reloaded = persisted(saved)
+     41|       const v = validateAppData(reloaded)
+     42|       expect(v.ok ? [] : v.issues, 'tras partir').toEqual([])
+       |                                                   ^
+     43|       // Deshacer desde el historial y volver a cargar.
+     44|       const back = revertEntry(reloaded, reloaded.history.at(-1)!.id, …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 3 passed (6)
+   Start at  04:56:03
+   Duration  1.41s (transform 86%, import 8%, tests 5%, worker 1%)
+

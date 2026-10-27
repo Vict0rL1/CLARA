@@ -16,6 +16,7 @@ import { href, withQuery } from '../router'
 const VERDICT: Record<AffordVerdict, { tone: 'good' | 'warning' | 'critical'; icon: IconName }> = {
   fits: { tone: 'good', icon: 'checkCircle' },
   tight: { tone: 'warning', icon: 'alert' },
+  onlyWithBuffer: { tone: 'warning', icon: 'alert' },
   onlyWithGoals: { tone: 'warning', icon: 'alert' },
   doesNotFit: { tone: 'critical', icon: 'x' },
 }
@@ -171,6 +172,7 @@ export function Afford() {
                     {g.goal.name} · {fmt.money(g.amountMinor)}
                   </p>
                 ))}
+                {budget.safetyBufferMinor > 0 && <CalcRow op="−" label={t('explain.buffer')} value={fmt.money(budget.safetyBufferMinor)} />}
                 <CalcRow op="=" label={t('explain.available')} value={fmt.money(budget.availableMinor)} strong />
                 <CalcRow op="−" label={t('afford.thisPurchase')} value={fmt.money(result.priceMinor)} />
                 <CalcRow op="=" label={t('afford.availableAfter')} value={fmt.money(result.availableAfterMinor)} strong />

@@ -28,12 +28,26 @@ describe('bloqueo con PIN', () => {
     const config = await createLockConfig('2468')
     expect(config.pinHash).toMatch(/^[0-9a-f]{64}$/)
     expect(config.salt).toMatch(/^[0-9a-f]{32}$/)
-    expect(JSON.stringify(config)).not.toContain('2468')
+    // «Nunca en claro»: solo hash y sal, ambos hexadecimales de longitud fija; ningún otro campo puede
+    // llevar el PIN. Antes se buscaba «2468» dentro del JSON, y una sal aleatoria lo contenía por azar
+    // (≈ 1 de cada 700 ejecuciones; falló así en la CI).
+    expect(Object.keys(config).sort()).toEqual(['pinHash', 'salt'])
+    expect(Object.values(config)).not.toContain('2468')
     expect(await verifyPin('2468', config)).toBe(true)
     expect(await verifyPin('2469', config)).toBe(false)
     expect(await verifyPin('abc', config)).toBe(false)
     const other = await createLockConfig('2468')
     expect(other.pinHash).not.toBe(config.pinHash) // sal distinta
+  })
+
+  it('una sal que por azar contiene los dígitos del PIN no es un PIN en claro (caso de la CI)', async () => {
+    // Sal fija que empieza por «2468»: la comprobación anterior (buscar el PIN en el JSON) fallaba aquí.
+    const fixed = { getRandomValues: <T extends ArrayBufferView | null>(a: T) => { const b = a as unknown as Uint8Array; b.set([0x24, 0x68]); return a }, subtle: globalThis.crypto.subtle } as unknown as Crypto
+    const config = await createLockConfig('2468', fixed)
+    expect(config.salt.startsWith('2468')).toBe(true)
+    expect(Object.keys(config).sort()).toEqual(['pinHash', 'salt'])
+    expect(Object.values(config)).not.toContain('2468')
+    expect(await verifyPin('2468', config, fixed)).toBe(true)
   })
 
   it('valida la longitud, persiste en el almacenamiento del dispositivo y decide cuándo volver a bloquear', async () => {

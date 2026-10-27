@@ -1,0 +1,71 @@
+/**
+ * Sonda de reproducción QA V2 (no es una prueba mantenida): registra lo que la app hace HOY con las
+ * entradas de los hallazgos CUR-01/02/03 y FIN-01, para guardar evidencia antes/después.
+ * Uso: QA_V2_OUT=/ruta/salida.json npx vitest run qa/qa-v2-repro.probe.test.ts
+ */
+import { writeFileSync } from 'node:fs'
+import { it } from 'vitest'
+import { previewImport } from '../src/domain/bankImport'
+import { parseMoney, stripCurrencyMark } from '../src/domain/money'
+import { parseText } from '../src/domain/parser'
+import { parseReceiptText } from '../src/domain/receipt'
+import { recurringCosts } from '../src/domain/recurringCosts'
+import { parseShortcutAmount } from '../src/domain/shortcutLink'
+import { baseData, bill, ctx } from '../src/test/fixtures'
+
+const parseCtx = { today: ctx.today, currency: 'CAD', language: 'es' as const, categories: [{ id: 'dining', kind: 'expense' as const }] }
+
+function safe<T>(fn: () => T): T | { threw: string } {
+  try {
+    return fn()
+  } catch (e) {
+    return { threw: (e as Error).message }
+  }
+}
+
+it('QA V2 reproduction probe', () => {
+  const out: Record<string, unknown> = {}
+
+  // CUR-01: código explícito + símbolo genérico en el asistente.
+  out.cur01 = ['coffee USD $10', 'coffee $10 USD', 'café USD $ 10', 'coffee EUR $10', 'coffee $10', 'coffee CAD $10'].map((t) => {
+    const [e] = parseText(t, parseCtx)
+    return { input: t, amountMinor: e?.amountMinor ?? null, foreignCurrency: e?.foreignCurrency ?? null }
+  })
+
+  // CUR-02: prefijo y sufijo contradictorios en el lector compartido y sus consumidores.
+  out.cur02 = ['USD 10 CAD', '€10 CAD', 'GBP 10 CAD', 'US$10 CAD', 'CAD 10 USD', '-USD 10 CAD', 'CAD 10 CAD', '$10 CAD', '10 CAD'].map((t) => ({
+    input: t,
+    strip: stripCurrencyMark(t),
+    parseMoney: parseMoney(t, 'CAD', 'en-CA', { allowNegative: true }),
+    shortcut: parseShortcutAmount(t, 'CAD', 'en-CA'),
+  }))
+  const csv = previewImport(
+    [
+      ['2026-09-20', 'Café', '-USD 10 CAD'],
+      ['2026-09-21', 'Té', '€10 CAD'],
+      ['2026-09-22', 'Pan', '-10 CAD'],
+    ],
+    baseData(),
+    { accountId: 'main', mapping: { date: 0, description: 1, amount: 2 }, hasHeader: false, dateFormat: 'ymd', invertSign: false, locale: 'en-CA', today: ctx.today },
+  )
+  out.cur02csv = csv.rows.map((r) => ({ line: r.line, status: r.status, amountMinor: r.amountMinor ?? null, kind: r.kind ?? null, error: r.error ?? null, currency: r.currency ?? null }))
+  out.cur02assistant = ['coffee USD 10 CAD', 'coffee €10 CAD'].map((t) => {
+    const [e] = parseText(t, parseCtx)
+    return { input: t, amountMinor: e?.amountMinor ?? null, foreignCurrency: e?.foreignCurrency ?? null }
+  })
+
+  // CUR-03: total de recibo con moneda impresa (texto OCR sintético).
+  out.cur03 = ['SHOP\nTOTAL PEN 10.00', 'SHOP\nTOTAL RUB 10.00', 'SHOP\nPEN 2.99\nTOTAL 2.99', 'SHOP\nTOTAL USD 10.00', 'SHOP\nTOTAL 10.00 €'].map((t) => {
+    const r = parseReceiptText(t, parseCtx)
+    return { input: t, totalMinor: r.totalMinor, foreignCurrency: r.foreignCurrency ?? null }
+  })
+
+  // FIN-01: 25 programados diarios con el importe máximo permitido.
+  const schedules = Array.from({ length: 25 }, (_, i) => bill('2026-09-28', 1_000_000_000_000, { id: `d${i}`, name: `Diario ${i}`, frequency: 'daily' }))
+  out.fin01 = safe(() => {
+    const r = recurringCosts({ schedules }, '2026-09-28')
+    return { totalMinor: r.totalMinor, monthlyMinor: r.monthlyMinor, safe: Number.isSafeInteger(r.totalMinor) }
+  })
+
+  writeFileSync(process.env.QA_V2_OUT ?? '/dev/null', JSON.stringify(out, null, 2))
+})

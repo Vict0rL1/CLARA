@@ -12,10 +12,11 @@ afterEach(() => {
 })
 
 describe('I2 · playwright.config en CI y en local', () => {
-  it('en CI reintenta una vez (para que --fail-on-flaky-tests detecte la inestabilidad) y deja un informe HTML sin abrirlo', async () => {
+  it('en CI reintenta una vez (para que --fail-on-flaky-tests detecte la inestabilidad) y deja un informe HTML sin abrirlo y un JUnit', async () => {
     const config = await loadConfig({ CI: 'true' })
     expect(config.retries).toBe(1)
-    expect(config.reporter).toEqual([['list'], ['html', { open: 'never' }]])
+    // QA V2: el JUnit (`test-results/junit.xml`) se sube como artefacto para leer una ejecución remota.
+    expect(config.reporter).toEqual([['list'], ['html', { open: 'never' }], ['junit', { outputFile: 'test-results/junit.xml' }]])
   })
 
   it('en local no reintenta y solo usa la lista', async () => {

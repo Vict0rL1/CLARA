@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
+import { SCHEMA_VERSION } from '../../src/domain/types'
 import { failStorageWrites, go, movementCount, restoreStorageWrites, START, startDemo, storedData, writeStoredData, openDetails } from './helpers'
 
 async function addExpense(page: Page, amount: string, note: string) {
@@ -82,10 +83,11 @@ test('dos pestañas: la segunda no sobrescribe en silencio lo que guardó la pri
   await expect(other.locator('a.item', { hasText: 'Desde la pestaña B' })).toBeVisible()
 })
 
-test('H4 · datos de una versión más nueva (esquema 13): se explican, sin «Empezar de nuevo», y ningún botón los toca', { tag: '@smoke' }, async ({ page }) => {
+test('H4 · datos de una versión más nueva (esquema actual + 1): se explican, sin «Empezar de nuevo», y ningún botón los toca', { tag: '@smoke' }, async ({ page }) => {
   await startDemo(page)
   const d = JSON.parse((await stored(page))!)
-  d.schemaVersion = 13
+  // Siempre una versión por encima de la actual (con un número fijo, la prueba caducaba al subir el esquema).
+  d.schemaVersion = SCHEMA_VERSION + 1
   await writeStoredData(page, d)
   const future = await stored(page)
   await page.reload()

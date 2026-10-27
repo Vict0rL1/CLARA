@@ -1,0 +1,6 @@
+
+Running 1 test using 1 worker
+
+  ✓  1 [celular] › tests/e2e/review.browser.spec.ts:493:1 › F-05 · julio personalizado en es/en/pt/fr: seis etiquetas sin solaparse ni recortarse; Tab a los grupos muestra la fecha completa y los importes en el tooltip; toque en celular; mensual y anual con etiquetas cortas (5.4s)
+
+  1 passed (6.9s)

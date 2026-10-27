@@ -1,0 +1,203 @@
+
+ RUN  v5.0.2 /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before
+
+ ❯ src/domain/qaFollowUp.test.ts (23 tests | 19 failed) 133ms
+   ❯ F-01 · un programado con un id largo (admitido hasta 64) y su aviso pospuesto: partirlo deja datos que SE GUARDAN y vuelven a cargar (6)
+     × id anterior de 64 y nuevo de 64: partir → guardar → recargar → deshacer → recargar → exportar → reimportar 62ms
+     × id anterior de 47 y nuevo de 36: partir → guardar → recargar → deshacer → recargar → exportar → reimportar 4ms
+     × id anterior de 41 y nuevo de 36: partir → guardar → recargar → deshacer → recargar → exportar → reimportar 4ms
+     ✓ id anterior de 40 y nuevo de 36: partir → guardar → recargar → deshacer → recargar → exportar → reimportar 5ms
+     ✓ id anterior de 36 y nuevo de 36: partir → guardar → recargar → deshacer → recargar → exportar → reimportar 3ms
+     ✓ posponer un aviso de un programado con id largo (sin partir) seguía siendo válido: el límite de 64 es solo de los ids de registros 1ms
+   ❯ F-01 · contrato de id por colección del historial (el mismo que usa cada colección al guardarse) (13)
+     × accounts: acepta 64 caracteres y rechaza 65 (y el vacío) 1ms
+     × transactions: acepta 64 caracteres y rechaza 65 (y el vacío) 1ms
+     × schedules: acepta 64 caracteres y rechaza 65 (y el vacío) 2ms
+     × goals: acepta 64 caracteres y rechaza 65 (y el vacío) 1ms
+     × trash: acepta 64 caracteres y rechaza 65 (y el vacío) 1ms
+     × reconciliations: acepta 64 caracteres y rechaza 65 (y el vacío) 1ms
+     × incomeDistributions: acepta 64 caracteres y rechaza 65 (y el vacío) 1ms
+     × periodBudgets: acepta 64 caracteres y rechaza 65 (y el vacío) 1ms
+     × templates: acepta 64 caracteres y rechaza 65 (y el vacío) 1ms
+     × scenarios: acepta 64 caracteres y rechaza 65 (y el vacío) 0ms
+     × inboxSnoozed: acepta undefined caracteres y rechaza NaN (y el vacío) 2ms
+     × settings: acepta 64 caracteres y rechaza 65 (y el vacío) 0ms
+     × el id de un aviso pospuesto más largo posible (dup:<64>:<64>, 133) cabe en el contrato de la bandeja 0ms
+   ❯ F-01 · recuperación: lo que guardó la versión con el fallo (ids de aviso de 88 en el historial) vuelve a leerse tal cual (1)
+     × una copia exportada por la versión anterior, con la partición en el historial, se importa sin cambios en sus datos 2ms
+   ❯ F-03 · Análisis: el porcentaje de gasto a fecha equivalente se calcula exacto y verificado (3)
+     × 1 gasto de MAX_AMOUNT_MINOR el 10-ago frente a 100 el 10-sep (seguimiento desde el 1-jul, al 28-sep): 9 900 % exacto en vez de fallar 26ms
+     × con el cociente fuera del rango exacto (1 unidad menor frente a 100 × MAX) el aviso sale sin porcentaje, nunca con una cifra inexacta 5ms
+     ✓ bajadas y subidas normales siguen igual: 200 → 150 es −25 % (spendingDown 25); 100 → 108 no avisa (umbral 10 %) 7ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 19 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/domain/qaFollowUp.test.ts > F-01 · un programado con un id largo (admitido hasta 64) y su aviso pospuesto: partirlo deja datos que SE GUARDAN y vuelven a cargar > id anterior de 64 y nuevo de 64: partir → guardar → recargar → deshacer → recargar → exportar → reimportar
+AssertionError: tras partir: expected [ { …(2) }, { …(2) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "code": "invalidValue",
++     "path": "history[0].changes[2]",
++   },
++   {
++     "code": "invalidValue",
++     "path": "history[0].changes[3]",
++   },
++ ]
+
+ ❯ src/domain/qaFollowUp.test.ts:46:51
+     44|       const reloaded = persisted(saved)
+     45|       const v = validateAppData(reloaded)
+     46|       expect(v.ok ? [] : v.issues, 'tras partir').toEqual([])
+       |                                                   ^
+     47|       // Deshacer desde el historial y volver a cargar.
+     48|       const back = revertEntry(reloaded, reloaded.history.at(-1)!.id, …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/19]⎯
+
+ FAIL  src/domain/qaFollowUp.test.ts > F-01 · un programado con un id largo (admitido hasta 64) y su aviso pospuesto: partirlo deja datos que SE GUARDAN y vuelven a cargar > id anterior de 47 y nuevo de 36: partir → guardar → recargar → deshacer → recargar → exportar → reimportar
+ FAIL  src/domain/qaFollowUp.test.ts > F-01 · un programado con un id largo (admitido hasta 64) y su aviso pospuesto: partirlo deja datos que SE GUARDAN y vuelven a cargar > id anterior de 41 y nuevo de 36: partir → guardar → recargar → deshacer → recargar → exportar → reimportar
+AssertionError: tras partir: expected [ { …(2) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "code": "invalidValue",
++     "path": "history[0].changes[3]",
++   },
++ ]
+
+ ❯ src/domain/qaFollowUp.test.ts:46:51
+     44|       const reloaded = persisted(saved)
+     45|       const v = validateAppData(reloaded)
+     46|       expect(v.ok ? [] : v.issues, 'tras partir').toEqual([])
+       |                                                   ^
+     47|       // Deshacer desde el historial y volver a cargar.
+     48|       const back = revertEntry(reloaded, reloaded.history.at(-1)!.id, …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/19]⎯
+
+ FAIL  src/domain/qaFollowUp.test.ts > F-01 · contrato de id por colección del historial (el mismo que usa cada colección al guardarse) > accounts: acepta 64 caracteres y rechaza 65 (y el vacío)
+ FAIL  src/domain/qaFollowUp.test.ts > F-01 · contrato de id por colección del historial (el mismo que usa cada colección al guardarse) > transactions: acepta 64 caracteres y rechaza 65 (y el vacío)
+ FAIL  src/domain/qaFollowUp.test.ts > F-01 · contrato de id por colección del historial (el mismo que usa cada colección al guardarse) > schedules: acepta 64 caracteres y rechaza 65 (y el vacío)
+ FAIL  src/domain/qaFollowUp.test.ts > F-01 · contrato de id por colección del historial (el mismo que usa cada colección al guardarse) > goals: acepta 64 caracteres y rechaza 65 (y el vacío)
+ FAIL  src/domain/qaFollowUp.test.ts > F-01 · contrato de id por colección del historial (el mismo que usa cada colección al guardarse) > trash: acepta 64 caracteres y rechaza 65 (y el vacío)
+ FAIL  src/domain/qaFollowUp.test.ts > F-01 · contrato de id por colección del historial (el mismo que usa cada colección al guardarse) > reconciliations: acepta 64 caracteres y rechaza 65 (y el vacío)
+ FAIL  src/domain/qaFollowUp.test.ts > F-01 · contrato de id por colección del historial (el mismo que usa cada colección al guardarse) > incomeDistributions: acepta 64 caracteres y rechaza 65 (y el vacío)
+ FAIL  src/domain/qaFollowUp.test.ts > F-01 · contrato de id por colección del historial (el mismo que usa cada colección al guardarse) > periodBudgets: acepta 64 caracteres y rechaza 65 (y el vacío)
+ FAIL  src/domain/qaFollowUp.test.ts > F-01 · contrato de id por colección del historial (el mismo que usa cada colección al guardarse) > templates: acepta 64 caracteres y rechaza 65 (y el vacío)
+ FAIL  src/domain/qaFollowUp.test.ts > F-01 · contrato de id por colección del historial (el mismo que usa cada colección al guardarse) > scenarios: acepta 64 caracteres y rechaza 65 (y el vacío)
+ FAIL  src/domain/qaFollowUp.test.ts > F-01 · contrato de id por colección del historial (el mismo que usa cada colección al guardarse) > settings: acepta 64 caracteres y rechaza 65 (y el vacío)
+TypeError: isValidHistoryChangeId is not a function
+ ❯ src/domain/qaFollowUp.test.ts:82:14
+     80|       expect(validateHistory([entry(collection, 'x'.repeat(max + 1))])…
+     81|       expect(validateHistory([entry(collection, '')])).toEqual([{ path…
+     82|       expect(isValidHistoryChangeId(collection, 'x'.repeat(max))).toBe…
+       |              ^
+     83|       expect(isValidHistoryChangeId(collection, 'x'.repeat(max + 1))).…
+     84|     })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/19]⎯
+
+ FAIL  src/domain/qaFollowUp.test.ts > F-01 · contrato de id por colección del historial (el mismo que usa cada colección al guardarse) > inboxSnoozed: acepta undefined caracteres y rechaza NaN (y el vacío)
+AssertionError: expected [ { …(2) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "code": "invalidValue",
++     "path": "history[0].changes[0]",
++   },
++ ]
+
+ ❯ src/domain/qaFollowUp.test.ts:79:69
+     77|     const max = collection === 'inboxSnoozed' ? INBOX_ID_MAX : 64
+     78|     it(`${collection}: acepta ${max} caracteres y rechaza ${max + 1} (…
+     79|       expect(validateHistory([entry(collection, 'x'.repeat(max))])).to…
+       |                                                                     ^
+     80|       expect(validateHistory([entry(collection, 'x'.repeat(max + 1))])…
+     81|       expect(validateHistory([entry(collection, '')])).toEqual([{ path…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/19]⎯
+
+ FAIL  src/domain/qaFollowUp.test.ts > F-01 · contrato de id por colección del historial (el mismo que usa cada colección al guardarse) > el id de un aviso pospuesto más largo posible (dup:<64>:<64>, 133) cabe en el contrato de la bandeja
+TypeError: isValidHistoryChangeId is not a function
+ ❯ src/domain/qaFollowUp.test.ts:87:12
+     85|   }
+     86|   it('el id de un aviso pospuesto más largo posible (dup:<64>:<64>, 13…
+     87|     expect(isValidHistoryChangeId('inboxSnoozed', `dup:${'x'.repeat(64…
+       |            ^
+     88|   })
+     89| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/19]⎯
+
+ FAIL  src/domain/qaFollowUp.test.ts > F-01 · recuperación: lo que guardó la versión con el fallo (ids de aviso de 88 en el historial) vuelve a leerse tal cual > una copia exportada por la versión anterior, con la partición en el historial, se importa sin cambios en sus datos
+AssertionError: expected [ { …(2) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "code": "invalidValue",
++     "path": "history[0].changes[3]",
++   },
++ ]
+
+ ❯ src/domain/qaFollowUp.test.ts:105:48
+    103|     expect(written.history[0]!.changes.filter((c) => c.collection === …
+    104|     const imported = parseBackup(backupText(written, new Date(NOW), '0…
+    105|     expect(imported.ok ? [] : imported.issues).toEqual([])
+       |                                                ^
+    106|     // Sin migración ni reparación: los datos eran correctos, solo la …
+    107|     expect(imported.ok && imported.data).toEqual(written)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/19]⎯
+
+ FAIL  src/domain/qaFollowUp.test.ts > F-03 · Análisis: el porcentaje de gasto a fecha equivalente se calcula exacto y verificado > 1 gasto de MAX_AMOUNT_MINOR el 10-ago frente a 100 el 10-sep (seguimiento desde el 1-jul, al 28-sep): 9 900 % exacto en vez de fallar
+Error: floorDiv requiere enteros y divisor distinto de cero
+ ❯ floorDiv src/domain/money.ts:137:11
+    135| export function floorDiv(a: number, b: number): number {
+    136|   if (!Number.isSafeInteger(a) || !Number.isSafeInteger(b) || b === 0)…
+    137|     throw new Error('floorDiv requiere enteros y divisor distinto de c…
+       |           ^
+    138|   }
+    139|   const A = BigInt(a)
+ ❯ analysisItems src/domain/analysis.ts:187:23
+ ❯ src/domain/qaFollowUp.test.ts:123:19
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/19]⎯
+
+ FAIL  src/domain/qaFollowUp.test.ts > F-03 · Análisis: el porcentaje de gasto a fecha equivalente se calcula exacto y verificado > con el cociente fuera del rango exacto (1 unidad menor frente a 100 × MAX) el aviso sale sin porcentaje, nunca con una cifra inexacta
+Error: floorDiv requiere enteros y divisor distinto de cero
+ ❯ floorDiv src/domain/money.ts:137:11
+    135| export function floorDiv(a: number, b: number): number {
+    136|   if (!Number.isSafeInteger(a) || !Number.isSafeInteger(b) || b === 0)…
+    137|     throw new Error('floorDiv requiere enteros y divisor distinto de c…
+       |           ^
+    138|   }
+    139|   const A = BigInt(a)
+ ❯ analysisItems src/domain/analysis.ts:187:23
+ ❯ src/domain/qaFollowUp.test.ts:134:19
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/19]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  19 failed | 4 passed (23)
+   Start at  05:05:41
+   Duration  2.37s (transform 83%, import 9%, tests 7%)
+

@@ -1,0 +1,10 @@
+month/year labels rerun on e38b07b9debdbcb98fa130f2aa86747a82d0d387 + working tree (2026-10-27T06:25:12Z)
+
+Running 3 tests using 2 workers
+
+  ✓  2 [celular-pequeno] › tests/e2e/qa-lead.spec.ts:133:1 › F-05 · las etiquetas de mes y de año no cambian: seis abreviaturas de mes y seis años (1.8s)
+  ✓  1 [celular] › tests/e2e/qa-lead.spec.ts:133:1 › F-05 · las etiquetas de mes y de año no cambian: seis abreviaturas de mes y seis años (2.0s)
+  ✓  3 [escritorio] › tests/e2e/qa-lead.spec.ts:133:1 › F-05 · las etiquetas de mes y de año no cambian: seis abreviaturas de mes y seis años (1.4s)
+
+  3 passed (39.6s)
+exit 0

@@ -1,0 +1,46 @@
+/** Sonda de reproducción (auditoría independiente 2026-10-19, hallazgos P1 y P2) contra el código actual. */
+import { describe, expect, it } from 'vitest'
+import { parseText, type ParseContext } from './parser'
+import { parseReceiptText } from './receipt'
+import type { Language } from './types'
+
+const ctx = (language: Language = 'en', currency = 'CAD'): ParseContext => ({
+  today: '2026-09-28',
+  currency,
+  language,
+  categories: [{ id: 'dining', kind: 'expense' }, { id: 'other_expense', kind: 'expense' }, { id: 'salary', kind: 'income' }],
+})
+const one = (text: string) => parseText(text, ctx())[0]!
+const receipt = (text: string) => parseReceiptText(text, ctx())
+
+describe('P1 · moneda no admitida separada del importe por puntuación', () => {
+  for (const text of ['coffee (RUB) 10', 'coffee RUB: 10', 'coffee (RUB) $10']) {
+    it(`asistente: «${text}» → 1000 con marca RUB (bloquea)`, () => {
+      const e = one(text)
+      expect([e.amountMinor, e.foreignCurrency ?? null, e.currencyConflict ?? null], text).toEqual([1000, 'RUB', null])
+    })
+  }
+  for (const text of ['SHOP\nTOTAL RUB: 10.00', 'SHOP\nTOTAL (RUB) 10.00']) {
+    it(`recibo: «${text.replace('\n', ' / ')}» → 1000 con marca RUB`, () => {
+      expect(receipt(text), text).toMatchObject({ totalMinor: 1000, foreignCurrency: 'RUB' })
+    })
+  }
+  it('controles: código admitido con la misma sintaxis y el directo «TOTAL RUB 10.00»', () => {
+    expect(one('coffee (USD) 10')).toMatchObject({ amountMinor: 1000, foreignCurrency: 'USD' })
+    expect(receipt('SHOP\nTOTAL USD: 10.00')).toMatchObject({ totalMinor: 1000, foreignCurrency: 'USD' })
+    expect(receipt('SHOP\nTOTAL RUB 10.00')).toMatchObject({ totalMinor: 1000, foreignCurrency: 'RUB' })
+    expect(one('AMD GPU 500')).toMatchObject({ amountMinor: 50000 })
+    expect(one('AMD GPU 500').foreignCurrency).toBeUndefined()
+  })
+})
+
+describe('P2 · «PEN 2.99 TAX 0.10» es un artículo, no una moneda', () => {
+  it('SHOP / PEN 2.99 TAX 0.10 / TOTAL CAD 3.09 → 309 sin conflicto', () => {
+    const r = receipt('SHOP\nPEN 2.99 TAX 0.10\nTOTAL CAD 3.09')
+    expect([r.totalMinor, r.foreignCurrency ?? null, r.currencyConflict ?? null]).toEqual([309, null, null])
+  })
+  it('variante sin total escrito en CAD: SHOP / PEN 2.99 TAX 0.10 / TOTAL 3.09 → 309 sin moneda', () => {
+    const r = receipt('SHOP\nPEN 2.99 TAX 0.10\nTOTAL 3.09')
+    expect([r.totalMinor, r.foreignCurrency ?? null, r.currencyConflict ?? null]).toEqual([309, null, null])
+  })
+})

@@ -8,7 +8,7 @@ import { backupStatus } from './backupReminder'
 import { addDays, addMonthsClamped, daysBetween, startOfMonth } from './dates'
 import { goalPace } from './goalChart'
 import { periodSummary } from './insights'
-import { floorDiv, sumMinor } from './money'
+import { checkedPercentChange, mulDivFloor, sumMinor } from './money'
 import { planItems } from './planItems'
 import { planProgress } from './plans'
 import { projectBalance } from './projection'
@@ -184,13 +184,18 @@ export function analysisItems(data: AppData, today: LocalDate): AnalysisItem[] {
     const current = periodSummary(data, monthStart, today).netSpendingMinor
     const previous = periodSummary(data, prevStart, prevEnd).netSpendingMinor
     if (previous > 0) {
-      const percent = floorDiv((current - previous) * 100, previous)
-      if (Math.abs(percent) >= SPENDING_CHANGE_THRESHOLD) {
+      // Porcentaje exacto (F-03): el producto (diferencia × 100) puede pasar de 2^53 − 1 con sumas grandes y
+      // `floorDiv` fallaba; se calcula verificado y, si ni el cociente cabe en un entero exacto, el aviso sale sin
+      // cifra (`percent` ausente) en vez de inventar una o esconder la pantalla. Truncado hacia cero (F-R3): el
+      // umbral «desde ±10 %» es el mismo para subidas y bajadas (−9,99 % no es −10).
+      const percent = checkedPercentChange(current - previous, previous)
+      if (percent === null || Math.abs(percent) >= SPENDING_CHANGE_THRESHOLD) {
+        const up = current > previous
         out.push({
-          key: percent > 0 ? 'spendingUp' : 'spendingDown',
-          id: percent > 0 ? 'spendingUp' : 'spendingDown',
+          key: up ? 'spendingUp' : 'spendingDown',
+          id: up ? 'spendingUp' : 'spendingDown',
           severity: 'info',
-          params: { percent: Math.abs(percent), current, previous, date: prevEnd },
+          params: { ...(percent === null ? {} : { percent: Math.abs(percent) }), current, previous, date: prevEnd },
           because: [
             { id: 'currentToDate', kind: 'money', value: current },
             { id: 'previousToDate', kind: 'money', value: previous, op: '−' },
@@ -208,7 +213,7 @@ export function analysisItems(data: AppData, today: LocalDate): AnalysisItem[] {
   const total = sumMinor(positive.map((c) => c.netMinor))
   const top = positive.reduce<(typeof positive)[number] | null>((best, c) => (!best || c.netMinor > best.netMinor ? c : best), null)
   if (top && total > 0) {
-    const share = floorDiv(top.netMinor * 100, total)
+    const share = mulDivFloor(top.netMinor, 100, total)
     if (share >= TOP_CATEGORY_SHARE) {
       out.push({
         key: `topCategory:${top.categoryId}`,

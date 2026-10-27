@@ -86,6 +86,19 @@ export function describeChange(change: HistoryChange, entry: HistoryEntry, data:
       const b = (change.after ?? change.before) as { name: string }
       return { text: t(`history.period.${verb}` as MessageKey, { name: b.name }), details: [] }
     }
+    // v14 (PR #15, QA-05): lo que partir un programado reescribe y revertirlo devuelve.
+    case 'templates': {
+      const tp = (change.after ?? change.before) as { name: string }
+      return { text: t(`history.template.${verb}` as MessageKey, { name: tp.name }), details: [], link: '/movimientos/plantillas' }
+    }
+    case 'scenarios': {
+      const sc = (change.after ?? change.before) as { name: string }
+      return { text: t(`history.scenario.${verb}` as MessageKey, { name: sc.name }), details: [], link: '/alcanza/escenarios' }
+    }
+    case 'inboxSnoozed': {
+      const sn = (change.after ?? change.before) as { until: string }
+      return { text: t(`history.snooze.${verb}` as MessageKey, { date: fmt.date(sn.until) }), details: [], link: '/pendientes' }
+    }
     case 'settings':
     {
       const before = change.before as Record<string, unknown>

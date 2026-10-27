@@ -4,11 +4,11 @@
  * después; si no, se explica qué registro cambió. Ver domain/history.ts.
  */
 import { useMemo, useState } from 'react'
-import { canRevert, revertConflicts, revertEntry } from '../../domain/history'
+import { canRevert, revertConflicts, revertDependents, revertEntry } from '../../domain/historyRevert'
 import type { HistoryEntry } from '../../domain/types'
 import type { Issue } from '../../domain/validation'
 import { useT } from '../../i18n'
-import { useRun } from '../../state/hooks'
+import { useRun, useToday } from '../../state/hooks'
 import { useData } from '../../state/store'
 import { validateAppData } from '../../storage/backup'
 import { Alert, Badge, Card, EmptyState, PageHeader } from '../components/common'
@@ -27,6 +27,7 @@ export function History() {
   const fmt = useFormat()
   const data = useData()
   const run = useRun()
+  const today = useToday()
   const toast = useToast()
   const [limit, setLimit] = useState(PAGE)
   const [confirm, setConfirm] = useState<HistoryEntry | null>(null)
@@ -65,8 +66,10 @@ export function History() {
         <ul className="item-list history-list" aria-label={t('history.title')}>
           {shown.map((entry) => {
             const lines = entry.changes.map((c) => describeChange(c, entry, data, t, fmt)).filter((l): l is Line => l !== null)
-            const status = canRevert(data, entry)
-            const conflicts = status === 'conflict' ? revertConflicts(data, entry) : []
+            const status = canRevert(data, entry, today)
+            const conflicts = status === 'conflict' ? revertConflicts(data, entry, today) : []
+            // F-02: lo que seguiría apuntando a un programado que la reversión eliminaría (misma regla que `revertEntry`).
+            const dependents = status === 'dependents' ? revertDependents(data, entry, today) : []
             const original = entry.revertOf ? data.history.find((e) => e.id === entry.revertOf) : undefined
             return (
               <li key={entry.id}>
@@ -105,6 +108,16 @@ export function History() {
                     </div>
                   )}
                   {status === 'conflict' && <p className="note note--icon">{tn('history.conflict', conflicts.length)}</p>}
+                  {status === 'dependents' && (
+                    <div className="stack-sm" data-testid="history-dependents">
+                      <p className="note note--icon">{tn('history.dependents', dependents.length)}</p>
+                      <ul className="bullets history-details">
+                        {dependents.map((d) => (
+                          <li key={`${d.kind}:${d.id}`}>{d.kind === 'snooze' ? t('history.dependent.snooze', { date: fmt.date(d.name, { compact: true, today }) }) : t(`history.dependent.${d.kind}`, { name: d.name })}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </Card>
               </li>
             )

@@ -33,6 +33,12 @@ export type AppState =
       unsaved: boolean
     }
 
+/** Resultado de un guardado: si llegó al almacenamiento y la revisión que dejó (`null` si no se aplicó). */
+export interface CommitResult {
+  ok: boolean
+  revision: number | null
+}
+
 export class AppStore {
   private state: AppState = { phase: 'loading' }
   private listeners = new Set<() => void>()
@@ -108,13 +114,22 @@ export class AppStore {
    * 'replace' para importar una copia o reiniciar). Devuelve si se pudo persistir.
    */
   async commit(next: AppData, meta: HistoryMeta = {}): Promise<boolean> {
-    if (this.state.phase !== 'ready') return false
+    return (await this.commitTracked(next, meta)).ok
+  }
+
+  /**
+   * Como `commit`, y además dice qué revisión dejó ESTE guardado. La revisión se fija al aplicar el
+   * cambio, antes de esperar al almacenamiento: otro cambio que llegue mientras la escritura está
+   * pendiente tendrá otra (mayor) y nunca se confunde con esta (RT-02).
+   */
+  async commitTracked(next: AppData, meta: HistoryMeta = {}): Promise<CommitResult> {
+    if (this.state.phase !== 'ready') return { ok: false, revision: null }
     const previousRevision = this.state.data?.revision ?? 0
     const withHistory = recordHistory(this.state.data, next, new Date().toISOString(), meta)
     const data: AppData = { ...withHistory, revision: Math.max(previousRevision, next.revision) + 1 }
     this.set({ ...this.state, data, save: { state: 'saving' } })
     const result = await this.repo.save(data)
-    if (this.state.phase !== 'ready') return result.ok
+    if (this.state.phase !== 'ready') return { ok: result.ok, revision: data.revision }
     this.set({
       ...this.state,
       save: result.ok ? { state: 'saved', at: Date.now() } : { state: 'error', error: result.error },
@@ -122,7 +137,7 @@ export class AppStore {
       // Un conflicto equivale a saber que otra pestaña cambió los datos.
       externalChange: this.state.externalChange || (!result.ok && result.error === 'conflict'),
     })
-    return result.ok
+    return { ok: result.ok, revision: data.revision }
   }
 
   /** Vuelve a intentar guardar lo que se ve (tras liberar espacio, por ejemplo). */

@@ -17,6 +17,7 @@ import { readErrors } from '../../errorLog'
 import { useFormat } from '../../format'
 import { href } from '../../router'
 import { useLocalBackupList } from '../../useAutoBackup'
+import { SplitRepairCard } from './SplitRepairCard'
 import { StorageCard } from './StorageCard'
 import { downloadText } from '../../backupActions'
 
@@ -138,6 +139,7 @@ export function DataCenterSection() {
         </ol>
         <p className="note">{t('data.limits')}</p>
       </Card>
+      <SplitRepairCard />
       <StorageCard />
     </div>
   )

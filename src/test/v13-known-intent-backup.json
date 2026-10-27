@@ -1,0 +1,218 @@
+{
+  "format": "margen-backup",
+  "formatVersion": 1,
+  "exportedAt": "2026-02-15T12:00:02.000Z",
+  "app": "Clara",
+  "appVersion": "1.0.0-beta.1 (819eaa9)",
+  "data": {
+    "schemaVersion": 13,
+    "budgetId": "budget-1",
+    "isDemo": false,
+    "settings": {
+      "currency": "CAD",
+      "numberLocale": "es-MX",
+      "dateStyle": "medium",
+      "timeZone": "America/Toronto",
+      "language": "es",
+      "fallbackHorizonDays": null,
+      "budgetPeriod": {
+        "type": "untilIncome",
+        "weekStartsOn": 1
+      },
+      "carryOverBalance": true,
+      "safeToSpend": {
+        "showOnHome": true,
+        "granularity": "day",
+        "subtractScheduled": true,
+        "subtractGoalContributions": true,
+        "bufferMinor": 0
+      },
+      "notifications": {
+        "scheduledAlerts": false,
+        "dailyReminder": false,
+        "dailyReminderTime": "20:00",
+        "dailySummary": false,
+        "dailySummaryTime": "21:00",
+        "quietHours": false,
+        "quietFrom": "22:00",
+        "quietTo": "08:00",
+        "planAlerts": false
+      },
+      "biometricLock": false,
+      "onboardingDone": true,
+      "toursSeen": [],
+      "proStatus": {
+        "active": false
+      },
+      "aiUsage": {
+        "month": "",
+        "count": 0
+      }
+    },
+    "accounts": [
+      {
+        "id": "main",
+        "name": "Principal",
+        "kind": "bank",
+        "includeInBudget": true,
+        "anchor": {
+          "amountMinor": 180000,
+          "date": "2026-02-15",
+          "setAt": "2026-02-15T12:00:00.000Z"
+        },
+        "createdAt": "2026-09-28T13:00:00.000Z",
+        "updatedAt": "2026-09-28T13:00:00.000Z"
+      }
+    ],
+    "transactions": [],
+    "schedules": [
+      {
+        "id": "salary",
+        "name": "Sueldo",
+        "kind": "income",
+        "amountMinor": 240000,
+        "amountIsEstimate": false,
+        "currency": "CAD",
+        "accountId": "main",
+        "categoryId": "salary",
+        "frequency": "monthly",
+        "startDate": "2026-01-31",
+        "reminderDaysBefore": 2,
+        "skippedDates": [],
+        "createdAt": "2026-09-28T13:00:00.000Z",
+        "updatedAt": "2026-02-15T12:00:00.000Z",
+        "endDate": "2026-02-27"
+      },
+      {
+        "id": "bill",
+        "name": "Seguro",
+        "kind": "expense",
+        "amountMinor": 125000,
+        "amountIsEstimate": false,
+        "currency": "CAD",
+        "accountId": "main",
+        "categoryId": "utilities",
+        "frequency": "once",
+        "startDate": "2026-03-29",
+        "reminderDaysBefore": 2,
+        "skippedDates": [],
+        "createdAt": "2026-09-28T13:00:00.000Z",
+        "updatedAt": "2026-09-28T13:00:00.000Z"
+      },
+      {
+        "id": "salary-2",
+        "name": "Sueldo",
+        "kind": "income",
+        "amountMinor": 240777,
+        "amountIsEstimate": false,
+        "currency": "CAD",
+        "accountId": "main",
+        "categoryId": "salary",
+        "frequency": "monthly",
+        "startDate": "2026-02-28",
+        "reminderDaysBefore": 2,
+        "skippedDates": [],
+        "createdAt": "2026-02-15T12:00:00.000Z",
+        "updatedAt": "2026-02-15T12:00:00.000Z"
+      }
+    ],
+    "goals": [],
+    "categories": [],
+    "categoryPrefs": {},
+    "categoryGroups": [],
+    "tags": [],
+    "plans": [],
+    "profile": {
+      "id": "guest",
+      "isGuest": true
+    },
+    "categoryLimits": [],
+    "categoryRules": [],
+    "trash": [],
+    "purgedImportRefs": [],
+    "favorites": [],
+    "reconciliations": [],
+    "backup": {
+      "reminder": "weekly"
+    },
+    "periodBudgets": [],
+    "scenarios": [],
+    "inbox": {
+      "snoozed": [],
+      "dismissed": []
+    },
+    "incomeDistributions": [],
+    "templates": [],
+    "history": [
+      {
+        "id": "47dd09bc-063e-4427-8be2-934a608e4415",
+        "at": "2026-02-15T12:00:01.000Z",
+        "source": "app",
+        "changes": [
+          {
+            "collection": "schedules",
+            "id": "salary",
+            "before": {
+              "id": "salary",
+              "name": "Sueldo",
+              "kind": "income",
+              "amountMinor": 240000,
+              "amountIsEstimate": false,
+              "currency": "CAD",
+              "accountId": "main",
+              "categoryId": "salary",
+              "frequency": "monthly",
+              "startDate": "2026-01-31",
+              "reminderDaysBefore": 2,
+              "skippedDates": [],
+              "createdAt": "2026-09-28T13:00:00.000Z",
+              "updatedAt": "2026-09-28T13:00:00.000Z"
+            },
+            "after": {
+              "id": "salary",
+              "name": "Sueldo",
+              "kind": "income",
+              "amountMinor": 240000,
+              "amountIsEstimate": false,
+              "currency": "CAD",
+              "accountId": "main",
+              "categoryId": "salary",
+              "frequency": "monthly",
+              "startDate": "2026-01-31",
+              "reminderDaysBefore": 2,
+              "skippedDates": [],
+              "createdAt": "2026-09-28T13:00:00.000Z",
+              "updatedAt": "2026-02-15T12:00:00.000Z",
+              "endDate": "2026-02-27"
+            }
+          },
+          {
+            "collection": "schedules",
+            "id": "salary-2",
+            "before": null,
+            "after": {
+              "id": "salary-2",
+              "name": "Sueldo",
+              "kind": "income",
+              "amountMinor": 240777,
+              "amountIsEstimate": false,
+              "currency": "CAD",
+              "accountId": "main",
+              "categoryId": "salary",
+              "frequency": "monthly",
+              "startDate": "2026-02-28",
+              "reminderDaysBefore": 2,
+              "skippedDates": [],
+              "createdAt": "2026-02-15T12:00:00.000Z",
+              "updatedAt": "2026-02-15T12:00:00.000Z"
+            }
+          }
+        ]
+      }
+    ],
+    "historyStartedAt": "2026-09-28T13:00:00.000Z",
+    "createdAt": "2026-09-28T13:00:00.000Z",
+    "updatedAt": "2026-02-15T12:00:00.000Z",
+    "revision": 0
+  }
+}

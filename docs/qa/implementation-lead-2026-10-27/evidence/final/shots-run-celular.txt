@@ -1,0 +1,30 @@
+
+Running 24 tests using 1 worker
+
+  ✓   1 [celular] › tests/e2e/qa-corrective.spec.ts:63:3 › P1 · asistente: «coffee (RUB) 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD (2.1s)
+  ✓   2 [celular] › tests/e2e/qa-corrective.spec.ts:63:3 › P1 · asistente: «coffee RUB: 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD (1.9s)
+  ✓   3 [celular] › tests/e2e/qa-corrective.spec.ts:75:1 › P1 · asistente: «coffee (RUB) $10» tiene dos monedas que se contradicen: el campo conserva las dos y la línea se bloquea (1.9s)
+  ✓   4 [celular] › tests/e2e/qa-corrective.spec.ts:86:3 › P1 · foto (OCR sintético): «TOTAL RUB: 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD (1.9s)
+  ✓   5 [celular] › tests/e2e/qa-corrective.spec.ts:86:3 › P1 · foto (OCR sintético): «TOTAL (RUB) 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD (1.9s)
+  ✓   6 [celular] › tests/e2e/qa-corrective.spec.ts:102:3 › P2 · foto (OCR sintético): «PEN 2.99 TAX 0.10» con «TOTAL CAD 3.09» propone 3.09 en CAD sin conflicto y se registra (2.2s)
+  ✓   7 [celular] › tests/e2e/qa-corrective.spec.ts:102:3 › P2 · foto (OCR sintético): «PEN 2.99 TAX 0.10» con «TOTAL 3.09» propone 3.09 en CAD sin conflicto y se registra (1.7s)
+  ✓   8 [celular] › tests/e2e/qa-corrective.spec.ts:122:1 › P2 · control (OCR sintético): «TOTAL PEN 10.00» sigue bloqueado como moneda extranjera (1.4s)
+  ✓   9 [celular] › tests/e2e/qa-followup.spec.ts:46:3 › F-01 · factura CAD 400 con id de 64 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta (4.9s)
+  ✓  10 [celular] › tests/e2e/qa-followup.spec.ts:46:3 › F-01 · factura CAD 400 con id de 47 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta (5.0s)
+  ✓  11 [celular] › tests/e2e/qa-followup.spec.ts:108:1 › F-02 · una partición grabada por una versión anterior (solo instantáneas de programados): el historial explica qué seguiría apuntando a la serie que desaparecería, no ofrece «Revertir» y nada cambia (1.5s)
+  ✓  12 [celular] › tests/e2e/qa-followup.spec.ts:152:1 › F-03 · 1 gasto de MAX_AMOUNT_MINOR el 10-ago frente a 100 el 10-sep: Análisis muestra 9 900 % en vez de fallar (1.4s)
+  ✓  13 [celular] › tests/e2e/qa-followup.spec.ts:221:1 › F-04 · tema «Oscuro» explícito: «Sin comparación» (julio personalizado sin ingresos previos) cumple AA y axe no encuentra fallos de contraste (2.1s)
+  ✓  14 [celular] › tests/e2e/qa-followup.spec.ts:230:3 › F-04 · tema «Sistema» con el sistema en oscuro › «Sin comparación» cumple AA y axe no encuentra fallos de contraste (2.2s)
+  ✓  15 [celular] › tests/e2e/qa-followup.spec.ts:239:1 › F-04 · en claro sigue cumpliendo AA y las variaciones positiva y negativa conservan su color (2.2s)
+  ✓  16 [celular] › tests/e2e/qa-followup.spec.ts:252:1 › F-05 · periodo personalizado 1–31 de julio, seis puntos: las etiquetas del eje no se solapan ni se recortan en es/en/pt/fr; tooltip, nombre accesible y tabla conservan la fecha completa (3.9s)
+  ✓  17 [celular] › tests/e2e/qa-followup.spec.ts:321:1 › QA-01 histórico · datos v13 con el sueldo del 31 partido el 28-feb: tras migrar, Ajustes › Datos lo muestra (28-mar frente a 31-mar); restaurar deja 1 250 reservados y $550.00 disponibles tras recargar y en la copia (3.3s)
+  ✓  18 [celular] › tests/e2e/qa-followup.spec.ts:366:1 › QA-01 histórico · «Dejar como está» conserva el 28 a propósito: la revisión desaparece, sigue sin aparecer tras recargar y el disponible sigue siendo $1,800.00 (2.0s)
+  ✓  19 [celular] › tests/e2e/qa-lead.spec.ts:48:1 › QA-01 histórico · copia v13 genuina importada por la interfaz (21-mar): $1,800.00 antes; restaurar el 31 → $550.00 tras recargar y tras exportar e importar (3.1s)
+  ✓  20 [celular] › tests/e2e/qa-lead.spec.ts:82:1 › QA-01 histórico · copia v13 genuina: «Dejar como está» conserva el 28 ($1,800.00) y la revisión no vuelve tras recargar (2.6s)
+  ✓  21 [celular] › tests/e2e/qa-lead.spec.ts:109:1 › F-05 · teclado y toque: cada grupo de barras seleccionado muestra su fecha completa y sus cifras en el tooltip (es/en/pt/fr) (3.9s)
+  ✓  22 [celular] › tests/e2e/qa-lead.spec.ts:137:1 › F-05 · las etiquetas de mes y de año no cambian: seis abreviaturas de mes y seis años (1.4s)
+  ✓  23 [celular] › tests/e2e/qa-lead.spec.ts:150:1 › F-R1 · renta del 31 partida el 30-jun por una versión anterior y pagada el 30-jul y el 30-ago: restaurar deja $2,100.00 (no −$1,100.00), nada vencido, lo pagado en su tramo, también tras recargar (2.2s)
+  ✓  24 [celular] › tests/e2e/qa-lead.spec.ts:190:1 › F-R2 · copia v13 genuina: cambiar el importe «desde una fecha» del tramo movido (el formulario propone el 28-mar) deja la revisión en pie; restaurar el 31 → $550.00 (3.2s)
+
+  24 passed (1.0m)
+exit 0

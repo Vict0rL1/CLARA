@@ -36,11 +36,25 @@ aparece en la proyección pero no en el disponible.
 - Los decimales de cada moneda están **fijados en el código** (`SUPPORTED_CURRENCIES`),
   no se leen del navegador, para que los datos guardados no cambien de significado.
 - Límite por importe: 10¹² unidades menores (10 000 millones de CAD).
+- **Rango exacto de los agregados (QA V2, FIN-01):** un importe suelto cabe en ese límite, pero una suma o
+  un producto de muchos (ocurrencias × importe, Σ programados, «importe × 100» de un porcentaje) puede pasar
+  de 2⁵³ − 1 y dejar de ser exacto. Nunca se redondea ni se recorta: `checkedSumMinor`, `checkedMulDivFloor`
+  y `toSafeMinor` (`money.ts`) calculan con `BigInt` y devuelven `null` fuera de rango, y quien los usa dice
+  que no hay cifra (el resumen de pagos recurrentes, §5 b; el saldo proyectado del calendario, §37; un
+  porcentaje de Estadísticas o de la revisión semanal queda sin porcentaje, como con base 0). «Importe × k»
+  se divide con `mulDivFloor`/`mulDivCeil` (BigInt), nunca multiplicando antes en coma flotante.
 - Al escribir importes se aceptan `12,50`, `12.50`, `1,234.56`, `1.234,56`, `$ 45`.
   Si hay un solo separador seguido de exactamente 3 dígitos (`1,234`) se usa el
   formato elegido en Ajustes para decidir si son miles o decimales.
 - **Un presupuesto usa una sola moneda.** Cada registro guarda su moneda y se rechaza
   cualquier registro con una moneda distinta. Nunca se suman monedas diferentes.
+- **Moneda escrita junto al importe (QA V2, CUR-01/02):** se leen TODAS las marcas, delante y detrás
+  («USD $10», «$10 CAD», «CAD 10 CAD»), y se unen con `reconcileMarks` (`money.ts`): un código concreto
+  acota a un símbolo o nombre genérico («USD $10» = USD; «$10 CAD» = CAD; «MXN 10 pesos» = MXN); repetir la
+  misma moneda no cambia nada; dos marcas que no pueden ser la misma moneda («USD 10 CAD», «€10 CAD»,
+  «$10 €») son un **conflicto** (`currencyConflict`, con las dos en el orden escrito) y nunca se aceptan
+  como la del presupuesto, en ningún consumidor (campos de importe, asistente, CSV, atajos, recibos). Nada
+  se convierte ni se elige una: la persona escribe el número en la moneda del presupuesto.
 
 ## 2. Fechas y zona horaria
 
@@ -112,8 +126,13 @@ Efecto de cada tipo sobre una cuenta:
 
 Hay dos fuentes de elementos previstos:
 
-1. **Programados** (calendario): únicos o recurrentes (semanal, cada 2 semanas,
-   mensual, anual).
+1. **Programados** (calendario): únicos o recurrentes (diaria, semanal, cada 2 semanas,
+   dos veces al mes, mensual, trimestral, anual o cada N días). «Dos veces al mes» (v13) usa el
+   día de `startDate` y `secondDay` (1–31, a 7 días o más del primero); un día que el mes no tiene
+   pasa al último (15 y 31 → 15 y 28 de febrero, 29 en bisiesto) y el mes siguiente vuelve al
+   original. Sin `secondDay`, `saveSchedule` usa 15 días después (o antes, si no cabe). El campo
+   «Segundo día del mes» (`SecondDayField`) es el mismo en programados, configuración inicial y «Repetir»,
+   dice siempre los dos días y valida con la misma regla que el dominio (`isValidSecondDay`).
 2. **Movimientos con estado «previsto»**.
 
 Cada ocurrencia tiene un estado:
@@ -140,6 +159,43 @@ años no bisiestos.
 **Primera fecha:** la «próxima fecha» de un programado es la primera ocurrencia que se
 controla; las anteriores no se consideran.
 
+**Cambiar desde una fecha (Clara 2.0, fase 3; `domain/scheduleFrom.ts`):** editar un programado
+cambia toda la serie, también las fechas vencidas sin marcar. Con «Desde una fecha» la serie se parte en
+dos registros normales (sin campos nuevos ni cambio de esquema):
+
+```
+programado de siempre: endDate = fecha elegida − 1 día; conserva pagos, vencidas y omitidas anteriores
+programado nuevo:      startDate = fecha elegida; valores del formulario; omitidas desde esa fecha
+```
+
+- La fecha tiene que ser **posterior a la primera** del programado y no posterior a su `endDate`; un
+  pago único no se parte.
+- **Nunca deja pagos huérfanos:** si hay un movimiento realizado vinculado (también un cobro parcial) en
+  la fecha elegida o después, se rechaza y se dice cuál. La fecha propuesta es la primera ocurrencia
+  pendiente desde hoy y después del último pago registrado (`defaultSplitDate`).
+- **La serie conserva sus fechas (v14, auditoría del PR #15 · QA-01; antes QA V2 · SCH-01):** el tramo
+  nuevo guarda `anchorDate` = la fecha que fijaba la serie, y `startDate` es solo el límite desde el que
+  cuenta. Las ocurrencias desde la fecha elegida son exactamente las que ya había: un sueldo del 31 partido
+  el 28-feb (el 31 movido) sigue el 31-mar, 30-abr, 31-may; «1 y 20» partido el 20-oct sigue 1 y 20 sin
+  tocar el segundo día; una serie semanal conserva su día. Se conserva cuando NO cambia la regla (misma
+  frecuencia, intervalo y segundo día; `sameRule`) y la fecha elegida es de la serie (`isSeriesDate`;
+  `splitKeepsAnchor`). Cambiar la regla, o elegir una fecha que no es de la serie, reancla la serie en esa
+  fecha (cambio explícito; el formulario dice cuál de los dos ocurre). El día del mes de la ayuda, el segundo
+  día por defecto y la validación de «dos veces al mes» salen de `anchorDate` (`anchorOf`), y las guardas
+  (pagos registrados después, gastos planificados vinculados) no cambian. Un ingreso futuro más alto nunca
+  sube el dinero de hoy: con el sueldo del 31 partido, el pago del 30-mar sigue reservado por el ingreso del
+  31-mar.
+- Lo que mira hacia delante sigue a la serie: un gasto planificado abierto vinculado a una ocurrencia
+  desde esa fecha pasa al nuevo si el nuevo tiene esa misma ocurrencia (si dejaría de existir, se
+  rechaza); un vencido aplazado en la bandeja conserva su aplazamiento; las plantillas de distribución
+  («el próximo pago de …») y los escenarios guardados pasan a apuntar al nuevo. Las líneas de
+  distribuciones ya hechas son historia y no se tocan.
+- Todo o nada, en una operación. Guardar dos veces actualiza el mismo nuevo (su id se genera al abrir el
+  formulario). El historial registra los dos programados y los gastos planificados; las plantillas,
+  escenarios y aplazamientos no están en el historial, así que revertir el cambio deja esas referencias
+  apuntando al nuevo, que ya no existe: la línea de la plantilla queda «no disponible» y el escenario marca
+  ese cambio como no válido (nada se aplica en silencio).
+
 **Topes de recorrido (QA-06, `domain/recurrence.ts` y `domain/planItems.ts`):** una ventana
 normal (calendario, reservas hasta el próximo ingreso) se recorre con un tope de 2 000
 ocurrencias por programado (`MAX_OCCURRENCES`, ~5 años de un pago diario). Los **vencidos**
@@ -151,6 +207,27 @@ reservado. Si aun así se alcanza un tope, el resultado se marca **truncado**
 reservado puede estar incompleto, no se sugiere importe por día ni por semana e Inicio avisa.
 Nunca se presenta una cifra incompleta como si estuviera completa.
 
+### 5 b. Cuánto cuestan los pagos recurrentes (Clara 2.0, fase 3)
+
+```
+ventana        = hoy … el día antes de la misma fecha dentro de 12 meses
+ocurrencias(p) = fechas reales del programado p en la ventana (occurrencesBetween), sin omitidas
+total          = Σ ocurrencias(p) × importe(p)        (en enteros; solo recurrentes, sin pausados)
+al mes         = floor(total / 12)
+```
+
+No se usa «semanal × 52 / 12»: una semana empezada hoy cae 53 veces en esos 365 días y se cuenta 53.
+Respeta fecha de fin, «dos veces al mes» y el último día del mes corto. Los importes estimados marcan el
+total con «≈»; los programados en pausa no cuentan y se dice cuántos hay. Solo informa: no reserva, no
+registra y no cambia el disponible (`domain/recurringCosts.ts`, calendario › «Todos los programados»).
+
+**Rango exacto (QA V2, FIN-01):** cada producto y el total se calculan con `BigInt`. Si el total no cabe en
+un entero exacto (> 2⁵³ − 1) el resultado es `ok: false` sin total ni promedio —ni recortados ni
+redondeados—; la lista de programados con sus ocurrencias sigue ahí (cada pago con su total, exacto siempre
+que quepa; el total y el promedio dicen «sin cifra exacta», revisión propia R7) y el calendario dice que suman
+«más de lo que Clara puede calcular con exactitud». Justo en el máximo exacto sigue siendo válido; un céntimo más,
+no. Pausar un programado u omitir fechas vuelve a dejarlo en rango. Los datos guardados no cambian.
+
 ## 6. Disponible hasta el próximo ingreso
 
 ```
@@ -158,7 +235,8 @@ Próximo ingreso (I) = primera ocurrencia PROGRAMADA de ingreso, pendiente, con 
 Días del periodo (D) = días desde hoy (incluido) hasta I (EXCLUIDO)      → D ≥ 1
 Pagos reservados (P) = Σ pagos pendientes y vencidos con fecha ≤ I      (incluye el día I)
 Apartados (A)        = Σ dinero apartado en metas que se descuentan del presupuesto
-Disponible           = S − P − A
+Colchón (C)          = settings.safeToSpend.bufferMinor (v13; 0 por defecto)
+Disponible           = S − P − A − C
 Por día              = floor(Disponible / D)                (0 si Disponible ≤ 0)
 Por semana           = floor(Disponible × min(7, D) / D)    (0 si Disponible ≤ 0)
 ```
@@ -185,6 +263,15 @@ Decisiones:
   (`horizon.source`: `income`, `fallback` o `period`), nunca un valor del formulario que no
   participó en el cálculo; el selector de días solo se muestra con «hasta mi próximo ingreso»
   y `fallbackHorizonDays` solo se guarda si se mostró (UX-02, decisión 140).
+- **Colchón de seguridad (C, Clara 2.0 §10):** dinero que la persona quiere conservar siempre. Se
+  resta del disponible (y, en un periodo de calendario, de `committedFor`, aunque no se resten
+  programados ni metas), pero **no es un gasto, no mueve dinero y no cambia ningún saldo**. Con
+  C = 0 las cifras son exactamente las de antes. Se explica en «¿Cómo se calculó?» y en la barra
+  de composición (segmento neutro, con texto, nunca solo color). Si el disponible es negativo pero
+  Disponible + C ≥ 0, pagos y apartados están cubiertos: Inicio muestra un **aviso** («Estás usando X
+  de tu colchón de C»), no la alarma de faltante; la alarma solo aparece si Disponible + C < 0 y su
+  importe es −(Disponible + C). El historial registra `settings.safeToSpend` como ajuste financiero,
+  así «¿Qué cambió?» atribuye un cambio del colchón al paso «ajustes» y se puede revertir.
 - **Redondeo hacia abajo** en «por día» y «por semana»: así nunca se sugiere gastar
   más de lo disponible.
 - **Saldo negativo:** se permite (sobregiro). El disponible puede ser negativo; en ese
@@ -232,7 +319,8 @@ Por día después    = floor(Disponible después / D)   (0 si ≤ 0)
 |---|---|
 | Sí, te alcanza | Disponible después ≥ la mitad del disponible actual **y** la proyección a 30 días no baja de cero |
 | Te alcanza, pero queda justo | Disponible después ≥ 0, pero usa más de la mitad o la proyección a 30 días baja de cero |
-| Solo alcanza usando dinero apartado | Disponible después < 0 pero Disponible después + apartados ≥ 0 |
+| Solo alcanza usando tu colchón | (v13) Colchón > 0, Disponible después < 0 pero Disponible después + colchón ≥ 0 |
+| Solo alcanza usando dinero apartado | Disponible después (+ colchón) < 0 pero Disponible después + colchón + apartados ≥ 0 |
 | No te alcanza por ahora | Ni con los apartados alcanza |
 
 Si la proyección ya bajaba de cero **antes** de la compra, se dice explícitamente
@@ -259,6 +347,9 @@ Suposiciones (se muestran en pantalla):
   saldo proyectado cae por debajo de ellos.
 - El gráfico distingue el **punto real de hoy** (círculo) de la **proyección** (línea
   discontinua). Hay una tabla con los mismos valores.
+- **Rango exacto (QA V2, FIN-01):** cada día se suma con `checkedSumMinor`. Con `stopWhenOutOfRange`
+  (solo lo pide el calendario) la proyección termina en el último día exacto y dice desde qué fecha no hay
+  cifra (`outOfRangeFrom`); sin pedirlo, una suma inexacta sigue siendo un error, como antes.
 
 ## 10. Devoluciones y tarjetas de crédito
 
@@ -343,12 +434,16 @@ guarda hasta confirmar la vista previa. Límites: 2 MB y 5000 filas.
   «Moneda», «Currency», «Devise», «Ccy»…, detectada sola o elegida). Un símbolo suelto se
   acepta solo si puede ser el de la moneda del presupuesto: `$` vale para CAD, USD, MXN,
   COP, CLP, ARS, AUD o BRL y no para EUR, GBP, JPY, PEN o CHF; `€` solo para EUR; `¥`
-  para JPY y CNY. Un código que no es una moneda conocida (`XYZ 10`) también es error. La
+  para JPY y CNY. Cualquier otro símbolo de moneda (`₽`, `₹`, `₩`…) se lee igual, y también un
+  nombre sin ambigüedad (`10 euros`, `10 pesos`, `10 pounds sterling`; no «libra» ni «pound» sueltos,
+  que también son pesos). Un código que no es una moneda conocida (`XYZ 10`) también es error. La
   persona puede declarar la **moneda de todo el archivo**: si no es la del presupuesto,
   ninguna fila se importa; si coincide, es como no decirlo. Las columnas de cargo y abono
-  siguen la misma regla cada una. Los movimientos importados llevan siempre la moneda del
-  presupuesto (§11), y la vista previa dice cuánto cambiará el saldo con las filas marcadas
-  posteriores al saldo de referencia.
+  siguen la misma regla cada una. Dos monedas que se contradicen en el mismo importe (`-USD 10 CAD`,
+  `€10 CAD`) son el error `currencyConflict` (se muestran las dos) y tampoco se importan; las compatibles
+  (`$10 CAD`, `CAD 10 CAD`) valen como esa moneda (QA V2, CUR-02; §1). Los movimientos importados llevan
+  siempre la moneda del presupuesto (§11), y la vista previa dice cuánto cambiará el saldo con las filas
+  marcadas posteriores al saldo de referencia.
 - **Huella** `importRef`. Con **referencia del banco** (columna opcional: «Referencia»,
   «Transaction ID», «FITID», «Número de operación»…, detectada sola solo con cabecera exacta o
   elegida): `cuenta | ref | referencia | fecha | importe con signo | nº de repetición`. Sin ella:
@@ -371,9 +466,11 @@ guarda hasta confirmar la vista previa. Límites: 2 MB y 5000 filas.
   empareja una sola fila. Se muestra **desmarcado**.
 - **Más de 5000 filas:** se analizan las primeras 5000; la vista previa da el total, cuántas
   quedan fuera y qué líneas (p. ej. «las filas 5,002 a 5,004 (3)»). Importar exige marcar «Entiendo
-  que N filas quedan fuera» y el aviso final lo repite. Las restantes se importan en otro archivo
+  que N filas quedan fuera» y el aviso final lo repite. Lo marcado vale solo para esa vista previa
+  (RT-03): elegir otro archivo —aunque se llame igual— o leer la primera fila de otra forma deja la
+  casilla sin marcar; cancelar el selector no cambia nada. Las restantes se importan en otro archivo
   (lo ya importado se reconoce como duplicado).
-- **Filas con error** (fecha, importe, cero, futura, moneda, demasiado grande): se muestran con su
+- **Filas con error** (fecha, importe, cero, futura, moneda, dos monedas, demasiado grande): se muestran con su
   motivo y nunca se importan; no impiden importar las demás filas marcadas.
 - **Saldo:** se guardan como realizados y siguen la regla del §3. Las filas anteriores a
   la fecha del saldo de referencia quedan como historial y no cambian el saldo. Las del
@@ -385,9 +482,19 @@ guarda hasta confirmar la vista previa. Límites: 2 MB y 5000 filas.
 ## 10 e. Reglas de categoría
 
 ```
-coincide  = normalizar(descripción) contiene normalizar(texto de la regla)
+coincide   = normalizar(descripción) contiene normalizar(texto de la regla)
+             o clave(descripción) contiene clave(texto de la regla)          (Clara 2.0, fase 2)
 normalizar = minúsculas, sin acentos, espacios simples
+clave      = normalizar(sin prefijo de procesador «SQ *», «TST*», «PAYPAL *»…, signos → espacios,
+             sin códigos de referencia: palabras de ≥ 4 caracteres con algún dígito o números de ≥ 3 cifras)
 ```
+
+- **Comercios (`domain/merchants.ts`):** «UBER *EATS 8XK2L TORONTO» tiene la clave «uber eats toronto», así
+  que la regla «Uber Eats» coincide. Es un superconjunto de la coincidencia anterior (prueba con 500 textos
+  aleatorios): nada que coincidía deja de hacerlo. La misma clave agrupa «Top comercios» (se muestra la
+  primera forma escrita) y la usa la bandeja para decidir si una regla está «sin uso». Al proponer una
+  regla (corrección o «Crear regla» en el CSV) se propone el nombre sin prefijo ni código, que la persona
+  ve y puede editar. Nada guardado cambia; no hay listas remotas ni IA.
 
 - Solo se consideran reglas del mismo tipo (gasto o ingreso; las devoluciones usan las
   de gasto) cuya categoría exista y no esté archivada. El texto tiene al menos 2
@@ -397,6 +504,17 @@ normalizar = minúsculas, sin acentos, espacios simples
 - Una regla solo **propone**: en la importación CSV (cada fila, cambiable) y en la nota de
   un movimiento nuevo mientras no se elija la categoría a mano. Nunca cambia movimientos
   guardados ni importes. Al eliminar una categoría personalizada se quitan sus reglas.
+- **Aprender de una corrección (Clara 2.0 §7, `suggestRuleFromCorrection`):** si al guardar la
+  categoría final es distinta de la que se proponía (la de la regla aplicada a la nota, o la que
+  tenía el movimiento antes de editarlo), el aviso de «guardado» **ofrece** «Recordar» una regla con
+  la descripción entera (2–40 caracteres, con alguna letra). Nunca se guarda sola: solo al pulsar,
+  con «Deshacer». No se ofrece con transferencias, ajustes ni divisiones, si ya existe una regla con
+  ese texto y tipo, ni si la regla nueva no ganaría para ese texto (patrón más largo).
+  En la revisión del asistente se juntan las correcciones de todas las líneas
+  (`suggestRulesFromCorrections`): una propuesta por texto y tipo, ninguna si dos líneas corrigen el
+  mismo texto a categorías distintas; «Recordar» las guarda todas o ninguna (`saveCategoryRules`) y
+  «Deshacer» quita exactamente esas. En la importación CSV, cambiar la categoría que proponía una regla
+  muestra «Crear regla» con el diálogo ya relleno (existía antes de Clara 2.0).
 
 ## 11. Integridad de datos
 
@@ -518,7 +636,7 @@ Diferencia = saldo observado − saldo calculado
 
 ## 17. Formato de datos y migraciones
 
-- Versión actual: **7**. Migraciones encadenadas v1 → v2 → v3 → v4 → v5 → v6 → v7 en
+- Versión actual: **13**. Migraciones encadenadas v1 → … → v13 en
   `src/storage/migrations.ts`, con pruebas.
 - v4 → v5 añade `trash`, `purgedImportRefs`, `favorites`, `reconciliations` y `backup`
   solo si **faltan**; si existen con un formato incorrecto se conservan para que la
@@ -536,8 +654,20 @@ Diferencia = saldo observado − saldo calculado
 - v11 → v12 añade a cada límite (`plans[]`) `rollover: 'none'` solo si **falta**; `carriedMinor` es
   opcional y solo lo escribe la renovación de un límite con arrastre. Ningún importe, fecha ni
   movimiento se toca (`stage3.test.ts`, `migration-main.spec.ts`).
+- v13 → v14 (auditoría del PR #15) no rellena nada: añade `schedules[].anchorDate` (opcional; solo lo
+  escribe partir una serie sin cambiar su regla, §5) y el historial registra también `templates`,
+  `scenarios` e `inboxSnoozed` (§26). Los datos v13 valen tal cual; el número sube para que una versión
+  anterior, que no sabe leer `anchorDate`, vea «datos de una versión más nueva» en vez de calcular mal las
+  fechas de un tramo partido (`migrations.test.ts`, `docs/ROLLBACK.md`).
+- v12 → v13 añade `settings.safeToSpend.bufferMinor = 0` solo si **falta** (un valor ya guardado se
+  respeta y unos ajustes mal formados se conservan tal cual para que la validación los señale). Con 0
+  el disponible es idéntico al de v12. Son opcionales y no necesitan migración: `schedules[].secondDay`
+  (solo con `frequency: 'semimonthly'`), los tipos de cuenta `wallet`, `prepaid` e `investment` y
+  `accounts[].institution` (texto, nunca una conexión) y `plans[].alertLevels` (avisos 50/75/90). Una versión v12 no sabe leer esos valores, por
+  eso el número sube y no se vuelve atrás (`docs/ROLLBACK.md`). Pruebas: `clara2.test.ts`,
+  `ledger.property.test.ts`, `tests/e2e/clara2.spec.ts`.
 - Antes de guardar por primera vez datos migrados, se conserva el texto original en
-  `localStorage` (`margen.data.before-v<versión nueva>`, hoy `before-v12`).
+  `localStorage` (`margen.data.before-v<versión nueva>`, hoy `before-v13`).
 - Datos o copias de una versión futura se rechazan (`schemaTooNew`) sin tocar los datos
   actuales; si una migración falla, se informa (`migrationFailed`) y no se modifica nada.
 - Copias, importación y «Borrar todos los datos» incluyen las entidades nuevas
@@ -631,7 +761,8 @@ ocultar en Inicio o en Ajustes; no hay correos ni notificaciones).
 - **Datos faltantes:** «desde cuándo hay registros» = el menor entre la fecha de alta,
   los saldos de referencia y el primer movimiento. Si una semana empieza antes, se marca
   «faltan datos» y no se compara. Sin movimientos no significa «sin gastos».
-- **Porcentaje** = `floor(diferencia × 100 / anterior)` solo si ambas semanas tienen datos
+- **Porcentaje** = `signo(diferencia) × floor(|diferencia| × 100 / anterior)` (entero truncado hacia
+  cero: −9,99 % es −9, igual que +9,99 % es 9; revisión financiera F-R3) solo si ambas semanas tienen datos
   completos y la anterior tiene movimientos y es > 0. Nunca se divide entre cero.
 - Próximos pagos: 7 días desde hoy (solo en la semana en curso). Metas: progreso real
   (apartado) y lo apartado esa semana (sin contar los usos al pagar).
@@ -752,6 +883,25 @@ pago>`, `dup:<a>:<b>`, `bal:<cuenta>:<motivo>`, `int:…`), así nunca aparecen 
   problema sigue. **Descartar** («Está bien así», «Son distintos», «Ya lo revisé») guarda
   `{id, huella}`; si cambian los datos relevantes (importe, fecha, cuenta, nota…), el aviso
   vuelve. Los pagos vencidos y los saldos no se pueden descartar, solo posponer.
+- **Sugerencias · pagos que parecen fijos** (Clara 2.0, fase 3; `domain/recurringDetect.ts`): gastos
+  realizados de los últimos 400 días, sin vínculo con un programado, agrupados por **clave de comercio**
+  (§ comercios: sin prefijo «SQ *»/«PAYPAL *», signos ni códigos) y **exactamente el mismo importe**,
+  con todas las separaciones dentro de una cadencia:
+
+  | cadencia        | separación | mínimo |
+  |-----------------|------------|--------|
+  | cada mes        | 27–34 días | 3      |
+  | cada 2 semanas  | 13–15 días | 3      |
+  | cada semana     | 6–8 días   | 4      |
+
+  Además el último pago no puede estar más lejos que la separación máxima + 7 días (si no, ya no parece
+  activo), dos pagos el mismo día no son cadencia y una clave sin letras o de menos de 3 caracteres no
+  se propone. No se sugiere si ya existe un programado de gasto recurrente (sin terminar) del mismo importe cuyo nombre
+  comparte la clave, o con la misma categoría y cadencia. Id `sug:recurring:<clave>:<importe>:<cadencia>`
+  (descartar con «No es fijo» se recuerda aunque llegue otro pago igual). **Programar** abre el
+  formulario relleno (nombre, importe, cadencia, próxima fecha ≥ hoy, categoría y cuenta, cada valor
+  validado); nada se programa ni se reserva hasta que la persona guarda. Una sugerencia no es un
+  pendiente: no se cuenta en Inicio (que solo la menciona si no hay ningún pendiente).
 - **Resolver** (categorizar, registrar el pago, verificar…) retira el aviso porque deja de
   calcularse. En Inicio solo aparece un acceso compacto con el número de pendientes.
 
@@ -790,8 +940,11 @@ Código: `src/domain/history.ts`. Pantalla: `Ajustes › Historial de cambios`.
 
 - **Qué se registra.** En cada guardado se compara el estado anterior con el nuevo, por id, en
   las colecciones financieras (cuentas, movimientos, programados, metas, papelera,
-  conciliaciones, distribuciones, presupuestos por periodo) y en los ajustes que cambian
-  cifras (`currency`, `timeZone`, `fallbackHorizonDays`). Se guarda cada registro cambiado con
+  conciliaciones, distribuciones, presupuestos por periodo; desde v14 también plantillas, escenarios y
+  aplazamientos de la bandeja —`templates`, `scenarios`, `inboxSnoozed`—, que partir un programado
+  reescribe y revertirlo devuelve: PR #15, QA-05; los aplazamientos solo acompañan a otros cambios —posponer o
+  retirar un aviso no crea entrada— y uno caducado que ya no está no es conflicto ni se resucita, R5) y en los ajustes que cambian
+  cifras (`currency`, `timeZone`, `fallbackHorizonDays`, `safeToSpend`). Se guarda cada registro cambiado con
   su valor **anterior y nuevo completos**. Sin cambios financieros no se añade entrada (cambiar
   el idioma no aparece).
 - **Origen.** `app` (uso normal), `revert` (con `revertOf`), `plan` (aplicado desde un plan) y
@@ -808,6 +961,21 @@ Código: `src/domain/history.ts`. Pantalla: `Ajustes › Historial de cambios`.
 - **Límites.** Como mucho 1000 entradas (`HISTORY_MAX_ENTRIES`); al superarlas sale la más
   antigua y `historyStartedAt` avanza. El historial es local, viaja en las copias y se puede
   editar: **no es una auditoría inviolable**.
+- **Reversión sin referencias colgadas (auditoría de seguimiento, F-02).** Antes de eliminar un programado
+  que la entrada creó, `revertDependents` calcula el estado candidato y busca lo que seguiría apuntando a
+  él: líneas de plantillas de distribución (`target.kind: 'payment'`), cambios de escenarios
+  (`scheduleAmount`), gastos planificados vinculados (`plan.link`) y aplazamientos (`due:schedule:<id>:`)
+  vigentes: uno caducado (`until` ≤ hoy) es inerte —la bandeja lo ignora y el siguiente aplazamiento lo
+  retira, R5— y no cuenta (revisión de seguridad y almacenamiento del 2026-10-27, S-R1; sin `today` se
+  sigue contando, como en la poda de `revertedState`).
+  Si hay alguno, `canRevert` devuelve `dependents`, la pantalla lista cada registro (plantilla, escenario,
+  gasto planificado o aviso del {fecha}) y `revertEntry` rechaza con `revertDependents` sin cambiar nada.
+  Pasa con una entrada grabada antes de v14 (solo instantáneas de programados, aunque la partición movió
+  plantillas, escenarios y aplazamientos) y con una plantilla, escenario o meta creados DESPUÉS de una
+  partición corregida. Solo cuentan las referencias que hoy resuelven y dejarían de resolver: una línea
+  que ya apuntaba a un programado borrado no bloquea (semántica de destino ausente intacta), y una entrada
+  que no elimina programados no calcula nada. No se inventan instantáneas: la persona cambia o borra esos
+  registros y entonces la reversión vuelve a ofrecerse.
 
 ## 27. «¿Qué cambió?»
 
@@ -966,7 +1134,8 @@ Pruebas: `ui/preferences.test.ts` y e2e `personalize.spec.ts`.
 ## 32. Asistente de registro (parser local)
 
 - Entradas: líneas, «;», y «,» o conectores («y», «and», «e», «et») solo cuando cada parte tiene un número. Máximo 200.
-- Importe: primer número con símbolo o decimales; si no, el primero. Separadores regionales (`1.234,56`, `1,234.56`, `1 234,56`), «k»/«mil»/«M», números en palabras (es/en/pt/fr). Monedas sin decimales redondean a entero. Sin importe, la entrada lo pide y su confianza queda ≤ 0,25.
+- Importe: primer número con moneda escrita, decimales o «k»; si no, el primero. Separadores regionales (`1.234,56`, `1,234.56`, `1 234,56`), «k»/«mil»/«M», números en palabras (es/en/pt/fr). Monedas sin decimales redondean a entero. Sin importe, la entrada lo pide y su confianza queda ≤ 0,25.
+- Moneda escrita (AS-01, RT-01): se lee con las mismas definiciones que los campos de importe (`money.ts`), pegada al importe delante o detrás —también sin espacio y con importes en palabras—: código ISO (`GBP 10`, `10GBP`, `EUR ten`, `ten USD`), símbolo (`10€`, `£10`, `¥1000`, `10 ₽`), prefijo con dólar (`US$10`), nombre (`10 euros`, `diez euros`, `10 pesos`) o signo local escrito con letras (`10 kr`, `1000 Ft`, `Rp 1000`, `10 zł`; distingue mayúsculas: `10 ft` son pies). Sin nada pegado, una moneda explícita en la frase (código admitido en MAYÚSCULAS, símbolo o nombre en plural: `coffee (USD) 10`) deja la línea sin resolver. Si no es la del presupuesto, el campo «Importe» la conserva (`10.00 GBP`, `€10.00`) y la línea no se registra hasta escribir el importe en la moneda del presupuesto; nunca se convierte. Un ISO real no admitido (`RUB 10`) también bloquea; en minúsculas no cuentan los códigos que son palabras (`pen`, `ron`, `try`, `mad`, `ils`, `bob`). Se juntan TODAS las marcas de la entrada —hasta dos pegadas a cada lado del importe y las explícitas del resto de la frase— en orden de lectura y se unen con `reconcileMarks` (§1): «coffee USD $10» es USD (el código acota al símbolo, nunca al revés; QA V2, CUR-01), «coffee $10 CAD» es CAD, y dos que se contradicen («coffee USD 10 CAD», «coffee EUR $10») dejan `currencyConflict`: el campo conserva las dos («USD 10.00 CAD», `withCurrencyMarks`) y la línea no se registra. La segunda marca de un lado solo cuenta si una de las dos se escribió como código (`TextMark.kind`): «Cafe Euro $12», «Sushi Yen $25» o «Peso $10» son importes de la moneda del presupuesto con texto corriente, como antes de QA V2 (revisión propia, R4); «$12 Euro Market» sigue siendo «$» contra «euro» (nombre pegado al importe). Lo mismo para una foto de recibo (§36). Un código también está «pegado» a través de la puntuación monetaria acotada (auditoría independiente 2026-10-19, P1; `CODE_BEFORE`/`CODE_AFTER` en `money.ts`): un paréntesis o corchete alrededor del código y, como mucho, dos puntos, un igual o una coma entre medias («coffee (RUB) 10», «coffee RUB: 10», «coffee 10, RUB», «coffee [RUB] 10», también delante de un símbolo: «coffee (RUB) $10» es un conflicto RUB/«$» porque el rublo no es «$»). Antes solo contaban los espacios y un ISO no admitido escrito así se perdía (10 CAD sin marca). Sigue acotado a propósito: con otra palabra entre medias o lejos del importe («AMD GPU 500», «(RUB) coffee 10», «RUB rate 10») no es moneda, y un ISO no admitido nunca cuenta lejos del importe. Los campos de importe, la importación CSV y los atajos leen la misma puntuación (`prefixMark`/`suffixMark`: «(RUB) 10» y «RUB: 10» son `unknownCurrency`, «CAD: 10» vale, «RUB -10» conserva el signo; «(10.00)» no cambia).
 - Tipo: ingreso si aparece una palabra clave de ingreso en cualquiera de los cuatro idiomas; si no, gasto.
 - Fecha: ISO, `d/m(/a)`, «15 de octubre» / «oct 15» (en inglés manda mes-día), relativas (hoy, ayer, anteayer…) y días de la semana (el más reciente, hoy incluido). Una fecha futura se sustituye por hoy. Sin fecha: hoy.
 - Categoría, por prioridad: regla de la persona → palabra aprendida del historial (≥ 2 veces y mayoría) → diccionario por palabra clave (gana la más larga). Solo categorías activas del tipo detectado; si nada coincide, no se inventa.
@@ -999,9 +1168,35 @@ Pruebas: `ui/preferences.test.ts` y e2e `personalize.spec.ts`.
 - **Repetir** = plan nuevo con los mismos ajustes en el ciclo de hoy (los personalizados conservan su
   duración a partir de hoy).
 - **Alertas**: con `alertAt80`/`alertAt100` y el ajuste «Alertas de planes» activo, se avisa una vez
-  por ciclo y umbral (clave `plan80|plan100:<id>:<inicio del ciclo>`); respetan las horas de silencio.
+  por ciclo y umbral (clave `plan<umbral>:<id>:<inicio del ciclo>`); respetan las horas de silencio.
+  v13 (Clara 2.0 §11): `alertLevels` opcional añade 50, 75 y/o 90 (apagados por defecto; sin repetir,
+  guardados en orden). Se avisa solo del umbral activado **más alto** ya alcanzado
+  (`gastado × 100 ≥ límite × umbral`, en enteros): si el gasto salta del 40 % al 95 % hay un único
+  aviso, el del 90 %. Editar sin enviar `alertLevels` los conserva, una lista vacía los quita y la
+  renovación de un plan recurrente los hereda. Sin `alertLevels` todo es como en v12.
+- **Límite sugerido** (Clara 2.0, fase 3; `domain/planSuggestion.ts`): para el tipo de periodo y las
+  categorías del formulario, los últimos 3 ciclos COMPLETOS anteriores al actual que empiezan cuando ya
+  había datos (primer movimiento realizado o saldo de referencia más antiguo, lo que llegue antes; un mes
+  sin usar Clara no es «0 gastado»). Gastado de cada uno con la regla de arriba.
+
+  ```
+  mediana  = valor central (con 2 ciclos: ⌈(a + b) / 2⌉)
+  sugerido = ⌈mediana / unidad⌉ × unidad      (unidad = 1 de la moneda: 100 céntimos, 1 yen)
+  ```
+
+  Hacen falta ≥ 2 ciclos y una mediana > 0; sin eso, o con periodo personalizado o «hasta el próximo
+  ingreso», no hay sugerencia. Se muestra con cada ciclo, la mediana y el redondeo; «Usar» solo rellena
+  el importe. Determinista, sin IA; nunca se guarda sola.
 - **Metas**: `contribution` (importe + frecuencia) es un recordatorio; «Aportar ahora» solo propone el
   importe. Sugerencia diaria de una meta = ⌈restante / días hasta la fecha⌉.
+- **Hitos de las metas** (Clara 2.0, fase 3; `domain/goalMilestones.ts`): metas de ahorro y fondo de
+  emergencia (no los gastos planificados). Nivel alcanzado = el más alto de 25/50/75/100 con
+  `apartado × 100 ≥ objetivo × nivel` (en enteros). Es una noticia, no un estado: se avisa solo durante 7
+  días desde el apartado que cruzó ese nivel por última vez (recorriendo los apartados por fecha), así una
+  meta que ya estaba al 60 % no anuncia nada y un salto del 10 % al 80 % es un único aviso (75 %). Con
+  «Alertas de planes» activo: aviso local con clave `goal<nivel>:<meta>` (no se repite una clave ya
+  mostrada), dentro de la app en Ajustes › Notificaciones y del sistema solo si hay permiso. No se guarda
+  nada ni cambia ninguna cifra.
 - Un plan nunca mueve dinero ni cambia el disponible; los límites mensuales anteriores
   (`categoryLimits`) se convirtieron en planes mensuales recurrentes en la migración v9 → v10.
 
@@ -1010,12 +1205,28 @@ Pruebas: `ui/preferences.test.ts` y e2e `personalize.spec.ts`.
 - **Rango** = periodo de calendario que contiene la fecha ancla (mismo cálculo que §31) o fechas
   explícitas si es personalizado (por defecto los últimos 30 días). Anterior/siguiente = el periodo
   que contiene el día previo al inicio / posterior al fin; los personalizados se desplazan su duración.
+  Las fechas del periodo personalizado van en la dirección (`desde`, `hasta`) como el tipo y los filtros:
+  cambiar un filtro las conserva y escribirlas actualiza la dirección sin navegar (`replaceRouteQuietly`),
+  así sobreviven a recargar y a compartir el enlace (QA V2, STAT-01). La dirección manda (R2): al navegar —chips,
+  «Hoy», atrás/adelante— las fechas escritas se alinean con ella; «Hoy» en el personalizado es un periodo con el mismo
+  número de días que termina hoy; las fechas no se arrastran a la dirección de otro periodo.
 - **Tres cifras**: ingresos = Σ ingresos realizados; gastos = gasto neto (§15); neto = ingresos − gastos.
-  Delta = actual − anterior; porcentaje entero = ⌊delta × 100 / anterior⌋ solo si anterior > 0 y el
-  periodo anterior empieza en o después de `trackedSince` (si no, se indica «no comparable»).
+  Delta = actual − anterior; porcentaje entero = signo(delta) × ⌊|delta| × 100 / anterior⌋ (truncado hacia
+  cero, `checkedPercentChange`: −9,99 % es −9 %, igual que +9,99 % es 9 %; F-R3) solo si anterior > 0 y el
+  periodo anterior empieza en o después de `trackedSince` (si no, se indica «no comparable»). Todo
+  porcentaje de importes —también el de cada categoría del donut y el de un límite (`planProgress`)— se
+  calcula con `mulDivFloor(importe, 100, total)`, nunca «importe × 100» en coma flotante (revisión propia R6:
+  396 000 000 000 297 de 400 000 000 000 300 es 99 %, en coma flotante salía 98).
 - **Por categoría**: netos positivos ordenados de mayor a menor; porcentaje entero sobre su suma.
   Tocar una categoría abre el historial filtrado por categoría y fechas del rango.
 - **Series de 6 periodos**: ingresos y gasto neto por periodo, del más antiguo al actual.
+- **Filtros** (Clara 2.0, fase 4; `domain/statsFilter.ts`): cuenta (`accountId`), etiqueta y comercio (la
+  misma clave que agrupa «Top comercios», así sus variantes cuentan juntas); varios a la vez = «y». No hay
+  fórmulas nuevas: se filtran los movimientos y todas las cifras, gráficos y tablas se calculan igual sobre
+  esa copia. Una transferencia no es ingreso ni gasto con o sin filtro. El saldo futuro es de todas las
+  cuentas del presupuesto y no se filtra (se dice). Van en la dirección (`cuenta`, `etiqueta`, `comercio`):
+  sobreviven a recargar; un valor que ya no existe se ignora. «Estado» no es un filtro: Estadísticas solo
+  usa movimientos realizados.
 - **Tendencia**: acumulado diario del gasto neto (nunca negativo) del periodo frente al anterior,
   alineados por día del periodo; los días futuros del actual quedan vacíos.
 - **Top 5**: agrupa por comercio (o nota si no hay) sin acentos ni mayúsculas; resta devoluciones;
@@ -1039,6 +1250,18 @@ Pruebas: `ui/preferences.test.ts` y e2e `personalize.spec.ts`.
 - **Comercio**: primera de las seis primeras líneas con ≥ 60 % de mayúsculas (o capitalizada), con letras, sin importes
   ni palabras de total/identificación fiscal. La categoría se sugiere pasando el comercio por el parser (diccionario,
   aprendizaje y reglas); sin coincidencia, «otros gastos».
+- **Moneda impresa** (RT-01; QA V2, CUR-03): junto al importe que una palabra de total, subtotal, impuesto, propina,
+  cambio o pago (efectivo, tarjeta, Visa…) ETIQUETA, un código es la moneda, aunque sea una palabra corriente
+  («TOTAL PEN 10.00», «TOTAL 10.00 PEN») o una moneda que la app no admite («TOTAL RUB 10.00», y a través de la
+  puntuación acotada de §32: «TOTAL RUB: 10.00», «TOTAL (RUB) 10.00»); en una línea de artículo no («PEN 2.99» es un
+  bolígrafo). Cada palabra etiqueta el primer importe que la sigue en su línea (o, si no hay ninguno detrás, el
+  último que la precede): lo que va antes de la palabra es mercancía aunque comparta línea («PEN 2.99 TAX 0.10» con
+  «TOTAL CAD 3.09» propone 3,09 CAD sin conflicto; auditoría independiente 2026-10-19, P2). Las palabras se reconocen
+  con límites de letra Unicode («À PAYER», «ESPÈCES» también al principio; `\b` era solo ASCII). Los símbolos cuentan
+  en cualquier línea. Todas las marcas se unen como en un importe (§1): distinta de la del
+  presupuesto → `foreignCurrency` (el total se propone con ella escrita y la línea queda bloqueada); dos distintas →
+  `currencyConflict`. Nunca se convierte. Las pruebas usan texto OCR sintético: no prueban una cámara ni un servicio
+  de OCR reales.
 - **Confianza** = 0,5 si el total viene de una línea «total» (0,3 si es solo la mayor) + 0,25 si hay fecha + 0,25 si hay comercio.
 - Todo es propuesta: la línea entra en la vista previa del asistente y pasa la validación normal al confirmar.
 
@@ -1179,12 +1402,17 @@ compactos ni se redondean para calcular.
   mínimo 60 días. Cada día enseña el saldo al cerrarlo (`endMinor`); los días anteriores a hoy no
   se proyectan (el saldo real está en Cuentas). El **primer día en negativo** es `firstNegativeDate`
   con el saldo de ese día; si no lo hay, se dice hasta qué fecha llega la proyección. Un día con
-  saldo proyectado negativo lleva la marca «−» y texto accesible, nunca solo color.
+  saldo proyectado negativo lleva la marca «−» y texto accesible, nunca solo color. Con importes
+  extremos la proyección se detiene en el último día exacto (`stopWhenOutOfRange`, §9) y el calendario
+  dice desde qué fecha no hay cifra, igual que más allá de los 400 días (QA V2, FIN-01).
 - **Simulación** (`ProjectionOptions.extraOutflows`): un pago extra en una fecha concreta se resta
   ese día (una fecha pasada cuenta hoy) sobre una copia; el resultado dice el saldo al cerrar ese
   día y el primer negativo que provoca. No se guarda nada: «Registrar como previsto» solo abre el
   formulario relleno (gasto previsto en esa fecha) y la persona decide. La proyección y el
-  disponible del calendario no cambian mientras se simula.
+  disponible del calendario no cambian mientras se simula. Lo que se dice del día simulado sale de
+  ESA simulación con la misma regla que el día elegido (`dayBalance`, revisión propia R3): proyectado,
+  fuera del rango exacto desde `outOfRangeFrom` (sin cifra, se dice desde cuándo) o más allá de sus
+  días; nunca se mira el alcance de la proyección base.
 - **Conciliación de programados** (`domain/reconcileSchedules.ts`): `unlinkedSettlements` propone,
   para cada ocurrencia abierta (pendiente o vencida, de 45 días atrás a 14 adelante), el movimiento
   realizado sin `scheduleId` del mismo sentido e importe a ±3 días (el más cercano; cada movimiento
@@ -1225,7 +1453,15 @@ compactos ni se redondean para calcular.
   cubren ambos tramos y la base no es 0; aviso desde ±10 %); categoría dominante (≥ 30 % del gasto
   neto del mes); copia de seguridad pendiente (misma regla que el recordatorio; nunca en la demo).
   Nada de esto se guarda ni se posterga: la bandeja de pendientes (§24) sigue siendo el sitio de los
-  avisos accionables con posponer/descartar.
+  avisos accionables con posponer/descartar. El porcentaje del gasto a fecha equivalente se calcula
+  exacto y verificado (auditoría de seguimiento, F-03): `checkedPercentChange(actual − anterior,
+  anterior)` = signo × `checkedMulDivFloor(|actual − anterior|, 100, anterior)` con BigInt por dentro
+  (antes `floorDiv((actual − anterior) × 100, anterior)` fallaba cuando el producto pasaba de 2⁵³ − 1: un
+  gasto de `MAX_AMOUNT_MINOR` el 10-ago frente a cien el 10-sep da 9 900 % exactos). Truncado hacia
+  cero (revisión financiera F-R3): el umbral «desde ±10 %» es el mismo a ambos lados (de 100,00 a 90,01
+  es −9 % y no avisa; de 100,00 a 90,00 es −10 % y avisa, como de 100,00 a 110,00). Si ni el cociente
+  cabe en un entero exacto, la señal sale sin `percent` y la pantalla lo dice con los importes en
+  «porque»; nunca una cifra inexacta ni una pantalla rota.
 - **Navegación**: «Análisis» es destino primario (barra inferior y lateral) y agrupa Avisos,
   Estadísticas, Revisión semanal y ¿Qué cambió? con pestañas; las rutas antiguas no cambian. Cada
   gráfico de Estadísticas lleva su «¿Cómo se calculó?» (categorías, barras, tendencia, comercios).
@@ -1244,3 +1480,55 @@ compactos ni se redondean para calcular.
   copia del origen) vive dentro del centro; `/ajustes/almacenamiento` sigue llegando. Nunca hay
   sincronización ni cuenta: si el navegador borra sus datos, solo se recupera lo exportado.
 
+## 44. Revisión y reparación de particiones antiguas (`domain/splitRepair.ts`, auditoría de seguimiento, QA-01 histórico)
+
+- **Qué pasó.** Antes de v14, partir una serie «desde una fecha» cambiando solo el importe dejaba el tramo
+  nuevo contando desde la fecha elegida: un sueldo del 31 partido el 28-feb (el 31 movido) pasaba a
+  cobrarse el 28. La migración 13 → 14 no lo corrige a ciegas (no adivina intenciones ni reescribe
+  fechas): el dato que lo arregla (`anchorDate`) lo decide la persona.
+- **Detección** (`driftedSplits(data, hoy)`), conservadora (ante la duda, nada): un tramo B que repite y
+  está activo (sin fin o con fin ≥ hoy) y que no fija su fecha él mismo: sin `anchorDate`, o con el
+  `anchorDate` que HEREDÓ tal cual del tramo anterior (`anchorOf` de A); un tramo A del mismo nombre,
+  tipo y regla (frecuencia, intervalo, segundo día) que termina el día antes de que B empiece; B empieza
+  en una fecha de la serie de A (si no, fue un reanclaje explícito y se respeta); y con la fecha de
+  siempre las próximas ocurrencias de B (400 días) serían otras. La fecha de siempre es `anchorOf` del
+  primer tramo de la cadena: se sube por los tramos que heredaron su fecha y se para en el primero que la
+  fijó él mismo (A pudo ser a su vez un tramo partido: 31 → 28-feb → 28-abr propone el 31). Lo que la
+  versión corregida parte de una serie NO movida nunca aparece (hereda la fecha de siempre y no se
+  desplaza); lo que parte de un tramo AÚN movido hereda la fecha movida como `anchorDate` (revisión
+  financiera independiente del 2026-10-27, F-R2: el formulario propone el 28-mar y el tramo nuevo
+  seguiría contando el 28 para siempre) y se sigue proponiendo con la fecha de siempre de la cadena; un
+  «Dejar como está» en un tramo vale también para los que después hereden su fecha.
+- **Qué se muestra** (Ajustes › Datos): nombre, «hoy cuenta desde el {fecha}: próximas 3 fechas» y
+  «como siempre (la serie se fija el {fecha}): próximas 3 fechas», con «Descargar copia antes».
+- **Reparar** (`repairSplit`, con confirmación) nunca vuelve a contar lo ya pagado (revisión financiera
+  independiente del 2026-10-27, F-R1): las fechas de siempre se aplican desde `from` = el día siguiente a
+  la última ocurrencia de B con pago registrado (también parcial), llevada a su fecha de siempre (la
+  primera de la serie de siempre desde esa fecha: el 28-mar pagado «es» el 31-mar; una fecha movida nunca
+  es posterior a la de siempre de su periodo); sin pagos, `from` = inicio de B. Lo anterior a `from` se
+  queda tal cual, con sus pagos. Si las ocurrencias de B anteriores a `from` coinciden con las de la
+  serie de siempre (nada pagado, o pagado el 28-feb que también es del 31), basta con poner `anchorDate`
+  en B; si no, B termina el día antes de `from` y un tramo nuevo (id generado por quien llama, como en
+  cualquier formulario) sigue desde `from` con `anchorDate` = fecha de siempre, como al partir «desde una
+  fecha». Desde `from`, la k-ésima ocurrencia tal como está pasa a ser la k-ésima de la serie de siempre
+  (misma regla: van a la par periodo a periodo): una fecha omitida sigue omitida en la fecha de siempre
+  de su periodo (el 28-abr omitido → el 30-abr omitido), un gasto planificado vinculado y un
+  aplazamiento siguen a su ocurrencia (y al tramo nuevo), y plantillas y escenarios pasan al tramo nuevo;
+  un vínculo sin fecha equivalente (la serie termina antes) se rechaza (`splitLinkedGoal`) y nada cambia.
+  Lo vencido sin pago registrado también pasa a su fecha de siempre (el 28-mar que pasó sin cobrarse no es
+  «ingreso retrasado»: es el 31 que aún no llega). Importe y fin no cambian. Antes se guarda una copia local
+  «antes de restaurar» (si no se puede guardar, no se repara) y el cambio queda en el historial como una
+  sola entrada (los dos tramos vuelven a ser uno al revertir). La auditoría: saldo CAD 1 800, seguro de
+  1 250 el 29-mar, sueldo del 31 partido el 28-feb: antes horizonte 28-mar, 0 reservados, 1 800
+  disponibles; reparado, horizonte 31-mar, 1 250 reservados, 550 disponibles, también tras recargar y en la
+  copia. Con pagos: renta del 31 partida el 28-feb y pagada el 28-feb, 28-mar y 28-abr, hoy 15-may: B
+  termina el 30-abr, el tramo nuevo cuenta el 31 desde el 1-may, nada vencido, 1 600 reservados una sola
+  vez (con `anchorDate` en todo B, el 31-mar y el 30-abr volvían como vencidos: 4 800 reservados).
+- **Qué se muestra** sobre `from`: las 3 próximas fechas desde hoy (o desde `from` si es posterior, pagado por
+  adelantado), sin las omitidas (en la lista propuesta, sin las omitidas llevadas a su periodo).
+- **Dejar como está** (`dismissSplitRepair`): descarte de la bandeja (`int:split:<id>`) con huella
+  `startDate|anchorDate|fecha de siempre`; no cambia ninguna fecha y deja de proponerse mientras el
+  tramo no cambie de fechas.
+- **Límite declarado.** Solo se revisan particiones reconocibles por su forma; una partición antigua
+  cuyo tramo anterior se borró, se renombró o cambió de regla no se puede distinguir de una serie
+  nueva y no se propone (la persona la edita a mano: «Repetir» muestra la fecha que fija la serie).

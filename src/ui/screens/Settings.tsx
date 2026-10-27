@@ -43,7 +43,7 @@ import { useEncryptedExport } from '../useEncryptedExport'
 import { DEV_MODE } from './Pro'
 import { aiUsagePercent, isPro } from '../../domain/featureGate'
 import { decryptBackup, isEncryptedBackup, looksEncrypted } from '../../storage/encryptedBackup'
-import { canChangeCurrency as canChangeCurrencyNow } from '../../domain/currencyChange'
+import { monetaryRecords } from '../../domain/currencyChange'
 import { CurrencyDialog } from './settings/CurrencyDialog'
 import { ExportSection } from './settings/ExportSection'
 import { LockSection } from './settings/LockSection'
@@ -253,17 +253,21 @@ export function Settings({ route }: { route: Route }) {
     await getStore().clearAll()
   }
 
+  // La misma regla que la operación (QA-01): saldos distintos de cero también son importes guardados. Si lo
+  // único guardado es el colchón de seguridad (auditoría del PR #15, QA-02), se dice cuál es y cómo quitarlo.
+  const records = monetaryRecords(data)
+  const canChangeCurrency = records.length === 0
+  const bufferOnly = records.length === 1 && records[0] === 'safeToSpendBuffer'
+  const blockedMessage = () => (bufferOnly ? t('currency.bufferBlocks', { amount: fmt.money(data.settings.safeToSpend.bufferMinor), currency: data.settings.currency }) : t('currency.blocked'))
   const pickCurrency = async (code: CurrencyCode) => {
     setCurrencyOpen(false)
     const { result, saved } = await run((d, c) => changeCurrency(d, code, c))
     if (!result.ok) {
-      toast({ message: t('currency.blocked'), tone: 'critical' })
+      toast({ message: blockedMessage(), tone: 'critical' })
       return
     }
     if (!result.unchanged) toast({ message: saved ? t('currency.changed', { code }) : t('save.error.generic'), tone: saved ? 'good' : 'critical' })
   }
-  // La misma regla que la operación (QA-01): saldos distintos de cero también son importes guardados.
-  const canChangeCurrency = canChangeCurrencyNow(data)
   const currentPeriod = data.settings.budgetPeriod?.type && data.settings.budgetPeriod.type !== 'untilIncome' ? getPeriod(data.settings.budgetPeriod, today) : null
 
   const sample = createFormatter({ ...data.settings })
@@ -385,7 +389,7 @@ export function Settings({ route }: { route: Route }) {
             <Icon name="coins" size={16} />
             {t('currency.change')}
           </button>
-          <p className="field__hint">{canChangeCurrency ? t('currency.canChange') : t('settings.currency.hint')}</p>
+          <p className="field__hint" data-testid="currency-hint">{canChangeCurrency ? t('currency.canChange') : bufferOnly ? blockedMessage() : t('settings.currency.hint')}</p>
         </div>
         <fieldset className="field">
           <legend className="field__label">{t('settings.language.label')}</legend>

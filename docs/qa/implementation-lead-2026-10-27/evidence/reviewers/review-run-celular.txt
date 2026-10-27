@@ -1,0 +1,58 @@
+
+Running 17 tests using 1 worker
+
+  ✓   1 [celular] › tests/e2e/review.browser.spec.ts:123:3 › F-01 · «Internet» 55.99 mensual del 12 (id 64 caracteres) con aviso del 12-oct pospuesto: 61.50 desde el 12-oct → guardar, recargar, revertir, exportar y reimportar (5.8s)
+  ✓   2 [celular] › tests/e2e/review.browser.spec.ts:123:3 › F-01 · «Internet» 55.99 mensual del 12 (id 41 caracteres) con aviso del 12-oct pospuesto: 61.50 desde el 12-oct → guardar, recargar, revertir, exportar y reimportar (6.9s)
+  ✓   3 [celular] › tests/e2e/review.browser.spec.ts:123:3 › F-01 · «Internet» 55.99 mensual del 12 (id UUID) con aviso del 12-oct pospuesto: 61.50 desde el 12-oct → guardar, recargar, revertir, exportar y reimportar (6.4s)
+  ✓   4 [celular] › tests/e2e/review.browser.spec.ts:206:1 › QA-01 histórico · copia v13 real importada por la interfaz (21-mar-2026): $1,800.00; la revisión muestra 28 mar frente a 31 mar; «Restaurar» por teclado → $550.00 tras recargar, copia local «Antes de restaurar» nueva y tras exportar/importar (7.3s)
+  ✓   5 [celular] › tests/e2e/review.browser.spec.ts:267:1 › QA-01 histórico · «Dejar como está» por teclado en tema oscuro: contraste AA en la tarjeta, sigue $1,800.00 y la tarjeta no vuelve tras recargar (5.5s)
+  ✓   6 [celular] › tests/e2e/review.browser.spec.ts:303:1 › F-02 · partición hecha por esta versión + escenario y gasto planificado creados DESPUÉS apuntando al tramo nuevo: el historial lista los dependientes, sin «Revertir» (tampoco por teclado), lo guardado es idéntico tras recargar; una entrada corriente sí se revierte (5.5s)
+  ✓   7 [celular] › tests/e2e/review.browser.spec.ts:395:1 › F-03 · 1 gasto de MAX_AMOUNT_MINOR el 3-ago y 100 de MAX del 1 al 20 de sep: Análisis dice 9 900 % con sus importes y la pantalla es usable (1.8s)
+  ✓   8 [celular] › tests/e2e/review.browser.spec.ts:409:1 › F-03 · sin gasto en agosto (solo septiembre): no hay aviso de variación, ninguna cifra inventada y la pantalla se muestra (1.6s)
+  ✓   9 [celular] › tests/e2e/review.browser.spec.ts:441:1 › F-04 · «Oscuro» explícito: «Sin comparación» ≥ 4,5:1 y axe sin fallos de contraste en #main (2.5s)
+  ✓  10 [celular] › tests/e2e/review.browser.spec.ts:450:3 › F-04 · «Sistema» con el sistema en oscuro › «Sin comparación» ≥ 4,5:1 y axe sin fallos de contraste (2.3s)
+  ✓  11 [celular] › tests/e2e/review.browser.spec.ts:458:1 › F-04 · «Claro»: «Sin comparación» ≥ 4,5:1 y axe sin fallos de contraste (2.7s)
+  ✘  12 [celular] › tests/e2e/review.browser.spec.ts:493:1 › F-05 · julio personalizado en es/en/pt/fr: seis etiquetas sin solaparse ni recortarse; Tab a los grupos muestra la fecha completa y los importes en el tooltip; toque en celular; mensual y anual con etiquetas cortas (10.7s)
+  ✓  13 [celular] › tests/e2e/review.browser.spec.ts:603:3 › P1 · asistente «coffee (RUB) 10»: bloqueado (campo «10.00 RUB»); ni Enter, ni Ctrl+Enter ni clic forzado registran; corregido a mano se guarda en CAD y sobrevive a recargar (2.7s)
+  ✓  14 [celular] › tests/e2e/review.browser.spec.ts:603:3 › P1 · asistente «coffee RUB: 10»: bloqueado (campo «10.00 RUB»); ni Enter, ni Ctrl+Enter ni clic forzado registran; corregido a mano se guarda en CAD y sobrevive a recargar (2.6s)
+  ✓  15 [celular] › tests/e2e/review.browser.spec.ts:603:3 › P1 · asistente «coffee (RUB) $10»: bloqueado (campo «RUB 10.00 $»); ni Enter, ni Ctrl+Enter ni clic forzado registran; corregido a mano se guarda en CAD y sobrevive a recargar (2.5s)
+  ✓  16 [celular] › tests/e2e/review.browser.spec.ts:616:1 › P1 · recibo (OCR sintético) «TOTAL RUB: 10.00»: propone 10.00 RUB y bloquea; corregido se registra en CAD (2.3s)
+  ✓  17 [celular] › tests/e2e/review.browser.spec.ts:628:1 › P2 · recibo (OCR sintético) «PEN 2.99 TAX 0.10» + «TOTAL CAD 3.09»: propone 3.09 en CAD sin conflicto, se registra y persiste (2.2s)
+
+
+  1) [celular] › tests/e2e/review.browser.spec.ts:493:1 › F-05 · julio personalizado en es/en/pt/fr: seis etiquetas sin solaparse ni recortarse; Tab a los grupos muestra la fecha completa y los importes en el tooltip; toque en celular; mensual y anual con etiquetas cortas 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.bars__svg')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.bars__svg') with timeout 5000ms
+      - waiting for locator('.bars__svg')
+
+
+      539 |   for (const periodo of ['month', 'year']) {
+      540 |     await go(page, `/estadisticas?periodo=${periodo}`)
+    > 541 |     await expect(page.locator('.bars__svg')).toBeVisible()
+          |                                              ^
+      542 |     await settleAnimations(page)
+      543 |     const layout = await axisLayout(page)
+      544 |     expectLabelsFit(layout, `periodo ${periodo}`)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/rev-browser/tests/e2e/review.browser.spec.ts:541:46
+
+    Error Context: test-results/review/review.browser-F-05-·-juli-28a0a--anual-con-etiquetas-cortas-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/review/review.browser-F-05-·-juli-28a0a--anual-con-etiquetas-cortas-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/review/review.browser-F-05-·-juli-28a0a--anual-con-etiquetas-cortas-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [celular] › tests/e2e/review.browser.spec.ts:493:1 › F-05 · julio personalizado en es/en/pt/fr: seis etiquetas sin solaparse ni recortarse; Tab a los grupos muestra la fecha completa y los importes en el tooltip; toque en celular; mensual y anual con etiquetas cortas 
+  16 passed (1.3m)

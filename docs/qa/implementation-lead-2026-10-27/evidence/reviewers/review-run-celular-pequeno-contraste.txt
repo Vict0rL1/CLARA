@@ -1,0 +1,16 @@
+
+Running 4 tests using 1 worker
+
+[contraste QA-01 oscuro celular-pequeno] [data-testid="split-repair-current"]: 6.79:1 (rgb(148, 163, 184) sobre rgb(18, 26, 42), 14.4px/400)
+[contraste QA-01 oscuro celular-pequeno] [data-testid="split-repair-proposed"]: 6.79:1 (rgb(148, 163, 184) sobre rgb(18, 26, 42), 14.4px/400)
+[contraste QA-01 oscuro celular-pequeno] [data-testid="split-repair"] .item__title: 15.88:1 (rgb(241, 245, 249) sobre rgb(18, 26, 42), 16px/650)
+[contraste QA-01 oscuro celular-pequeno] #split-repair-title: 15.88:1 (rgb(241, 245, 249) sobre rgb(18, 26, 42), 17px/700)
+  ✓  1 [celular-pequeno] › tests/e2e/review.browser.spec.ts:267:1 › QA-01 histórico · «Dejar como está» por teclado en tema oscuro: contraste AA en la tarjeta, sigue $1,800.00 y la tarjeta no vuelve tras recargar (4.2s)
+[contraste F-04 celular-pequeno] oscuro explicito: 6.79:1 (rgb(148, 163, 184) sobre rgb(18, 26, 42), 14px/600)
+  ✓  2 [celular-pequeno] › tests/e2e/review.browser.spec.ts:442:1 › F-04 · «Oscuro» explícito: «Sin comparación» ≥ 4,5:1 y axe sin fallos de contraste en #main (2.2s)
+[contraste F-04 celular-pequeno] sistema oscuro: 6.79:1 (rgb(148, 163, 184) sobre rgb(18, 26, 42), 14px/600)
+  ✓  3 [celular-pequeno] › tests/e2e/review.browser.spec.ts:451:3 › F-04 · «Sistema» con el sistema en oscuro › «Sin comparación» ≥ 4,5:1 y axe sin fallos de contraste (2.2s)
+[contraste F-04 celular-pequeno] claro: 7.58:1 (rgb(71, 85, 105) sobre rgb(255, 255, 255), 14px/600)
+  ✓  4 [celular-pequeno] › tests/e2e/review.browser.spec.ts:459:1 › F-04 · «Claro»: «Sin comparación» ≥ 4,5:1 y axe sin fallos de contraste (2.1s)
+
+  4 passed (12.3s)

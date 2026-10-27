@@ -1,0 +1,22 @@
+
+Running 17 tests using 1 worker
+
+  ✓   1 [celular-pequeno] › tests/e2e/review.browser.spec.ts:123:3 › F-01 · «Internet» 55.99 mensual del 12 (id 64 caracteres) con aviso del 12-oct pospuesto: 61.50 desde el 12-oct → guardar, recargar, revertir, exportar y reimportar (5.4s)
+  ✓   2 [celular-pequeno] › tests/e2e/review.browser.spec.ts:123:3 › F-01 · «Internet» 55.99 mensual del 12 (id 41 caracteres) con aviso del 12-oct pospuesto: 61.50 desde el 12-oct → guardar, recargar, revertir, exportar y reimportar (5.3s)
+  ✓   3 [celular-pequeno] › tests/e2e/review.browser.spec.ts:123:3 › F-01 · «Internet» 55.99 mensual del 12 (id UUID) con aviso del 12-oct pospuesto: 61.50 desde el 12-oct → guardar, recargar, revertir, exportar y reimportar (5.2s)
+  ✓   4 [celular-pequeno] › tests/e2e/review.browser.spec.ts:206:1 › QA-01 histórico · copia v13 real importada por la interfaz (21-mar-2026): $1,800.00; la revisión muestra 28 mar frente a 31 mar; «Restaurar» por teclado → $550.00 tras recargar, copia local «Antes de restaurar» nueva y tras exportar/importar (5.1s)
+  ✓   5 [celular-pequeno] › tests/e2e/review.browser.spec.ts:267:1 › QA-01 histórico · «Dejar como está» por teclado en tema oscuro: contraste AA en la tarjeta, sigue $1,800.00 y la tarjeta no vuelve tras recargar (3.8s)
+  ✓   6 [celular-pequeno] › tests/e2e/review.browser.spec.ts:303:1 › F-02 · partición hecha por esta versión + escenario y gasto planificado creados DESPUÉS apuntando al tramo nuevo: el historial lista los dependientes, sin «Revertir» (tampoco por teclado), lo guardado es idéntico tras recargar; una entrada corriente sí se revierte (4.5s)
+  ✓   7 [celular-pequeno] › tests/e2e/review.browser.spec.ts:395:1 › F-03 · 1 gasto de MAX_AMOUNT_MINOR el 3-ago y 100 de MAX del 1 al 20 de sep: Análisis dice 9 900 % con sus importes y la pantalla es usable (1.5s)
+  ✓   8 [celular-pequeno] › tests/e2e/review.browser.spec.ts:409:1 › F-03 · sin gasto en agosto (solo septiembre): no hay aviso de variación, ninguna cifra inventada y la pantalla se muestra (1.4s)
+  ✓   9 [celular-pequeno] › tests/e2e/review.browser.spec.ts:441:1 › F-04 · «Oscuro» explícito: «Sin comparación» ≥ 4,5:1 y axe sin fallos de contraste en #main (2.1s)
+  ✓  10 [celular-pequeno] › tests/e2e/review.browser.spec.ts:450:3 › F-04 · «Sistema» con el sistema en oscuro › «Sin comparación» ≥ 4,5:1 y axe sin fallos de contraste (2.2s)
+  ✓  11 [celular-pequeno] › tests/e2e/review.browser.spec.ts:458:1 › F-04 · «Claro»: «Sin comparación» ≥ 4,5:1 y axe sin fallos de contraste (2.1s)
+  ✓  12 [celular-pequeno] › tests/e2e/review.browser.spec.ts:493:1 › F-05 · julio personalizado en es/en/pt/fr: seis etiquetas sin solaparse ni recortarse; Tab a los grupos muestra la fecha completa y los importes en el tooltip; toque en celular; mensual y anual con etiquetas cortas (4.7s)
+  ✓  13 [celular-pequeno] › tests/e2e/review.browser.spec.ts:604:3 › P1 · asistente «coffee (RUB) 10»: bloqueado (campo «10.00 RUB»); ni Enter, ni Ctrl+Enter ni clic forzado registran; corregido a mano se guarda en CAD y sobrevive a recargar (2.3s)
+  ✓  14 [celular-pequeno] › tests/e2e/review.browser.spec.ts:604:3 › P1 · asistente «coffee RUB: 10»: bloqueado (campo «10.00 RUB»); ni Enter, ni Ctrl+Enter ni clic forzado registran; corregido a mano se guarda en CAD y sobrevive a recargar (2.3s)
+  ✓  15 [celular-pequeno] › tests/e2e/review.browser.spec.ts:604:3 › P1 · asistente «coffee (RUB) $10»: bloqueado (campo «RUB 10.00 $»); ni Enter, ni Ctrl+Enter ni clic forzado registran; corregido a mano se guarda en CAD y sobrevive a recargar (2.3s)
+  ✓  16 [celular-pequeno] › tests/e2e/review.browser.spec.ts:617:1 › P1 · recibo (OCR sintético) «TOTAL RUB: 10.00»: propone 10.00 RUB y bloquea; corregido se registra en CAD (2.2s)
+  ✓  17 [celular-pequeno] › tests/e2e/review.browser.spec.ts:629:1 › P2 · recibo (OCR sintético) «PEN 2.99 TAX 0.10» + «TOTAL CAD 3.09»: propone 3.09 en CAD sin conflicto, se registra y persiste (2.0s)
+
+  17 passed (56.1s)

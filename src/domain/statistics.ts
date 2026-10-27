@@ -5,10 +5,10 @@
  */
 import { addDays, daysBetween, weekday } from './dates'
 import { periodSummary, type CategorySpending } from './insights'
-import { floorDiv, mulDivFloor, sumMinor } from './money'
+import { checkedPercentChange, floorDiv, mulDivFloor, sumMinor } from './money'
 import { getPeriod, type Period } from './periods'
 import { estimateDailySpend, projectBalance } from './projection'
-import { normalizeText } from './rules'
+import { txMerchantKey } from './statsFilter'
 import { trackedSince } from './weeklyReview'
 import type { AppData, BudgetPeriodType, LocalDate, Settings, Transaction } from './types'
 
@@ -52,7 +52,8 @@ export interface Delta {
 
 function delta(current: number, previous: number, comparable: boolean): Delta {
   const diffMinor = current - previous
-  return { diffMinor, percent: comparable && previous > 0 ? floorDiv(diffMinor * 100, previous) : null }
+  // Entero truncado hacia cero (F-R3): −9,99 % se muestra como −9 %, igual que +9,99 % como 9 %.
+  return { diffMinor, percent: comparable && previous > 0 ? checkedPercentChange(diffMinor, previous) : null }
 }
 
 export interface PeriodStats {
@@ -102,7 +103,7 @@ export function categoryBreakdown(data: AppData, range: StatsRange): { total: nu
   const summary = periodSummary(data, range.start, range.end)
   const positive = summary.categories.filter((c) => c.netMinor > 0)
   const total = sumMinor(positive.map((c) => c.netMinor))
-  return { total, categories: positive.map((c) => ({ ...c, percent: total > 0 ? Math.floor((c.netMinor * 100) / total) : 0 })) }
+  return { total, categories: positive.map((c) => ({ ...c, percent: total > 0 ? mulDivFloor(c.netMinor, 100, total) : 0 })) }
 }
 
 export interface SeriesPoint {
@@ -170,14 +171,16 @@ export interface TopEntry {
   count: number
 }
 
-/** Los `limit` comercios o notas con más gasto neto en el periodo. Sin comercio ni nota no se cuenta. */
+/** Los `limit` comercios o notas con más gasto neto en el periodo (variantes del mismo comercio juntas). Sin comercio ni nota no se cuenta. */
 export function topMerchants(data: AppData, range: StatsRange, limit = 5): TopEntry[] {
   const groups = new Map<string, TopEntry>()
   for (const tx of data.transactions) {
     if (tx.status !== 'realized' || tx.date < range.start || tx.date > range.end || (tx.kind !== 'expense' && tx.kind !== 'refund')) continue
+    // Fase 2: las variantes del mismo comercio («UBER *EATS 8XK2L», «Uber Eats») se agrupan; se muestra
+    // la primera forma escrita. Sin palabras de comercio (p. ej. solo un código) se agrupa por el texto.
+    const key = txMerchantKey(tx)
+    if (!key) continue
     const label = (tx.merchant ?? tx.note ?? '').trim()
-    if (!label) continue
-    const key = normalizeText(label)
     const entry = groups.get(key) ?? { key, label, amountMinor: 0, count: 0 }
     entry.amountMinor += tx.kind === 'expense' ? tx.amountMinor : -tx.amountMinor
     entry.count += 1

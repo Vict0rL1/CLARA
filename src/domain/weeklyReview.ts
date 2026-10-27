@@ -15,7 +15,7 @@ import { upcomingItems } from './budget'
 import { addDays, daysBetween, localDateInTimeZone, minDate, weekday } from './dates'
 import { goalProgress } from './goals'
 import { periodSummary, type CategorySpending } from './insights'
-import { floorDiv, sumMinor } from './money'
+import { checkedPercentChange, sumMinor } from './money'
 import type { PlanItem } from './planItems'
 import type { AppData, Goal, LocalDate } from './types'
 
@@ -115,8 +115,9 @@ function totals(data: AppData, from: LocalDate, to: LocalDate, since: LocalDate)
 
 function change(current: number, previous: number, comparable: boolean): WeekChange {
   const diffMinor = current - previous
-  // Nunca se divide entre cero ni se da un porcentaje con datos incompletos.
-  const percent = comparable && previous > 0 ? floorDiv(diffMinor * 100, previous) : null
+  // Nunca se divide entre cero ni se da un porcentaje con datos incompletos (ni uno que no cabe en un entero exacto).
+  // Entero truncado hacia cero (F-R3): −9,99 % es −9, igual que +9,99 % es 9.
+  const percent = comparable && previous > 0 ? checkedPercentChange(diffMinor, previous) : null
   return { diffMinor, percent }
 }
 
