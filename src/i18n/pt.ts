@@ -3347,7 +3347,7 @@ export const pt: Record<keyof typeof es, string> = {
   'splitRepair.keep': 'Deixar como está',
   'splitRepair.exportFirst': 'Baixar cópia antes',
   'splitRepair.confirmTitle': 'Restaurar as datas de sempre de "{name}"?',
-  'splitRepair.confirmText': 'As próximas datas passarão a ser {dates}. Só muda a data que fixa a série: valor, fim e datas omitidas continuam iguais. Antes é guardada uma cópia local e a alteração fica no histórico, por isso pode ser revertida.',
+  'splitRepair.confirmText': 'As próximas datas passarão a ser {dates}. O que já está pago (mesmo em parte) fica na sua data e não volta a contar; uma data omitida continua omitida, na data de sempre do seu período; valor e fim continuam iguais. Antes é guardada uma cópia local e a alteração fica no histórico, por isso pode ser revertida.',
   'splitRepair.done': 'Datas de sempre restauradas',
   'splitRepair.kept': 'Fica como está',
   'history.dependents_one': 'Não é possível reverter: {count} registro continuaria apontando para um agendamento que esta alteração eliminaria. Altere-o ou exclua-o primeiro.',

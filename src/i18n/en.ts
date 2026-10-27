@@ -3349,7 +3349,7 @@ export const en: Record<keyof typeof es, string> = {
   'splitRepair.keep': 'Leave as it is',
   'splitRepair.exportFirst': 'Download a backup first',
   'splitRepair.confirmTitle': 'Restore the usual dates of "{name}"?',
-  'splitRepair.confirmText': 'The next dates will become {dates}. Only the date that anchors the series changes: amount, end and skipped dates stay the same. A local copy is kept first and the change goes into the history, so it can be reverted.',
+  'splitRepair.confirmText': 'The next dates will become {dates}. What is already paid (even partly) keeps its date and is never counted twice; a skipped date stays skipped, on the usual date of its period; amount and end stay the same. A local copy is kept first and the change goes into the history, so it can be reverted.',
   'splitRepair.done': 'Usual dates restored',
   'splitRepair.kept': 'Left as it is',
   'history.dependents_one': 'Cannot revert: {count} record would still point to a scheduled payment this change would remove. Change or delete it first.',

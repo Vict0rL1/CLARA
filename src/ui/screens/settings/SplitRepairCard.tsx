@@ -5,6 +5,7 @@
  * `domain/splitRepair.ts`; aquí solo se muestra y se llama a la operación.
  */
 import { useMemo, useState } from 'react'
+import { newId } from '../../../domain/ids'
 import { dismissSplitRepair, driftedSplits, repairSplit, type DriftedSplit } from '../../../domain/splitRepair'
 import { useT } from '../../../i18n'
 import { useRun, useToday } from '../../../state/hooks'
@@ -35,7 +36,9 @@ export function SplitRepairCard() {
     // Copia local de lo actual antes de tocar fechas (como al importar); si no se puede guardar, no se repara.
     const copy = await keepCopyBeforeReplace(getStore().data)
     if (copy === 'failed') return toast({ message: t('localBackup.failed'), tone: 'critical' })
-    const { result, saved } = await run((current, c) => repairSplit(current, d.scheduleId, c))
+    // El id del tramo nuevo (si lo pagado obliga a partir) se genera aquí, como en cualquier formulario.
+    const nextId = newId()
+    const { result, saved } = await run((current, c) => repairSplit(current, d.scheduleId, c, nextId))
     toast(result.ok && saved ? { message: t('splitRepair.done'), tone: 'good' } : { message: t('save.error.generic'), tone: 'critical' })
   }
   const keep = async (d: DriftedSplit) => {

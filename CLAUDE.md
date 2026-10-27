@@ -65,8 +65,11 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   reescriben al migrar: `domain/splitRepair.ts` (`driftedSplits`) las detecta de forma conservadora (tramo activo sin
   `anchorDate`, antecesor del mismo nombre, tipo y regla que termina el día antes, partido en una fecha de la serie y
   con fechas distintas a las de siempre) y Ajustes › Datos las muestra con fechas actuales y propuestas; reparar
-  (`repairSplit`) solo pone `anchorDate`, con confirmación, copia local previa y entrada en el historial; «Dejar como
-  está» (`dismissSplitRepair`) es un descarte de la bandeja con huella y nunca cambia fechas.
+  (`repairSplit`) devuelve las fechas de siempre solo desde el día siguiente a la última ocurrencia pagada (también
+  parcial), llevada a su fecha de siempre: lo pagado se queda en su fecha y nunca se cuenta dos veces (si hace falta, el
+  tramo termina ahí y uno nuevo con `anchorDate` sigue, como al partir «desde una fecha»; omitidas y vínculos siguen a
+  su periodo; revisión financiera F-R1), con confirmación, copia local previa y una sola entrada en el historial; «Dejar
+  como está» (`dismissSplitRepair`) es un descarte de la bandeja con huella y nunca cambia fechas.
 - Operaciones idempotentes: el id se genera al abrir el formulario; guardar dos veces
   actualiza el mismo registro.
 - Importación CSV (`domain/bankImport.ts`): huella `importRef` (referencia del banco o descripción

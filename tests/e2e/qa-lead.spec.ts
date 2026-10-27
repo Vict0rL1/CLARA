@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
-import { account, baseData, tx } from '../../src/test/fixtures'
+import { account, baseData, bill, tx } from '../../src/test/fixtures'
 import { available, go, seedStoredData, setLanguage, settleAnimations, startDemo, storedData, waitForSaved, type UiLanguage } from './helpers'
 import { shot } from './shots'
 
@@ -10,9 +10,11 @@ import { shot } from './shots'
  *   interfaz con el reloj en el 21-mar-2026: antes de reparar $1,800.00; «Restaurar las fechas de siempre» → $550.00 tras
  *   recargar y tras exportar e importar; «Dejar como está» conserva el 28.
  * - F-05: la selección por teclado y por toque conserva fechas y cifras completas; las etiquetas de mes y año siguen igual.
+ * - F-R1 (revisión financiera independiente): restaurar las fechas de siempre con pagos ya registrados en las fechas movidas no
+ *   vuelve a contar lo pagado (el disponible no cambia; nada vencido; lo pagado sigue en su tramo).
  * Datos sintéticos; relojes fijos; sin OCR ni cámara reales.
  */
-type Stored = { schedules: { id: string; startDate: string; anchorDate?: string; amountMinor: number }[]; inbox: { dismissed: { id: string }[] }; history: unknown[] }
+type Stored = { schedules: { id: string; startDate: string; endDate?: string; anchorDate?: string; amountMinor: number }[]; transactions: { id: string; scheduleId?: string; occurrenceDate?: string }[]; inbox: { dismissed: { id: string }[] }; history: unknown[] }
 const stored = async (page: Page) => JSON.parse((await storedData(page)) ?? '{}') as Stored
 const MARCH21 = new Date('2026-03-21T12:00:00-04:00')
 const V13 = readFileSync(new URL('../../src/test/v13-known-intent-backup.json', import.meta.url))
@@ -141,4 +143,44 @@ test('F-05 · las etiquetas de mes y de año no cambian: seis abreviaturas de me
   await expect(page.locator('.bars__svg')).toBeVisible()
   const years = await page.locator('.bars__svg text.stats-axis').allTextContents()
   expect(years).toEqual(['2021', '2022', '2023', '2024', '2025', '2026'])
+})
+
+test('F-R1 · renta del 31 partida el 30-jun por una versión anterior y pagada el 30-jul y el 30-ago: restaurar deja $2,100.00 (no −$1,100.00), nada vencido, lo pagado en su tramo, también tras recargar', async ({ page }) => {
+  const rent = (overrides: Parameters<typeof bill>[2]) => bill('2026-05-31', 150000, { name: 'Renta', frequency: 'monthly', categoryId: 'housing', ...overrides })
+  const paid = (scheduleId: string, occurrenceDate: string, id: string) =>
+    tx({ id, kind: 'expense', amountMinor: scheduleId === 'r1' ? 150000 : 160000, date: occurrenceDate, categoryId: 'housing', scheduleId, occurrenceDate, status: 'realized' })
+  const base = baseData({
+    accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 1000000, date: '2026-05-01', setAt: '2026-05-01T12:00:00.000Z' } })],
+    schedules: [rent({ id: 'r1', endDate: '2026-06-29' }), rent({ id: 'r2', startDate: '2026-06-30', amountMinor: 160000 })],
+    transactions: [paid('r1', '2026-05-31', 'p0'), paid('r2', '2026-06-30', 'p1'), paid('r2', '2026-07-30', 'p2'), paid('r2', '2026-08-30', 'p3')],
+  })
+  await seedStoredData(page, { ...base, settings: { ...base.settings, fallbackHorizonDays: 30 } })
+  // 1 000 000 − 150 000 − 3 × 160 000 = 370 000; a 30 días solo cae el 30-sept (160 000): 2 100 disponibles.
+  await expect(await available(page)).toHaveText('$2,100.00')
+  await go(page, '/ajustes/datos')
+  const card = page.getByTestId('split-repair')
+  await expect(card).toBeVisible()
+  await expect(card.getByTestId('split-repair-current')).toContainText('30 oct')
+  await expect(card.getByTestId('split-repair-proposed')).toContainText('31 oct')
+  await shot(page, 'fr1-repair-card-paid', card)
+  await card.getByRole('button', { name: 'Restaurar las fechas de siempre' }).click()
+  const dialog = page.getByRole('dialog', { name: '¿Restaurar las fechas de siempre de «Renta»?' })
+  await expect(dialog).toContainText('no se vuelve a contar')
+  await dialog.getByRole('button', { name: 'Restaurar las fechas de siempre' }).click()
+  await expect(page.getByText('Fechas de siempre restauradas').first()).toBeVisible()
+  await waitForSaved(page)
+  await expect(card).toHaveCount(0)
+  const s = await stored(page)
+  // Lo pagado se queda en su tramo (termina el 31-ago) y uno nuevo cuenta el 31 desde el 1-sept.
+  expect(s.schedules.find((x) => x.id === 'r2')).toMatchObject({ startDate: '2026-06-30', endDate: '2026-08-31', amountMinor: 160000 })
+  expect(s.schedules.find((x) => x.id === 'r2')?.anchorDate).toBeUndefined()
+  const next = s.schedules.find((x) => !['r1', 'r2'].includes(x.id))
+  expect(next).toMatchObject({ startDate: '2026-09-01', anchorDate: '2026-05-31', amountMinor: 160000 })
+  expect(s.transactions.filter((x) => x.scheduleId === 'r2').map((x) => x.occurrenceDate)).toEqual(['2026-06-30', '2026-07-30', '2026-08-30'])
+  await page.reload()
+  await go(page, '/')
+  // Con la reparación antigua (fecha de siempre en todo el tramo) el 31-jul y el 31-ago volvían como vencidos: −$1,100.00.
+  await expect(await available(page)).toHaveText('$2,100.00')
+  await expect(page.getByText(/vencid/i)).toHaveCount(0)
+  await shot(page, 'fr1-repaired-home')
 })

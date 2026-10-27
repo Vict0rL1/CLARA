@@ -239,7 +239,7 @@ describe('QA-01 histórico · particiones hechas por 819eaa9 (esquema 13, sin `a
   it('se detecta: hoy cuenta desde el 28 (28-mar, 28-abr, 28-may) y con la fecha de siempre sería 31-mar, 30-abr, 31-may', () => {
     const d = audit()
     expect(driftedSplits(d, TODAY)).toEqual([
-      { scheduleId: 'salary-new', endedId: 'salary-old', name: 'Sueldo', anchor: '2026-01-31', startDate: '2026-02-28', current: ['2026-03-28', '2026-04-28', '2026-05-28'], proposed: ['2026-03-31', '2026-04-30', '2026-05-31'] },
+      { scheduleId: 'salary-new', endedId: 'salary-old', name: 'Sueldo', anchor: '2026-01-31', startDate: '2026-02-28', from: '2026-02-28', current: ['2026-03-28', '2026-04-28', '2026-05-28'], proposed: ['2026-03-31', '2026-04-30', '2026-05-31'] },
     ])
     // El efecto financiero del deslizamiento (lo que vio la auditoría tras importar): horizonte 28-mar, nada reservado, 1 800 disponibles.
     const before = computeBudget(d, TODAY)
@@ -248,7 +248,7 @@ describe('QA-01 histórico · particiones hechas por 819eaa9 (esquema 13, sin `a
 
   it('reparar (confirmado) devuelve la fecha de siempre al tramo nuevo y nada más: horizonte 31-mar, 1 250 reservados, 550 disponibles; persiste en la copia', () => {
     const d = audit()
-    const r = repairSplit(d, 'salary-new', c)
+    const r = repairSplit(d, 'salary-new', c, 'salary-fix')
     if (!r.ok) throw new Error(JSON.stringify(r.issues))
     expect(r.value).toMatchObject({ id: 'salary-new', anchorDate: '2026-01-31', startDate: '2026-02-28', amountMinor: 320000 })
     expect(r.data.schedules.find((s) => s.id === 'salary-old')).toEqual(d.schedules[0])
@@ -274,7 +274,7 @@ describe('QA-01 histórico · particiones hechas por 819eaa9 (esquema 13, sin `a
     expect(r.data.inbox.dismissed).toEqual([{ id: 'int:split:salary-new', fingerprint: '2026-02-28||2026-01-31', at: c.now }])
     expect(driftedSplits(r.data, TODAY)).toEqual([])
     expect(computeBudget(r.data, TODAY).horizon?.endDate).toBe('2026-03-28')
-    expect(repairSplit(r.data, 'salary-new', c)).toMatchObject({ ok: false, issues: [{ code: 'notFound' }] })
+    expect(repairSplit(r.data, 'salary-new', c, 'salary-fix')).toMatchObject({ ok: false, issues: [{ code: 'notFound' }] })
     expect(validateAppData(persisted(r.data)).ok).toBe(true)
   })
 

@@ -3347,7 +3347,7 @@ export const fr: Record<keyof typeof es, string> = {
   'splitRepair.keep': 'Laisser tel quel',
   'splitRepair.exportFirst': 'Télécharger une copie d\'abord',
   'splitRepair.confirmTitle': 'Rétablir les dates habituelles de « {name} » ?',
-  'splitRepair.confirmText': 'Les prochaines dates deviendront {dates}. Seule la date qui fixe la série change : montant, fin et dates omises restent identiques. Une copie locale est conservée d\'abord et le changement figure dans l\'historique, il peut donc être annulé.',
+  'splitRepair.confirmText': 'Les prochaines dates deviendront {dates}. Ce qui est déjà payé (même en partie) garde sa date et n\'est jamais compté deux fois ; une date omise reste omise, à la date habituelle de sa période ; montant et fin restent identiques. Une copie locale est conservée d\'abord et le changement figure dans l\'historique, il peut donc être annulé.',
   'splitRepair.done': 'Dates habituelles rétablies',
   'splitRepair.kept': 'Laissé tel quel',
   'history.dependents_one': 'Impossible d\'annuler : {count} enregistrement pointerait encore vers un paiement programmé que ce changement supprimerait. Modifiez-le ou supprimez-le d\'abord.',

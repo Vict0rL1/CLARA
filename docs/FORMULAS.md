@@ -1487,12 +1487,31 @@ compactos ni se redondean para calcular.
   versión corregida parte nunca aparece (lleva `anchorDate` o no se desplaza).
 - **Qué se muestra** (Ajustes › Datos): nombre, «hoy cuenta desde el {fecha}: próximas 3 fechas» y
   «como siempre (la serie se fija el {fecha}): próximas 3 fechas», con «Descargar copia antes».
-- **Reparar** (`repairSplit`, con confirmación): pone `anchorDate` = fecha de siempre en B y nada más
-  (importe, fin, omitidas y el tramo A siguen igual); antes se guarda una copia local «antes de
-  restaurar» (si no se puede guardar, no se repara) y el cambio queda en el historial como cualquier
-  edición de un programado, así que se puede revertir. La auditoría: saldo CAD 1 800, seguro de 1 250 el
-  29-mar, sueldo del 31 partido el 28-feb: antes horizonte 28-mar, 0 reservados, 1 800 disponibles;
-  reparado, horizonte 31-mar, 1 250 reservados, 550 disponibles, también tras recargar y en la copia.
+- **Reparar** (`repairSplit`, con confirmación) nunca vuelve a contar lo ya pagado (revisión financiera
+  independiente del 2026-10-27, F-R1): las fechas de siempre se aplican desde `from` = el día siguiente a
+  la última ocurrencia de B con pago registrado (también parcial), llevada a su fecha de siempre (la
+  primera de la serie de siempre desde esa fecha: el 28-mar pagado «es» el 31-mar; una fecha movida nunca
+  es posterior a la de siempre de su periodo); sin pagos, `from` = inicio de B. Lo anterior a `from` se
+  queda tal cual, con sus pagos. Si las ocurrencias de B anteriores a `from` coinciden con las de la
+  serie de siempre (nada pagado, o pagado el 28-feb que también es del 31), basta con poner `anchorDate`
+  en B; si no, B termina el día antes de `from` y un tramo nuevo (id generado por quien llama, como en
+  cualquier formulario) sigue desde `from` con `anchorDate` = fecha de siempre, como al partir «desde una
+  fecha». Desde `from`, la k-ésima ocurrencia tal como está pasa a ser la k-ésima de la serie de siempre
+  (misma regla: van a la par periodo a periodo): una fecha omitida sigue omitida en la fecha de siempre
+  de su periodo (el 28-abr omitido → el 30-abr omitido), un gasto planificado vinculado y un
+  aplazamiento siguen a su ocurrencia (y al tramo nuevo), y plantillas y escenarios pasan al tramo nuevo;
+  un vínculo sin fecha equivalente (la serie termina antes) se rechaza (`splitLinkedGoal`) y nada cambia.
+  Lo vencido sin pago registrado también pasa a su fecha de siempre (el 28-mar que pasó sin cobrarse no es
+  «ingreso retrasado»: es el 31 que aún no llega). Importe y fin no cambian. Antes se guarda una copia local
+  «antes de restaurar» (si no se puede guardar, no se repara) y el cambio queda en el historial como una
+  sola entrada (los dos tramos vuelven a ser uno al revertir). La auditoría: saldo CAD 1 800, seguro de
+  1 250 el 29-mar, sueldo del 31 partido el 28-feb: antes horizonte 28-mar, 0 reservados, 1 800
+  disponibles; reparado, horizonte 31-mar, 1 250 reservados, 550 disponibles, también tras recargar y en la
+  copia. Con pagos: renta del 31 partida el 28-feb y pagada el 28-feb, 28-mar y 28-abr, hoy 15-may: B
+  termina el 30-abr, el tramo nuevo cuenta el 31 desde el 1-may, nada vencido, 1 600 reservados una sola
+  vez (con `anchorDate` en todo B, el 31-mar y el 30-abr volvían como vencidos: 4 800 reservados).
+- **Qué se muestra** sobre `from`: las 3 próximas fechas desde hoy (o desde `from` si es posterior, pagado por
+  adelantado), sin las omitidas (en la lista propuesta, sin las omitidas llevadas a su periodo).
 - **Dejar como está** (`dismissSplitRepair`): descarte de la bandeja (`int:split:<id>`) con huella
   `startDate|anchorDate|fecha de siempre`; no cambia ninguna fecha y deja de proponerse mientras el
   tramo no cambie de fechas.
