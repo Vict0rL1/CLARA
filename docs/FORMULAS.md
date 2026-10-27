@@ -761,7 +761,8 @@ ocultar en Inicio o en Ajustes; no hay correos ni notificaciones).
 - **Datos faltantes:** «desde cuándo hay registros» = el menor entre la fecha de alta,
   los saldos de referencia y el primer movimiento. Si una semana empieza antes, se marca
   «faltan datos» y no se compara. Sin movimientos no significa «sin gastos».
-- **Porcentaje** = `floor(diferencia × 100 / anterior)` solo si ambas semanas tienen datos
+- **Porcentaje** = `signo(diferencia) × floor(|diferencia| × 100 / anterior)` (entero truncado hacia
+  cero: −9,99 % es −9, igual que +9,99 % es 9; revisión financiera F-R3) solo si ambas semanas tienen datos
   completos y la anterior tiene movimientos y es > 0. Nunca se divide entre cero.
 - Próximos pagos: 7 días desde hoy (solo en la semana en curso). Metas: progreso real
   (apartado) y lo apartado esa semana (sin contar los usos al pagar).
@@ -1207,7 +1208,8 @@ Pruebas: `ui/preferences.test.ts` y e2e `personalize.spec.ts`.
   «Hoy», atrás/adelante— las fechas escritas se alinean con ella; «Hoy» en el personalizado es un periodo con el mismo
   número de días que termina hoy; las fechas no se arrastran a la dirección de otro periodo.
 - **Tres cifras**: ingresos = Σ ingresos realizados; gastos = gasto neto (§15); neto = ingresos − gastos.
-  Delta = actual − anterior; porcentaje entero = ⌊delta × 100 / anterior⌋ solo si anterior > 0 y el
+  Delta = actual − anterior; porcentaje entero = signo(delta) × ⌊|delta| × 100 / anterior⌋ (truncado hacia
+  cero, `checkedPercentChange`: −9,99 % es −9 %, igual que +9,99 % es 9 %; F-R3) solo si anterior > 0 y el
   periodo anterior empieza en o después de `trackedSince` (si no, se indica «no comparable»). Todo
   porcentaje de importes —también el de cada categoría del donut y el de un límite (`planProgress`)— se
   calcula con `mulDivFloor(importe, 100, total)`, nunca «importe × 100» en coma flotante (revisión propia R6:
@@ -1449,11 +1451,14 @@ compactos ni se redondean para calcular.
   neto del mes); copia de seguridad pendiente (misma regla que el recordatorio; nunca en la demo).
   Nada de esto se guarda ni se posterga: la bandeja de pendientes (§24) sigue siendo el sitio de los
   avisos accionables con posponer/descartar. El porcentaje del gasto a fecha equivalente se calcula
-  exacto y verificado (auditoría de seguimiento, F-03): `checkedMulDivFloor(actual − anterior, 100,
-  anterior)` con BigInt por dentro (antes `floorDiv((actual − anterior) × 100, anterior)` fallaba
-  cuando el producto pasaba de 2⁵³ − 1: un gasto de `MAX_AMOUNT_MINOR` el 10-ago frente a cien el
-  10-sep da 9 900 % exactos). Si ni el cociente cabe en un entero exacto, la señal sale sin `percent`
-  y la pantalla lo dice con los importes en «porque»; nunca una cifra inexacta ni una pantalla rota.
+  exacto y verificado (auditoría de seguimiento, F-03): `checkedPercentChange(actual − anterior,
+  anterior)` = signo × `checkedMulDivFloor(|actual − anterior|, 100, anterior)` con BigInt por dentro
+  (antes `floorDiv((actual − anterior) × 100, anterior)` fallaba cuando el producto pasaba de 2⁵³ − 1: un
+  gasto de `MAX_AMOUNT_MINOR` el 10-ago frente a cien el 10-sep da 9 900 % exactos). Truncado hacia
+  cero (revisión financiera F-R3): el umbral «desde ±10 %» es el mismo a ambos lados (de 100,00 a 90,01
+  es −9 % y no avisa; de 100,00 a 90,00 es −10 % y avisa, como de 100,00 a 110,00). Si ni el cociente
+  cabe en un entero exacto, la señal sale sin `percent` y la pantalla lo dice con los importes en
+  «porque»; nunca una cifra inexacta ni una pantalla rota.
 - **Navegación**: «Análisis» es destino primario (barra inferior y lateral) y agrupa Avisos,
   Estadísticas, Revisión semanal y ¿Qué cambió? con pestañas; las rutas antiguas no cambian. Cada
   gráfico de Estadísticas lleva su «¿Cómo se calculó?» (categorías, barras, tendencia, comercios).

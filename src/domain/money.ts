@@ -131,6 +131,16 @@ export function checkedMulDivFloor(a: number, num: number, den: number): number 
   return toSafeMinor(q)
 }
 
+/**
+ * Variación porcentual entera de `diff` sobre `base` (> 0), truncada HACIA CERO: −9,99 % es −9, igual que +9,99 % es 9
+ * (revisión financiera independiente del 2026-10-27, F-R3: con `floor` una bajada del 9,99 % salía como −10 y cruzaba
+ * un umbral «desde ±10 %» que la subida equivalente no cruzaba). `null` si la cifra no cabe en un entero exacto.
+ */
+export function checkedPercentChange(diff: number, base: number): number | null {
+  const magnitude = checkedMulDivFloor(Math.abs(diff), 100, base)
+  return magnitude === null ? null : diff < 0 ? -magnitude : magnitude
+}
+
 /** División entera redondeando hacia abajo (también con negativos). */
 export function floorDiv(a: number, b: number): number {
   if (!Number.isSafeInteger(a) || !Number.isSafeInteger(b) || b === 0) {

@@ -5,7 +5,7 @@
  */
 import { addDays, daysBetween, weekday } from './dates'
 import { periodSummary, type CategorySpending } from './insights'
-import { checkedMulDivFloor, floorDiv, mulDivFloor, sumMinor } from './money'
+import { checkedPercentChange, floorDiv, mulDivFloor, sumMinor } from './money'
 import { getPeriod, type Period } from './periods'
 import { estimateDailySpend, projectBalance } from './projection'
 import { txMerchantKey } from './statsFilter'
@@ -52,7 +52,8 @@ export interface Delta {
 
 function delta(current: number, previous: number, comparable: boolean): Delta {
   const diffMinor = current - previous
-  return { diffMinor, percent: comparable && previous > 0 ? checkedMulDivFloor(diffMinor, 100, previous) : null }
+  // Entero truncado hacia cero (F-R3): −9,99 % se muestra como −9 %, igual que +9,99 % como 9 %.
+  return { diffMinor, percent: comparable && previous > 0 ? checkedPercentChange(diffMinor, previous) : null }
 }
 
 export interface PeriodStats {

@@ -8,7 +8,7 @@ import { backupStatus } from './backupReminder'
 import { addDays, addMonthsClamped, daysBetween, startOfMonth } from './dates'
 import { goalPace } from './goalChart'
 import { periodSummary } from './insights'
-import { checkedMulDivFloor, mulDivFloor, sumMinor } from './money'
+import { checkedPercentChange, mulDivFloor, sumMinor } from './money'
 import { planItems } from './planItems'
 import { planProgress } from './plans'
 import { projectBalance } from './projection'
@@ -186,8 +186,9 @@ export function analysisItems(data: AppData, today: LocalDate): AnalysisItem[] {
     if (previous > 0) {
       // Porcentaje exacto (F-03): el producto (diferencia × 100) puede pasar de 2^53 − 1 con sumas grandes y
       // `floorDiv` fallaba; se calcula verificado y, si ni el cociente cabe en un entero exacto, el aviso sale sin
-      // cifra (`percent` ausente) en vez de inventar una o esconder la pantalla.
-      const percent = checkedMulDivFloor(current - previous, 100, previous)
+      // cifra (`percent` ausente) en vez de inventar una o esconder la pantalla. Truncado hacia cero (F-R3): el
+      // umbral «desde ±10 %» es el mismo para subidas y bajadas (−9,99 % no es −10).
+      const percent = checkedPercentChange(current - previous, previous)
       if (percent === null || Math.abs(percent) >= SPENDING_CHANGE_THRESHOLD) {
         const up = current > previous
         out.push({

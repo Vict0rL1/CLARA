@@ -11,6 +11,8 @@
  *   siguiente a la última ocurrencia pagada, llevada a su fecha de siempre; omitidas y vínculos siguen a su periodo).
  * - F-R2 (P2): partir en v14 un tramo que aún contaba desde la fecha movida hereda esa fecha como `anchorDate`; la cadena
  *   sigue siendo la misma partición antigua y se sigue proponiendo (y «Dejar como está» se hereda).
+ * - F-R3 (P3): la variación porcentual se trunca hacia cero en Análisis, Estadísticas y Revisión semanal: −9,99 % es −9 y no
+ *   cruza el umbral «desde ±10 %» que +9,99 % tampoco cruza.
  * Datos sintéticos; fechas explícitas.
  */
 import { readFileSync } from 'node:fs'
@@ -19,10 +21,12 @@ import { analysisItems } from './analysis'
 import { computeBudget } from './budget'
 import { recordHistory } from './history'
 import { canRevert, revertDependents, revertEntry } from './historyRevert'
-import { MAX_AMOUNT_MINOR } from './money'
+import { checkedPercentChange, MAX_AMOUNT_MINOR } from './money'
 import { type ScheduleDraft } from './operations'
 import { occurrencesBetween } from './recurrence'
 import { defaultSplitDate, saveScheduleFrom } from './scheduleFrom'
+import { periodStats, statsRange } from './statistics'
+import { weeklyReview } from './weeklyReview'
 import { dismissSplitRepair, driftedSplits, repairSplit } from './splitRepair'
 import type { AppData, Schedule } from './types'
 import { backupText, parseBackup, validateAppData } from '../storage/backup'
@@ -390,5 +394,44 @@ describe('F-R2 (revisión financiera) · partir en v14 un tramo que aún contaba
     expect(computeBudget(fixed.data, TODAY).overdueIncomes.map((i) => i.key)).toEqual(computeBudget(d, TODAY).overdueIncomes.map((i) => i.key))
     expect(computeBudget(fixed.data, TODAY).horizon?.endDate).toBe('2026-04-30')
     expect(driftedSplits(fixed.data, TODAY)).toEqual([])
+  })
+})
+
+describe('F-R3 (revisión financiera) · el umbral «desde ±10 %» es simétrico: la variación se trunca hacia cero', () => {
+  const seed = (previous: number, current: number) =>
+    baseData({
+      accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 0, date: '2026-07-01', setAt: '2026-07-01T12:00:00.000Z' } })],
+      transactions: [tx({ id: 'p', date: '2026-08-10', amountMinor: previous, kind: 'expense', status: 'realized' }), tx({ id: 'c', date: '2026-09-10', amountMinor: current, kind: 'expense', status: 'realized' })],
+    })
+  const change = (previous: number, current: number) => {
+    const item = analysisItems(seed(previous, current), '2026-09-28').find((i) => i.id === 'spendingUp' || i.id === 'spendingDown')
+    return item ? [item.id, item.params.percent] : null
+  }
+
+  it('helper: −9,99 % → −9 y +9,99 % → 9; ±10 % exactos; −100 %; sin cifra si no cabe en un entero exacto', () => {
+    expect([checkedPercentChange(999, 10000), checkedPercentChange(-999, 10000)]).toEqual([9, -9])
+    expect([checkedPercentChange(1000, 10000), checkedPercentChange(-1000, 10000)]).toEqual([10, -10])
+    expect([checkedPercentChange(-1001, 10000), checkedPercentChange(-1, 1), checkedPercentChange(0, 5)]).toEqual([-10, -100, 0])
+    expect([checkedPercentChange(-90071992547409, 1), checkedPercentChange(-90071992547410, 1)]).toEqual([-9007199254740900, null])
+  })
+
+  it('Análisis: de 100,00 a 110,00 avisa (10 %); a 109,99 no; a 90,00 avisa (10 %); a 90,01 NO (antes salía «bajó 10 %»); a 89,99 avisa (10 %)', () => {
+    expect(change(10000, 11000)).toEqual(['spendingUp', 10])
+    expect(change(10000, 10999)).toBeNull()
+    expect(change(10000, 9000)).toEqual(['spendingDown', 10])
+    expect(change(10000, 9001)).toBeNull()
+    expect(change(10000, 8999)).toEqual(['spendingDown', 10])
+    expect(change(10000, 9100)).toBeNull()
+  })
+
+  it('Estadísticas y Revisión semanal dicen lo mismo: de 100,00 a 90,01 es −9 %, no −10 %', () => {
+    const d = seed(10000, 9001)
+    const s = periodStats(d, 'month', statsRange('month', d.settings, '2026-09-28'))
+    expect(s.expenses).toEqual({ diffMinor: -999, percent: -9 })
+    const w = baseData({
+      accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 0, date: '2026-09-01', setAt: '2026-09-01T12:00:00.000Z' } })],
+      transactions: [tx({ id: 'p', date: '2026-09-16', amountMinor: 10000, kind: 'expense', status: 'realized' }), tx({ id: 'c', date: '2026-09-23', amountMinor: 9001, kind: 'expense', status: 'realized' })],
+    })
+    expect(weeklyReview(w, '2026-09-21', '2026-09-28').spendingChange).toEqual({ diffMinor: -999, percent: -9 })
   })
 })
