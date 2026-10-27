@@ -1,0 +1,464 @@
+/**
+ * Revisión independiente de seguridad y almacenamiento (e38b07b frente a 46fe617). Solo datos sintéticos.
+ * No repite qaFollowUp / qaPr15Undo / history.test: explora los bordes que esas pruebas no tocan.
+ */
+import { describe, expect, it } from 'vitest'
+import { recordHistory } from './history'
+import { canRevert, revertDependents, revertEntry, stateBefore } from './historyRevert'
+import { saveScheduleFrom } from './scheduleFrom'
+import { deleteSchedule, saveSchedule, type ScheduleDraft } from './operations'
+import { dismissSplitRepair, driftedSplits, repairSplit, splitRepairDismissId, splitRepairFingerprint } from './splitRepair'
+import { HISTORY_COLLECTIONS, INBOX_ID_MAX, isValidHistoryChangeId, isValidInboxId, validateHistory, validateInbox } from './validation'
+import { validateHistory as validateHistoryBaseline } from './validation.46fe617'
+import { transactionsToCsv } from './csvExport'
+import type { AppData, HistoryCollection, HistoryEntry, Schedule } from './types'
+import { validateAppData } from '../storage/backup'
+import { account, baseData, bill, deepFreeze, EARLIER, goal, income, NOW, tx } from '../test/fixtures'
+
+const persisted = (d: AppData): AppData => JSON.parse(JSON.stringify(d)) as AppData
+const at = (today: string) => ({ today, now: `${today}T12:00:00.000Z` })
+const ctx = at('2026-09-28')
+function amountOnly(s: Schedule, startDate: string, amountMinor: number, id: string): ScheduleDraft {
+  const { createdAt: _c, updatedAt: _u, currency: _cur, skippedDates: _k, ...rest } = s
+  return { ...rest, id, startDate, amountMinor }
+}
+const entryWith = (collection: HistoryCollection, id: unknown, before: unknown = null, after: unknown = { id: 'x' }): HistoryEntry =>
+  ({ id: 'h1', at: NOW, source: 'app', changes: [{ collection, id, before, after }] }) as unknown as HistoryEntry
+const BAD = [{ path: 'history[0].changes[0]', code: 'invalidValue' }]
+
+/* ------------------------------------------------------------------------------------------------ */
+/* 1. Límites de validación                                                                            */
+/* ------------------------------------------------------------------------------------------------ */
+
+describe('V · validateHistory: ids que no son texto, vacíos o ausentes, en cada colección', () => {
+  for (const collection of HISTORY_COLLECTIONS) {
+    it(`${collection}: 5, null, undefined, {}, [], true y '' se rechazan con invalidValue`, () => {
+      for (const id of [5, null, undefined, {}, [], true, '']) {
+        expect(validateHistory([entryWith(collection, id)]), `id=${JSON.stringify(id)}`).toEqual(BAD)
+        expect(isValidHistoryChangeId(collection, id)).toBe(false)
+      }
+    })
+  }
+  it('una colección desconocida (foo, inbox, dismissed, vacía, undefined, null) se rechaza', () => {
+    for (const collection of ['foo', 'inbox', 'dismissed', '', undefined, null]) {
+      expect(validateHistory([entryWith(collection as HistoryCollection, 'a')]), String(collection)).toEqual(BAD)
+    }
+  })
+  it('settings: el id «settings» y cualquier id de hasta 64 valen; 65 no', () => {
+    expect(validateHistory([entryWith('settings', 'settings', { currency: 'CAD' }, { currency: 'USD' })])).toEqual([])
+    expect(validateHistory([entryWith('settings', 'x'.repeat(64), { currency: 'CAD' }, { currency: 'USD' })])).toEqual([])
+    expect(validateHistory([entryWith('settings', 'x'.repeat(65), { currency: 'CAD' }, { currency: 'USD' })])).toEqual(BAD)
+  })
+})
+
+describe('V · instantáneas: objetos y null valen; primitivos y undefined no; los ARRAYS pasan (igual que en 46fe617)', () => {
+  it('primitivos y undefined se rechazan', () => {
+    const raw = (before: unknown, after: unknown): HistoryEntry => ({ id: 'h1', at: NOW, source: 'app', changes: [{ collection: 'schedules', id: 'a', before, after }] })
+    for (const snap of ['x', 1, true, undefined]) {
+      expect(validateHistory([raw(snap, { id: 'a' })]), `before=${String(snap)}`).toEqual(BAD)
+      expect(validateHistory([raw({ id: 'a' }, snap)]), `after=${String(snap)}`).toEqual(BAD)
+    }
+    // Una entrada sin la clave (como queda `before: undefined` tras serializar) también se rechaza.
+    expect(validateHistory([{ id: 'h1', at: NOW, source: 'app', changes: [{ collection: 'schedules', id: 'a', after: { id: 'a' } } as never] }])).toEqual(BAD)
+  })
+  it('un array como instantánea NO se rechaza (typeof === object): comportamiento idéntico al de 46fe617, no una regresión', () => {
+    const e = entryWith('schedules', 'a', [], { id: 'a' })
+    expect(validateHistory([e])).toEqual([])
+    expect(validateHistoryBaseline([e])).toEqual([])
+    // La pantalla de revertir vuelve a validar los datos completos: un array no cabe en `schedules`.
+    const d = baseData({ schedules: [bill('2026-06-01', 1000, { id: 'a', frequency: 'monthly' })], history: [{ ...e, changes: [{ collection: 'schedules', id: 'a', before: [], after: d0Schedule() }] }] })
+    const r = revertEntry(d, 'h1', ctx)
+    expect(r.ok).toBe(true)
+    expect(r.ok && validateAppData(persisted(r.data)).ok).toBe(false)
+    function d0Schedule() {
+      return bill('2026-06-01', 1000, { id: 'a', frequency: 'monthly' })
+    }
+  })
+})
+
+describe('V · validateInbox: bordes exactos de id (300/301) y huella (500/501)', () => {
+  const base = { until: '2026-10-15', at: NOW }
+  it('aplazados: 300 vale, 301 y los que no son texto no', () => {
+    expect(validateInbox({ snoozed: [{ id: 'x'.repeat(INBOX_ID_MAX), ...base }], dismissed: [] })).toEqual([])
+    expect(validateInbox({ snoozed: [{ id: 'x'.repeat(INBOX_ID_MAX + 1), ...base }], dismissed: [] })).toEqual([{ path: 'inbox.snoozed[0].id', code: 'invalidId' }])
+    for (const id of [5, null, undefined, {}, '']) {
+      expect(validateInbox({ snoozed: [{ id, ...base } as never], dismissed: [] })).toEqual([{ path: 'inbox.snoozed[0].id', code: 'invalidId' }])
+      expect(isValidInboxId(id)).toBe(false)
+    }
+  })
+  it('descartados: id 300/301 y huella 500/501 (la vacía vale)', () => {
+    expect(validateInbox({ snoozed: [], dismissed: [{ id: 'x'.repeat(300), fingerprint: 'f'.repeat(500), at: NOW }] })).toEqual([])
+    expect(validateInbox({ snoozed: [], dismissed: [{ id: 'x'.repeat(301), fingerprint: '', at: NOW }] })).toEqual([{ path: 'inbox.dismissed[0].id', code: 'invalidId' }])
+    expect(validateInbox({ snoozed: [], dismissed: [{ id: 'x', fingerprint: 'f'.repeat(501), at: NOW }] })).toEqual([{ path: 'inbox.dismissed[0].fingerprint', code: 'invalidValue' }])
+    expect(validateInbox({ snoozed: [], dismissed: [{ id: 'x', fingerprint: 5 as never, at: NOW }] })).toEqual([{ path: 'inbox.dismissed[0].fingerprint', code: 'invalidValue' }])
+  })
+})
+
+describe('V · A/B con el validador de 46fe617: solo cambia inboxSnoozed entre 65 y 300; nada más se abre ni se cierra', () => {
+  for (const collection of HISTORY_COLLECTIONS) {
+    it(`${collection}: longitudes 1, 64, 65, 300 y 301`, () => {
+      for (const len of [1, 64, 65, 300, 301]) {
+        const e = entryWith(collection, 'x'.repeat(len))
+        const now = validateHistory([e]).length === 0
+        const before = validateHistoryBaseline([e]).length === 0
+        const expectedNow = collection === 'inboxSnoozed' ? len <= 300 : len <= 64
+        expect(now, `${collection}/${len} ahora`).toBe(expectedNow)
+        expect(before, `${collection}/${len} antes`).toBe(len <= 64)
+      }
+    })
+  }
+})
+
+/* ------------------------------------------------------------------------------------------------ */
+/* 2. Seguridad al deshacer                                                                            */
+/* ------------------------------------------------------------------------------------------------ */
+
+const rent = bill('2026-06-01', 65000, { id: 'old', name: 'Renta', frequency: 'monthly', categoryId: 'housing' })
+const seedSplit = (snoozeUntil = '2026-10-20'): AppData =>
+  baseData({
+    schedules: [rent],
+    templates: [{ id: 't', name: 'Quincena', kind: 'distribution', lines: [{ target: { kind: 'payment', scheduleId: 'old' }, amount: { mode: 'fixed', amountMinor: 65000 } }], createdAt: EARLIER, updatedAt: EARLIER }],
+    scenarios: [{ id: 'sc', name: 'Si sube', changes: [{ type: 'scheduleAmount', scheduleId: 'old', newAmountMinor: 72000 }], baseFingerprint: 'x', createdAt: EARLIER, updatedAt: EARLIER }],
+    inbox: { snoozed: [{ id: 'due:schedule:old:2026-10-01', until: snoozeUntil, at: EARLIER }], dismissed: [] },
+  })
+const split = (d: AppData) => {
+  const r = saveScheduleFrom(d, 'old', amountOnly(rent, '2026-10-01', 70000, 'next'), ctx)
+  if (!r.ok) throw new Error(JSON.stringify(r.issues))
+  return r.data
+}
+/** Todo lo que apunta a un programado por id, y si resuelve hoy. */
+function scheduleRefs(d: AppData): { ref: string; resolves: boolean }[] {
+  const ids = new Set(d.schedules.map((s) => s.id))
+  const out: { ref: string; resolves: boolean }[] = []
+  for (const t of d.templates) if (t.kind === 'distribution') for (const l of t.lines) if (l.target.kind === 'payment') out.push({ ref: `template:${t.id}→${l.target.scheduleId}`, resolves: ids.has(l.target.scheduleId) })
+  for (const sc of d.scenarios) for (const c of sc.changes) if (c.type === 'scheduleAmount') out.push({ ref: `scenario:${sc.id}→${c.scheduleId}`, resolves: ids.has(c.scheduleId) })
+  for (const g of d.goals) if (g.plan?.link) out.push({ ref: `goal:${g.id}→${g.plan.link.scheduleId}`, resolves: ids.has(g.plan.link.scheduleId) })
+  for (const s of d.inbox.snoozed) {
+    const m = /^due:schedule:(.+):\d{4}-\d{2}-\d{2}$/.exec(s.id)
+    if (m) out.push({ ref: `snooze:${s.id}`, resolves: ids.has(m[1]!) })
+  }
+  for (const s of d.inbox.dismissed) {
+    const m = /^due:schedule:(.+):\d{4}-\d{2}-\d{2}$/.exec(s.id)
+    if (m) out.push({ ref: `dismissed:${s.id}`, resolves: ids.has(m[1]!) })
+  }
+  for (const dist of d.incomeDistributions) for (const l of dist.lines) if (l.scheduleId) out.push({ ref: `distribution:${dist.id}→${l.scheduleId}`, resolves: ids.has(l.scheduleId) })
+  for (const t of d.transactions) if (t.scheduleId) out.push({ ref: `tx:${t.id}→${t.scheduleId}`, resolves: ids.has(t.scheduleId) })
+  return out
+}
+const dangling = (d: AppData) => scheduleRefs(d).filter((r) => !r.resolves).map((r) => r.ref)
+
+describe('U · un rechazo nunca toca la entrada (congelada y serializada) en TODAS las ramas', () => {
+  const check = (d: AppData, entryId: string, code: string, status?: string) => {
+    const frozen = deepFreeze(persisted(d))
+    const json = JSON.stringify(frozen)
+    if (status) expect(canRevert(frozen, frozen.history.find((e) => e.id === entryId)!, ctx.today)).toBe(status)
+    const r = revertEntry(frozen, entryId, ctx)
+    expect(r.ok).toBe(false)
+    expect(!r.ok && r.issues[0]!.code).toBe(code)
+    expect(JSON.stringify(frozen)).toBe(json)
+  }
+  it('notFound', () => check(baseData(), 'nope', 'notFound'))
+  it('notRevertible: corte replace, entrada sin cambios y entrada solo de aplazamientos', () => {
+    check(baseData({ history: [{ id: 'r', at: NOW, source: 'replace', changes: [] }] }), 'r', 'notRevertible', 'notRevertible')
+    check(baseData({ history: [{ id: 'e', at: NOW, source: 'app', changes: [] }] }), 'e', 'notRevertible', 'notRevertible')
+    check(baseData({ history: [{ id: 's', at: NOW, source: 'app', changes: [{ collection: 'inboxSnoozed', id: 'due:x', before: null, after: { id: 'due:x', until: '2026-12-01', at: NOW } }] }] }), 's', 'notRevertible', 'notRevertible')
+  })
+  it('alreadyReverted', () => {
+    const d = seedSplit()
+    const tracked = recordHistory(d, split(d), NOW)
+    const e = tracked.history.at(-1)!
+    const back = revertEntry(tracked, e.id, ctx)
+    if (!back.ok) throw new Error('revert')
+    const undone = recordHistory(tracked, back.data, NOW, { source: 'revert', revertOf: e.id })
+    check(undone, e.id, 'alreadyReverted', 'alreadyReverted')
+  })
+  it('conflict', () => {
+    const d = seedSplit()
+    const tracked = recordHistory(d, split(d), NOW)
+    const e = tracked.history.at(-1)!
+    const edited = recordHistory(tracked, { ...tracked, schedules: tracked.schedules.map((s) => (s.id === 'next' ? { ...s, amountMinor: 71000 } : s)) }, NOW)
+    check(edited, e.id, 'revertConflict', 'conflict')
+  })
+  it('dependents', () => {
+    const d = seedSplit()
+    const tracked = recordHistory(d, split(d), NOW)
+    const e = tracked.history.at(-1)!
+    const later = recordHistory(tracked, { ...tracked, goals: [goal({ id: 'g', name: 'Seguro', kind: 'expense', plan: { link: { scheduleId: 'next', occurrenceDate: '2026-11-01' }, history: [] } })] }, NOW)
+    check(later, e.id, 'revertDependents', 'dependents')
+  })
+  it('currencyMismatch: un cambio de moneda hecho sin importes no se deshace cuando ya hay importes (y canRevert decía ok)', () => {
+    const d = baseData({ accounts: [account({ id: 'main', anchor: { amountMinor: 0, date: '2026-09-01', setAt: EARLIER } })] })
+    const changed = recordHistory(d, { ...d, settings: { ...d.settings, currency: 'USD' } }, NOW)
+    const e = changed.history.at(-1)!
+    expect(e.changes).toEqual([{ collection: 'settings', id: 'settings', before: expect.objectContaining({ currency: 'CAD' }), after: expect.objectContaining({ currency: 'USD' }) }])
+    const withMoney = recordHistory(changed, { ...changed, transactions: [tx({ id: 't1', currency: 'USD' })] }, NOW)
+    check(withMoney, e.id, 'currencyMismatch', 'ok')
+    // Sin importes sí se deshace y vuelve CAD.
+    const r = revertEntry(changed, e.id, ctx)
+    expect(r.ok && r.data.settings.currency).toBe('CAD')
+  })
+})
+
+describe('U · la pantalla (canRevert) y la operación (revertEntry) dicen lo mismo en cada rama', () => {
+  it('ok ↔ ok; y el resultado del revert valida completo', () => {
+    const d = seedSplit()
+    const tracked = recordHistory(d, split(d), NOW)
+    const e = tracked.history.at(-1)!
+    expect(canRevert(tracked, e, ctx.today)).toBe('ok')
+    const r = revertEntry(tracked, e.id, ctx)
+    expect(r.ok).toBe(true)
+    expect(r.ok && validateAppData(persisted(r.data)).ok).toBe(true)
+    expect(r.ok && dangling(r.data)).toEqual([])
+  })
+})
+
+describe('U · búsqueda de referencias colgadas más allá de las cuatro clases que vigila revertDependents', () => {
+  it('crear un programado y luego vincularle una distribución de ingreso, un movimiento realizado y un descarte: revertir se permite y deja tx/distribución/descarte apuntando al id borrado (misma semántica que eliminar el programado a mano)', () => {
+    const d = baseData({ accounts: [account({ id: 'main', anchor: { amountMinor: 100000, date: '2026-09-01', setAt: EARLIER } })] })
+    const created = saveSchedule(d, amountOnly(bill('2026-10-01', 5000, { id: 's1', name: 'Gym', frequency: 'monthly' }), '2026-10-01', 5000, 's1'), ctx)
+    if (!created.ok) throw new Error('save')
+    const tracked = recordHistory(d, created.data, NOW)
+    const e = tracked.history.at(-1)!
+    const later: AppData = {
+      ...tracked,
+      transactions: [tx({ id: 'pay', amountMinor: 5000, date: '2026-10-01', status: 'realized', scheduleId: 's1', occurrenceDate: '2026-10-01' })],
+      incomeDistributions: [{ id: 'dist', incomeTxId: 'inc', incomeFingerprint: 'f', incomeAmountMinor: 100000, lines: [{ kind: 'payment', goalId: 'g', allocationId: 'al', amountMinor: 5000, createdGoal: true, scheduleId: 's1', occurrenceDate: '2026-11-01' }], createdAt: NOW }],
+      inbox: { snoozed: [], dismissed: [{ id: 'due:schedule:s1:2026-10-01', fingerprint: 'x', at: NOW }] },
+    }
+    const withRefs = recordHistory(tracked, later, NOW)
+    expect(canRevert(withRefs, e, ctx.today)).toBe('ok')
+    expect(revertDependents(withRefs, e, ctx.today)).toEqual([])
+    const r = revertEntry(withRefs, e.id, ctx)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(dangling(r.data).sort()).toEqual(['dismissed:due:schedule:s1:2026-10-01', 'distribution:dist→s1', 'tx:pay→s1'])
+    // Lo mismo que deja eliminar el programado a mano (que conserva movimientos y distribuciones): coherente, no más laxo.
+    const manual = deleteSchedule(withRefs, 's1', ctx)
+    expect(manual.ok && dangling(manual.data).sort()).toEqual(dangling(r.data).sort())
+    // Y lo que guardaría la pantalla valida completo (los ids solo se validan por forma).
+    expect(validateAppData(persisted(r.data)).ok).toBe(true)
+  })
+
+  it('una meta vinculada PAGADA bloquea igual que una abierta (conservador: eliminar a mano la desvincularía)', () => {
+    const d = baseData()
+    const created = saveSchedule(d, amountOnly(bill('2026-10-01', 5000, { id: 's1', name: 'Gym', frequency: 'monthly' }), '2026-10-01', 5000, 's1'), ctx)
+    if (!created.ok) throw new Error('save')
+    const tracked = recordHistory(d, created.data, NOW)
+    const e = tracked.history.at(-1)!
+    const paid = recordHistory(tracked, { ...tracked, goals: [goal({ id: 'g', name: 'Pagado', kind: 'expense', plan: { link: { scheduleId: 's1', occurrenceDate: '2026-10-01' }, history: [], paidAt: NOW } })] }, NOW)
+    expect(canRevert(paid, e, ctx.today)).toBe('dependents')
+  })
+})
+
+describe('U · entradas raras: borrar y recrear el mismo id en una entrada; revertir dos veces; revertir una reversión', () => {
+  it('una entrada (importada) con dos cambios sobre el mismo programado (A→null, null→B) es conflicto: nunca se aplica a medias', () => {
+    const a = bill('2026-06-01', 1000, { id: 's', frequency: 'monthly' })
+    const b = { ...a, amountMinor: 2000 }
+    const d = baseData({ schedules: [b], history: [{ id: 'h', at: NOW, source: 'app', changes: [{ collection: 'schedules', id: 's', before: a, after: null }, { collection: 'schedules', id: 's', before: null, after: b }] }] })
+    const frozen = deepFreeze(persisted(d))
+    expect(canRevert(frozen, frozen.history[0]!, ctx.today)).toBe('conflict')
+    expect(revertEntry(frozen, 'h', ctx)).toMatchObject({ ok: false, issues: [{ code: 'revertConflict', params: { count: 1 } }] })
+  })
+
+  it('partir → revertir → revertir la reversión → revertir otra vez: cada paso valida, nada queda colgado y los estados coinciden', () => {
+    const d = seedSplit()
+    const s1 = recordHistory(d, split(d), NOW)
+    const e1 = s1.history.at(-1)!
+    const r1 = revertEntry(s1, e1.id, ctx)
+    if (!r1.ok) throw new Error('r1')
+    const s2 = persisted(recordHistory(s1, r1.data, NOW, { source: 'revert', revertOf: e1.id }))
+    const e2 = s2.history.at(-1)!
+    expect([canRevert(s2, e1, ctx.today), canRevert(s2, e2, ctx.today)]).toEqual(['alreadyReverted', 'ok'])
+    expect(dangling(s2)).toEqual([])
+    const r2 = revertEntry(s2, e2.id, ctx)
+    if (!r2.ok) throw new Error('r2')
+    expect(validateAppData(persisted(r2.data)).ok).toBe(true)
+    const s3 = persisted(recordHistory(s2, r2.data, NOW, { source: 'revert', revertOf: e2.id }))
+    const e3 = s3.history.at(-1)!
+    // El estado vuelve a ser el de la partición (mismos programados, plantilla, escenario y aplazamiento).
+    const shape = (x: AppData) => JSON.stringify([x.schedules, x.templates, x.scenarios, x.inbox.snoozed])
+    expect(shape(s3)).toBe(shape(s1))
+    expect(dangling(s3)).toEqual([])
+    expect([canRevert(s3, e1, ctx.today), canRevert(s3, e2, ctx.today), canRevert(s3, e3, ctx.today)]).toEqual(['alreadyReverted', 'alreadyReverted', 'ok'])
+    const r3 = revertEntry(s3, e3.id, ctx)
+    if (!r3.ok) throw new Error('r3')
+    expect(validateAppData(persisted(r3.data)).ok).toBe(true)
+    expect(shape(r3.data)).toBe(shape(persisted(d)))
+    expect(dangling(r3.data)).toEqual([])
+  })
+
+  it('la instantánea «antes» recrea un programado editado después: la edición es conflicto; revertir la edición lo vuelve a permitir', () => {
+    const d = seedSplit()
+    const s1 = recordHistory(d, split(d), NOW)
+    const e1 = s1.history.at(-1)!
+    const edited = recordHistory(s1, { ...s1, schedules: s1.schedules.map((s) => (s.id === 'next' ? { ...s, amountMinor: 71000, updatedAt: NOW } : s)) }, NOW)
+    const e2 = edited.history.at(-1)!
+    expect(canRevert(edited, e1, ctx.today)).toBe('conflict')
+    const r2 = revertEntry(edited, e2.id, ctx)
+    if (!r2.ok) throw new Error('r2')
+    const back = recordHistory(edited, r2.data, NOW, { source: 'revert', revertOf: e2.id })
+    expect(canRevert(back, e1, ctx.today)).toBe('ok')
+    const r1 = revertEntry(back, e1.id, ctx)
+    expect(r1.ok && dangling(r1.data)).toEqual([])
+    expect(r1.ok && r1.data.schedules.map((s) => s.id)).toEqual(['old'])
+  })
+
+  it('una entrada que ELIMINÓ un programado (y desvinculó su meta) se revierte entera: programado y vínculo vuelven, nada queda colgado', () => {
+    const d = baseData({ schedules: [rent], goals: [goal({ id: 'g', name: 'Seguro', kind: 'expense', plan: { link: { scheduleId: 'old', occurrenceDate: '2026-11-01' }, history: [] } })] })
+    const del = deleteSchedule(d, 'old', ctx)
+    if (!del.ok) throw new Error('del')
+    const tracked = recordHistory(d, del.data, NOW)
+    const e = tracked.history.at(-1)!
+    expect(e.changes.map((c) => c.collection).sort()).toEqual(['goals', 'schedules'])
+    expect(canRevert(tracked, e, ctx.today)).toBe('ok')
+    const r = revertEntry(tracked, e.id, ctx)
+    expect(r.ok && r.data.goals[0]!.plan?.link).toEqual({ scheduleId: 'old', occurrenceDate: '2026-11-01' })
+    expect(r.ok && dangling(r.data)).toEqual([])
+  })
+})
+
+describe('U · entradas antiguas (solo programados) y aplazamientos caducados', () => {
+  it('con el aplazamiento ya caducado, los dependientes son solo plantilla y escenario (2); sin `today` también cuenta el aplazamiento (3)', () => {
+    const d = seedSplit('2026-09-20')
+    const after = split(d)
+    const legacy: HistoryEntry = {
+      id: 'h-legacy',
+      at: NOW,
+      source: 'app',
+      changes: [
+        { collection: 'schedules', id: 'old', before: d.schedules[0]!, after: after.schedules.find((s) => s.id === 'old')! },
+        { collection: 'schedules', id: 'next', before: null, after: after.schedules.find((s) => s.id === 'next')! },
+      ],
+    }
+    const stored = deepFreeze(persisted({ ...after, history: [legacy] }))
+    expect(revertDependents(stored, legacy, ctx.today).map((x) => x.kind)).toEqual(['template', 'scenario'])
+    expect(revertDependents(stored, legacy).map((x) => x.kind)).toEqual(['template', 'scenario', 'snooze'])
+    expect(revertEntry(stored, 'h-legacy', ctx)).toMatchObject({ ok: false, issues: [{ code: 'revertDependents', params: { count: 2 } }] })
+  })
+  it('HALLAZGO (no legado): crear un programado, posponer su aviso después y dejar que caduque: revertir la creación queda bloqueado por un aplazamiento inerte que la bandeja ya ignora', () => {
+    const d = baseData({ accounts: [account({ id: 'main', anchor: { amountMinor: 100000, date: '2026-09-01', setAt: EARLIER } })] })
+    const created = saveSchedule(d, amountOnly(bill('2026-09-01', 5000, { id: 's1', name: 'Gym', frequency: 'monthly' }), '2026-09-01', 5000, 's1'), ctx)
+    if (!created.ok) throw new Error('save')
+    const tracked = recordHistory(d, created.data, NOW)
+    const e = tracked.history.at(-1)!
+    // Posponer no crea entrada (R5); el aplazamiento caduca el 20 y hoy es 28: la bandeja lo ignora (`until > today`).
+    const snoozed: AppData = { ...tracked, inbox: { snoozed: [{ id: 'due:schedule:s1:2026-09-01', until: '2026-09-20', at: EARLIER }], dismissed: [] } }
+    expect(canRevert(snoozed, e, ctx.today)).toBe('ok')
+    expect(revertDependents(snoozed, e, ctx.today)).toEqual([])
+    expect(revertEntry(snoozed, e.id, ctx).ok).toBe(true)
+  })
+  it('un corte replace: no se revierte y «¿Qué cambió?» no reconstruye nada anterior', () => {
+    const d = baseData({ history: [{ id: 'a', at: EARLIER, source: 'app', changes: [{ collection: 'accounts', id: 'main', before: null, after: account({ id: 'main' }) }] }, { id: 'r', at: NOW, source: 'replace', changes: [] }] })
+    expect(canRevert(d, d.history[1]!, ctx.today)).toBe('notRevertible')
+    expect(stateBefore(d, 0)).toBeNull()
+  })
+})
+
+/* ------------------------------------------------------------------------------------------------ */
+/* 4. Reparación de particiones                                                                        */
+/* ------------------------------------------------------------------------------------------------ */
+
+describe('S · reparación de particiones: huella del descarte, doble aplicación y rechazos sin cambios', () => {
+  const TODAY = '2026-03-15'
+  const c = at(TODAY)
+  const audit = (): AppData =>
+    baseData({
+      accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 180000, date: '2026-03-01', setAt: '2026-03-01T12:00:00.000Z' } })],
+      schedules: [
+        income('2026-01-31', 300000, { id: 'salary-old', name: 'Sueldo', frequency: 'monthly', endDate: '2026-02-27' }),
+        income('2026-02-28', 320000, { id: 'salary-new', name: 'Sueldo', frequency: 'monthly' }),
+      ],
+    })
+  const dismissed = () => {
+    const r = dismissSplitRepair(audit(), 'salary-new', c)
+    if (!r.ok) throw new Error('dismiss')
+    return r.data
+  }
+
+  it('reparar dos veces: la segunda es notFound y no cambia nada; reparar un tramo que no cumple (serie sin partir) tampoco', () => {
+    const d = audit()
+    const r1 = repairSplit(d, 'salary-new', c)
+    if (!r1.ok) throw new Error('r1')
+    const frozen = deepFreeze(persisted(r1.data))
+    const json = JSON.stringify(frozen)
+    expect(repairSplit(frozen, 'salary-new', c)).toMatchObject({ ok: false, issues: [{ code: 'notFound' }] })
+    expect(JSON.stringify(frozen)).toBe(json)
+    expect(repairSplit(deepFreeze(persisted(d)), 'salary-old', c)).toMatchObject({ ok: false, issues: [{ code: 'notFound' }] })
+    expect(repairSplit(deepFreeze(persisted(d)), 'nope', c)).toMatchObject({ ok: false, issues: [{ code: 'notFound' }] })
+  })
+
+  it('reparar solo añade anchorDate y updatedAt al tramo nuevo; el resto del registro y los demás registros son idénticos; queda una entrada revertible', () => {
+    const d = audit()
+    const r = repairSplit(d, 'salary-new', c)
+    if (!r.ok) throw new Error('r')
+    const before = d.schedules[1]!
+    const { anchorDate, updatedAt, ...rest } = r.value
+    expect([anchorDate, updatedAt]).toEqual(['2026-01-31', c.now])
+    const { updatedAt: _u, ...restBefore } = before
+    expect(rest).toEqual(restBefore)
+    expect(r.data.schedules[0]).toBe(d.schedules[0])
+    const tracked = recordHistory(d, r.data, c.now)
+    expect(tracked.history.at(-1)!.changes.map((x) => [x.collection, x.id])).toEqual([['schedules', 'salary-new']])
+    expect(canRevert(tracked, tracked.history.at(-1)!, TODAY)).toBe('ok')
+  })
+
+  it('descartar dos veces: la segunda es notFound (la tarjeta ya no lo propone)', () => {
+    const d = dismissed()
+    expect(dismissSplitRepair(deepFreeze(persisted(d)), 'salary-new', c)).toMatchObject({ ok: false, issues: [{ code: 'notFound' }] })
+  })
+
+  it('huella: cambiar la fecha del tramo de siempre (otro ancla raíz) vuelve a proponerlo; omitir fechas o cambiar el importe del tramo nuevo no (misma decisión)', () => {
+    const d = dismissed()
+    expect(d.inbox.dismissed[0]!.fingerprint).toBe(splitRepairFingerprint(d.schedules[1]!, '2026-01-31'))
+    // El tramo de siempre pasa a fijarse el 30: la propuesta cambia (30-mar, 30-abr…) y la huella también.
+    const rootChanged: AppData = { ...d, schedules: d.schedules.map((s) => (s.id === 'salary-old' ? { ...s, startDate: '2026-01-30' } : s)) }
+    expect(driftedSplits(rootChanged, TODAY).map((x) => [x.scheduleId, x.anchor, x.proposed[0]])).toEqual([['salary-new', '2026-01-30', '2026-03-30']])
+    // Omitir una fecha o cambiar el importe del tramo nuevo: sigue descartado (la decisión «cuenta desde el 28» no cambió).
+    const skipped: AppData = { ...d, schedules: d.schedules.map((s) => (s.id === 'salary-new' ? { ...s, skippedDates: ['2026-03-28'], amountMinor: 1 } : s)) }
+    expect(driftedSplits(skipped, TODAY)).toEqual([])
+    // Partir el tramo nuevo otra vez con la versión corregida (28-abr): el tramo nuevo hereda anchorDate del 28, el descarte sigue valiendo para el tramo del 28.
+    const r = saveScheduleFrom(d, 'salary-new', amountOnly(d.schedules[1]!, '2026-04-28', 330000, 'salary-3'), at('2026-04-20'))
+    if (!r.ok) throw new Error(JSON.stringify(r.issues))
+    expect(r.data.schedules.find((s) => s.id === 'salary-3')?.anchorDate).toBe('2026-02-28')
+    expect(driftedSplits(r.data, '2026-04-20')).toEqual([])
+  })
+
+  it('el descarte cabe en el contrato de la bandeja con el id de programado más largo (64) y valida completo', () => {
+    const longId = 'z'.repeat(64)
+    const d = baseData({
+      schedules: [
+        income('2026-01-31', 300000, { id: 'salary-old', name: 'Sueldo', frequency: 'monthly', endDate: '2026-02-27' }),
+        income('2026-02-28', 320000, { id: longId, name: 'Sueldo', frequency: 'monthly' }),
+      ],
+    })
+    expect(driftedSplits(d, TODAY).map((x) => x.scheduleId)).toEqual([longId])
+    const r = dismissSplitRepair(d, longId, c)
+    if (!r.ok) throw new Error('dismiss')
+    expect(r.data.inbox.dismissed[0]!.id).toBe(splitRepairDismissId(longId))
+    expect(r.data.inbox.dismissed[0]!.id.length).toBeLessThanOrEqual(INBOX_ID_MAX)
+    expect(validateAppData(persisted(r.data)).ok).toBe(true)
+  })
+})
+
+/* ------------------------------------------------------------------------------------------------ */
+/* 6. CSV: la exportación bajo demanda sigue neutralizando fórmulas                                   */
+/* ------------------------------------------------------------------------------------------------ */
+
+describe('C · transactionsToCsv (el módulo que Movements carga al pulsar) neutraliza fórmulas en texto libre', () => {
+  it('nota «=HYPERLINK(...)» y comercio «+cmd» salen con apóstrofo; importes y fechas no', () => {
+    const csv = transactionsToCsv([tx({ id: 't1', note: '=HYPERLINK("http://x")', merchant: '+cmd|calc', amountMinor: 1234, date: '2026-09-28' })], {
+      headers: ['date', 'kind', 'status', 'amount', 'currency', 'category', 'account', 'toAccount', 'note', 'merchant', 'id', 'source'],
+      kind: () => 'gasto',
+      status: () => 'realizado',
+      category: () => '-cat',
+      account: () => '@acc',
+      source: () => 'app',
+    })
+    const row = csv.split(/\r?\n/)[1]!
+    expect(row).toContain(`'=HYPERLINK`)
+    expect(row).toContain(`'+cmd|calc`)
+    expect(row).toContain(`'-cat`)
+    expect(row).toContain(`'@acc`)
+    expect(row.startsWith('2026-09-28')).toBe(true)
+  })
+})

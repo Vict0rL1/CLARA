@@ -1,0 +1,38 @@
+/**
+ * Genera, con la implementación ANTERIOR (819eaa9, esquema 13), la copia «de intención conocida» de la auditoría:
+ * saldo CAD 1 800 el 15-feb-2026, sueldo mensual de CAD 2 400 fijado el 31-ene, seguro de CAD 1 250 el 29-mar; se cambia
+ * SOLO el importe del sueldo en 777 unidades menores aceptando la fecha propuesta (28-feb), se registra en el historial
+ * y se exporta la copia. Datos sintéticos.
+ */
+import { writeFileSync } from 'node:fs'
+import { expect, it } from 'vitest'
+import { recordHistory } from './history'
+import { defaultSplitDate, saveScheduleFrom } from './scheduleFrom'
+import type { ScheduleDraft } from './operations'
+import { backupText } from '../storage/backup'
+import { account, baseData, bill, income } from '../test/fixtures'
+
+it('escribe la copia v13 de intención conocida', () => {
+  const salary = income('2026-01-31', 240000, { id: 'salary', name: 'Sueldo', frequency: 'monthly' })
+  const data = baseData({
+    accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 180000, date: '2026-02-15', setAt: '2026-02-15T12:00:00.000Z' } })],
+    schedules: [salary, bill('2026-03-29', 125000, { id: 'bill', name: 'Seguro', frequency: 'once' })],
+  })
+  const today = '2026-02-15'
+  const suggested = defaultSplitDate(data, salary, today)
+  expect(suggested).toBe('2026-02-28')
+  const { createdAt: _c, updatedAt: _u, currency: _cur, skippedDates: _k, ...rest } = salary
+  const draft: ScheduleDraft = { ...rest, id: 'salary-2', startDate: suggested!, amountMinor: 240000 + 777 }
+  const r = saveScheduleFrom(data, 'salary', draft, { today, now: '2026-02-15T12:00:00.000Z' })
+  if (!r.ok) throw new Error(JSON.stringify(r.issues))
+  const tracked = recordHistory(data, r.data, '2026-02-15T12:00:01.000Z')
+  expect(tracked.schemaVersion).toBe(13)
+  expect(tracked.schedules.map((s) => [s.id, s.startDate, s.endDate ?? null, s.amountMinor])).toEqual([
+    ['salary', '2026-01-31', '2026-02-27', 240000],
+    ['bill', '2026-03-29', null, 125000],
+    ['salary-2', '2026-02-28', null, 240777],
+  ])
+  expect(tracked.history).toHaveLength(1)
+  const text = backupText(tracked, new Date('2026-02-15T12:00:02.000Z'), '1.0.0-beta.1 (819eaa9)', {}, 2)
+  writeFileSync(process.env.V13_OUT ?? '/dev/null', text)
+})

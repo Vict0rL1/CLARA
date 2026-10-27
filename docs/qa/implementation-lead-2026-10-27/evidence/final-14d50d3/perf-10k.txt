@@ -1,0 +1,3 @@
+Inicio con 10k: cifra principal a los 226 / 219 ms
+Inicio con 10k: cifra principal a los 303 / 338 ms
+Inicio con 10k: cifra principal a los 364 / 388 ms

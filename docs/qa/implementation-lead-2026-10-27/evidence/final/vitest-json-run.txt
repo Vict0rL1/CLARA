@@ -1,0 +1,2 @@
+JSON report written to /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/final-lead/vitest.json
+exit 0

@@ -34,7 +34,7 @@ relative to today, everything is marked as demo). «Ajustes › Demostración y 
 ## 3. Automated checks (run all of these before declaring a change done)
 
 ```bash
-npm run check        # typecheck + oxlint + i18n literal check + Vitest (≈1 080 unit tests, incl. qa/, the QA V2, the PR #15 audit, the self-review contracts and the follow-up audit)
+npm run check        # typecheck + oxlint + i18n literal check + Vitest (≈1 130 unit tests, incl. qa/, the QA V2, the PR #15 audit, the self-review contracts, the follow-up audit and the lead pass)
 npm run build        # production build
 npm run size         # initial JS budget: must stay ≤ 844.6 KB (currently ≈ 844 KB: ~0.5 KB of headroom after QA V2) — do not raise it
 npm audit --audit-level=high   # dependency audit (CI fails on a high/critical vulnerability)
@@ -79,6 +79,7 @@ Notes for reliable runs:
 | `src/domain/percentExact.test.ts`, `src/domain/dayBalance.test.ts` | Self-review contracts: exact integer percentages (R6); one rule for what a calendar day says, base or simulated (`outOfRange`, R3/S3) |
 | `src/domain/qaCorrective.test.ts`, `tests/e2e/qa-corrective.spec.ts` | Corrective pass (independent audit 2026-10-19): P1 unsupported currency through bounded punctuation («coffee (RUB) 10», «TOTAL RUB: 10.00») blocks the line in the assistant, receipts, fields, CSV and shortcuts; P2 receipt keyword span classification («PEN 2.99 TAX 0.10» is an item). Report: `docs/qa/corrective-pass-2026-10-20/REPORT.md` |
 | `src/domain/qaFollowUp.test.ts`, `src/ui/components/axisLabels.test.ts`, `src/ui/themeTokens.test.ts` (F-04), `tests/e2e/qa-followup.spec.ts` | Follow-up audit (head 46fe617): F-01 history ids per collection and recovery of data written by the faulty version; QA-01 historical split review/repair (`domain/splitRepair.ts`); F-02 dependency-safe undo; F-03 exact Analysis percentage; F-04 computed contrast of «Sin comparación»; F-05 axis labels by slot width. Report: `docs/qa/followup-audit-2026-10-20/REPORT.md` |
+| `src/domain/qaLead.test.ts`, `src/test/v13-known-intent-backup.json`, `tests/e2e/qa-lead.spec.ts`, `tests/e2e/shots.ts` | Implementation lead pass (2026-10-27): the genuine schema-13 backup written by `819eaa9` (import, repair to 31-mar / 1 250 / 550, decline, round trip), F-02 later scenario, F-03 zero previous, keyboard/touch chart selection in es/en/pt/fr; the independent reviewers' findings re-encoded: F-R1 a repair never counts a paid occurrence twice (partition after the last settled one; skipped dates and links follow their period), F-R2 inherited anchors keep the review alive, F-R3 symmetric ±10 % threshold (`checkedPercentChange`), S-R1 expired snoozes are not undo dependents. Report: `docs/qa/implementation-lead-2026-10-27/REPORT.md` (reviewer reports and test code under `evidence/reviewers/`) |
 | `docs/qa/qa-v2-implementation-2026-10-17/` | QA V2 implementation report, before/after evidence (JSON, logs) and screenshots |
 | `docs/STABILIZATION-2026-10-13.md` | What was fixed, before/after evidence, known limits, later roadmap |
 | `docs/screenshots/stabilization-2026-10-13/` | Before (audited `e7c9d87`) / after screenshots |
