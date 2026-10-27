@@ -7,11 +7,15 @@
  * confirmación, devolverles la fecha que fijaba la serie de siempre (`anchorDate`). Declinar deja el 28 tal cual.
  *
  * Se señala un tramo B solo cuando todo esto se cumple (conservador: ante la duda, nada):
- * - B repite, no tiene `anchorDate` y sigue activo (sin fin o con fin desde hoy);
+ * - B repite y sigue activo (sin fin o con fin desde hoy), y no tiene `anchorDate` o lo HEREDÓ tal cual del tramo
+ *   anterior (revisión financiera F-R2: partir en v14 un tramo que aún contaba desde la fecha movida conserva esa fecha
+ *   movida como `anchorDate`; la cadena sigue siendo la misma partición antigua y se sigue revisando);
  * - hay un tramo A del mismo nombre y tipo, con la misma regla, que termina el día antes de que B empiece;
  * - B empieza en una fecha de la serie de A (una partición en una fecha ajena a la serie es un reanclaje explícito);
  * - con la fecha de siempre, las próximas ocurrencias de B serían OTRAS (si coinciden no hay nada que reparar).
- * La fecha de siempre se toma del primer tramo de la cadena (A pudo ser a su vez un tramo partido).
+ * La fecha de siempre se toma del primer tramo de la cadena (A pudo ser a su vez un tramo partido): se sube por los
+ * tramos que heredaron su fecha (sin `anchorDate`, o con la del anterior) y se para en el primero que la fijó él mismo.
+ * «Dejar como está» en un tramo vale también para los que después hereden su fecha.
  *
  * Reparar nunca vuelve a contar lo ya pagado (revisión financiera independiente del pase de 2026-10-27, F-R1): las
  * fechas de siempre se aplican desde el día siguiente a la última ocurrencia con pago registrado (también parcial),
@@ -66,20 +70,25 @@ function predecessor(data: Pick<AppData, 'schedules'>, s: Schedule): Schedule | 
   return data.schedules.find((a) => a.id !== s.id && a.endDate === dayBefore && a.name === s.name && a.kind === s.kind && a.frequency !== 'once' && sameRule(a, s))
 }
 
-/** La fecha que fija la serie en el primer tramo de la cadena (acotado: nunca entra en un bucle). */
-function rootAnchor(data: Pick<AppData, 'schedules'>, first: Schedule): { anchor: LocalDate; ended: Schedule } | null {
+/** ¿`s` heredó tal cual la fecha que fijaba el tramo anterior `prev` (o no fija ninguna)? Si la fijó él mismo, la cadena termina. */
+const inheritsAnchor = (s: Schedule, prev: Schedule) => s.anchorDate === undefined || s.anchorDate === anchorOf(prev)
+
+/** La fecha que fija la serie en el primer tramo de la cadena (acotado: nunca entra en un bucle), y los tramos que la heredaron por el camino. */
+function rootAnchor(data: Pick<AppData, 'schedules'>, first: Schedule): { anchor: LocalDate; ended: Schedule; inherited: Schedule[] } | null {
   let ended = predecessor(data, first)
-  if (!ended) return null
+  if (!ended || !inheritsAnchor(first, ended)) return null
   const seen = new Set<string>([first.id, ended.id])
+  const inherited: Schedule[] = []
   let anchor = anchorOf(ended)
   for (let i = 0; i < 50; i++) {
     const prev = predecessor(data, ended)
-    if (!prev || seen.has(prev.id) || !isSeriesDate(prev, ended.startDate)) break
+    if (!prev || seen.has(prev.id) || !isSeriesDate(prev, ended.startDate) || !inheritsAnchor(ended, prev)) break
     seen.add(prev.id)
+    inherited.push(ended)
     anchor = anchorOf(prev)
     ended = prev
   }
-  return { anchor, ended: predecessor(data, first)! }
+  return { anchor, ended: predecessor(data, first)!, inherited }
 }
 
 /** La ocurrencia de la serie de siempre que corresponde a `date`: la primera desde ese día (el 28-mar movido «es» el 31-mar; una fecha movida nunca es posterior a la de siempre de su periodo). */
@@ -127,16 +136,16 @@ function repairPlan(s: Schedule, anchor: LocalDate, from: LocalDate, today: Loca
 /** Particiones antiguas cuyo tramo nuevo cuenta desde una fecha movida, sin las descartadas («Dejar como está»). */
 export function driftedSplits(data: AppData, today: LocalDate): DriftedSplit[] {
   const out: DriftedSplit[] = []
+  const dismissedFor = (s: Schedule, anchor: LocalDate) => data.inbox.dismissed.some((d) => d.id === splitRepairDismissId(s.id) && d.fingerprint === splitRepairFingerprint(s, anchor))
   for (const s of data.schedules) {
-    if (s.frequency === 'once' || s.anchorDate !== undefined) continue
+    if (s.frequency === 'once') continue
     if (s.endDate && s.endDate < today) continue
     const root = rootAnchor(data, s)
-    if (!root || root.anchor === s.startDate || !isSeriesDate(root.ended, s.startDate)) continue
+    if (!root || root.anchor === anchorOf(s) || !isSeriesDate(root.ended, s.startDate)) continue
     const from = repairBoundary(data, s, root.anchor)
     const { current, proposed } = repairPlan(s, root.anchor, from, today)
     if (current.join() === proposed.join()) continue
-    const dismissed = data.inbox.dismissed.some((d) => d.id === splitRepairDismissId(s.id) && d.fingerprint === splitRepairFingerprint(s, root.anchor))
-    if (dismissed) continue
+    if (dismissedFor(s, root.anchor) || root.inherited.some((w) => dismissedFor(w, root.anchor))) continue
     out.push({ scheduleId: s.id, endedId: root.ended.id, name: s.name, anchor: root.anchor, startDate: s.startDate, from, current: current.slice(0, SPLIT_REPAIR_PREVIEW), proposed: proposed.slice(0, SPLIT_REPAIR_PREVIEW) })
   }
   return out

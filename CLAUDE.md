@@ -63,8 +63,10 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   siguen siendo 1 y 20 (PR #15, QA-01). `startDate` es solo el límite desde el que cuenta; las fechas, la validación
   de «dos veces al mes» y la ayuda salen de `anchorOf`. Las particiones hechas ANTES de v14 (sin `anchorDate`) no se
   reescriben al migrar: `domain/splitRepair.ts` (`driftedSplits`) las detecta de forma conservadora (tramo activo sin
-  `anchorDate`, antecesor del mismo nombre, tipo y regla que termina el día antes, partido en una fecha de la serie y
-  con fechas distintas a las de siempre) y Ajustes › Datos las muestra con fechas actuales y propuestas; reparar
+  `anchorDate` o con el heredado tal cual del anterior —partir en v14 un tramo aún movido lo hereda, F-R2—, antecesor
+  del mismo nombre, tipo y regla que termina el día antes, partido en una fecha de la serie y con fechas distintas a
+  las de siempre; la fecha de siempre es la del primer tramo que la fijó él mismo) y Ajustes › Datos las muestra con
+  fechas actuales y propuestas; reparar
   (`repairSplit`) devuelve las fechas de siempre solo desde el día siguiente a la última ocurrencia pagada (también
   parcial), llevada a su fecha de siempre: lo pagado se queda en su fecha y nunca se cuenta dos veces (si hace falta, el
   tramo termina ahí y uno nuevo con `anchorDate` sigue, como al partir «desde una fecha»; omitidas y vínculos siguen a

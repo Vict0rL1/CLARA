@@ -9,6 +9,8 @@
  * - Revisión financiera independiente del mismo pase, F-R1 (P1): reparar una partición antigua nunca vuelve a contar lo ya
  *   pagado ni resucita una fecha omitida (lo pagado se queda en su fecha; las fechas de siempre se aplican desde el día
  *   siguiente a la última ocurrencia pagada, llevada a su fecha de siempre; omitidas y vínculos siguen a su periodo).
+ * - F-R2 (P2): partir en v14 un tramo que aún contaba desde la fecha movida hereda esa fecha como `anchorDate`; la cadena
+ *   sigue siendo la misma partición antigua y se sigue proponiendo (y «Dejar como está» se hereda).
  * Datos sintéticos; fechas explícitas.
  */
 import { readFileSync } from 'node:fs'
@@ -20,7 +22,7 @@ import { canRevert, revertDependents, revertEntry } from './historyRevert'
 import { MAX_AMOUNT_MINOR } from './money'
 import { type ScheduleDraft } from './operations'
 import { occurrencesBetween } from './recurrence'
-import { saveScheduleFrom } from './scheduleFrom'
+import { defaultSplitDate, saveScheduleFrom } from './scheduleFrom'
 import { dismissSplitRepair, driftedSplits, repairSplit } from './splitRepair'
 import type { AppData, Schedule } from './types'
 import { backupText, parseBackup, validateAppData } from '../storage/backup'
@@ -309,5 +311,84 @@ describe('F-R1 (revisión financiera) · reparar una partición antigua no vuelv
     const d = legacyRent(['2026-02-28', '2026-03-28', '2026-04-28'])
     expect(repairSplit(d, 'r2', at('2026-05-15'), 'r1')).toMatchObject({ ok: false, issues: [{ path: 'id', code: 'duplicateId' }] })
     expect(repairSplit(d, 'r2', at('2026-05-15'), 'no válido')).toMatchObject({ ok: false, issues: [{ path: 'id', code: 'invalidId' }] })
+  })
+})
+
+describe('F-R2 (revisión financiera) · partir en v14 un tramo que aún contaba desde la fecha movida no entierra la revisión', () => {
+  const s1 = income('2026-01-31', 300000, { id: 's1', name: 'Sueldo', frequency: 'monthly', endDate: '2026-02-27' })
+  const s2 = income('2026-02-28', 320000, { id: 's2', name: 'Sueldo', frequency: 'monthly' })
+  const fixture = () =>
+    baseData({
+      accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 180000, date: '2026-03-01', setAt: '2026-03-01T12:00:00.000Z' } })],
+      schedules: [s1, s2, bill('2026-03-29', 125000, { id: 'bill', name: 'Seguro', frequency: 'once' })],
+    })
+  const amountOnly = (s: Schedule, startDate: string, amountMinor: number, id: string): ScheduleDraft => {
+    const { createdAt: _c, updatedAt: _u, currency: _cur, skippedDates: _k, ...rest } = s
+    return { ...rest, id, startDate, amountMinor }
+  }
+  const split = (d: AppData, id: string, draft: ScheduleDraft, today: string) => {
+    const r = saveScheduleFrom(d, id, draft, at(today))
+    if (!r.ok) throw new Error(JSON.stringify(r.issues))
+    return r
+  }
+
+  it('el formulario propone el 28-mar (la fecha movida); el tramo nuevo hereda el 28 como `anchorDate` y se sigue proponiendo el 31; repararlo da 31-mar / 1 250 / 550', () => {
+    const d = fixture()
+    expect(defaultSplitDate(d, s2, '2026-03-15')).toBe('2026-03-28')
+    const r = split(d, 's2', amountOnly(s2, '2026-03-28', 330000, 's3'), '2026-03-15')
+    expect(r.value.next).toMatchObject({ id: 's3', anchorDate: '2026-02-28', startDate: '2026-03-28' })
+    expect(figures(r.data, '2026-03-21')).toEqual(['2026-03-28', 0, 180000])
+    expect(driftedSplits(r.data, '2026-03-21')).toEqual([
+      { scheduleId: 's3', endedId: 's2', name: 'Sueldo', anchor: '2026-01-31', startDate: '2026-03-28', from: '2026-03-28', current: ['2026-03-28', '2026-04-28', '2026-05-28'], proposed: ['2026-03-31', '2026-04-30', '2026-05-31'] },
+    ])
+    const fixed = repairSplit(r.data, 's3', at('2026-03-21'), 'unused')
+    if (!fixed.ok) throw new Error(JSON.stringify(fixed.issues))
+    expect(fixed.value).toMatchObject({ id: 's3', anchorDate: '2026-01-31', startDate: '2026-03-28', amountMinor: 330000 })
+    expect(fixed.data.schedules.map((s) => s.id)).toEqual(['s1', 's2', 'bill', 's3'])
+    expect(figures(fixed.data, '2026-03-21')).toEqual(['2026-03-31', 125000, 55000])
+    expect(driftedSplits(fixed.data, '2026-03-21')).toEqual([])
+    expect(validateAppData(persisted(fixed.data)).ok).toBe(true)
+  })
+
+  it('las cadenas legítimas de v14 siguen sin proponerse: partir una serie no movida (hereda el 31), partirla dos veces, un reanclaje explícito y un cambio de regla', () => {
+    const a = income('2026-01-31', 300000, { id: 'a', name: 'Sueldo', frequency: 'monthly' })
+    const base = baseData({ schedules: [a] })
+    const once = split(base, 'a', amountOnly(a, '2026-03-31', 310000, 'c1'), '2026-03-15')
+    expect(once.value.next.anchorDate).toBe('2026-01-31')
+    expect(driftedSplits(once.data, '2026-04-10')).toEqual([])
+    const twice = split(once.data, 'c1', amountOnly(once.value.next, '2026-05-31', 320000, 'c2'), '2026-05-10')
+    expect(twice.value.next.anchorDate).toBe('2026-01-31')
+    expect(driftedSplits(twice.data, '2026-06-10')).toEqual([])
+    const reanchored = split(base, 'a', amountOnly(a, '2026-03-30', 310000, 'c3'), '2026-03-15')
+    expect(reanchored.value.next.anchorDate).toBeUndefined()
+    expect(driftedSplits(reanchored.data, '2026-04-10')).toEqual([])
+    const quarterly = split(base, 'a', { ...amountOnly(a, '2026-03-31', 310000, 'c4'), frequency: 'quarterly' }, '2026-03-15')
+    expect(driftedSplits(quarterly.data, '2026-04-10')).toEqual([])
+  })
+
+  it('«Dejar como está» en el tramo antiguo vale para el que después herede su fecha; si el descarte desaparece, vuelve a proponerse', () => {
+    const d = fixture()
+    const kept = dismissSplitRepair(d, 's2', at('2026-03-15'))
+    if (!kept.ok) throw new Error('dismiss')
+    const r = split(kept.data, 's2', amountOnly(s2, '2026-03-28', 330000, 's3'), '2026-03-15')
+    expect(r.value.next.anchorDate).toBe('2026-02-28')
+    expect(driftedSplits(r.data, '2026-03-21')).toEqual([])
+    const undismissed: AppData = { ...r.data, inbox: { ...r.data.inbox, dismissed: [] } }
+    expect(driftedSplits(undismissed, '2026-03-21').map((f) => f.scheduleId)).toEqual(['s3'])
+  })
+
+  it('un tramo heredado con el 28-mar ya cobrado se repara partiendo: termina el 31-mar con su cobro y el nuevo cuenta el 31 desde el 1-abr', () => {
+    const r = split(fixture(), 's2', amountOnly(s2, '2026-03-28', 330000, 's3'), '2026-03-15')
+    const got = tx({ id: 'i3', kind: 'income', amountMinor: 330000, date: '2026-03-28', categoryId: 'salary', scheduleId: 's3', occurrenceDate: '2026-03-28' })
+    const d: AppData = { ...r.data, transactions: [got] }
+    const TODAY = '2026-04-10'
+    expect(driftedSplits(d, TODAY).map((f) => [f.scheduleId, f.from, f.current, f.proposed])).toEqual([['s3', '2026-04-01', ['2026-04-28', '2026-05-28', '2026-06-28'], ['2026-04-30', '2026-05-31', '2026-06-30']]])
+    const fixed = repairSplit(d, 's3', at(TODAY), 's4')
+    if (!fixed.ok) throw new Error(JSON.stringify(fixed.issues))
+    expect(fixed.data.schedules.find((s) => s.id === 's3')).toMatchObject({ endDate: '2026-03-31', anchorDate: '2026-02-28' })
+    expect(fixed.value).toMatchObject({ id: 's4', startDate: '2026-04-01', anchorDate: '2026-01-31', amountMinor: 330000 })
+    expect(computeBudget(fixed.data, TODAY).overdueIncomes.map((i) => i.key)).toEqual(computeBudget(d, TODAY).overdueIncomes.map((i) => i.key))
+    expect(computeBudget(fixed.data, TODAY).horizon?.endDate).toBe('2026-04-30')
+    expect(driftedSplits(fixed.data, TODAY)).toEqual([])
   })
 })

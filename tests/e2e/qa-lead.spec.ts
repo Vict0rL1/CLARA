@@ -12,6 +12,8 @@ import { shot } from './shots'
  * - F-05: la selección por teclado y por toque conserva fechas y cifras completas; las etiquetas de mes y año siguen igual.
  * - F-R1 (revisión financiera independiente): restaurar las fechas de siempre con pagos ya registrados en las fechas movidas no
  *   vuelve a contar lo pagado (el disponible no cambia; nada vencido; lo pagado sigue en su tramo).
+ * - F-R2: cambiar el importe «desde una fecha» (el formulario propone el 28-mar movido) del tramo aún movido de la copia v13
+ *   no entierra la revisión: el tramo nuevo se sigue proponiendo y restaurar da $550.00.
  * Datos sintéticos; relojes fijos; sin OCR ni cámara reales.
  */
 type Stored = { schedules: { id: string; startDate: string; endDate?: string; anchorDate?: string; amountMinor: number }[]; transactions: { id: string; scheduleId?: string; occurrenceDate?: string }[]; inbox: { dismissed: { id: string }[] }; history: unknown[] }
@@ -183,4 +185,34 @@ test('F-R1 · renta del 31 partida el 30-jun por una versión anterior y pagada 
   await expect(await available(page)).toHaveText('$2,100.00')
   await expect(page.getByText(/vencid/i)).toHaveCount(0)
   await shot(page, 'fr1-repaired-home')
+})
+
+test('F-R2 · copia v13 genuina: cambiar el importe «desde una fecha» del tramo movido (el formulario propone el 28-mar) deja la revisión en pie; restaurar el 31 → $550.00', async ({ page }) => {
+  await importV13(page)
+  await go(page, '/plan/programado/editar/salary-2')
+  await page.getByRole('radio', { name: 'Desde una fecha' }).check()
+  await expect(page.getByLabel('Desde (primera fecha con los cambios)')).toHaveValue('2026-03-28')
+  await page.getByLabel('Importe', { exact: true }).fill('2410')
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect(page.getByText(/^Cambio guardado desde el/).first()).toBeVisible()
+  await waitForSaved(page)
+  const after = await stored(page)
+  const next = after.schedules.find((s) => !['salary', 'bill', 'salary-2'].includes(s.id))
+  expect(next).toMatchObject({ startDate: '2026-03-28', anchorDate: '2026-02-28', amountMinor: 241000 })
+  expect(after.schedules.find((s) => s.id === 'salary-2')).toMatchObject({ endDate: '2026-03-27' })
+  await expect(await available(page)).toHaveText('$1,800.00')
+  await go(page, '/ajustes/datos')
+  const card = page.getByTestId('split-repair')
+  await expect(card).toBeVisible()
+  await expect(card.getByTestId('split-repair-current')).toContainText('28 mar')
+  await expect(card.getByTestId('split-repair-proposed')).toContainText('31 mar')
+  await shot(page, 'fr2-repair-card-after-v14-split', card)
+  await card.getByRole('button', { name: 'Restaurar las fechas de siempre' }).click()
+  await page.getByRole('dialog', { name: '¿Restaurar las fechas de siempre de «Sueldo»?' }).getByRole('button', { name: 'Restaurar las fechas de siempre' }).click()
+  await expect(page.getByText('Fechas de siempre restauradas').first()).toBeVisible()
+  await waitForSaved(page)
+  expect((await stored(page)).schedules.find((s) => s.id === next!.id)).toMatchObject({ startDate: '2026-03-28', anchorDate: '2026-01-31', amountMinor: 241000 })
+  await page.reload()
+  await go(page, '/')
+  await expect(await available(page)).toHaveText('$550.00')
 })

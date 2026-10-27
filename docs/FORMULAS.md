@@ -1478,13 +1478,19 @@ compactos ni se redondean para calcular.
   nuevo contando desde la fecha elegida: un sueldo del 31 partido el 28-feb (el 31 movido) pasaba a
   cobrarse el 28. La migración 13 → 14 no lo corrige a ciegas (no adivina intenciones ni reescribe
   fechas): el dato que lo arregla (`anchorDate`) lo decide la persona.
-- **Detección** (`driftedSplits(data, hoy)`), conservadora (ante la duda, nada): un tramo B que repite,
-  sin `anchorDate` y activo (sin fin o con fin ≥ hoy); un tramo A del mismo nombre, tipo y regla
-  (frecuencia, intervalo, segundo día) que termina el día antes de que B empiece; B empieza en una
-  fecha de la serie de A (si no, fue un reanclaje explícito y se respeta); y con la fecha de siempre las
-  próximas ocurrencias de B (400 días) serían otras. La fecha de siempre es `anchorOf` del primer tramo
-  de la cadena (A pudo ser a su vez un tramo partido: 31 → 28-feb → 28-abr propone el 31). Lo que la
-  versión corregida parte nunca aparece (lleva `anchorDate` o no se desplaza).
+- **Detección** (`driftedSplits(data, hoy)`), conservadora (ante la duda, nada): un tramo B que repite y
+  está activo (sin fin o con fin ≥ hoy) y que no fija su fecha él mismo: sin `anchorDate`, o con el
+  `anchorDate` que HEREDÓ tal cual del tramo anterior (`anchorOf` de A); un tramo A del mismo nombre,
+  tipo y regla (frecuencia, intervalo, segundo día) que termina el día antes de que B empiece; B empieza
+  en una fecha de la serie de A (si no, fue un reanclaje explícito y se respeta); y con la fecha de
+  siempre las próximas ocurrencias de B (400 días) serían otras. La fecha de siempre es `anchorOf` del
+  primer tramo de la cadena: se sube por los tramos que heredaron su fecha y se para en el primero que la
+  fijó él mismo (A pudo ser a su vez un tramo partido: 31 → 28-feb → 28-abr propone el 31). Lo que la
+  versión corregida parte de una serie NO movida nunca aparece (hereda la fecha de siempre y no se
+  desplaza); lo que parte de un tramo AÚN movido hereda la fecha movida como `anchorDate` (revisión
+  financiera independiente del 2026-10-27, F-R2: el formulario propone el 28-mar y el tramo nuevo
+  seguiría contando el 28 para siempre) y se sigue proponiendo con la fecha de siempre de la cadena; un
+  «Dejar como está» en un tramo vale también para los que después hereden su fecha.
 - **Qué se muestra** (Ajustes › Datos): nombre, «hoy cuenta desde el {fecha}: próximas 3 fechas» y
   «como siempre (la serie se fija el {fecha}): próximas 3 fechas», con «Descargar copia antes».
 - **Reparar** (`repairSplit`, con confirmación) nunca vuelve a contar lo ya pagado (revisión financiera
