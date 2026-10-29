@@ -220,12 +220,27 @@ export function repairSplit(data: AppData, scheduleId: string, ctx: OpContext, n
           : sc,
       )
   const prefix = duePrefix(s.id)
-  // Un aplazamiento sigue a su ocurrencia si esta tiene fecha de siempre; si no, se queda donde está (inerte).
-  const snoozed = data.inbox.snoozed.map((z) => {
-    if (!z.id.startsWith(prefix)) return z
-    const date = z.id.slice(prefix.length)
-    return moved(date) && remap(date) !== date ? { ...z, id: `${duePrefix(target)}${remap(date)}` } : z
-  })
+  // Un aplazamiento sigue a su ocurrencia (id del tramo que la lleva y fecha de siempre) con su `until` y su `at`;
+  // también cuando la fecha coincide en las dos series y solo cambia el id (auditoría del 2026-10-29, QA27-02: el
+  // 28-feb aplazado hasta el 5-mar volvía a avisar en cuanto pasaba al tramo nuevo). Uno sin ocurrencia equivalente
+  // se queda donde está (inerte, nunca se inventa otro) y nunca quedan dos con el mismo id.
+  const seen = new Map<string, number>()
+  const snoozed: typeof data.inbox.snoozed = []
+  for (const z of data.inbox.snoozed) {
+    let item = z
+    if (z.id.startsWith(prefix)) {
+      const date = z.id.slice(prefix.length)
+      const to = remap(date)
+      if (moved(date) && occurrencesBetween(repaired, to, to).length > 0) item = { ...z, id: `${duePrefix(target)}${to}` }
+    }
+    const dup = seen.get(item.id)
+    if (dup !== undefined) {
+      if (item.until > snoozed[dup]!.until) snoozed[dup] = item
+      continue
+    }
+    seen.set(item.id, snoozed.length)
+    snoozed.push(item)
+  }
 
   return { ok: true, data: touch({ ...data, schedules, goals, templates, scenarios, inbox: { ...data.inbox, snoozed } }, ctx.now), value: repaired }
 }

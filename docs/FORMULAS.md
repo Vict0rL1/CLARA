@@ -1523,7 +1523,10 @@ compactos ni se redondean para calcular.
   fecha». Desde `from`, la k-ésima ocurrencia tal como está pasa a ser la k-ésima de la serie de siempre
   (misma regla: van a la par periodo a periodo): una fecha omitida sigue omitida en la fecha de siempre
   de su periodo (el 28-abr omitido → el 30-abr omitido), un gasto planificado vinculado y un
-  aplazamiento siguen a su ocurrencia (y al tramo nuevo), y plantillas y escenarios pasan al tramo nuevo;
+  aplazamiento siguen a su ocurrencia (y al tramo nuevo) con sus metadatos, también cuando la fecha
+  coincide en las dos series y solo cambia el id (el 28-feb aplazado hasta el 5-mar sigue aplazado en
+  el tramo nuevo; auditoría del 2026-10-29, QA27-02), nunca quedan dos aplazamientos con el mismo id y
+  uno sin ocurrencia equivalente se queda donde está (inerte); plantillas y escenarios pasan al tramo nuevo;
   un vínculo sin fecha equivalente (la serie termina antes) se rechaza (`splitLinkedGoal`) y nada cambia.
   Lo vencido sin pago registrado también pasa a su fecha de siempre (el 28-mar que pasó sin cobrarse no es
   «ingreso retrasado»: es el 31 que aún no llega). Importe y fin no cambian. Antes se guarda una copia local
