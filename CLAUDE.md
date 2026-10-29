@@ -71,7 +71,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   parcial), llevada a su fecha de siempre: lo pagado se queda en su fecha y nunca se cuenta dos veces (si hace falta, el
   tramo termina ahí y uno nuevo con `anchorDate` sigue, como al partir «desde una fecha»; omitidas y vínculos siguen a
   su periodo, y un aplazamiento sigue a su ocurrencia aunque la fecha coincida y solo cambie el id —QA27-02—; revisión
-  financiera F-R1), con confirmación, copia local previa y una sola entrada en el historial; «Dejar
+  financiera F-R1), con confirmación, copia local previa (sin copia local posible, solo con una copia descargada desde
+  la tarjeta de los datos tal como están; QA27-04) y una sola entrada en el historial; «Dejar
   como está» (`dismissSplitRepair`) es un descarte de la bandeja con huella y nunca cambia fechas.
 - Operaciones idempotentes: el id se genera al abrir el formulario; guardar dos veces
   actualiza el mismo registro.
@@ -146,7 +147,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   exacto; saldos usan el movimiento, reportes/límites/búsqueda las líneas. Las reglas de
   categoría nunca pisan una división. Devoluciones repartidas sin superar lo pendiente.
 - Bandeja de pendientes (`domain/inbox.ts`): avisos CALCULADOS con ids estables; solo se
-  guarda posponer/descartar (con huella). Nunca elimina ni combina duplicados. Las sugerencias de pagos
+  guarda posponer/descartar (con huella). Nunca elimina ni combina duplicados; como mucho 50 parejas de posibles
+  duplicados por grupo, en orden fijo (`DUPLICATE_PAIRS_PER_GROUP`; QA27-03b). Las sugerencias de pagos
   fijos (`domain/recurringDetect.ts`: mismo comercio, mismo importe exacto, cadencia regular y activa) solo
   abren el formulario relleno; nunca se programa nada solo y no cuentan como pendientes.
 - Distribuir un ingreso (`domain/incomeDistribution.ts`): solo ingresos realizados; crea

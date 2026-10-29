@@ -87,6 +87,12 @@ export interface InboxView {
 export const VERIFY_EVERY_DAYS = 30
 /** Ventana para posibles duplicados (mismo importe y cuenta). */
 export const DUPLICATE_WINDOW_DAYS = 3
+/**
+ * Tope de parejas por grupo (mismo tipo, cuenta e importe). Más allá no son duplicados sueltos que alguien vaya a
+ * revisar uno a uno sino un volcado masivo, y la lista crecía al cuadrado: 5 000 movimientos iguales el mismo día
+ * eran 12,5 millones de avisos y la pestaña se quedaba sin memoria (auditoría del 2026-10-29, QA27-03b).
+ */
+export const DUPLICATE_PAIRS_PER_GROUP = 50
 
 const CATCH_ALL = new Set(['other_expense', 'other_income'])
 
@@ -144,7 +150,9 @@ export function possibleDuplicates(data: Pick<AppData, 'transactions'>): [Transa
   for (const list of groups.values()) {
     if (list.length < 2) continue
     list.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.id < b.id ? -1 : 1))
-    for (let i = 0; i < list.length; i++) {
+    // Orden fijo (fecha, id): las primeras parejas son siempre las mismas y sus ids no cambian de una vez a otra.
+    let produced = 0
+    outer: for (let i = 0; i < list.length; i++) {
       for (let j = i + 1; j < list.length; j++) {
         const a = list[i]!
         const b = list[j]!
@@ -154,6 +162,7 @@ export function possibleDuplicates(data: Pick<AppData, 'transactions'>): [Transa
         const nb = normalizeText(b.note ?? '')
         if (na && nb && na !== nb) continue
         pairs.push(a.id < b.id ? [a, b] : [b, a])
+        if (++produced >= DUPLICATE_PAIRS_PER_GROUP) break outer
       }
     }
   }

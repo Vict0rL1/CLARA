@@ -865,7 +865,11 @@ pago>`, `dup:<a>:<b>`, `bal:<cuenta>:<motivo>`, `int:…`), así nunca aparecen 
   registrarse ni omitirse. Texto neutral: «puede que ya lo hayas pagado».
 - **Posibles duplicados:** mismo tipo, cuenta e importe, a ±3 días y misma nota (o sin
   nota). Nunca: transferencias, ajustes, líneas de una compra dividida ni pagos parciales
-  de la misma ocurrencia. Solo es una sugerencia: nada se elimina ni combina.
+  de la misma ocurrencia. Solo es una sugerencia: nada se elimina ni combina. Por grupo (mismo
+  tipo, cuenta e importe) se listan como mucho `DUPLICATE_PAIRS_PER_GROUP` = 50 parejas, en orden
+  fijo (fecha, id): más allá no son duplicados sueltos sino un volcado masivo, y la lista crecía al
+  cuadrado (5 000 movimientos iguales el mismo día = 12,5 millones de avisos: la pestaña se quedaba
+  sin memoria, también en `21b4ed8`; auditoría del 2026-10-29, QA27-03b).
 - **Saldos por verificar:** cuentas del presupuesto y tarjetas nunca verificadas, verificadas
   hace más de 30 días o con la verificación «por revisar». Muestra por separado el
   **último movimiento registrado** y la **última verificación con el banco**.
@@ -1538,8 +1542,12 @@ compactos ni se redondean para calcular.
   un vínculo sin fecha equivalente (la serie termina antes) se rechaza (`splitLinkedGoal`) y nada cambia.
   Lo vencido sin pago registrado también pasa a su fecha de siempre (el 28-mar que pasó sin cobrarse no es
   «ingreso retrasado»: es el 31 que aún no llega). Importe y fin no cambian. Antes se guarda una copia local
-  «antes de restaurar» (si no se puede guardar, no se repara) y el cambio queda en el historial como una
-  sola entrada (los dos tramos vuelven a ser uno al revertir). La auditoría: saldo CAD 1 800, seguro de
+  «antes de restaurar»; si no se puede guardar, o este navegador no guarda copias locales (sin IndexedDB,
+  con el respaldo en `localStorage`), NO se repara salvo que haya una copia descargada desde la propia
+  tarjeta («Descargar copia antes») de los datos tal como están ahora (`updatedAt` igual; si algo cambió
+  después, hay que descargarla de nuevo): la tarjeta lo avisa, la confirmación lo dice y la negativa no
+  cambia nada (auditoría del 2026-10-29, QA27-04). El cambio queda en el historial como una sola entrada
+  (los dos tramos vuelven a ser uno al revertir). La auditoría: saldo CAD 1 800, seguro de
   1 250 el 29-mar, sueldo del 31 partido el 28-feb: antes horizonte 28-mar, 0 reservados, 1 800
   disponibles; reparado, horizonte 31-mar, 1 250 reservados, 550 disponibles, también tras recargar y en la
   copia. Con pagos: renta del 31 partida el 28-feb y pagada el 28-feb, 28-mar y 28-abr, hoy 15-may: B
