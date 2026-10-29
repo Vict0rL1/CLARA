@@ -113,7 +113,13 @@ export function History() {
                       <p className="note note--icon">{tn('history.dependents', dependents.length)}</p>
                       <ul className="bullets history-details">
                         {dependents.map((d) => (
-                          <li key={`${d.kind}:${d.id}`}>{d.kind === 'snooze' ? t('history.dependent.snooze', { date: fmt.date(d.name, { compact: true, today }) }) : t(`history.dependent.${d.kind}`, { name: d.name })}</li>
+                          <li key={`${d.kind}:${d.id}`}>
+                            {d.kind === 'snooze'
+                              ? t('history.dependent.snooze', { date: fmt.date(d.name, { compact: true, today }) })
+                              : d.kind === 'payment'
+                                ? t('history.dependent.payment', { date: fmt.date(d.name, { compact: true, today }), amount: fmt.money(d.amountMinor ?? 0) })
+                                : t(`history.dependent.${d.kind}`, { name: d.name })}
+                          </li>
                         ))}
                       </ul>
                     </div>

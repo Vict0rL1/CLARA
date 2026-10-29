@@ -7,7 +7,8 @@
 import { canChangeCurrency } from './currencyChange'
 import { currentValue, sameValue, setValue, setValues } from './history'
 import type { OpContext, OpResult } from './operations'
-import type { AppData, HistoryChange, HistoryCollection, HistoryEntry, LocalDate } from './types'
+import { occurrencesBetween } from './recurrence'
+import type { AppData, HistoryChange, HistoryCollection, HistoryEntry, LocalDate, Schedule, Transaction } from './types'
 
 const same = sameValue
 
@@ -50,13 +51,19 @@ function revertedState(data: AppData, entry: HistoryEntry, today?: LocalDate): A
   return next
 }
 
-/** Un registro que seguiría apuntando a un programado que la reversión eliminaría (F-02). */
+/**
+ * Un registro que seguiría apuntando a un programado que la reversión eliminaría (F-02), o un pago o cobro realizado
+ * vinculado a una ocurrencia que dejaría de existir (QA27-01): tramo eliminado, u otra fecha de siempre, regla, inicio
+ * o fin bajo el mismo id.
+ */
 export interface RevertDependent {
-  kind: 'template' | 'scenario' | 'goal' | 'snooze'
+  kind: 'template' | 'scenario' | 'goal' | 'snooze' | 'payment'
   id: string
-  /** Nombre del registro (plantilla, escenario o meta); la fecha de la ocurrencia para un aplazamiento. */
+  /** Nombre del registro (plantilla, escenario o meta); la fecha de la ocurrencia para un aplazamiento o un pago. */
   name: string
   scheduleId: string
+  /** Solo pagos: el importe registrado. */
+  amountMinor?: number
 }
 
 /**
@@ -81,21 +88,52 @@ function scheduleReferences(data: AppData, today?: LocalDate): RevertDependent[]
   return out
 }
 
+/** ¿`date` es una ocurrencia de la serie (sin mirar las omitidas: una omitida pagada tampoco se reserva dos veces)? */
+const hasOccurrence = (s: Schedule, date: LocalDate) => occurrencesBetween(s, date, date).length > 0
+
+/** ¿El movimiento liquida (del todo o en parte) una ocurrencia que existe en estos programados? */
+function settles(t: Transaction | undefined, schedules: Map<string, Schedule>): boolean {
+  if (!t || t.status !== 'realized' || !t.scheduleId || !t.occurrenceDate) return false
+  const s = schedules.get(t.scheduleId)
+  return s !== undefined && hasOccurrence(s, t.occurrenceDate)
+}
+
 /**
  * Auditoría de seguimiento (F-02): registros que, tras revertir, seguirían apuntando a un programado que la reversión
  * elimina (plantillas de distribución, escenarios, gastos planificados vinculados y aplazamientos). Pasa con una
  * entrada de partición grabada antes de v14 (solo instantáneas de programados) y con una plantilla o escenario creados
  * DESPUÉS de una partición corregida: las instantáneas de la entrada no los cubren. Solo cuentan las referencias que
  * hoy resuelven y dejarían de resolver (una línea que ya apuntaba a un programado borrado sigue siendo lo que era).
- * Vacío si la entrada no elimina ningún programado (ni se calcula el estado candidato).
+ *
+ * Auditoría independiente del 2026-10-29 (QA27-01, P1): también cuentan los pagos y cobros realizados (finales,
+ * parciales, adelantados, del día o de la confirmación automática) vinculados a una ocurrencia que hoy existe y que
+ * tras revertir no existiría: porque el tramo desaparece (partición o reparación partida) o porque el mismo id
+ * cambiaría de fecha de siempre, regla, inicio o fin (reparación en el sitio). Si se revirtiera, el pago seguiría
+ * registrado pero ya no liquidaría nada y la ocurrencia restaurada volvería a reservarse: el mismo dinero dos veces.
+ * Un pago que la propia entrada registró no cuenta (la reversión lo retira), ni uno que ya no resolvía antes.
+ * Vacío si la entrada no toca programados ni movimientos (ni se calcula el estado candidato).
  */
 export function revertDependents(data: AppData, entry: HistoryEntry, today?: LocalDate): RevertDependent[] {
-  if (!entry.changes.some((c) => c.collection === 'schedules' && c.before === null)) return []
+  const touchesSchedules = entry.changes.some((c) => c.collection === 'schedules')
+  if (!touchesSchedules && !entry.changes.some((c) => c.collection === 'transactions')) return []
   const next = revertedState(data, entry, today)
-  const remaining = new Set(next.schedules.map((s) => s.id))
-  const removed = new Set(data.schedules.filter((s) => !remaining.has(s.id)).map((s) => s.id))
-  if (removed.size === 0) return []
-  return scheduleReferences(next, today).filter((r) => removed.has(r.scheduleId))
+  const before = new Map(data.schedules.map((s) => [s.id, s]))
+  const after = new Map(next.schedules.map((s) => [s.id, s]))
+  const out: RevertDependent[] = []
+  if (touchesSchedules) {
+    const removed = new Set(data.schedules.filter((s) => !after.has(s.id)).map((s) => s.id))
+    if (removed.size > 0) out.push(...scheduleReferences(next, today).filter((r) => removed.has(r.scheduleId)))
+  }
+  // Pagos: con programados tocados, todos los vinculados; si la entrada solo toca movimientos, basta con esos.
+  const current = new Map(data.transactions.map((t) => [t.id, t]))
+  const own = new Set(entry.changes.filter((c) => c.collection === 'transactions').map((c) => c.id))
+  for (const t of next.transactions) {
+    if (!touchesSchedules && !own.has(t.id)) continue
+    const now = current.get(t.id)
+    if (!settles(now, before) || settles(t, after)) continue
+    out.push({ kind: 'payment', id: t.id, name: now!.occurrenceDate!, scheduleId: now!.scheduleId!, amountMinor: now!.amountMinor })
+  }
+  return out
 }
 
 export function canRevert(data: AppData, entry: HistoryEntry, today?: LocalDate): 'ok' | 'notRevertible' | 'alreadyReverted' | 'conflict' | 'dependents' {

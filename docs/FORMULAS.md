@@ -967,9 +967,19 @@ Código: `src/domain/history.ts`. Pantalla: `Ajustes › Historial de cambios`.
   (`scheduleAmount`), gastos planificados vinculados (`plan.link`) y aplazamientos (`due:schedule:<id>:`)
   vigentes: uno caducado (`until` ≤ hoy) es inerte —la bandeja lo ignora y el siguiente aplazamiento lo
   retira, R5— y no cuenta (revisión de seguridad y almacenamiento del 2026-10-27, S-R1; sin `today` se
-  sigue contando, como en la poda de `revertedState`).
+  sigue contando, como en la poda de `revertedState`). También cuentan los pagos y cobros realizados
+  (finales, parciales, adelantados, del día o de la confirmación automática) vinculados a una ocurrencia
+  que hoy existe y que tras revertir no existiría: porque el tramo desaparece (partición o reparación
+  partida) o porque el mismo id cambiaría de fecha de siempre, regla, inicio o fin (reparación en el
+  sitio); auditoría independiente del 2026-10-29, QA27-01 (P1): si se revirtiera, el pago seguiría
+  registrado sin liquidar nada y la ocurrencia restaurada volvería a reservarse (1 400 de saldo, factura
+  de 420 pagada el 29-mar para el 31-mar corregido: 980 disponibles; al revertir salían 560 con el 28-mar
+  «vencido»). El mismo hueco existía desde `46fe617` para partición → pago → revertir. Un pago que la
+  propia entrada registró no cuenta (la reversión lo retira), ni uno que ya no resolvía antes; una entrada
+  que solo toca movimientos comprueba los suyos (así la lista del historial no recorre todos los pagos).
   Si hay alguno, `canRevert` devuelve `dependents`, la pantalla lista cada registro (plantilla, escenario,
-  gasto planificado o aviso del {fecha}) y `revertEntry` rechaza con `revertDependents` sin cambiar nada.
+  gasto planificado, aviso del {fecha} o «Pago registrado para el {fecha} ({importe})») y `revertEntry`
+  rechaza con `revertDependents` sin cambiar nada.
   Pasa con una entrada grabada antes de v14 (solo instantáneas de programados, aunque la partición movió
   plantillas, escenarios y aplazamientos) y con una plantilla, escenario o meta creados DESPUÉS de una
   partición corregida. Solo cuentan las referencias que hoy resuelven y dejarían de resolver: una línea
