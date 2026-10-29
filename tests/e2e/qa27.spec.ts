@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import type { AppData } from '../../src/domain/types'
 import { account, baseData, bill, tx } from '../../src/test/fixtures'
-import { available, expectNoHorizontalScroll, go, openApp, seedStoredData, storedData, waitForSaved } from './helpers'
+import { available, expectNoHorizontalScroll, go, openApp, storedData, waitForSaved, writeStoredData } from './helpers'
 import { shot } from './shots'
 
 /**
@@ -17,6 +17,15 @@ type Stored = { schedules: { id: string; startDate: string; endDate?: string; an
 const stored = async (page: Page) => JSON.parse((await storedData(page)) ?? '{}') as Stored
 const anchor = (amountMinor: number, date: string) => ({ amountMinor, date, setAt: `${date}T12:00:00.000Z` })
 const clock = (iso: string) => new Date(`${iso}T12:00:00-04:00`)
+
+/** Como `seedStoredData`, pero con el reloj fijado en la fecha del caso (el ayudante genérico lo deja en el 28-sep-2026). */
+async function seedAt(page: Page, data: AppData, iso: string) {
+  await openApp(page, clock(iso))
+  await expect(page.getByRole('heading', { name: 'Hola, esto es Clara' })).toBeVisible()
+  await writeStoredData(page, data)
+  await page.reload()
+  await expect(page.getByTestId('available')).toBeVisible()
+}
 
 /* ------------------------------------------------------------------ */
 /* QA27-01 · reparar, pagar, revertir                                   */
@@ -49,10 +58,7 @@ async function restoreUsualDates(page: Page, name: string) {
 }
 
 test('QA27-01 · reparar el 20-mar, pagar el 31-mar el 29-mar ($980.00) y revertir la reparación: se rechaza por el pago y sigue en $980.00 tras recargar', async ({ page }) => {
-  await page.clock.install({ time: clock('2026-03-20') })
-  await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Hola, esto es Clara' })).toBeVisible()
-  await seedStoredData(page, internet())
+  await seedAt(page, internet(), '2026-03-20')
   await restoreUsualDates(page, 'Internet')
   expect((await stored(page)).schedules.find((s) => s.id === 'b2')).toMatchObject({ anchorDate: '2026-01-31' })
 
@@ -105,10 +111,7 @@ test('QA27-02 · el 28-feb-2027 vencido y aplazado hasta el 5-mar sigue aplazado
     ],
     inbox: { snoozed: [{ id: 'due:schedule:r2:2027-02-28', until: '2027-03-05', at: '2027-02-28T12:00:00.000Z' }], dismissed: [] },
   })
-  await page.clock.install({ time: clock('2027-03-01') })
-  await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Hola, esto es Clara' })).toBeVisible()
-  await seedStoredData(page, data)
+  await seedAt(page, data, '2027-03-01')
   await go(page, '/pendientes')
   await expect(page.locator('article', { hasText: '«Renta»' })).toHaveCount(0)
   await expect(page.getByText(/Pospuesto \(1\)/)).toBeVisible()
@@ -137,10 +140,7 @@ test('QA27-03 · 5 000 gastos y 5 000 devoluciones de 987 654 321 000: Análisis
     accounts: [account({ id: 'main', name: 'Principal', anchor: anchor(0, '2026-08-01') })],
     transactions: [...many('e', '2026-09-10', 'expense'), ...many('r', '2026-10-10', 'refund')],
   })
-  await page.clock.install({ time: clock('2026-10-27') })
-  await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Hola, esto es Clara' })).toBeVisible()
-  await seedStoredData(page, data)
+  await seedAt(page, data, '2026-10-27')
   await go(page, '/analisis')
   await expect(page.getByText(/Este mes llevas un 200 % menos de gasto/)).toBeVisible()
   await shot(page, 'qa27-03-analysis-minus-200', page.getByText(/200 % menos/))
@@ -213,10 +213,7 @@ test('QA27-04 · sin IndexedDB (datos en localStorage): restaurar sin copia se r
 })
 
 test('QA27-04 · si la copia local no se puede guardar (IndexedDB rechaza la escritura), restaurar se rechaza y nada cambia; con una copia descargada, se restaura', async ({ page }) => {
-  await page.clock.install({ time: clock('2026-03-15') })
-  await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Hola, esto es Clara' })).toBeVisible()
-  await seedStoredData(page, salary())
+  await seedAt(page, salary(), '2026-03-15')
   // Solo el almacén de copias locales rechaza escribir; el presupuesto se guarda con normalidad.
   await page.evaluate(() => {
     const real = IDBObjectStore.prototype.put
@@ -246,10 +243,7 @@ test('QA27-04 · si la copia local no se puede guardar (IndexedDB rechaza la esc
 })
 
 test('QA27-04 · con IndexedDB la copia local «antes de restaurar» existe, se puede ver y restaurar, y la reparación no se aplica dos veces', async ({ page }) => {
-  await page.clock.install({ time: clock('2026-03-15') })
-  await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Hola, esto es Clara' })).toBeVisible()
-  await seedStoredData(page, salary())
+  await seedAt(page, salary(), '2026-03-15')
   await restoreUsualDates(page, 'Sueldo')
   await expect(page.getByTestId('split-repair')).toHaveCount(0)
   await go(page, '/ajustes/copias-locales')
