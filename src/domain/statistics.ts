@@ -5,7 +5,7 @@
  */
 import { addDays, daysBetween, weekday } from './dates'
 import { periodSummary, type CategorySpending } from './insights'
-import { checkedPercentChange, floorDiv, mulDivFloor, sumMinor } from './money'
+import { checkedPercentChange, checkedSubMinor, floorDiv, mulDivFloor, sumMinor } from './money'
 import { getPeriod, type Period } from './periods'
 import { estimateDailySpend, projectBalance } from './projection'
 import { txMerchantKey } from './statsFilter'
@@ -45,15 +45,15 @@ export function shiftRange(range: StatsRange, type: StatsPeriodType, settings: S
 }
 
 export interface Delta {
-  diffMinor: number
-  /** Porcentaje entero; `null` si la base es 0 o no hay datos comparables. */
+  /** Diferencia exacta; `null` si no cabe en un entero exacto (QA27-03: dos totales que caben pueden no restarse). */
+  diffMinor: number | null
+  /** Porcentaje entero; `null` si la base es 0, no hay datos comparables o la cifra no cabe. */
   percent: number | null
 }
 
 function delta(current: number, previous: number, comparable: boolean): Delta {
-  const diffMinor = current - previous
-  // Entero truncado hacia cero (F-R3): −9,99 % se muestra como −9 %, igual que +9,99 % como 9 %.
-  return { diffMinor, percent: comparable && previous > 0 ? checkedPercentChange(diffMinor, previous) : null }
+  // Entero truncado hacia cero (F-R3): −9,99 % se muestra como −9 %, igual que +9,99 % como 9 %; desde los operandos.
+  return { diffMinor: checkedSubMinor(current, previous), percent: comparable && previous > 0 ? checkedPercentChange(current, previous) : null }
 }
 
 export interface PeriodStats {

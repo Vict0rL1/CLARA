@@ -1215,6 +1215,7 @@ export const fr: Record<keyof typeof es, string> = {
   'weekly.more': '{amount} de plus',
   'weekly.less': '{amount} de moins',
   'weekly.noPercent': 'pas de pourcentage (la semaine précédente était à 0)',
+  'weekly.noDifference': 'la différence ne tient pas dans un chiffre exact',
   'weekly.noRecordsNote': 'Vous n’avez enregistré aucune opération cette semaine. Si vous avez dépensé de l’argent, ajoutez-le pour que la revue soit utile.',
   'weekly.toSavings': 'Envoyé vers les comptes d’épargne (virements) : {amount}',
   'weekly.goalContributions': 'Mis de côté pour les objectifs : {amount}',

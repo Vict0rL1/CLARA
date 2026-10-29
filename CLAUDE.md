@@ -124,9 +124,11 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   desde el calendario, lo pagado consume lo apartado en el cálculo aunque no se haya cerrado.
 - Presupuestos por periodo: asignado ≠ disponible; solo guardan ids (`txIds`); solapados
   cuentan una vez en el total; la reserva opcional es una meta que lo gastado consume.
-- Análisis (`domain/analysis.ts`): el porcentaje de gasto a fecha equivalente es `checkedMulDivFloor(diferencia, 100,
-  anterior)`; si el cociente no cabe en un entero exacto la señal sale sin `percent` y la pantalla lo dice
-  (`insights.*.titleNoFigure`), nunca una cifra inexacta ni una pantalla rota (F-03).
+- Análisis (`domain/analysis.ts`): el porcentaje de gasto a fecha equivalente es `checkedPercentChange(actual,
+  anterior)` (BigInt desde los operandos, truncado hacia cero; dos totales que caben pueden tener una diferencia que no
+  cabe, QA27-03); si el cociente no cabe en un entero exacto la señal sale sin `percent` y la pantalla lo dice
+  (`insights.*.titleNoFigure`), la fila «diferencia» solo sale si cabe (`checkedSubMinor`), nunca una cifra inexacta ni
+  una pantalla rota (F-03). Estadísticas y Revisión semanal usan los mismos dos ayudantes (`diffMinor` `null` → se dice).
 - Límite sugerido (`domain/planSuggestion.ts`): mediana del gasto neto de los últimos 3 ciclos completos con
   datos (≥ 2), redondeada hacia arriba a una unidad; sin IA; «Usar» solo rellena el importe.
 - Hitos de metas (`domain/goalMilestones.ts`): 25/50/75/100 % en enteros, solo el más alto y solo 7 días desde

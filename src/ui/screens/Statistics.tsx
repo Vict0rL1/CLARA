@@ -29,14 +29,16 @@ const A_SUNDAY = '2026-01-04'
 
 function DeltaText({ delta, fmt, invert }: { delta: Delta; fmt: Formatter; invert?: boolean }) {
   const { t } = useT()
-  if (delta.percent === null && delta.diffMinor === 0) return <span className="stat__delta stat__delta--neutral">{t('stats.noComparison')}</span>
-  const up = delta.diffMinor > 0
+  // Sin cifra alguna (base 0, datos no comparables o una diferencia que no cabe en un entero exacto, QA27-03): se dice.
+  const signed = delta.diffMinor ?? delta.percent
+  if (signed === null || (delta.percent === null && delta.diffMinor === 0)) return <span className="stat__delta stat__delta--neutral">{t('stats.noComparison')}</span>
+  const up = signed > 0
   const good = invert ? !up : up
-  const tone = delta.diffMinor === 0 ? 'neutral' : good ? 'good' : 'bad'
+  const tone = signed === 0 ? 'neutral' : good ? 'good' : 'bad'
   return (
     <span className={`stat__delta stat__delta--${tone}`}>
-      <Icon name={delta.diffMinor === 0 ? 'check' : up ? 'arrowUp' : 'arrowDown'} size={14} />
-      {delta.percent === null ? fmt.money(delta.diffMinor, { sign: true }) : `${delta.percent > 0 ? '+' : ''}${delta.percent} %`}
+      <Icon name={signed === 0 ? 'check' : up ? 'arrowUp' : 'arrowDown'} size={14} />
+      {delta.percent === null ? fmt.money(delta.diffMinor ?? 0, { sign: true }) : `${delta.percent > 0 ? '+' : ''}${delta.percent} %`}
       <span className="sr-only"> {t('stats.vsPrevious')}</span>
     </span>
   )

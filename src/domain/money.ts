@@ -131,14 +131,25 @@ export function checkedMulDivFloor(a: number, num: number, den: number): number 
   return toSafeMinor(q)
 }
 
+/** Diferencia exacta `a − b` de dos importes enteros; `null` si no cabe en un entero exacto (QA27-03). */
+export function checkedSubMinor(a: number, b: number): number | null {
+  if (!Number.isSafeInteger(a) || !Number.isSafeInteger(b)) throw new Error('checkedSubMinor requiere enteros')
+  return toSafeMinor(BigInt(a) - BigInt(b))
+}
+
 /**
- * Variación porcentual entera de `diff` sobre `base` (> 0), truncada HACIA CERO: −9,99 % es −9, igual que +9,99 % es 9
- * (revisión financiera independiente del 2026-10-27, F-R3: con `floor` una bajada del 9,99 % salía como −10 y cruzaba
- * un umbral «desde ±10 %» que la subida equivalente no cruzaba). `null` si la cifra no cabe en un entero exacto.
+ * Variación porcentual entera de `current` frente a `previous` (> 0), truncada HACIA CERO: −9,99 % es −9, igual que
+ * +9,99 % es 9 (revisión financiera independiente del 2026-10-27, F-R3: con `floor` una bajada del 9,99 % salía como
+ * −10 y cruzaba un umbral «desde ±10 %» que la subida equivalente no cruzaba). Se calcula desde los OPERANDOS con
+ * BigInt: dos totales que caben en un entero exacto pueden tener una diferencia que no cabe (auditoría del
+ * 2026-10-29, QA27-03: 4 938 271 605 000 000 frente a −4 938 271 605 000 000 es −200 % exactos). `null` si la cifra no
+ * cabe en un entero exacto.
  */
-export function checkedPercentChange(diff: number, base: number): number | null {
-  const magnitude = checkedMulDivFloor(Math.abs(diff), 100, base)
-  return magnitude === null ? null : diff < 0 ? -magnitude : magnitude
+export function checkedPercentChange(current: number, previous: number): number | null {
+  if (!Number.isSafeInteger(current) || !Number.isSafeInteger(previous) || previous <= 0) throw new Error('checkedPercentChange requiere enteros y una base positiva')
+  const diff = BigInt(current) - BigInt(previous)
+  const magnitude = toSafeMinor(((diff < 0n ? -diff : diff) * 100n) / BigInt(previous))
+  return magnitude === null ? null : diff < 0n ? -magnitude : magnitude
 }
 
 /** División entera redondeando hacia abajo (también con negativos). */

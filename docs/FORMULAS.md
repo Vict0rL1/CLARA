@@ -763,7 +763,10 @@ ocultar en Inicio o en Ajustes; no hay correos ni notificaciones).
   «faltan datos» y no se compara. Sin movimientos no significa «sin gastos».
 - **Porcentaje** = `signo(diferencia) × floor(|diferencia| × 100 / anterior)` (entero truncado hacia
   cero: −9,99 % es −9, igual que +9,99 % es 9; revisión financiera F-R3) solo si ambas semanas tienen datos
-  completos y la anterior tiene movimientos y es > 0. Nunca se divide entre cero.
+  completos y la anterior tiene movimientos y es > 0. Nunca se divide entre cero. Se calcula desde los dos
+  totales con BigInt (`checkedPercentChange(actual, anterior)`): dos totales que caben en un entero exacto
+  pueden tener una diferencia que no cabe (auditoría del 2026-10-29, QA27-03); entonces `diffMinor` es
+  `null`, la pantalla dice «la diferencia no cabe en una cifra exacta» y el porcentaje, si cabe, se da igual.
 - Próximos pagos: 7 días desde hoy (solo en la semana en curso). Metas: progreso real
   (apartado) y lo apartado esa semana (sin contar los usos al pagar).
 
@@ -1221,9 +1224,11 @@ Pruebas: `ui/preferences.test.ts` y e2e `personalize.spec.ts`.
   «Hoy», atrás/adelante— las fechas escritas se alinean con ella; «Hoy» en el personalizado es un periodo con el mismo
   número de días que termina hoy; las fechas no se arrastran a la dirección de otro periodo.
 - **Tres cifras**: ingresos = Σ ingresos realizados; gastos = gasto neto (§15); neto = ingresos − gastos.
-  Delta = actual − anterior; porcentaje entero = signo(delta) × ⌊|delta| × 100 / anterior⌋ (truncado hacia
-  cero, `checkedPercentChange`: −9,99 % es −9 %, igual que +9,99 % es 9 %; F-R3) solo si anterior > 0 y el
-  periodo anterior empieza en o después de `trackedSince` (si no, se indica «no comparable»). Todo
+  Delta = actual − anterior (`checkedSubMinor`: `null` si no cabe en un entero exacto, y entonces la
+  pantalla dice «Sin comparación» salvo que el porcentaje sí quepa; QA27-03); porcentaje entero =
+  signo(delta) × ⌊|delta| × 100 / anterior⌋ calculado desde los operandos con BigInt (truncado hacia cero,
+  `checkedPercentChange(actual, anterior)`: −9,99 % es −9 %, igual que +9,99 % es 9 %; F-R3) solo si
+  anterior > 0 y el periodo anterior empieza en o después de `trackedSince` (si no, se indica «no comparable»). Todo
   porcentaje de importes —también el de cada categoría del donut y el de un límite (`planProgress`)— se
   calcula con `mulDivFloor(importe, 100, total)`, nunca «importe × 100» en coma flotante (revisión propia R6:
   396 000 000 000 297 de 400 000 000 000 300 es 99 %, en coma flotante salía 98).
@@ -1464,14 +1469,17 @@ compactos ni se redondean para calcular.
   neto del mes); copia de seguridad pendiente (misma regla que el recordatorio; nunca en la demo).
   Nada de esto se guarda ni se posterga: la bandeja de pendientes (§24) sigue siendo el sitio de los
   avisos accionables con posponer/descartar. El porcentaje del gasto a fecha equivalente se calcula
-  exacto y verificado (auditoría de seguimiento, F-03): `checkedPercentChange(actual − anterior,
-  anterior)` = signo × `checkedMulDivFloor(|actual − anterior|, 100, anterior)` con BigInt por dentro
-  (antes `floorDiv((actual − anterior) × 100, anterior)` fallaba cuando el producto pasaba de 2⁵³ − 1: un
-  gasto de `MAX_AMOUNT_MINOR` el 10-ago frente a cien el 10-sep da 9 900 % exactos). Truncado hacia
-  cero (revisión financiera F-R3): el umbral «desde ±10 %» es el mismo a ambos lados (de 100,00 a 90,01
-  es −9 % y no avisa; de 100,00 a 90,00 es −10 % y avisa, como de 100,00 a 110,00). Si ni el cociente
-  cabe en un entero exacto, la señal sale sin `percent` y la pantalla lo dice con los importes en
-  «porque»; nunca una cifra inexacta ni una pantalla rota.
+  exacto y verificado (auditoría de seguimiento, F-03): `checkedPercentChange(actual, anterior)` =
+  signo × ⌊|actual − anterior| × 100 / anterior⌋ con BigInt desde los OPERANDOS (antes
+  `floorDiv((actual − anterior) × 100, anterior)` fallaba cuando el producto pasaba de 2⁵³ − 1: un gasto
+  de `MAX_AMOUNT_MINOR` el 10-ago frente a cien el 10-sep da 9 900 % exactos; y restar antes como
+  `Number` fallaba cuando los dos totales cabían pero su diferencia no: 5 000 gastos de
+  987 654 321 000 en septiembre frente a 5 000 devoluciones iguales en octubre son −200 % exactos,
+  auditoría del 2026-10-29, QA27-03). Truncado hacia cero (revisión financiera F-R3): el umbral «desde
+  ±10 %» es el mismo a ambos lados (de 100,00 a 90,01 es −9 % y no avisa; de 100,00 a 90,00 es −10 % y
+  avisa, como de 100,00 a 110,00). Si ni el cociente cabe en un entero exacto, la señal sale sin
+  `percent` y la pantalla lo dice con los importes en «porque»; la fila «diferencia» solo aparece si la
+  diferencia cabe (`checkedSubMinor`); nunca una cifra inexacta ni una pantalla rota.
 - **Navegación**: «Análisis» es destino primario (barra inferior y lateral) y agrupa Avisos,
   Estadísticas, Revisión semanal y ¿Qué cambió? con pestañas; las rutas antiguas no cambian. Cada
   gráfico de Estadísticas lleva su «¿Cómo se calculó?» (categorías, barras, tendencia, comercios).

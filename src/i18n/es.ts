@@ -1216,6 +1216,7 @@ export const es = {
   'weekly.more': '{amount} más',
   'weekly.less': '{amount} menos',
   'weekly.noPercent': 'sin porcentaje (la semana anterior fue 0)',
+  'weekly.noDifference': 'la diferencia no cabe en una cifra exacta',
   'weekly.noRecordsNote': 'No registraste movimientos esta semana. Si hubo gastos, añádelos para que la revisión sea útil.',
   'weekly.toSavings': 'Enviado a cuentas de ahorro (transferencias): {amount}',
   'weekly.goalContributions': 'Apartado para metas: {amount}',

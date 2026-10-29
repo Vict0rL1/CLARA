@@ -8,7 +8,7 @@ import { backupStatus } from './backupReminder'
 import { addDays, addMonthsClamped, daysBetween, startOfMonth } from './dates'
 import { goalPace } from './goalChart'
 import { periodSummary } from './insights'
-import { checkedPercentChange, mulDivFloor, sumMinor } from './money'
+import { checkedPercentChange, checkedSubMinor, mulDivFloor, sumMinor } from './money'
 import { planItems } from './planItems'
 import { planProgress } from './plans'
 import { projectBalance } from './projection'
@@ -185,12 +185,14 @@ export function analysisItems(data: AppData, today: LocalDate): AnalysisItem[] {
     const previous = periodSummary(data, prevStart, prevEnd).netSpendingMinor
     if (previous > 0) {
       // Porcentaje exacto (F-03): el producto (diferencia × 100) puede pasar de 2^53 − 1 con sumas grandes y
-      // `floorDiv` fallaba; se calcula verificado y, si ni el cociente cabe en un entero exacto, el aviso sale sin
-      // cifra (`percent` ausente) en vez de inventar una o esconder la pantalla. Truncado hacia cero (F-R3): el
-      // umbral «desde ±10 %» es el mismo para subidas y bajadas (−9,99 % no es −10).
-      const percent = checkedPercentChange(current - previous, previous)
+      // `floorDiv` fallaba; se calcula verificado desde los operandos (QA27-03: dos totales que caben pueden tener
+      // una diferencia que no cabe) y, si ni el cociente cabe en un entero exacto, el aviso sale sin cifra (`percent`
+      // ausente) en vez de inventar una o esconder la pantalla. Truncado hacia cero (F-R3): el umbral «desde ±10 %»
+      // es el mismo para subidas y bajadas (−9,99 % no es −10). Una diferencia que no cabe no se enseña como cifra.
+      const percent = checkedPercentChange(current, previous)
       if (percent === null || Math.abs(percent) >= SPENDING_CHANGE_THRESHOLD) {
         const up = current > previous
+        const difference = checkedSubMinor(current, previous)
         out.push({
           key: up ? 'spendingUp' : 'spendingDown',
           id: up ? 'spendingUp' : 'spendingDown',
@@ -199,7 +201,7 @@ export function analysisItems(data: AppData, today: LocalDate): AnalysisItem[] {
           because: [
             { id: 'currentToDate', kind: 'money', value: current },
             { id: 'previousToDate', kind: 'money', value: previous, op: '−' },
-            { id: 'difference', kind: 'money', value: current - previous, op: '=' },
+            ...(difference === null ? [] : [{ id: 'difference' as const, kind: 'money' as const, value: difference, op: '=' as const }]),
           ],
           href: '/estadisticas',
         })

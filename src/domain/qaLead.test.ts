@@ -410,11 +410,13 @@ describe('F-R3 (revisión financiera) · el umbral «desde ±10 %» es simétric
     return item ? [item.id, item.params.percent] : null
   }
 
-  it('helper: −9,99 % → −9 y +9,99 % → 9; ±10 % exactos; −100 %; sin cifra si no cabe en un entero exacto', () => {
-    expect([checkedPercentChange(999, 10000), checkedPercentChange(-999, 10000)]).toEqual([9, -9])
-    expect([checkedPercentChange(1000, 10000), checkedPercentChange(-1000, 10000)]).toEqual([10, -10])
-    expect([checkedPercentChange(-1001, 10000), checkedPercentChange(-1, 1), checkedPercentChange(0, 5)]).toEqual([-10, -100, 0])
-    expect([checkedPercentChange(-90071992547409, 1), checkedPercentChange(-90071992547410, 1)]).toEqual([-9007199254740900, null])
+  it('helper (actual, anterior): −9,99 % → −9 y +9,99 % → 9; ±10 % exactos; −100 %; sin cifra si no cabe en un entero exacto', () => {
+    expect([checkedPercentChange(10999, 10000), checkedPercentChange(9001, 10000)]).toEqual([9, -9])
+    expect([checkedPercentChange(11000, 10000), checkedPercentChange(9000, 10000)]).toEqual([10, -10])
+    expect([checkedPercentChange(8999, 10000), checkedPercentChange(0, 1), checkedPercentChange(5, 5)]).toEqual([-10, -100, 0])
+    // (actual − anterior) × 100 justo en el límite exacto, y una unidad más allá; la diferencia puede no caber aunque los operandos quepan (QA27-03).
+    expect([checkedPercentChange(-90071992547408, 1), checkedPercentChange(-90071992547409, 1)]).toEqual([-9007199254740900, null])
+    expect(checkedPercentChange(-4938271605000000, 4938271605000000)).toBe(-200)
   })
 
   it('Análisis: de 100,00 a 110,00 avisa (10 %); a 109,99 no; a 90,00 avisa (10 %); a 90,01 NO (antes salía «bajó 10 %»); a 89,99 avisa (10 %)', () => {
