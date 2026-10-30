@@ -70,7 +70,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   (`repairSplit`) devuelve las fechas de siempre solo desde el día siguiente a la última ocurrencia pagada (también
   parcial), llevada a su fecha de siempre: lo pagado se queda en su fecha y nunca se cuenta dos veces (si hace falta, el
   tramo termina ahí y uno nuevo con `anchorDate` sigue, como al partir «desde una fecha»; omitidas y vínculos siguen a
-  su periodo, y un aplazamiento sigue a su ocurrencia aunque la fecha coincida y solo cambie el id —QA27-02—; revisión
+  su periodo —también en el último periodo de la ventana de 400 días: la serie de siempre se recorre un mes más y se
+  recorta a la par, revisión financiera QA27 F1—, y un aplazamiento sigue a su ocurrencia aunque la fecha coincida y solo cambie el id —QA27-02—; revisión
   financiera F-R1), con confirmación, copia local previa (sin copia local posible, solo con una copia descargada desde
   la tarjeta de los datos tal como están; QA27-04) y una sola entrada en el historial; «Dejar
   como está» (`dismissSplitRepair`) es un descarte de la bandeja con huella y nunca cambia fechas.

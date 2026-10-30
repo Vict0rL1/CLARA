@@ -1533,7 +1533,9 @@ compactos ni se redondean para calcular.
   en B; si no, B termina el día antes de `from` y un tramo nuevo (id generado por quien llama, como en
   cualquier formulario) sigue desde `from` con `anchorDate` = fecha de siempre, como al partir «desde una
   fecha». Desde `from`, la k-ésima ocurrencia tal como está pasa a ser la k-ésima de la serie de siempre
-  (misma regla: van a la par periodo a periodo): una fecha omitida sigue omitida en la fecha de siempre
+  (misma regla: van a la par periodo a periodo; la serie de siempre se recorre un mes más que la ventana de
+  comparación y se recorta a la par, porque la pareja de la última fecha de la ventana puede caer justo después de
+  ella —revisión financiera QA27, F1—): una fecha omitida sigue omitida en la fecha de siempre
   de su periodo (el 28-abr omitido → el 30-abr omitido), un gasto planificado vinculado y un
   aplazamiento siguen a su ocurrencia (y al tramo nuevo) con sus metadatos, también cuando la fecha
   coincide en las dos series y solo cambia el id (el 28-feb aplazado hasta el 5-mar sigue aplazado en

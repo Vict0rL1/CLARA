@@ -39,6 +39,8 @@ import type { Issue } from './validation'
 export const SPLIT_REPAIR_PREVIEW = 3
 /** Ventana en la que se comparan ocurrencias actuales y propuestas (días desde hoy). */
 const COMPARE_DAYS = 400
+/** La fecha de siempre va como mucho 3 días después de la movida de su periodo (31 → 28): margen para emparejar la última fecha de la ventana. */
+const PAIR_SLACK_DAYS = 31
 
 export interface DriftedSplit {
   /** Tramo que cuenta desde la fecha movida (el que se repara). */
@@ -120,7 +122,10 @@ function repairPlan(s: Schedule, anchor: LocalDate, from: LocalDate, today: Loca
   const showFrom = later(from, today)
   const until = extra.reduce(later, addDays(showFrom, COMPARE_DAYS))
   const current = occurrencesBetween(s, from, until)
-  const proposed = occurrencesBetween({ ...s, anchorDate: anchor }, from, until)
+  // La pareja de la última fecha de la ventana puede caer justo después de `until` (la de siempre nunca va antes que la
+  // movida): la serie de siempre se recorre un poco más y se recorta a la par (revisión financiera QA27, F1: antes esa
+  // omisión se perdía y un vínculo en ese periodo bloqueaba la reparación).
+  const proposed = occurrencesBetween({ ...s, anchorDate: anchor }, from, addDays(until, PAIR_SLACK_DAYS)).slice(0, current.length)
   const pairs = new Map(current.map((d, i) => [d, proposed[i]]))
   const remap = (date: LocalDate) => pairs.get(date) ?? date
   const skipped = new Set(s.skippedDates)
