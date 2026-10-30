@@ -1555,8 +1555,9 @@ compactos ni se redondean para calcular.
   «ingreso retrasado»: es el 31 que aún no llega). Importe y fin no cambian. Antes se guarda una copia local
   «antes de restaurar»; si no se puede guardar, o este navegador no guarda copias locales (sin IndexedDB,
   con el respaldo en `localStorage`), NO se repara salvo que haya una copia descargada desde la propia
-  tarjeta («Descargar copia antes») de los datos tal como están ahora (`updatedAt` igual; si algo cambió
-  después, hay que descargarla de nuevo): la tarjeta lo avisa, la confirmación lo dice y la negativa no
+  tarjeta («Descargar copia antes») de los datos tal como están ahora (`updatedAt` igual, comprobado sobre lo que
+  hay en el almacén justo antes de reparar, después de esperar la copia local —revisión de seguridad QA27, F-2—; si
+  algo cambió después, hay que descargarla de nuevo): la tarjeta lo avisa, la confirmación lo dice y la negativa no
   cambia nada (auditoría del 2026-10-29, QA27-04). El cambio queda en el historial como una sola entrada
   (los dos tramos vuelven a ser uno al revertir). La auditoría: saldo CAD 1 800, seguro de
   1 250 el 29-mar, sueldo del 31 partido el 28-feb: antes horizonte 28-mar, 0 reservados, 1 800

@@ -52,8 +52,10 @@ export function SplitRepairCard() {
     try {
       // Copia local de lo actual antes de tocar fechas (como al importar). Sin copia —no se pudo guardar, o este
       // navegador no guarda copias locales— solo se sigue si hay una copia descargada de ESTOS datos; si no, nada cambia.
+      const copy = await keepCopyBeforeReplace(getStore().data)
+      // Se repara lo que hay en el almacén DESPUÉS de esperar la copia (una confirmación automática puede haber entrado
+      // mientras): la copia descargada tiene que ser de ESOS datos (revisión de seguridad QA27, F-2).
       const current = getStore().data
-      const copy = await keepCopyBeforeReplace(current)
       if (copy !== 'kept' && (current === null || exportedFor !== current.updatedAt)) {
         return toast({ message: t(copy === 'failed' ? 'localBackup.failed' : 'splitRepair.copyUnavailable'), tone: 'critical' })
       }
