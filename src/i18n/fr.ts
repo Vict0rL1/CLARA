@@ -849,6 +849,7 @@ export const fr: Record<keyof typeof es, string> = {
   'txKind.adjustment': 'Ajustement',
   'issue.rangeOrder': 'Il faut que minimum ≤ attendu ≤ extra.',
   'issue.occurrenceAlreadySettled': 'Cette facture ou ce revenu du {date} est déjà enregistré avec une autre opération : restaurer celle-ci le compterait deux fois.',
+  'issue.occurrenceMissing': 'Non restauré : « {name} » n\'a plus la date du {date}, ce paiement ne réglerait donc rien et la date de cette période compterait à nouveau. Rendez cette date au paiement programmé (ou annulez le changement depuis l\'historique), puis réessayez.',
   'issue.restoreConflict': 'Une opération avec cet identifiant existe déjà.',
   'issue.favoriteAccountMissing': 'Choisissez un compte qui existe.',
   'issue.favoriteCategoryMissing': 'Choisissez une catégorie active.',

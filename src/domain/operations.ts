@@ -15,7 +15,7 @@ import { canChangeCurrency } from './currencyChange'
 import { isSupportedCurrency, sumMinor } from './money'
 import { findSettlement } from './planItems'
 import { balanceAtDate, reconciliationFingerprint } from './reconcile'
-import { defaultSecondDay } from './recurrence'
+import { defaultSecondDay, occurrencesBetween } from './recurrence'
 import type {
   Account,
   AllocationReason,
@@ -277,6 +277,8 @@ export function restoreFromTrashMany(data: AppData, ids: readonly string[], ctx:
  * Nunca deja referencias rotas ni cuenta dinero dos veces:
  *  - Si liquidaba un pago del calendario que ya se liquidó con otro movimiento, NO se
  *    restaura (`occurrenceAlreadySettled`): habría dos pagos del mismo recibo.
+ *  - Si su programado sigue existiendo pero ya no tiene esa fecha, tampoco (`occurrenceMissing`):
+ *    la fecha de su periodo volvería a contar con el pago registrado.
  *  - Una devolución cuyo gasto ya no existe (o no admite más devoluciones) se
  *    restaura sin vínculo; el dinero devuelto sigue contando.
  *  - Las devoluciones que se desvincularon al eliminarlo se vuelven a vincular si
@@ -299,6 +301,14 @@ export function restoreFromTrash(data: AppData, id: string, ctx: OpContext): OpR
     // Una liquidación final ya existe, o esta era final y ya hay otras: restaurarla duplicaría el pago.
     if (others.some((t) => !t.partialSettlement) || (!tx.partialSettlement && others.length > 0)) {
       return fail([{ path: 'id', code: 'occurrenceAlreadySettled', params: { date: tx.occurrenceDate } }])
+    }
+    // La fecha que liquidaba tiene que seguir en la serie mientras el programado exista: si no (la serie cambió, o se
+    // revirtió una reparación con el pago en la papelera), restaurarlo dejaría un pago sin fecha y la de su periodo
+    // volvería a contar (revisión de seguridad QA27, F-1; mismo criterio que el historial). Un programado borrado
+    // conserva sus pagos.
+    const schedule = data.schedules.find((s) => s.id === tx.scheduleId)
+    if (schedule && occurrencesBetween(schedule, tx.occurrenceDate, tx.occurrenceDate).length === 0) {
+      return fail([{ path: 'id', code: 'occurrenceMissing', params: { date: tx.occurrenceDate, name: schedule.name } }])
     }
   }
 

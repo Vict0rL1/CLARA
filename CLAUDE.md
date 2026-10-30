@@ -84,7 +84,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   vista previa: archivo elegido + `omissionSignature`; otro archivo, otro contenido o leer la cabecera de
   otra forma lo piden de nuevo, RT-03); el archivo nunca sale del dispositivo.
 - Papelera: eliminar saca el movimiento de `transactions` a `trash` (nunca participa en
-  cálculos). Restaurar no deja vínculos rotos ni liquida dos veces una ocurrencia; filas
+  cálculos). Restaurar no deja vínculos rotos, ni liquida dos veces una ocurrencia, ni devuelve un pago a una fecha
+  que su programado ya no tiene (`occurrenceMissing`; revisión de seguridad QA27, F-1); filas
   CSV en la papelera no se reimportan. Sin borrado automático.
 - Ajuste de conciliación = `kind: 'adjustment'`: corrige el saldo, NO es ingreso ni gasto.
   Nunca se crea sin confirmación ni se toca el saldo de referencia al conciliar.

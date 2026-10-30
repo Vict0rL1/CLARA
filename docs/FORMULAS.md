@@ -543,7 +543,11 @@ clave      = normalizar(sin prefijo de procesador «SQ *», «TST*», «PAYPAL *
 - **Pagos del calendario**: eliminar el movimiento que liquidó una ocurrencia la deja otra
   vez pendiente o vencida (vuelve a reservarse). Si después se registra otro pago para esa
   misma ocurrencia, restaurar el primero se **bloquea** (`occurrenceAlreadySettled`): se
-  contaría dos veces.
+  contaría dos veces. Si el programado sigue existiendo pero ya no tiene esa fecha (la serie
+  cambió, o se revirtió una reparación con el pago en la papelera), restaurarlo también se
+  **bloquea** (`occurrenceMissing`): el pago apuntaría a una fecha inexistente y la de su periodo
+  volvería a contar (revisión de seguridad QA27, F-1). Un programado borrado conserva sus pagos,
+  que sí se restauran.
 - **Ajustes de conciliación**: eliminarlos deja la conciliación «pendiente de revisión».
 - **Importaciones CSV**: una fila cuyo movimiento está en la papelera aparece como «En la
   papelera» y no se puede importar (se restaura desde la papelera). Al eliminar

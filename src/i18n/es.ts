@@ -850,6 +850,7 @@ export const es = {
   'txKind.adjustment': 'Ajuste',
   'issue.rangeOrder': 'Debe cumplirse: mínimo ≤ esperado ≤ extra.',
   'issue.occurrenceAlreadySettled': 'Ese pago o ingreso del {date} ya está registrado con otro movimiento: restaurarlo lo contaría dos veces.',
+  'issue.occurrenceMissing': 'No se restauró: «{name}» ya no tiene la fecha del {date}, así que ese pago no liquidaría nada y la fecha de su periodo volvería a contar. Devuelve esa fecha al programado (o revierte el cambio desde el historial) y vuelve a intentarlo.',
   'issue.restoreConflict': 'Ya existe un movimiento con ese identificador.',
   'issue.favoriteAccountMissing': 'Elige una cuenta que exista.',
   'issue.favoriteCategoryMissing': 'Elige una categoría activa.',

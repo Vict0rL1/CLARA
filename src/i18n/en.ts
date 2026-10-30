@@ -851,6 +851,7 @@ export const en: Record<keyof typeof es, string> = {
   'txKind.adjustment': 'Adjustment',
   'issue.rangeOrder': 'It must hold that minimum ≤ expected ≤ extra.',
   'issue.occurrenceAlreadySettled': 'That bill or income for {date} is already recorded with another transaction: restoring this one would count it twice.',
+  'issue.occurrenceMissing': 'Not restored: “{name}” no longer has the {date} date, so this payment would settle nothing and that period’s date would count again. Give the scheduled payment that date back (or revert the change from the history) and try again.',
   'issue.restoreConflict': 'A transaction with that identifier already exists.',
   'issue.favoriteAccountMissing': 'Choose an account that exists.',
   'issue.favoriteCategoryMissing': 'Choose an active category.',

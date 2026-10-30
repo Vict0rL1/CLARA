@@ -849,6 +849,7 @@ export const pt: Record<keyof typeof es, string> = {
   'txKind.adjustment': 'Ajuste',
   'issue.rangeOrder': 'Deve valer mínimo ≤ esperado ≤ extra.',
   'issue.occurrenceAlreadySettled': 'Essa conta ou receita de {date} já está registrada com outro movimento: restaurar este contaria duas vezes.',
+  'issue.occurrenceMissing': 'Não restaurado: «{name}» já não tem a data de {date}, então esse pagamento não liquidaria nada e a data desse período voltaria a contar. Devolva essa data ao agendamento (ou reverta a alteração no histórico) e tente de novo.',
   'issue.restoreConflict': 'Já existe um movimento com esse identificador.',
   'issue.favoriteAccountMissing': 'Escolha uma conta que exista.',
   'issue.favoriteCategoryMissing': 'Escolha uma categoria ativa.',

@@ -88,6 +88,8 @@ export type IssueCode =
   | 'notFound'
   | 'rangeOrder'
   | 'occurrenceAlreadySettled'
+  /** Restaurar un pago cuyo programado sigue existiendo pero ya no tiene esa fecha (revisión de seguridad QA27, F-1). */
+  | 'occurrenceMissing'
   // Clara 2.0 fase 3: cambiar un programado «desde una fecha» (`scheduleFrom.ts`).
   | 'splitNotRecurring'
   | 'splitNotAfterStart'
