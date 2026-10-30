@@ -5,6 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { analysisItems } from './analysis'
+import { checkedPercentChange } from './money'
 import { periodStats, statsRange } from './statistics'
 import type { AppData } from './types'
 import { weeklyReview } from './weeklyReview'
@@ -69,5 +70,35 @@ describe('QA27-03 (P2) · totales seguros con una diferencia que no cabe en un e
     expect(change(10000, 9000)).toEqual(['spendingDown', 10])
     const zero = baseData({ accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 0, date: '2026-07-01', setAt: '2026-07-01T12:00:00.000Z' } })], transactions: [tx({ id: 'c', date: '2026-09-10', amountMinor: 5000, kind: 'expense', status: 'realized' })] })
     expect(analysisItems(zero, '2026-09-28').some((i) => i.id === 'spendingUp' || i.id === 'spendingDown')).toBe(false)
+  })
+})
+
+describe('QA27 · revisión financiera F2 (P3) y O2: sin cifra de diferencia no se afirma «lo mismo»; el porcentaje nunca es «-0»', () => {
+  const X = 987654321000
+  const many = (prefix: string, date: string, kind: 'expense' | 'refund', count = 5000) => Array.from({ length: count }, (_, i) => tx({ id: `${prefix}${i}`, date, amountMinor: X, kind, status: 'realized', categoryId: 'groceries' }))
+  const week = (transactions: AppData['transactions']) =>
+    baseData({
+      accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 0, date: '2026-08-01', setAt: '2026-08-01T12:00:00.000Z' } })],
+      transactions,
+    })
+
+  it('la semana pasada 5 000 gastos y esta 5 000 devoluciones (diferencia −9 876 543 210 000 000, no cabe): −200 % y ninguna observación de más/menos/lo mismo', () => {
+    const r = weeklyReview(week([...many('p', '2026-10-14', 'expense'), ...many('c', '2026-10-21', 'refund')]), '2026-10-19', '2026-10-22')
+    expect(r.spendingChange).toEqual({ diffMinor: null, percent: -200 })
+    expect(r.observations.map((o) => o.id).filter((id) => id.startsWith('spending'))).toEqual([])
+  })
+
+  it('con diferencia exactamente 0 sí dice «lo mismo»; con una diferencia que cabe, «más» o «menos» con el importe', () => {
+    const same = weeklyReview(week([tx({ id: 'a', date: '2026-10-14', amountMinor: 5000, kind: 'expense', status: 'realized', categoryId: 'groceries' }), tx({ id: 'b', date: '2026-10-21', amountMinor: 5000, kind: 'expense', status: 'realized', categoryId: 'groceries' })]), '2026-10-19', '2026-10-22')
+    expect(same.spendingChange).toEqual({ diffMinor: 0, percent: 0 })
+    expect(same.observations.map((o) => o.id)).toContain('spendingSame')
+    const less = weeklyReview(week([tx({ id: 'a', date: '2026-10-14', amountMinor: 5000, kind: 'expense', status: 'realized', categoryId: 'groceries' }), tx({ id: 'b', date: '2026-10-21', amountMinor: 4000, kind: 'expense', status: 'realized', categoryId: 'groceries' })]), '2026-10-19', '2026-10-22')
+    expect(less.observations.find((o) => o.id === 'spendingLess')?.params).toEqual({ amountMinor: 1000 })
+  })
+
+  it('un descenso menor del 1 % es 0, no «-0» (Object.is), y el ascenso menor del 1 % también', () => {
+    expect(Object.is(checkedPercentChange(9999, 10000), 0)).toBe(true)
+    expect(Object.is(checkedPercentChange(10001, 10000), 0)).toBe(true)
+    expect(checkedPercentChange(9900, 10000)).toBe(-1)
   })
 })

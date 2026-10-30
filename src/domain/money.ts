@@ -149,7 +149,8 @@ export function checkedPercentChange(current: number, previous: number): number 
   if (!Number.isSafeInteger(current) || !Number.isSafeInteger(previous) || previous <= 0) throw new Error('checkedPercentChange requiere enteros y una base positiva')
   const diff = BigInt(current) - BigInt(previous)
   const magnitude = toSafeMinor(((diff < 0n ? -diff : diff) * 100n) / BigInt(previous))
-  return magnitude === null ? null : diff < 0n ? -magnitude : magnitude
+  // Nunca «-0»: un descenso menor del 1 % es 0 (revisión financiera QA27, O2).
+  return magnitude === null || magnitude === 0 ? magnitude : diff < 0n ? -magnitude : magnitude
 }
 
 /** División entera redondeando hacia abajo (también con negativos). */

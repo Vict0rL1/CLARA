@@ -766,7 +766,9 @@ ocultar en Inicio o en Ajustes; no hay correos ni notificaciones).
   completos y la anterior tiene movimientos y es > 0. Nunca se divide entre cero. Se calcula desde los dos
   totales con BigInt (`checkedPercentChange(actual, anterior)`): dos totales que caben en un entero exacto
   pueden tener una diferencia que no cabe (auditoría del 2026-10-29, QA27-03); entonces `diffMinor` es
-  `null`, la pantalla dice «la diferencia no cabe en una cifra exacta» y el porcentaje, si cabe, se da igual.
+  `null`, la pantalla dice «la diferencia no cabe en una cifra exacta» y el porcentaje, si cabe, se da igual. La
+  observación «gastaste lo mismo» solo sale con diferencia exactamente 0: sin cifra no se afirma nada (revisión
+  financiera QA27, F2). El porcentaje nunca es «-0» (un descenso menor del 1 % es 0; O2).
 - Próximos pagos: 7 días desde hoy (solo en la semana en curso). Metas: progreso real
   (apartado) y lo apartado esa semana (sin contar los usos al pagar).
 

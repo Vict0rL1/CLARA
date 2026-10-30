@@ -153,7 +153,9 @@ export function weeklyReview(data: AppData, weekStart: LocalDate, today: LocalDa
   if (comparable && current.realizedCount > 0) {
     if (spendingChange.diffMinor !== null && spendingChange.diffMinor > 0) observations.push({ id: 'spendingMore', params: { amountMinor: spendingChange.diffMinor } })
     else if (spendingChange.diffMinor !== null && spendingChange.diffMinor < 0) observations.push({ id: 'spendingLess', params: { amountMinor: -spendingChange.diffMinor } })
-    else observations.push({ id: 'spendingSame', params: {} })
+    // «Lo mismo» solo con diferencia exactamente 0; sin cifra (`null`, no cabe en un entero exacto) no se afirma nada:
+    // la comparación ya lo dice (revisión financiera QA27, F2).
+    else if (spendingChange.diffMinor === 0) observations.push({ id: 'spendingSame', params: {} })
   } else if (previous.coverage === 'complete' && previous.spendingMinor === 0 && current.spendingMinor > 0) {
     observations.push({ id: 'previousZero', params: {} })
   }
