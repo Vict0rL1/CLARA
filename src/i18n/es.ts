@@ -2411,6 +2411,7 @@ export const es = {
   'stats.futureExplain': 'Saldo del presupuesto menos un gasto diario estimado de {daily} (promedio de los últimos {days} días sin pagos programados), más los ingresos y pagos programados con el escenario mínimo. La banda usa un 25 % menos de gasto con los ingresos esperados (optimista) y un 25 % más con los mínimos (pesimista).',
   'stats.futureNoHistory': 'El saldo futuro aparecerá cuando tengas movimientos registrados.',
   'stats.futureFewDays': 'El saldo futuro se muestra con al menos dos semanas de historial y una semana de gastos observados.',
+  'stats.futureOutOfRange': 'El saldo futuro a 90 días no cabe en una cifra exacta con estos importes, así que no se muestra.',
   'stats.showTable': 'Ver tabla',
   'stats.hideTable': 'Ocultar tabla',
   'stats.note': 'Las estadísticas solo describen lo registrado. Para exportar como PDF se usa la impresión del navegador («Guardar como PDF»).',

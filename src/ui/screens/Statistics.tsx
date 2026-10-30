@@ -319,7 +319,7 @@ export function Statistics({ route }: { route: Route }) {
         </Card>
       ) : (
         <p className="note" data-testid="stats-future-hidden">
-          {t(future.reason === 'noHistory' ? 'stats.futureNoHistory' : 'stats.futureFewDays')}
+          {t(future.reason === 'noHistory' ? 'stats.futureNoHistory' : future.reason === 'outOfRange' ? 'stats.futureOutOfRange' : 'stats.futureFewDays')}
         </p>
       )}
       <p className="note">{t('stats.note')}</p>

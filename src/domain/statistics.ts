@@ -224,8 +224,8 @@ export interface FuturePoint {
 
 export interface FutureBalance {
   enough: boolean
-  /** Motivo si no hay datos suficientes. */
-  reason: 'noHistory' | 'fewDays' | null
+  /** Motivo si no hay curva: datos insuficientes, o el saldo proyectado deja de caber en un entero exacto (`outOfRange`). */
+  reason: 'noHistory' | 'fewDays' | 'outOfRange' | null
   daysObserved: number
   dailySpendMinor: number
   points: FuturePoint[]
@@ -248,9 +248,13 @@ export function futureBalance(data: AppData, today: LocalDate): FutureBalance {
   if (tracked < MIN_TRACKED_DAYS || !est.sufficient) return empty('fewDays')
   // Un día más para que el punto 90 sea exactamente hoy + 90 (el día 0 es hoy, tras sus movimientos del día).
   const days = FUTURE_DAYS + 1
-  const base = projectBalance(data, today, { days, dailySpendMinor: est.dailyMinor, scenario: 'min' })
-  const optimistic = projectBalance(data, today, { days, dailySpendMinor: mulDivFloor(est.dailyMinor, 75, 100), scenario: 'expected' })
-  const pessimistic = projectBalance(data, today, { days, dailySpendMinor: mulDivFloor(est.dailyMinor, 125, 100), scenario: 'min' })
+  // Con importes de auditoría el saldo a 90 días puede dejar de caber en un entero exacto: la proyección se detiene
+  // (`stopWhenOutOfRange`, como el calendario) y entonces no hay curva, nunca una cifra recortada ni una pantalla rota
+  // (revisión en navegador QA27: `projectBalance` lanzaba y Estadísticas caía en «No se pudo abrir esta pantalla»).
+  const base = projectBalance(data, today, { days, dailySpendMinor: est.dailyMinor, scenario: 'min', stopWhenOutOfRange: true })
+  const optimistic = projectBalance(data, today, { days, dailySpendMinor: mulDivFloor(est.dailyMinor, 75, 100), scenario: 'expected', stopWhenOutOfRange: true })
+  const pessimistic = projectBalance(data, today, { days, dailySpendMinor: mulDivFloor(est.dailyMinor, 125, 100), scenario: 'min', stopWhenOutOfRange: true })
+  if (base.outOfRangeFrom || optimistic.outOfRangeFrom || pessimistic.outOfRangeFrom) return empty('outOfRange')
   const points: FuturePoint[] = base.days.map((d, i) => ({ date: d.date, baseMinor: d.endMinor, optimisticMinor: optimistic.days[i]!.endMinor, pessimisticMinor: pessimistic.days[i]!.endMinor }))
   const marks = [0, 30, 60, 90].map((d) => points[Math.min(d, points.length - 1)]!)
   return { enough: true, reason: null, daysObserved: est.daysObserved, dailySpendMinor: est.dailyMinor, points, marks }

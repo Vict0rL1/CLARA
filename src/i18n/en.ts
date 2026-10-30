@@ -2412,6 +2412,7 @@ export const en: Record<keyof typeof es, string> = {
   'stats.futureExplain': 'Budget balance minus an estimated daily spend of {daily} (average of the last {days} days excluding scheduled payments), plus scheduled income and payments using the minimum scenario. The band uses 25 % less spending with expected income (optimistic) and 25 % more with minimum income (pessimistic).',
   'stats.futureNoHistory': 'The future balance will show once you have recorded transactions.',
   'stats.futureFewDays': 'The future balance shows once there are at least two weeks of history and a week of observed spending.',
+  'stats.futureOutOfRange': 'The 90-day future balance does not fit an exact figure with these amounts, so it is not shown.',
   'stats.showTable': 'Show table',
   'stats.hideTable': 'Hide table',
   'stats.note': 'Statistics only describe what was recorded. PDF export uses the browser\'s print dialog ("Save as PDF").',

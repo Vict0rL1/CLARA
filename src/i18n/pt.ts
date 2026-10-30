@@ -2410,6 +2410,7 @@ export const pt: Record<keyof typeof es, string> = {
   'stats.futureExplain': 'Saldo do orçamento menos um gasto diário estimado de {daily} (média dos últimos {days} dias sem pagamentos programados), mais receitas e pagamentos programados com o cenário mínimo. A faixa usa 25 % menos gasto com as receitas esperadas (otimista) e 25 % mais com as mínimas (pessimista).',
   'stats.futureNoHistory': 'O saldo futuro aparecerá quando você tiver movimentos registrados.',
   'stats.futureFewDays': 'O saldo futuro aparece com pelo menos duas semanas de histórico e uma semana de gastos observados.',
+  'stats.futureOutOfRange': 'O saldo futuro a 90 dias não cabe em um valor exato com estes valores, por isso não é mostrado.',
   'stats.showTable': 'Ver tabela',
   'stats.hideTable': 'Ocultar tabela',
   'stats.note': 'As estatísticas só descrevem o registrado. Para exportar em PDF usa-se a impressão do navegador («Salvar como PDF»).',

@@ -1257,7 +1257,10 @@ Pruebas: `ui/preferences.test.ts` y e2e `personalize.spec.ts`.
 - **Saldo futuro (90 días)**: base = proyección (§8) con el gasto diario estimado (§9, 30 días) y el
   escenario mínimo de ingresos variables; optimista = 75 % del gasto diario con ingresos esperados;
   pesimista = 125 % con mínimos. Marcas en hoy, 30, 60 y 90 días. Oculto con menos de 14 días desde
-  `trackedSince`, menos de 7 días de gasto observado o sin movimientos.
+  `trackedSince`, menos de 7 días de gasto observado o sin movimientos. Las tres proyecciones van con
+  `stopWhenOutOfRange`: si el saldo proyectado deja de caber en un entero exacto antes de los 90 días (importes de
+  auditoría), no hay curva y la pantalla dice que no cabe (`outOfRange`; revisión en navegador QA27): nunca una
+  cifra recortada ni una pantalla rota.
 - **PDF** = impresión del navegador de la vista (hoja de estilos `@media print`); no hay servicio.
 
 ## 36. Recibos (foto → propuesta, `domain/receipt.ts`)

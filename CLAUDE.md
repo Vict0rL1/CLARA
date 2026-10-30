@@ -131,6 +131,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   cabe, QA27-03); si el cociente no cabe en un entero exacto la señal sale sin `percent` y la pantalla lo dice
   (`insights.*.titleNoFigure`), la fila «diferencia» solo sale si cabe (`checkedSubMinor`), nunca una cifra inexacta ni
   una pantalla rota (F-03). Estadísticas y Revisión semanal usan los mismos dos ayudantes (`diffMinor` `null` → se dice).
+  El saldo futuro a 90 días proyecta con `stopWhenOutOfRange`: si no cabe, no hay curva y se dice (revisión en navegador
+  QA27).
 - Límite sugerido (`domain/planSuggestion.ts`): mediana del gasto neto de los últimos 3 ciclos completos con
   datos (≥ 2), redondeada hacia arriba a una unidad; sin IA; «Usar» solo rellena el importe.
 - Hitos de metas (`domain/goalMilestones.ts`): 25/50/75/100 % en enteros, solo el más alto y solo 7 días desde

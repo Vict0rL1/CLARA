@@ -2410,6 +2410,7 @@ export const fr: Record<keyof typeof es, string> = {
   'stats.futureExplain': 'Solde du budget moins une dépense quotidienne estimée de {daily} (moyenne des {days} derniers jours hors paiements programmés), plus les revenus et paiements programmés selon le scénario minimal. La bande utilise 25 % de dépenses en moins avec les revenus attendus (optimiste) et 25 % en plus avec les revenus minimaux (pessimiste).',
   'stats.futureNoHistory': 'Le solde futur apparaîtra quand vous aurez des opérations enregistrées.',
   'stats.futureFewDays': 'Le solde futur s\'affiche à partir de deux semaines d\'historique et d\'une semaine de dépenses observées.',
+  'stats.futureOutOfRange': 'Le solde futur à 90 jours ne tient pas dans un chiffre exact avec ces montants : il n\'est donc pas affiché.',
   'stats.showTable': 'Voir le tableau',
   'stats.hideTable': 'Masquer le tableau',
   'stats.note': 'Les statistiques ne décrivent que ce qui a été enregistré. L\'export PDF passe par l\'impression du navigateur (« Enregistrer au format PDF »).',

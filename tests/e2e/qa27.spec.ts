@@ -258,3 +258,22 @@ test('QA27-04 · con IndexedDB la copia local «antes de restaurar» existe, se 
   await expect(await available(page)).toHaveText('$1,800.00')
   expect((await stored(page)).schedules.find((s) => s.id === 'salary-new')?.anchorDate).toBeUndefined()
 })
+
+/* ------------------------------------------------------------------ */
+/* Revisión en navegador de la pasada QA27 · saldo futuro que no cabe   */
+/* ------------------------------------------------------------------ */
+
+test('QA27 (revisión en navegador) · 4 520 gastos de 999 999 999 999 en el mes: Estadísticas no cae en «No se pudo abrir esta pantalla» y dice que el saldo futuro no cabe', async ({ page }) => {
+  const data = baseData({
+    accounts: [account({ id: 'main', name: 'Principal', anchor: anchor(0, '2026-08-01') })],
+    transactions: Array.from({ length: 4520 }, (_, i) => tx({ id: `e${i}`, date: '2026-10-10', amountMinor: 999999999999, kind: 'expense', status: 'realized', categoryId: 'groceries' })),
+  })
+  await seedAt(page, data, '2026-10-22')
+  for (const route of ['/estadisticas', '/estadisticas?periodo=month&fecha=2026-10-22']) {
+    await go(page, route)
+    await expect(page.getByRole('heading', { name: 'No se pudo abrir esta pantalla' })).toHaveCount(0)
+    await expect(page.getByTestId('stats-future-hidden')).toContainText('El saldo futuro a 90 días no cabe en una cifra exacta con estos importes')
+  }
+  await shot(page, 'qa27-r1-statistics-future-out-of-range', page.getByTestId('stats-future-hidden'))
+  await expectNoHorizontalScroll(page, 'estadísticas con saldo futuro que no cabe')
+})
