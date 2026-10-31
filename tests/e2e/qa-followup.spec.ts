@@ -131,7 +131,8 @@ test('F-02 · una partición grabada por una versión anterior (solo instantáne
   await go(page, '/ajustes/historial')
   const entry = page.locator('article.history-entry', { hasText: 'Renta' }).first()
   const note = entry.getByTestId('history-dependents')
-  await expect(note).toContainText('No se puede revertir: 3 registros seguirían apuntando a un programado que este cambio eliminaría')
+  // Texto de QA27-01: la guarda también cubre fechas de pago, y la frase lo dice.
+  await expect(note).toContainText('No se puede revertir: 3 registros seguirían apuntando a un programado, o a una fecha de pago, que este cambio eliminaría o cambiaría')
   await expect(note).toContainText('Plantilla «Quincena»')
   await expect(note).toContainText('Escenario «Si sube»')
   await expect(note).toContainText('Aviso aplazado del 1 oct')
