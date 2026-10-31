@@ -67,6 +67,7 @@ import {
   validateTag,
 } from '../domain/validation'
 import { migrate } from './migrations'
+import { exactRangeIssue, exceedsExactRange } from '../domain/exactRange'
 
 // Identificador interno del formato (la app se llamaba «Margen»): no cambia, para que las
 // copias anteriores sigan siendo válidas.
@@ -461,6 +462,8 @@ export function validateAppData(raw: unknown): ImportResult {
     updatedAt: typeof migrated.updatedAt === 'string' ? migrated.updatedAt : new Date().toISOString(),
     revision: typeof migrated.revision === 'number' && Number.isSafeInteger(migrated.revision) ? migrated.revision : 0,
   }
+  // Cota de exactitud: con estos importes alguna suma dejaría de caber en un entero exacto (`domain/exactRange.ts`).
+  if (exceedsExactRange(data)) return { ok: false, issues: [exactRangeIssue('transactions')] }
   return { ok: true, data, exportedAt: null, withoutReceipts: false }
 }
 

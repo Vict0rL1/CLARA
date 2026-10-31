@@ -660,6 +660,7 @@ export const en: Record<keyof typeof es, string> = {
   'issue.invalidTimestamp': 'Invalid date and time.',
   'issue.invalidAmount': 'The amount must be a whole number of cents.',
   'issue.amountNotPositive': 'The amount must be greater than zero.',
+  'issue.amountsBeyondExactRange': 'With this, the sum of all amounts would exceed 2⁵³ − 1 minor units, the most Clara computes exactly: not applied.',
   'issue.amountTooLarge': 'The amount is too large.',
   'issue.currencyMismatch': 'The currency doesn’t match the budget’s ({expected}).',
   'issue.unsupportedCurrency': 'Unsupported currency.',

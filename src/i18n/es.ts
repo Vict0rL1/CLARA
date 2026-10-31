@@ -659,6 +659,7 @@ export const es = {
   'issue.invalidTimestamp': 'Fecha y hora no válidas.',
   'issue.invalidAmount': 'El importe debe ser un número entero de centavos.',
   'issue.amountNotPositive': 'El importe debe ser mayor que cero.',
+  'issue.amountsBeyondExactRange': 'Con esto, la suma de los importes pasaría de 2⁵³ − 1 unidades menores, lo máximo que Clara calcula con exactitud: no se aplica.',
   'issue.amountTooLarge': 'El importe es demasiado grande.',
   'issue.currencyMismatch': 'La moneda no coincide con la del presupuesto ({expected}).',
   'issue.unsupportedCurrency': 'Moneda no admitida.',

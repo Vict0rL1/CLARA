@@ -12,6 +12,7 @@ import { addDays, isValidLocalDate } from './dates'
 import { goalProgress } from './goals'
 import { newId } from './ids'
 import { canChangeCurrency } from './currencyChange'
+import { exactRangeIssue, exceedsExactRange } from './exactRange'
 import { isSupportedCurrency, sumMinor } from './money'
 import { findSettlement } from './planItems'
 import { balanceAtDate, reconciliationFingerprint } from './reconcile'
@@ -175,6 +176,8 @@ export function saveTransaction(data: AppData, draft: TransactionDraft, ctx: OpC
     if (id && id !== existing?.[path] && data.accounts.find((a) => a.id === id)?.archived) return fail([{ path, code: 'accountArchived' }])
   }
   const transactions = upsert(data.transactions, tx)
+  // Cota de exactitud: con este importe la suma de todos pasaría de 2⁵³ − 1 y alguna cifra dejaría de ser exacta.
+  if (exceedsExactRange({ accounts: data.accounts, transactions, trash: data.trash })) return fail([exactRangeIssue()])
   // Las devoluciones ya vinculadas deben seguir siendo válidas (importe y reparto por categorías).
   if (existing) {
     const after = { ...data, transactions }
@@ -749,6 +752,7 @@ export function updateAccountBalance(
   const issues = validateAccount(updated)
   if (issues.length) return fail(issues)
   let next: AppData = { ...data, accounts: upsert(data.accounts, updated) }
+  if (exceedsExactRange(next)) return fail([exactRangeIssue()])
   for (const s of input.settle ?? []) {
     const date = s.occurrenceDate <= input.date ? s.occurrenceDate : input.date
     let r: OpResult<Transaction>
@@ -793,6 +797,7 @@ export function saveAccount(data: AppData, draft: AccountDraft, ctx: OpContext):
   }
   const accounts = upsert(data.accounts, account)
   if (!accounts.some(isBudgetAccount)) return fail([{ path: 'includeInBudget', code: 'lastBudgetAccount' }])
+  if (exceedsExactRange({ accounts, transactions: data.transactions, trash: data.trash })) return fail([exactRangeIssue('openingBalanceMinor')])
   return { ok: true, data: touch({ ...data, accounts }, ctx.now), value: account }
 }
 

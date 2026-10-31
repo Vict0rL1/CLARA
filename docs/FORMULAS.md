@@ -43,6 +43,17 @@ aparece en la proyección pero no en el disponible.
   que no hay cifra (el resumen de pagos recurrentes, §5 b; el saldo proyectado del calendario, §37; un
   porcentaje de Estadísticas o de la revisión semanal queda sin porcentaje, como con base 0). «Importe × k»
   se divide con `mulDivFloor`/`mulDivCeil` (BigInt), nunca multiplicando antes en coma flotante.
+- **Cota de exactitud de las sumas (`domain/exactRange.ts`; revisiones de la pasada QA27):** Σ|saldos de referencia|
+  + Σ|importes| (movimientos realizados y previstos, y la papelera) ≤ 2⁵³ − 1. Mientras se cumple, cualquier suma
+  parcial de esos importes —saldo de una cuenta, total de un periodo o de una categoría, acumulado diario, comercio,
+  estimación de gasto— es un entero exacto, así que las acumulaciones directas de `periodSummary`, `cumulativeTrend`
+  o `topMerchants` nunca redondean. No se cruza: guardar un movimiento (y con él marcar pagado, realizar un previsto,
+  importar del banco fila a fila —todo o nada— y los recibos), mover un saldo de referencia o crear una cuenta con
+  saldo inicial se rechazan con `amountsBeyondExactRange`, y una copia que la pasa no se acepta (`validateAppData`).
+  La papelera cuenta para que restaurar no la cambie; eliminar definitivamente la reduce. Se comprueba sumando
+  magnitudes en coma flotante, exacto para esta comparación (términos ≥ 0: por debajo de 2⁵³ cada suma parcial es
+  representable; al pasarla el resultado queda ≥ 2⁵³). Lo programado no entra en la cota: sus proyecciones usan
+  `stopWhenOutOfRange` (§37) o se declaran sin cifra (§35). Hacen falta ≥ 9 008 movimientos de 10¹² para alcanzarla.
 - Al escribir importes se aceptan `12,50`, `12.50`, `1,234.56`, `1.234,56`, `$ 45`.
   Si hay un solo separador seguido de exactamente 3 dígitos (`1,234`) se usa el
   formato elegido en Ajustes para decidir si son miles o decimales.
@@ -524,6 +535,8 @@ clave      = normalizar(sin prefijo de procesador «SQ *», «TST*», «PAYPAL *
 - La importación de copias valida todo el archivo (tipos, importes enteros, moneda,
   fechas reales, referencias entre registros, duplicados) y **no aplica nada si hay un
   solo error**.
+- **Cota de exactitud (§1):** una copia cuyos importes suman más de 2⁵³ − 1 (saldos de referencia, movimientos y
+  papelera) se rechaza (`amountsBeyondExactRange`): ninguna cifra podría garantizarse exacta con ella.
 
 ## 12. Papelera
 

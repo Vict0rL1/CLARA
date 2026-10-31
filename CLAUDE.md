@@ -39,7 +39,10 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   Divisiones con `floorDiv`/`ceilDiv`/`mulDivFloor`/`mulDivCeil`; nunca `importe * k` antes de dividir. Un agregado
   que no cabe en un entero exacto (> 2⁵³ − 1) no se redondea ni se recorta: `checkedSumMinor`/`checkedMulDivFloor`
   devuelven `null` y la pantalla dice que no hay cifra (QA V2, FIN-01: `recurringCosts` → `ok: false`;
-  `projectBalance` con `stopWhenOutOfRange` → `outOfRangeFrom`).
+  `projectBalance` con `stopWhenOutOfRange` → `outOfRangeFrom`). Cota de exactitud (`domain/exactRange.ts`):
+  Σ|saldos de referencia| + Σ|importes| (movimientos y papelera) ≤ 2⁵³ − 1; guardar, marcar pagado, importar, mover
+  un saldo de referencia o crear una cuenta con saldo que la pasarían se rechazan (`amountsBeyondExactRange`) y una
+  copia que la pasa no se acepta: así toda suma parcial de la app es exacta (revisiones QA27).
 - Una moneda por presupuesto; cada registro guarda `currency` y se valida.
 - Fechas de calendario (`'AAAA-MM-DD'`) separadas de marcas de tiempo (ISO UTC).
   "Hoy" = `todayInTimeZone(settings.timeZone)`.

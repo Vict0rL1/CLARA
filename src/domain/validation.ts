@@ -51,6 +51,8 @@ export type IssueCode =
   | 'invalidAmount'
   | 'amountNotPositive'
   | 'amountTooLarge'
+  /** La suma de todos los importes pasaría de 2⁵³ − 1 (`domain/exactRange.ts`): no se aplica ni se acepta. */
+  | 'amountsBeyondExactRange'
   | 'currencyMismatch'
   | 'anchorAfterStart'
   /** Moneda escrita junto al importe distinta de la del presupuesto (asistente, AS-01). */
