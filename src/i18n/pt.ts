@@ -1545,7 +1545,7 @@ export const pt: Record<keyof typeof es, string> = {
   'shell.updateOtherTab': 'Uma nova versão da Clara foi ativada em outra aba. Esta mantém a versão anterior: recarregue quando terminar o que está fazendo.',
   'shell.updateReload': 'Recarregar',
   'shell.screenFailed': 'Não foi possível abrir esta tela',
-  'shell.screenFailedText': 'O app pode ter sido atualizado em outra aba, ou não há conexão. Seus dados não mudaram. Recarregue para continuar.',
+  'shell.screenFailedText': 'Algo falhou ao desenhar esta tela. Seus dados não mudaram: recarregue para tentar de novo ou vá a outra tela pelo menu.',
   'settings.backup.importUndone': 'Importação desfeita: seus dados anteriores voltaram',
   'explain.goalPaid': 'já usado pelo pagamento registrado: {amount}',
   'settings.storage.eviction': 'O navegador pode excluir estes dados sozinho: por exemplo, quando fica com pouco espaço, ou o Safari no iPhone depois de cerca de 7 dias sem abrir o site se ele não foi adicionado à tela inicial. O app não pode garantir que sejam mantidos: exporte cópias.',

@@ -1546,7 +1546,7 @@ export const es = {
   'shell.updateOtherTab': 'Se activó una versión nueva de Clara en otra pestaña. Esta sigue con la anterior: recarga cuando termines lo que estás haciendo.',
   'shell.updateReload': 'Recargar',
   'shell.screenFailed': 'No se pudo abrir esta pantalla',
-  'shell.screenFailedText': 'Puede que la app se haya actualizado en otra pestaña o que no haya conexión. Tus datos no cambiaron. Recarga para continuar.',
+  'shell.screenFailedText': 'Algo falló al dibujar esta pantalla. Tus datos no cambiaron: recarga para volver a intentarlo o ve a otra pantalla desde el menú.',
   'settings.backup.importUndone': 'Importación deshecha: se recuperaron los datos anteriores',
   'explain.goalPaid': 'ya usado en el pago registrado: {amount}',
   'settings.storage.eviction': 'El navegador puede borrar estos datos por su cuenta: por ejemplo, si le falta espacio, o Safari en iPhone tras unos 7 días sin abrir el sitio si no está añadido a la pantalla de inicio. La app no puede garantizar que se conserven: exporta copias.',

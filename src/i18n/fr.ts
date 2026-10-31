@@ -1545,7 +1545,7 @@ export const fr: Record<keyof typeof es, string> = {
   'shell.updateOtherTab': 'Une nouvelle version de Clara a été activée dans un autre onglet. Celui-ci garde la version précédente : rechargez quand vous aurez fini.',
   'shell.updateReload': 'Recharger',
   'shell.screenFailed': 'Cet écran n’a pas pu s’ouvrir',
-  'shell.screenFailedText': 'L’application a peut-être été mise à jour dans un autre onglet, ou il n’y a pas de connexion. Vos données n’ont pas changé. Rechargez pour continuer.',
+  'shell.screenFailedText': 'Quelque chose a échoué en affichant cet écran. Vos données n\'ont pas changé : rechargez pour réessayer ou passez à un autre écran depuis le menu.',
   'settings.backup.importUndone': 'Import annulé : vos données précédentes sont de retour',
   'explain.goalPaid': 'déjà utilisé par le paiement enregistré : {amount}',
   'settings.storage.eviction': 'Le navigateur peut supprimer ces données de lui-même : par exemple quand il manque d’espace, ou Safari sur iPhone après environ 7 jours sans ouvrir le site s’il n’est pas ajouté à l’écran d’accueil. L’application ne peut pas garantir leur conservation : exportez des copies.',

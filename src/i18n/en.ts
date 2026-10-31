@@ -1547,7 +1547,7 @@ export const en: Record<keyof typeof es, string> = {
   'shell.updateOtherTab': 'A new version of Clara was activated in another tab. This one keeps the previous version: reload when you finish what you are doing.',
   'shell.updateReload': 'Reload',
   'shell.screenFailed': 'This screen could not be opened',
-  'shell.screenFailedText': 'The app may have been updated in another tab, or there is no connection. Your data did not change. Reload to continue.',
+  'shell.screenFailedText': 'Something failed while drawing this screen. Your data did not change: reload to try again, or go to another screen from the menu.',
   'settings.backup.importUndone': 'Import undone: your previous data is back',
   'explain.goalPaid': 'already used by the recorded payment: {amount}',
   'settings.storage.eviction': 'The browser can delete this data on its own: for example, when it runs low on space, or Safari on iPhone after about 7 days without opening the site if it is not added to the Home Screen. The app cannot guarantee that it is kept: export copies.',
