@@ -36,7 +36,7 @@ relative to today, everything is marked as demo). «Ajustes › Demostración y 
 ```bash
 npm run check        # typecheck + oxlint + i18n literal check + Vitest (≈1 150 unit tests, incl. qa/, the QA V2, the PR #15 audit, the self-review contracts, the follow-up audit, the lead pass and the QA27 pass)
 npm run build        # production build
-npm run size         # initial JS budget: must stay ≤ 844.6 KB (currently ≈ 844 KB: ~0.5 KB of headroom after QA V2) — do not raise it
+npm run size         # initial JS budget: must stay ≤ 844.6 KB (≈ 840 KB after moving the Legal and Gallery texts to lazy packs, `src/i18n/packs/`; move rarely visited screen texts there to free bytes) — do not raise it
 npm audit --audit-level=high   # dependency audit (CI fails on a high/critical vulnerability)
 npm run test:e2e     # Playwright: 3 projects (celular 412 px, celular-pequeno 320 px, escritorio) + axe
 ```

@@ -29,7 +29,9 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
 - `src/ui/` — pantallas y componentes. Solo muestran y llaman operaciones.
 - `src/i18n/` — todos los textos visibles. **Nunca** escribir texto de interfaz
   directamente en componentes: añadir cada clave a `es.ts`, `en.ts`, `pt.ts` **y** `fr.ts`
-  (el tipo compartido obliga a tener todas las claves en los cuatro).
+  (el tipo compartido obliga a tener todas las claves en los cuatro). Los textos de pantallas poco visitadas (Legal,
+  Galería) son paquetes diferidos fuera del JS inicial: `src/i18n/packs/<paquete>.<idioma>.ts` (mismas claves en los
+  cuatro, el tipo lo exige) cargados con `usePackT` (`src/i18n/packs.ts`); la pantalla no dibuja nada hasta que carga.
 
 ## Reglas financieras (ver `docs/FORMULAS.md`)
 
