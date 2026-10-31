@@ -25,8 +25,11 @@ const ERROR_HEADING = 'No se pudo abrir esta pantalla'
 test('una copia cuya suma de importes pasa de 2⁵³ − 1 se rechaza al importar, con el motivo, y los datos no cambian', async ({ page }) => {
   await openApp(page, clock('2026-10-22'))
   await expect(page.getByRole('heading', { name: 'Hola, esto es Clara' })).toBeVisible()
+  await writeStoredData(page, baseData({ accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 123456, date: '2026-10-01', setAt: '2026-10-01T12:00:00.000Z' } })] }))
+  await page.reload()
+  await expect(page.getByTestId('available')).toBeVisible()
   const before = await storedData(page)
-  await go(page, '/ajustes?seccion=copia')
+  await go(page, '/ajustes/copia')
   const text = backupText(edge(REST + 1), new Date('2026-10-22T12:00:00.000Z'), 'test')
   await page.getByTestId('import-file').setInputFiles({ name: 'demasiado.json', mimeType: 'application/json', buffer: Buffer.from(text) })
   await expect(page.getByText('la suma de los importes pasaría de 2⁵³ − 1 unidades menores')).toBeVisible()
