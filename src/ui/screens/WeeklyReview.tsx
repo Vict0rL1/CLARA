@@ -35,11 +35,11 @@ export function WeeklyReview({ route }: { route: Route }) {
     if (r.current.coverage !== 'complete' || r.previous.coverage !== 'complete') return t('weekly.compareMissing')
     const base = t('weekly.comparePrev', { amount: fmt.money(previousMinor) })
     // La diferencia puede no caber en un entero exacto aunque los dos totales quepan (QA27-03): se dice, sin inventar cifra.
-    if (c.diffMinor === null) return c.percent === null ? `${base} · ${t('weekly.noDifference')}` : `${base} · ${t('weekly.noDifference')} (${fmt.percent(Math.abs(c.percent) / 100)})`
+    if (c.diffMinor === null) return c.percent === null ? `${base} · ${t('weekly.noDifference')}` : `${base} · ${t('weekly.noDifference')} (${fmt.percentPoints(Math.abs(c.percent))})`
     const diff = fmt.money(Math.abs(c.diffMinor))
     if (c.diffMinor === 0) return `${base} · ${t('weekly.same')}`
     const dir = t(c.diffMinor > 0 ? 'weekly.more' : 'weekly.less', { amount: diff })
-    return c.percent === null ? `${base} · ${dir} · ${t('weekly.noPercent')}` : `${base} · ${dir} (${fmt.percent(Math.abs(c.percent) / 100)})`
+    return c.percent === null ? `${base} · ${dir} · ${t('weekly.noPercent')}` : `${base} · ${dir} (${fmt.percentPoints(Math.abs(c.percent))})`
   }
 
   return (

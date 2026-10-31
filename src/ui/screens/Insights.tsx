@@ -21,7 +21,7 @@ const SIGNED = new Set<Because['id']>(['delta', 'difference', 'remaining'])
 function becauseValue(b: Because, fmt: Formatter, today: string): string {
   if (b.kind === 'money') return fmt.money(b.value as number, { sign: SIGNED.has(b.id) })
   if (b.kind === 'count') return String(b.value)
-  if (b.kind === 'percent') return `${b.value} %`
+  if (b.kind === 'percent') return fmt.percentPoints(b.value as number)
   if (b.kind === 'date') return fmt.date(String(b.value), { compact: true, today })
   if (b.id === 'lastExport' && b.value) return fmt.timestamp(String(b.value))
   return b.value ? String(b.value) : '—'

@@ -28,6 +28,8 @@ export interface Formatter {
   timestamp: (ts: Timestamp) => string
   time: (ts: Timestamp) => string
   percent: (fraction: number) => string
+  /** Puntos porcentuales enteros de una comparación («200 %», «-9 %»): el mismo trazo en Estadísticas, Análisis y la revisión semanal (revisión en navegador QA27, O-2). */
+  percentPoints: (points: number) => string
   /** «USD y CAD», «USD and CAD»: una lista corta en el idioma de la interfaz. */
   list: (items: readonly string[]) => string
 }
@@ -50,6 +52,7 @@ export function createFormatter(settings: Settings, options: { privacy?: boolean
     return f
   }
   const percentFormat = new Intl.NumberFormat(settings.numberLocale, { style: 'percent', maximumFractionDigits: 0 })
+  const integerFormat = new Intl.NumberFormat(settings.numberLocale, { maximumFractionDigits: 0 })
   const listFormat = new Intl.ListFormat(lang, { type: 'conjunction' })
 
   return {
@@ -97,6 +100,7 @@ export function createFormatter(settings: Settings, options: { privacy?: boolean
       dtf('ts', { timeZone: settings.timeZone, day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(ts)),
     time: (ts) => dtf('time', { timeZone: settings.timeZone, hour: '2-digit', minute: '2-digit' }).format(new Date(ts)),
     percent: (fraction) => percentFormat.format(fraction),
+    percentPoints: (points) => `${points < 0 ? '-' : ''}${integerFormat.format(Math.abs(points))} %`,
     list: (items) => listFormat.format(items),
   }
 }

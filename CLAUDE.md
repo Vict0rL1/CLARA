@@ -213,6 +213,9 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   (axe no lo mide: prueba de contraste calculado). Solo tokens definidos: `themeTokens.test.ts` falla con un `var(--x)` inexistente.
 - Cada campo con etiqueta, ayuda y error asociados (`FieldShell`). Botones ≥ 40–44 px.
 - Cada cifra principal tiene su explicación ("¿Cómo se calculó?").
+- Porcentajes de comparación (Estadísticas, Análisis, Revisión semanal): puntos enteros con espacio, «200 %», «-9 %»,
+  siempre por `fmt.percentPoints` (revisión en navegador QA27, O-2); las fracciones de progreso (metas, tarjetas,
+  confianza del asistente) siguen con `fmt.percent` (Intl del idioma).
 - No mostrar botones de funciones que no existen. No simular notificaciones,
   sincronización, autenticación ni integraciones.
 - Registrar tiene una sola entrada: la pestaña «+» (celular) o «Agregar» (escritorio) abren la hoja

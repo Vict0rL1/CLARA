@@ -38,7 +38,7 @@ function DeltaText({ delta, fmt, invert }: { delta: Delta; fmt: Formatter; inver
   return (
     <span className={`stat__delta stat__delta--${tone}`}>
       <Icon name={signed === 0 ? 'check' : up ? 'arrowUp' : 'arrowDown'} size={14} />
-      {delta.percent === null ? fmt.money(delta.diffMinor ?? 0, { sign: true }) : `${delta.percent > 0 ? '+' : ''}${delta.percent} %`}
+      {delta.percent === null ? fmt.money(delta.diffMinor ?? 0, { sign: true }) : `${delta.percent > 0 ? '+' : ''}${fmt.percentPoints(delta.percent)}`}
       <span className="sr-only"> {t('stats.vsPrevious')}</span>
     </span>
   )
