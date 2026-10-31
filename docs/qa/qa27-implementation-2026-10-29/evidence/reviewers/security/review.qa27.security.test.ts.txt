@@ -1,0 +1,481 @@
+/**
+ * Revisión independiente de seguridad y almacenamiento (2026-10-30) sobre `ac99396` (QA27-01…04). Casos propios,
+ * calculados a mano antes de ejecutarse; datos sintéticos. Las copias `*.21b4ed8.ts` son el código de la versión
+ * auditada (`git show 21b4ed8:…`), para comparar lo que ESCRIBÍA y lo que ACEPTA con lo que hace HEAD.
+ *
+ * (a) negativa a revertir: inmutable, idéntica en memoria / recarga / copia / migración, coherente entre `canRevert`,
+ *     `revertDependents` y `revertEntry`; entradas que solo tocan movimientos; papelera; falsos positivos.
+ * (c) contratos de validación sin cambios; aplazamientos tras una reparación partida; tope de duplicados.
+ * (e) copias escritas por 21b4ed8 importadas en HEAD y copias de HEAD ante el validador de 21b4ed8.
+ */
+import { readFileSync } from 'node:fs'
+import { describe, expect, it } from 'vitest'
+import { computeBudget } from './budget'
+import { recordHistory } from './history'
+import { canRevert, revertDependents, revertEntry, type RevertDependent } from './historyRevert'
+import { canRevert as canRevert21b4ed8, revertDependents as revertDependents21b4ed8 } from './historyRevert.21b4ed8'
+import { DUPLICATE_PAIRS_PER_GROUP, dismissInboxItem, inboxView, possibleDuplicates, snoozeInboxItem } from './inbox'
+import { deleteTransaction, markOccurrence, restoreFromTrash, saveTransaction, type OpResult } from './operations'
+import { driftedSplits, repairSplit } from './splitRepair'
+import { repairSplit as repairSplit21b4ed8 } from './splitRepair.21b4ed8'
+import type { AppData, HistoryEntry, Schedule } from './types'
+import { INBOX_ID_MAX, isValidHistoryChangeId, validateHistory, validateInbox } from './validation'
+import { validateHistory as validateHistory21b4ed8, validateInbox as validateInbox21b4ed8, validateSchedule as validateSchedule21b4ed8, validateTransaction as validateTransaction21b4ed8 } from './validation.21b4ed8'
+import { backupText, parseBackup, validateAppData } from '../storage/backup'
+import { account, baseData, bill, ctx, deepFreeze, income, TODAY, tx } from '../test/fixtures'
+
+/* ------------------------------------------------------------------ */
+/* Ayudantes                                                           */
+/* ------------------------------------------------------------------ */
+
+const persisted = (d: AppData): AppData => JSON.parse(JSON.stringify(d)) as AppData
+const at = (today: string) => ({ today, now: `${today}T12:00:00.000Z` })
+function unwrap<T>(r: OpResult<T>): Extract<OpResult<T>, { ok: true }> {
+  if (!r.ok) throw new Error(JSON.stringify(r.issues))
+  return r
+}
+const imported = (text: string): AppData => {
+  const r = parseBackup(text)
+  if (!r.ok) throw new Error(JSON.stringify(r.issues))
+  return r.data
+}
+const roundTrip = (d: AppData, today: string): AppData => imported(backupText(persisted(d), new Date(`${today}T12:00:00.000Z`), 'review'))
+/** La misma copia marcada `schemaVersion: 13`: pasa por `migrate` (13 → 14 solo cambia el número). */
+const migratedFrom13 = (d: AppData): AppData => {
+  const r = validateAppData({ ...persisted(d), schemaVersion: 13 })
+  if (!r.ok) throw new Error(JSON.stringify(r.issues))
+  return r.data
+}
+const entryById = (d: AppData, id: string): HistoryEntry => {
+  const e = d.history.find((x) => x.id === id)
+  if (!e) throw new Error(`sin entrada ${id}`)
+  return e
+}
+const lastEntry = (d: AppData): HistoryEntry => d.history[d.history.length - 1]!
+const figures = (d: AppData, today: string) => {
+  const b = computeBudget(d, today)
+  return { available: b.availableMinor, reserved: b.reservedTotalMinor, overdue: b.overdueBills.map((i) => i.key) }
+}
+/** Edición directa de un programado, registrada en el historial como lo haría el formulario. */
+const editSchedule = (d: AppData, id: string, patch: Partial<Schedule>, now: string): AppData =>
+  recordHistory(d, { ...d, schedules: d.schedules.map((s) => (s.id === id ? { ...s, ...patch, updatedAt: now } : s)), updatedAt: now }, now)
+
+/**
+ * La negativa: las tres funciones coinciden, la lista es exactamente `expected`, y los datos (congelados en
+ * profundidad) quedan byte a byte iguales.
+ */
+function expectRefused(data: AppData, entryId: string, today: string, expected: RevertDependent[]): void {
+  const before = JSON.stringify(data)
+  deepFreeze(data)
+  const entry = entryById(data, entryId)
+  expect(revertDependents(data, entry, today)).toEqual(expected)
+  expect(canRevert(data, entry, today)).toBe('dependents')
+  expect(revertEntry(data, entryId, at(today))).toEqual({ ok: false, issues: [{ path: 'history', code: 'revertDependents', params: { count: expected.length } }] })
+  expect(JSON.stringify(data)).toBe(before)
+}
+
+/* ------------------------------------------------------------------ */
+/* Datos                                                               */
+/* ------------------------------------------------------------------ */
+
+const V13 = readFileSync(new URL('../test/v13-known-intent-backup.json', import.meta.url), 'utf8')
+
+/** «Internet» 420,00 del 31, partida el 28-feb por una versión anterior; saldo 1 400,00 el 1-mar; horizonte 7 días. */
+function internet(): AppData {
+  const d = baseData({
+    accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 140000, date: '2026-03-01', setAt: '2026-03-01T12:00:00.000Z' } })],
+    schedules: [
+      bill('2026-01-31', 42000, { id: 'b1', name: 'Internet', frequency: 'monthly', endDate: '2026-02-27' }),
+      bill('2026-02-28', 42000, { id: 'b2', name: 'Internet', frequency: 'monthly' }),
+    ],
+    transactions: [
+      tx({ id: 'p-jan', kind: 'expense', amountMinor: 42000, date: '2026-01-31', categoryId: 'utilities', scheduleId: 'b1', occurrenceDate: '2026-01-31' }),
+      tx({ id: 'p-feb', kind: 'expense', amountMinor: 42000, date: '2026-02-28', categoryId: 'utilities', scheduleId: 'b2', occurrenceDate: '2026-02-28' }),
+    ],
+  })
+  return { ...d, settings: { ...d.settings, fallbackHorizonDays: 7 } }
+}
+/** Reparada el 20-mar (en el sitio: el 28-feb pagado también es del 31). */
+function repaired() {
+  const d = internet()
+  const r = unwrap(repairSplit(d, 'b2', at('2026-03-20'), 'b3'))
+  const data = recordHistory(d, r.data, at('2026-03-20').now)
+  return { d, data, repairEntry: lastEntry(data) }
+}
+/** …y el 31-mar corregido pagado el 29-mar (p1). */
+function paid() {
+  const { d, data, repairEntry } = repaired()
+  const p = unwrap(markOccurrence(data, { scheduleId: 'b2', occurrenceDate: '2026-03-31', amountMinor: 42000, date: '2026-03-29', txId: 'p1' }, at('2026-03-29')))
+  const after = recordHistory(data, p.data, at('2026-03-29').now)
+  return { d, repairEntry, payEntry: lastEntry(after), data: after }
+}
+const P1: RevertDependent = { kind: 'payment', id: 'p1', name: '2026-03-31', scheduleId: 'b2', amountMinor: 42000 }
+
+/** Renta del 31 partida el 28-feb-2026 y pagada el 28 cada mes hasta el 28-ene-2027; hoy 1-mar-2027 (reparación PARTIDA desde el 1-feb). */
+const RENT_TODAY = '2027-03-01'
+const A = '2027-02-28T12:00:00.000Z'
+function rent(snoozed: AppData['inbox']['snoozed']): AppData {
+  const base = bill('2026-01-31', 150000, { id: 'r1', name: 'Renta', frequency: 'monthly', categoryId: 'housing' })
+  const paidOn = (date: string, i: number) => tx({ id: `p${i}`, kind: 'expense', amountMinor: 150000, date, categoryId: 'housing', scheduleId: 'r2', occurrenceDate: date })
+  const dates = ['2026-02-28', '2026-03-28', '2026-04-28', '2026-05-28', '2026-06-28', '2026-07-28', '2026-08-28', '2026-09-28', '2026-10-28', '2026-11-28', '2026-12-28', '2027-01-28']
+  return baseData({
+    accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 1000000, date: '2027-01-01', setAt: '2027-01-01T12:00:00.000Z' } })],
+    schedules: [{ ...base, endDate: '2026-02-27' }, { ...base, id: 'r2', startDate: '2026-02-28' }],
+    transactions: dates.map(paidOn),
+    inbox: { snoozed, dismissed: [] },
+  })
+}
+
+/* ------------------------------------------------------------------ */
+/* (a) La negativa a revertir                                          */
+/* ------------------------------------------------------------------ */
+
+describe('(a) negativa a revertir: inmutable, idéntica en las cuatro representaciones y coherente entre canRevert, revertDependents y revertEntry', () => {
+  it('en memoria, tras recargar (JSON), tras exportar e importar y tras migrar una copia marcada 13: una sola dependiente (p1, 31-mar, 420,00) y los datos quedan byte a byte iguales', () => {
+    const { data, repairEntry } = paid()
+    expect(figures(data, '2026-03-29')).toEqual({ available: 98000, reserved: 0, overdue: [] })
+    const forms = [
+      ['memoria', data],
+      ['recarga', persisted(data)],
+      ['copia exportada e importada', roundTrip(data, '2026-03-29')],
+      ['copia marcada 13 migrada', migratedFrom13(data)],
+    ] as const
+    for (const [label, again] of forms) {
+      expect(again.schemaVersion, label).toBe(14)
+      expectRefused(again, repairEntry.id, '2026-03-29', [P1])
+      expect(figures(again, '2026-03-29'), label).toEqual({ available: 98000, reserved: 0, overdue: [] })
+    }
+  })
+
+  it('la copia v13 genuina (819eaa9): reparar salary-2 el 21-mar y cobrar el 31-mar; revertir se rechaza por ese cobro (240 777) en memoria, tras recargar y tras reexportar', () => {
+    const d = imported(V13)
+    const r = unwrap(repairSplit(d, 'salary-2', at('2026-03-21'), 'salary-3'))
+    const data0 = recordHistory(d, r.data, at('2026-03-21').now)
+    const repairEntry = lastEntry(data0)
+    expect(canRevert(data0, repairEntry, '2026-03-21')).toBe('ok')
+    const p = unwrap(markOccurrence(data0, { scheduleId: 'salary-2', occurrenceDate: '2026-03-31', amountMinor: 240777, date: '2026-03-31', txId: 'inc1' }, at('2026-03-31')))
+    const data = recordHistory(data0, p.data, at('2026-03-31').now)
+    const INC: RevertDependent = { kind: 'payment', id: 'inc1', name: '2026-03-31', scheduleId: 'salary-2', amountMinor: 240777 }
+    for (const again of [data, persisted(data), roundTrip(data, '2026-03-31'), migratedFrom13(data)]) expectRefused(again, repairEntry.id, '2026-03-31', [INC])
+  })
+
+  it('cobro parcial y liquidación final de la misma fecha: dos dependientes (100 000 y 200 000) y count 2', () => {
+    const d = baseData({
+      accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 100000, date: '2026-03-01', setAt: '2026-03-01T12:00:00.000Z' } })],
+      schedules: [income('2026-01-31', 300000, { id: 's1', name: 'Sueldo', frequency: 'monthly', endDate: '2026-02-27' }), income('2026-02-28', 300000, { id: 's2', name: 'Sueldo', frequency: 'monthly' })],
+    })
+    const r = unwrap(repairSplit(d, 's2', at('2026-03-20'), 's3'))
+    const rep = recordHistory(d, r.data, at('2026-03-20').now)
+    const entry = lastEntry(rep)
+    const i1 = unwrap(markOccurrence(rep, { scheduleId: 's2', occurrenceDate: '2026-03-31', amountMinor: 100000, date: '2026-03-31', txId: 'i1', expectRemainder: true }, at('2026-03-31')))
+    const i2 = unwrap(markOccurrence(i1.data, { scheduleId: 's2', occurrenceDate: '2026-03-31', amountMinor: 200000, date: '2026-03-31', txId: 'i2' }, at('2026-03-31')))
+    const data = recordHistory(rep, i2.data, at('2026-03-31').now)
+    expect(data.transactions.map((t) => [t.id, t.partialSettlement ?? false])).toEqual([['i1', true], ['i2', false]])
+    expectRefused(data, entry.id, '2026-03-31', [
+      { kind: 'payment', id: 'i1', name: '2026-03-31', scheduleId: 's2', amountMinor: 100000 },
+      { kind: 'payment', id: 'i2', name: '2026-03-31', scheduleId: 's2', amountMinor: 200000 },
+    ])
+  })
+
+  it('las dependientes son solo calculadas: ni `kind` ni `amountMinor` entran en el historial ni en la copia', () => {
+    const { data, repairEntry } = paid()
+    const deps = revertDependents(data, repairEntry, '2026-03-29')
+    expect(Object.keys(deps[0]!).sort()).toEqual(['amountMinor', 'id', 'kind', 'name', 'scheduleId'])
+    const text = backupText(persisted(data), new Date('2026-03-29T12:00:00.000Z'), 'review')
+    expect(text.includes('"dependents"')).toBe(false)
+    expect(text.includes('"kind":"payment"')).toBe(false)
+    for (const e of data.history) {
+      expect(Object.keys(e).filter((k) => !['id', 'at', 'source', 'changes', 'revertOf'].includes(k))).toEqual([])
+      for (const c of e.changes) expect(Object.keys(c).sort()).toEqual(['after', 'before', 'collection', 'id'])
+    }
+  })
+})
+
+describe('(a) entradas que solo tocan movimientos, y la papelera', () => {
+  const relink = () => {
+    const { data, repairEntry } = paid()
+    const p1 = data.transactions.find((t) => t.id === 'p1')!
+    const { createdAt: _c, updatedAt: _u, currency: _cur, realizedAt: _r, ...draft } = p1
+    const r = unwrap(saveTransaction(data, { ...draft, occurrenceDate: '2026-04-30' }, at('2026-04-01')))
+    const relinked = recordHistory(data, r.data, at('2026-04-01').now)
+    return { relinked, relinkEntry: lastEntry(relinked), repairEntry }
+  }
+
+  it('revincular p1 del 31-mar al 30-abr y revertir: las dos fechas existen → se permite y el resultado valida', () => {
+    const { relinked, relinkEntry } = relink()
+    expect(relinkEntry.changes.map((c) => [c.collection, c.id])).toEqual([['transactions', 'p1']])
+    expect(revertDependents(relinked, relinkEntry, '2026-04-01')).toEqual([])
+    expect(canRevert(relinked, relinkEntry, '2026-04-01')).toBe('ok')
+    const back = unwrap(revertEntry(relinked, relinkEntry.id, at('2026-04-01')))
+    expect(back.data.transactions.find((t) => t.id === 'p1')?.occurrenceDate).toBe('2026-03-31')
+    expect(validateAppData(persisted(back.data)).ok).toBe(true)
+  })
+
+  it('si después la serie pasa al día 30 (el 31-mar deja de existir): revertir la revinculación dejaría p1 sin fecha → se rechaza y se nombra la fecha ACTUAL del pago (30-abr)', () => {
+    const { relinked, relinkEntry } = relink()
+    const moved = editSchedule(relinked, 'b2', { anchorDate: '2026-01-30' }, '2026-04-02T12:00:00.000Z')
+    expectRefused(moved, relinkEntry.id, '2026-04-02', [{ kind: 'payment', id: 'p1', name: '2026-04-30', scheduleId: 'b2', amountMinor: 42000 }])
+  })
+
+  it('eliminar el pago y revertir la eliminación: se permite; si entre medias se volvió a pagar la misma fecha, revertEntry lo devuelve pero validateAppData (la segunda guarda de la pantalla) rechaza la doble liquidación', () => {
+    const { data } = paid()
+    const del = unwrap(deleteTransaction(data, 'p1', at('2026-04-01')))
+    const deleted = recordHistory(data, del.data, at('2026-04-01').now)
+    const delEntry = lastEntry(deleted)
+    expect(delEntry.changes.map((c) => [c.collection, c.id, c.after === null])).toEqual([['transactions', 'p1', true], ['trash', 'p1', false]])
+    expect(revertDependents(deleted, delEntry, '2026-04-01')).toEqual([])
+    expect(canRevert(deleted, delEntry, '2026-04-01')).toBe('ok')
+    const back = unwrap(revertEntry(deleted, delEntry.id, at('2026-04-01')))
+    expect(back.data.trash).toEqual([])
+    expect(validateAppData(persisted(back.data)).ok).toBe(true)
+    // Pagada de nuevo (p2) antes de revertir la eliminación de p1.
+    const again = unwrap(markOccurrence(deleted, { scheduleId: 'b2', occurrenceDate: '2026-03-31', amountMinor: 42000, date: '2026-04-01', txId: 'p2' }, at('2026-04-01')))
+    const repaid = recordHistory(deleted, again.data, at('2026-04-01').now)
+    expect(revertDependents(repaid, delEntry, '2026-04-02')).toEqual([])
+    expect(canRevert(repaid, delEntry, '2026-04-02')).toBe('ok')
+    const twice = unwrap(revertEntry(repaid, delEntry.id, at('2026-04-02')))
+    expect(twice.data.transactions.map((t) => t.id)).toEqual(['p-jan', 'p-feb', 'p2', 'p1'])
+    const v = validateAppData(persisted(twice.data))
+    expect(v.ok ? [] : v.issues).toEqual([{ path: 'transactions[3].occurrenceDate', code: 'duplicateId' }])
+    // La operación de la papelera lo rechaza por sí misma.
+    expect(restoreFromTrash(repaid, 'p1', at('2026-04-02'))).toMatchObject({ ok: false, issues: [{ code: 'occurrenceAlreadySettled' }] })
+  })
+
+  it('papelera: pagar, enviar el pago a la papelera, revertir la reparación (se permite) y restaurar el pago deja p1 apuntando a un 31-mar que ya no existe: 560 disponibles con el 28-mar vencido (el estado del P1, por otro camino)', () => {
+    const { data, repairEntry } = paid()
+    const del = unwrap(deleteTransaction(data, 'p1', at('2026-03-30')))
+    const trashed = recordHistory(data, del.data, at('2026-03-30').now)
+    expect(revertDependents(trashed, repairEntry, '2026-03-30')).toEqual([])
+    expect(canRevert(trashed, repairEntry, '2026-03-30')).toBe('ok')
+    const back = unwrap(revertEntry(trashed, repairEntry.id, at('2026-03-30')))
+    expect(back.data.schedules.find((s) => s.id === 'b2')?.anchorDate).toBeUndefined()
+    const restored = restoreFromTrash(back.data, 'p1', at('2026-03-30'))
+    expect(restored.ok).toBe(true)
+    if (!restored.ok) return
+    expect(restored.data.transactions.find((t) => t.id === 'p1')).toMatchObject({ scheduleId: 'b2', occurrenceDate: '2026-03-31', status: 'realized' })
+    expect(validateAppData(persisted(restored.data)).ok).toBe(true)
+    expect(figures(restored.data, '2026-03-30')).toEqual({ available: 56000, reserved: 42000, overdue: ['schedule:b2:2026-03-28'] })
+  })
+})
+
+describe('(a) falsos positivos y límites del comparador de liquidaciones', () => {
+  it('cambiar solo el importe, o alargar el fin, de un programado con pagos: revertir sigue siendo posible y valida', () => {
+    const { data } = paid()
+    for (const patch of [{ amountMinor: 45000 }, { endDate: '2026-12-31' }] as Partial<Schedule>[]) {
+      const edited = editSchedule(data, 'b2', patch, '2026-04-01T12:00:00.000Z')
+      const e = lastEntry(edited)
+      expect(revertDependents(edited, e, '2026-04-01')).toEqual([])
+      expect(canRevert(edited, e, '2026-04-01')).toBe('ok')
+      expect(validateAppData(persisted(unwrap(revertEntry(edited, e.id, at('2026-04-01'))).data)).ok).toBe(true)
+    }
+  })
+
+  it('quitar el fin de una serie terminada y pagar una fecha que solo existe sin fin: revertir volvería a ponerle fin → se rechaza por ese pago', () => {
+    const d = baseData({
+      accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 100000, date: '2026-03-01', setAt: '2026-03-01T12:00:00.000Z' } })],
+      schedules: [bill('2026-01-31', 30000, { id: 'm1', name: 'Gimnasio', frequency: 'monthly', endDate: '2026-02-28' })],
+    })
+    const ext = editSchedule(d, 'm1', { endDate: undefined }, '2026-03-01T12:00:00.000Z')
+    const extEntry = lastEntry(ext)
+    expect(extEntry.changes.map((c) => [c.collection, c.id])).toEqual([['schedules', 'm1']])
+    const g = unwrap(markOccurrence(ext, { scheduleId: 'm1', occurrenceDate: '2026-03-31', amountMinor: 30000, date: '2026-03-31', txId: 'g1' }, at('2026-03-31')))
+    const data = recordHistory(ext, g.data, at('2026-03-31').now)
+    expectRefused(data, extEntry.id, '2026-04-01', [{ kind: 'payment', id: 'g1', name: '2026-03-31', scheduleId: 'm1', amountMinor: 30000 }])
+  })
+
+  it('revertir una reversión (rehacer la reparación) con un pago posterior en la fecha movida (28-mar): se rechaza; la entrada original figura como ya revertida', () => {
+    const { data: rep, repairEntry } = repaired()
+    const back = unwrap(revertEntry(rep, repairEntry.id, at('2026-03-21')))
+    const reverted = recordHistory(rep, back.data, at('2026-03-21').now, { source: 'revert', revertOf: repairEntry.id })
+    const undoEntry = lastEntry(reverted)
+    expect([undoEntry.source, undoEntry.revertOf]).toEqual(['revert', repairEntry.id])
+    expect(canRevert(reverted, repairEntry, '2026-03-21')).toBe('alreadyReverted')
+    const p = unwrap(markOccurrence(reverted, { scheduleId: 'b2', occurrenceDate: '2026-03-28', amountMinor: 42000, date: '2026-03-28', txId: 'p28' }, at('2026-03-28')))
+    const data = recordHistory(reverted, p.data, at('2026-03-28').now)
+    expectRefused(data, undoEntry.id, '2026-03-29', [{ kind: 'payment', id: 'p28', name: '2026-03-28', scheduleId: 'b2', amountMinor: 42000 }])
+  })
+
+  it('no cuentan: el pago que la propia entrada registró (revertirla lo retira y la fecha vuelve a reservarse) ni un movimiento previsto vinculado', () => {
+    const { data, payEntry } = paid()
+    expect(revertDependents(data, payEntry, '2026-03-29')).toEqual([])
+    expect(canRevert(data, payEntry, '2026-03-29')).toBe('ok')
+    const back = unwrap(revertEntry(data, payEntry.id, at('2026-03-29')))
+    expect(back.data.transactions.map((t) => t.id)).toEqual(['p-jan', 'p-feb'])
+    expect(figures(back.data, '2026-03-29')).toEqual({ available: 98000, reserved: 42000, overdue: [] })
+    const { data: rep, repairEntry } = repaired()
+    const planned = recordHistory(
+      rep,
+      { ...rep, transactions: [...rep.transactions, tx({ id: 'plan1', status: 'planned', date: '2026-03-31', amountMinor: 42000, kind: 'expense', categoryId: 'utilities', scheduleId: 'b2', occurrenceDate: '2026-03-31' })], updatedAt: '2026-03-21T12:00:00.000Z' },
+      '2026-03-21T12:00:00.000Z',
+    )
+    expect(revertDependents(planned, repairEntry, '2026-03-29')).toEqual([])
+    expect(canRevert(planned, repairEntry, '2026-03-29')).toBe('ok')
+  })
+})
+
+/* ------------------------------------------------------------------ */
+/* (c) Validación y aplazamientos                                      */
+/* ------------------------------------------------------------------ */
+
+describe('(c) aplazamientos tras una reparación partida (QA27-02)', () => {
+  it('siete aplazamientos: solo los dos del tramo movido cambian de id (fecha coincidente y fecha que cambia); los de otro programado, «dup:», «bal:», un prefijo parecido y una fecha ya pagada quedan intactos; bandeja, historial y copia validan', () => {
+    const data = rent([
+      { id: 'due:schedule:r2:2027-02-28', until: '2027-03-05', at: A },
+      { id: 'due:schedule:r2:2027-03-28', until: '2027-03-30', at: A },
+      { id: 'due:schedule:q:2027-02-28', until: '2027-03-05', at: A },
+      { id: 'dup:e1:e2', until: '2027-03-10', at: A },
+      { id: 'bal:main:never', until: '2027-03-10', at: A },
+      { id: 'due:schedule:r2x:2027-02-28', until: '2027-03-05', at: A },
+      { id: 'due:schedule:r2:2027-01-28', until: '2027-03-10', at: A },
+    ])
+    expect(driftedSplits(data, RENT_TODAY).map((f) => [f.scheduleId, f.from])).toEqual([['r2', '2027-02-01']])
+    const r = unwrap(repairSplit(data, 'r2', at(RENT_TODAY), 'r3'))
+    expect(r.data.schedules.map((s) => [s.id, s.endDate ?? null, s.anchorDate ?? null])).toEqual([['r1', '2026-02-27', null], ['r2', '2027-01-31', null], ['r3', null, '2026-01-31']])
+    expect(r.data.inbox.snoozed).toEqual([
+      { id: 'due:schedule:r3:2027-02-28', until: '2027-03-05', at: A },
+      { id: 'due:schedule:r3:2027-03-31', until: '2027-03-30', at: A },
+      { id: 'due:schedule:q:2027-02-28', until: '2027-03-05', at: A },
+      { id: 'dup:e1:e2', until: '2027-03-10', at: A },
+      { id: 'bal:main:never', until: '2027-03-10', at: A },
+      { id: 'due:schedule:r2x:2027-02-28', until: '2027-03-05', at: A },
+      { id: 'due:schedule:r2:2027-01-28', until: '2027-03-10', at: A },
+    ])
+    expect(validateInbox(r.data.inbox)).toEqual([])
+    const tracked = recordHistory(data, r.data, at(RENT_TODAY).now)
+    expect(validateHistory(tracked.history)).toEqual([])
+    expect(validateAppData(persisted(tracked)).ok).toBe(true)
+    expect(roundTrip(tracked, RENT_TODAY).inbox.snoozed).toEqual(r.data.inbox.snoozed)
+  })
+
+  it('tramo nuevo con id de 64 caracteres: ids de aviso de 88 en la bandeja y en el historial; ambos validan y la copia se reimporta igual', () => {
+    const longId = 'n'.repeat(64)
+    const data = rent([{ id: 'due:schedule:r2:2027-02-28', until: '2027-03-05', at: A }])
+    const r = unwrap(repairSplit(data, 'r2', at(RENT_TODAY), longId))
+    expect(r.data.inbox.snoozed.map((z) => [z.id, z.id.length])).toEqual([[`due:schedule:${longId}:2027-02-28`, 88]])
+    expect(validateInbox(r.data.inbox)).toEqual([])
+    const tracked = recordHistory(data, r.data, at(RENT_TODAY).now)
+    const snoozeChanges = tracked.history[0]!.changes.filter((c) => c.collection === 'inboxSnoozed')
+    expect(snoozeChanges.map((c) => c.id.length).sort((a, b) => a - b)).toEqual([26, 88])
+    expect(validateHistory(tracked.history)).toEqual([])
+    expect(validateAppData(persisted(tracked)).ok).toBe(true)
+    expect(roundTrip(tracked, RENT_TODAY)).toEqual(persisted(tracked))
+  })
+
+  it('dos aplazamientos que al remapear caen en el mismo id: queda uno (el `until` más tardío) y no se pierde ninguno de otro programado', () => {
+    const data = rent([
+      { id: 'due:schedule:r2:2027-03-31', until: '2027-04-20', at: A }, // inerte: el 31 no es ocurrencia de r2
+      { id: 'due:schedule:q:2027-03-31', until: '2027-04-02', at: A },
+      { id: 'due:schedule:r2:2027-03-28', until: '2027-04-02', at: A },
+    ])
+    const r = unwrap(repairSplit(data, 'r2', at(RENT_TODAY), 'r3'))
+    expect(r.data.inbox.snoozed).toEqual([
+      { id: 'due:schedule:r3:2027-03-31', until: '2027-04-20', at: A },
+      { id: 'due:schedule:q:2027-03-31', until: '2027-04-02', at: A },
+    ])
+    expect(validateInbox(r.data.inbox)).toEqual([])
+  })
+})
+
+describe('(c) tope de parejas de posibles duplicados (QA27-03b)', () => {
+  const many = (ids: string[]) => ids.map((id) => tx({ id, date: '2026-09-10', amountMinor: 1200, kind: 'expense', status: 'realized' }))
+  const ids = Array.from({ length: 60 }, (_, i) => `e${String(i).padStart(2, '0')}`)
+  const FP = 'expense|main|1200|2026-09-10|~expense|main|1200|2026-09-10|'
+  const dup = (x: AppData) => {
+    const v = inboxView(x, TODAY)
+    const only = (l: { kind: string; id: string }[]) => l.filter((i) => i.kind === 'duplicate').map((i) => i.id)
+    return { active: only(v.active).length, snoozed: only(v.snoozed), dismissed: only(v.dismissed) }
+  }
+  const seeded = () => {
+    const d = baseData({ transactions: many(ids) })
+    const first = inboxView(d, TODAY).active.find((i) => i.id === 'dup:e00:e01')!
+    const dismissed = unwrap(dismissInboxItem(d, first, ctx)).data
+    return { d, first, both: unwrap(snoozeInboxItem(dismissed, 'dup:e00:e02', '2026-10-05', ctx)).data }
+  }
+
+  it('60 iguales el mismo día: 50 parejas estables (e00 con e01…e50) con la misma huella; descartar y posponer siguen aplicando con un movimiento más; cambiar la nota cambia la huella', () => {
+    const { d, first, both } = seeded()
+    const pairs = possibleDuplicates(d)
+    expect(pairs).toHaveLength(DUPLICATE_PAIRS_PER_GROUP)
+    expect(pairs.map(([a, b]) => `${a.id}:${b.id}`)).toEqual(ids.slice(1, 51).map((b) => `e00:${b}`))
+    expect(possibleDuplicates(d).map(([a, b]) => `${a.id}:${b.id}`)).toEqual(pairs.map(([a, b]) => `${a.id}:${b.id}`))
+    expect(first.fingerprint).toBe(FP)
+    expect(validateInbox(both.inbox)).toEqual([])
+    expect(dup(both)).toEqual({ active: 48, snoozed: ['dup:e00:e02'], dismissed: ['dup:e00:e01'] })
+    const more = { ...both, transactions: [...both.transactions, ...many(['e60'])] }
+    expect(dup(more)).toEqual({ active: 48, snoozed: ['dup:e00:e02'], dismissed: ['dup:e00:e01'] })
+    const noted = { ...both, transactions: both.transactions.map((t) => (t.id === 'e01' ? { ...t, note: 'x' } : t)) }
+    expect(dup(noted)).toEqual({ active: 49, snoozed: ['dup:e00:e02'], dismissed: [] })
+  })
+
+  it('un movimiento que ordena antes (a00) desplaza la ventana: las 50 parejas son otras y una pareja descartada o pospuesta deja de calcularse (ni activa ni descartada); su registro queda en `inbox` sin efecto', () => {
+    const { both } = seeded()
+    const shifted = { ...both, transactions: [...many(['a00']), ...both.transactions] }
+    expect(dup(shifted)).toEqual({ active: 50, snoozed: [], dismissed: [] })
+    expect(possibleDuplicates(shifted).every(([a]) => a.id === 'a00')).toBe(true)
+    expect(shifted.inbox.dismissed.map((x) => x.id)).toEqual(['dup:e00:e01'])
+    expect(shifted.inbox.snoozed.map((x) => x.id)).toEqual(['dup:e00:e02'])
+  })
+})
+
+describe('(c) contratos de id sin cambios', () => {
+  it('isValidHistoryChangeId: 64/65 para registros, 300/301 para la bandeja; un id de aviso de 88 vale en inboxSnoozed y no en transactions', () => {
+    expect(INBOX_ID_MAX).toBe(300)
+    expect(isValidHistoryChangeId('transactions', 'x'.repeat(64))).toBe(true)
+    expect(isValidHistoryChangeId('transactions', 'x'.repeat(65))).toBe(false)
+    expect(isValidHistoryChangeId('inboxSnoozed', 'x'.repeat(300))).toBe(true)
+    expect(isValidHistoryChangeId('inboxSnoozed', 'x'.repeat(301))).toBe(false)
+    const due = `due:schedule:${'n'.repeat(64)}:2027-02-28`
+    expect(due.length).toBe(88)
+    expect(isValidHistoryChangeId('inboxSnoozed', due)).toBe(true)
+    expect(isValidHistoryChangeId('transactions', due)).toBe(false)
+  })
+})
+
+/* ------------------------------------------------------------------ */
+/* (e) Entre versiones                                                 */
+/* ------------------------------------------------------------------ */
+
+describe('(e) lo que escribió 21b4ed8 importado en HEAD, y lo que escribe HEAD ante el validador de 21b4ed8', () => {
+  it('copia escrita por 21b4ed8 (su repairSplit) tras reparar salary-2 de la copia v13 y cobrar el 31-mar: HEAD la importa igual y rechaza revertir por el cobro; 21b4ed8 lo permitía (QA27-01)', () => {
+    const d = imported(V13)
+    const r = unwrap(repairSplit21b4ed8(d, 'salary-2', at('2026-03-21'), 'salary-3'))
+    const rep = recordHistory(d, r.data, at('2026-03-21').now)
+    const repairEntry = lastEntry(rep)
+    const p = unwrap(markOccurrence(rep, { scheduleId: 'salary-2', occurrenceDate: '2026-03-31', amountMinor: 240777, date: '2026-03-31', txId: 'inc1' }, at('2026-03-31')))
+    const written = persisted(recordHistory(rep, p.data, at('2026-03-31').now))
+    const head = imported(backupText(written, new Date('2026-03-31T12:00:00.000Z'), '1.0.0 (21b4ed8)'))
+    expect(head).toEqual(written)
+    const entry = entryById(head, repairEntry.id)
+    expect(revertDependents21b4ed8(head, entry, '2026-03-31')).toEqual([])
+    expect(canRevert21b4ed8(head, entry, '2026-03-31')).toBe('ok')
+    expectRefused(head, repairEntry.id, '2026-03-31', [{ kind: 'payment', id: 'inc1', name: '2026-03-31', scheduleId: 'salary-2', amountMinor: 240777 }])
+  })
+
+  it('reparación partida escrita por 21b4ed8 con el 28-feb aplazado: HEAD la importa tal cual (sin migración), el aviso queda inerte con el id antiguo, el recordatorio del tramo nuevo sale antes del 5-mar y la revisión ya no propone nada', () => {
+    const data = rent([{ id: 'due:schedule:r2:2027-02-28', until: '2027-03-05', at: A }])
+    const r = unwrap(repairSplit21b4ed8(data, 'r2', at(RENT_TODAY), 'r3'))
+    expect(r.data.inbox.snoozed).toEqual([{ id: 'due:schedule:r2:2027-02-28', until: '2027-03-05', at: A }])
+    const head = roundTrip(recordHistory(data, r.data, at(RENT_TODAY).now), RENT_TODAY)
+    expect(head.inbox.snoozed).toEqual([{ id: 'due:schedule:r2:2027-02-28', until: '2027-03-05', at: A }])
+    const view = inboxView(head, RENT_TODAY)
+    expect(view.active.map((i) => i.id)).toContain('due:schedule:r3:2027-02-28')
+    expect(view.snoozed).toEqual([])
+    expect(driftedSplits(head, RENT_TODAY)).toEqual([])
+  })
+
+  it('copia escrita por HEAD (reparación partida con aplazamiento llevado, pago en el tramo nuevo y reversión rechazada): el validador de 21b4ed8 y validateAppData la aceptan sin un solo problema y se reimporta igual', () => {
+    const data = rent([{ id: 'due:schedule:r2:2027-02-28', until: '2027-03-05', at: A }])
+    const r = unwrap(repairSplit(data, 'r2', at(RENT_TODAY), 'r3'))
+    const rep = recordHistory(data, r.data, at(RENT_TODAY).now)
+    const p = unwrap(markOccurrence(rep, { scheduleId: 'r3', occurrenceDate: '2027-02-28', amountMinor: 150000, date: RENT_TODAY, txId: 'pf' }, at(RENT_TODAY)))
+    const written = persisted(recordHistory(rep, p.data, at(RENT_TODAY).now))
+    expect(canRevert(written, entryById(written, lastEntry(rep).id), RENT_TODAY)).toBe('dependents')
+    expect(validateHistory21b4ed8(written.history)).toEqual([])
+    expect(validateInbox21b4ed8(written.inbox)).toEqual([])
+    const vctx = { data: written }
+    expect(written.transactions.flatMap((t) => validateTransaction21b4ed8(t, vctx))).toEqual([])
+    expect(written.schedules.flatMap((s) => validateSchedule21b4ed8(s, vctx))).toEqual([])
+    expect(validateAppData(written).ok).toBe(true)
+    expect(imported(backupText(written, new Date(`${RENT_TODAY}T12:00:00.000Z`), 'head'))).toEqual(written)
+  })
+})

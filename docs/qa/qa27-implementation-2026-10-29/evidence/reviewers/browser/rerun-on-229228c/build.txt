@@ -1,0 +1,4 @@
+dist/assets/index-DR7Kw2hc.js                           472.36 kB │ gzip: 141.53 kB
+
+✓ built in 1.56s
+exit 0

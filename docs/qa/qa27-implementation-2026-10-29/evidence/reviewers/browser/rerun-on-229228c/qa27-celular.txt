@@ -1,0 +1,13 @@
+
+Running 7 tests using 1 worker
+
+  ✓  1 [celular] › tests/e2e/qa27.spec.ts:60:1 › QA27-01 · reparar el 20-mar, pagar el 31-mar el 29-mar ($980.00) y revertir la reparación: se rechaza por el pago y sigue en $980.00 tras recargar (4.0s)
+  ✓  2 [celular] › tests/e2e/qa27.spec.ts:102:1 › QA27-02 · el 28-feb-2027 vencido y aplazado hasta el 5-mar sigue aplazado tras la reparación partida del 1-mar (2.2s)
+  ✓  3 [celular] › tests/e2e/qa27.spec.ts:136:1 › QA27-03 · 5 000 gastos y 5 000 devoluciones de 987 654 321 000: Análisis dice −200 % y Estadísticas sigue en pie (3.5s)
+  ✓  4 [celular] › tests/e2e/qa27.spec.ts:180:1 › QA27-04 · sin IndexedDB (datos en localStorage): restaurar sin copia se rechaza y nada cambia; con una copia descargada desde la tarjeta, se restaura (3.0s)
+  ✓  5 [celular] › tests/e2e/qa27.spec.ts:215:1 › QA27-04 · si la copia local no se puede guardar (IndexedDB rechaza la escritura), restaurar se rechaza y nada cambia; con una copia descargada, se restaura (2.6s)
+  ✓  6 [celular] › tests/e2e/qa27.spec.ts:245:1 › QA27-04 · con IndexedDB la copia local «antes de restaurar» existe, se puede ver y restaurar, y la reparación no se aplica dos veces (2.3s)
+  ✓  7 [celular] › tests/e2e/qa27.spec.ts:266:1 › QA27 (revisión en navegador) · 4 520 gastos de 999 999 999 999 en el mes: Estadísticas no cae en «No se pudo abrir esta pantalla» y dice que el saldo futuro no cabe (2.3s)
+
+  7 passed (21.3s)
+exit 0

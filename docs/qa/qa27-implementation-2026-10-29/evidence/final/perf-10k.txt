@@ -1,0 +1,4 @@
+Inicio con 10k: cifra principal a los 443 / 354 ms
+Inicio con 10k: cifra principal a los 511 / 390 ms
+Inicio con 10k: cifra principal a los 646 / 504 ms
+      50 |   console.log(`Inicio con 10k: cifra principal a los ${times.map(Math.round).join(' / ')} ms`)

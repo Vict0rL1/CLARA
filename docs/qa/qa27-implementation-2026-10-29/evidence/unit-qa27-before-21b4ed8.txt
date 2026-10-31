@@ -1,0 +1,38 @@
+     × la reproducción del navegador: 1 400 de saldo, factura de 420 pagada el 29-mar para el 31-mar → 980 disponibles; revertir la reparación se rechaza y sigue en 980 (antes: 560 con el 28-mar vencido) 39ms
+     × la segunda reproducción: 700 de saldo, cuota de 137,25 → 562,75 disponibles tras pagarla; revertir se rechaza (antes: 425,50) 2ms
+     × pago en la propia fecha (31-mar) y confirmación automática: también son pagos que la reversión dejaría sin ocurrencia 2ms
+     × un cobro parcial también cuenta 2ms
+     × reparación PARTIDA: el pago del 31-may en el tramo nuevo impide revertir (la reversión eliminaría ese tramo) 3ms
+     × partición normal «desde una fecha» (ya en 46fe617): pagar la primera ocurrencia del tramo nuevo impide revertir la partición 2ms
+     × sin trabajo dependiente posterior se sigue pudiendo revertir, y un movimiento posterior NO vinculado sobrevive 3ms
+     ✓ un pago que YA estaba sin ocurrencia antes de revertir no cuenta (no resolvía antes) 1ms
+     × el 28-feb vencido y aplazado hasta el 5-mar sigue aplazado tras reparar: mismo `until` y `at`, id del tramo nuevo, sin duplicados 6ms
+     ✓ fecha que cambia (28-mar → 31-mar) en la misma reparación: también pasa al tramo nuevo con sus metadatos 1ms
+     ✓ reparación EN EL SITIO (mismo id): una fecha que coincide queda igual y una que cambia se lleva; sin duplicados 1ms
+     ✓ un aplazamiento de una fecha ya pagada (antes de `from`) se queda en el tramo que termina; uno sin equivalente queda inerte, sin inventar otro 1ms
+     × la copia y la validación pasan; Análisis no se rompe y dice −200 % exactos (4 938 271 605 000 000 → −4 938 271 605 000 000); ninguna fila con una cifra que no cabe 240ms
+     × Estadísticas: el porcentaje es −200 y la diferencia se declara sin cifra; la Revisión semanal igual 21ms
+     ✓ el caso corregido antes sigue igual: 9 900 % exactos; ±9,99 % y ±10 % simétricos; base 0 sin división 5ms
+⎯⎯⎯⎯⎯⎯ Failed Tests 10 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected 'ok' to be 'dependents' // Object.is equality
+Received: "ok"
+AssertionError: expected 'ok' to be 'dependents' // Object.is equality
+Received: "ok"
+AssertionError: expected 'ok' to be 'dependents' // Object.is equality
+Received: "ok"
+AssertionError: expected 'ok' to be 'dependents' // Object.is equality
+Received: "ok"
+AssertionError: expected 'ok' to be 'dependents' // Object.is equality
+Received: "ok"
+AssertionError: expected 'ok' to be 'dependents' // Object.is equality
+Received: "ok"
+AssertionError: expected [ 'p-jan', 'p-feb', 'coffee' ] to deeply equal [ 'coffee' ]
++ Received
+AssertionError: expected [ { …(3) } ] to deeply equal [ { …(3) } ]
++ Received
+Error: checkedMulDivFloor requiere enteros y divisor distinto de cero
+    124| /** floor(a × num / den) exacto; `null` si el resultado no cabe en un …
+Error: checkedMulDivFloor requiere enteros y divisor distinto de cero
+    124| /** floor(a × num / den) exacto; `null` si el resultado no cabe en un …
+ Test Files  1 failed (1)
+      Tests  10 failed | 5 passed (15)
