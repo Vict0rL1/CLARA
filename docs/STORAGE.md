@@ -136,6 +136,14 @@ Probado en `src/storage/indexedDb.test.ts` y en la prueba de navegador `data-saf
   de borrar todo; se conservan las 10 más recientes (poda en la misma transacción que la escritura).
 - Restaurar valida el JSON como cualquier importación (`validateAppData`), guarda antes una copia de lo actual y
   aplica con `commit(..., { source: 'replace' })`, con deshacer inmediato.
+- **Copia antes de reemplazar (importar, restaurar) y de reparar una partición (revisión de seguridad QA27):** si
+  este navegador puede guardar copias locales (se comprueba una vez abriendo la base: `probeLocalCopies`; que exista
+  `indexedDB` no basta) y la copia falla (cuota, conflicto), no se reemplaza ni se repara: la persona contaba con ella
+  (`localBackup.failed`). Si no puede (sin IndexedDB, con los datos en `localStorage`, o la base no abre), el diálogo
+  lo dice y ofrece «Descargar copia antes»; importar sigue adelante con deshacer inmediato como única red (es el
+  propio camino de recuperación, REC-01), mientras que reparar una partición exige la copia descargada de los datos tal
+  como están (QA27-04). Exportar distingue «archivo entregado» de «anotado en el registro»: si el almacén no pudo
+  guardar la anotación, el aviso lo dice sin negar la descarga.
 - El bloqueo con PIN (`ui/lock/pin.ts`) vive en `localStorage` (`clara.lock.v1`), nunca en estas copias ni en
   las exportaciones.
 

@@ -9,6 +9,45 @@ import { useData } from '../state/store'
 import { APP_VERSION } from './backupActions'
 
 let backupsInstance: LocalBackups | null = null
+
+let probe: Promise<boolean> | null = null
+let probed: boolean | null = null
+/**
+ * ¿Este navegador puede guardar copias locales? `indexedDB` puede existir y aun así no abrir (algunas ventanas
+ * privadas): se comprueba una vez abriendo la base y se recuerda (revisión de seguridad QA27, O-3).
+ */
+export function probeLocalCopies(): Promise<boolean> {
+  probe ??= (async () => {
+    const backups = localBackups()
+    let ok = false
+    if (backups) {
+      try {
+        await backups.list()
+        ok = true
+      } catch {
+        ok = false
+      }
+    }
+    probed = ok
+    return ok
+  })()
+  return probe
+}
+
+/** Resultado de `probeLocalCopies` para la interfaz: `null` mientras se comprueba. Sin `indexedDB` es `false` desde el principio. */
+export function useLocalCopiesAvailable(): boolean | null {
+  const [state, setState] = useState<boolean | null>(() => (typeof indexedDB === 'undefined' ? false : probed))
+  useEffect(() => {
+    let alive = true
+    void probeLocalCopies().then((ok) => {
+      if (alive) setState(ok)
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
+  return state
+}
 export function localBackups(): LocalBackups | null {
   if (typeof indexedDB === 'undefined') return null
   backupsInstance ??= new LocalBackups()

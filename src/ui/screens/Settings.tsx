@@ -51,7 +51,7 @@ import { SafeToSpendSection } from './settings/SafeToSpendSection'
 import { ScheduledSection } from './settings/ScheduledSection'
 import { TagsSection } from './settings/TagsSection'
 import { useLockState } from '../lock/lockContext'
-import { keepCopyBeforeReplace, localBackups } from '../useAutoBackup'
+import { keepCopyBeforeReplace, useLocalCopiesAvailable, localBackups } from '../useAutoBackup'
 import { replaceWithUndo, type UndoReplaceResult } from '../../state/replaceUndo'
 import { currencyName } from '../../domain/formatters'
 import { getPeriod } from '../../domain/periods'
@@ -126,6 +126,7 @@ export function Settings({ route }: { route: Route }) {
   }
 
   const exportData = useExportBackup()
+  const localCopies = useLocalCopiesAvailable()
   // Copia ligera sin fotos: no se registra como copia de seguridad, porque restaurarla las perdería.
   const exportWithoutReceipts = () => {
     const result = performExport(data, new Date(), APP_VERSION, downloadText, { withoutReceipts: true })
@@ -207,8 +208,11 @@ export function Settings({ route }: { route: Route }) {
     const next = importState.data
     setImportState(null)
     // REC-01: copia local de lo actual antes de reemplazarlo (camino de recuperación si «Deshacer» ya no es seguro).
+    // Si la copia falla donde SÍ debería guardarse (cuota, conflicto) no se importa: la persona cuenta con ella. Donde
+    // este navegador no guarda copias locales (sin IndexedDB, o no abre) el diálogo ya dijo que solo queda deshacer de
+    // inmediato y ofreció descargar antes (revisión de seguridad QA27, O-3/O-4).
     const copy = await keepCopyBeforeReplace(getStore().data)
-    if (copy === 'failed') {
+    if (copy === 'failed' && localCopies !== false) {
       toast({ message: t('localBackup.failed'), tone: 'critical' })
       return
     }
@@ -680,6 +684,12 @@ export function Settings({ route }: { route: Route }) {
               {importState.data.isDemo && <li>{t('settings.backup.summaryDemo')}</li>}
               {importState.withoutReceipts && <li data-testid="import-no-receipts">{t('settings.backup.summaryNoReceipts')}</li>}
             </ul>
+            <p className="note note--icon" data-testid="import-copy-note">{t(localCopies === false ? 'settings.backup.confirmNoLocalCopy' : 'settings.backup.confirmLocalCopy')}</p>
+            {localCopies === false && (
+              <button type="button" className="btn btn--ghost btn--small" onClick={() => void exportData()}>
+                {t('backup.exportFirst')}
+              </button>
+            )}
             <p className="note">{t('settings.backup.confirmHint')}</p>
           </>
         )}

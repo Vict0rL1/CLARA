@@ -242,6 +242,9 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
 
 - Ningún secreto, clave o credencial en el código, el navegador o los registros.
   No hace falta `.env` en esta fase.
+- Antes de reemplazar o reparar se guarda una copia local si este navegador puede (`probeLocalCopies`, comprobado
+  abriendo la base); si puede y falla, no se sigue; si no puede, el diálogo lo dice y ofrece descargar antes: importar
+  sigue con deshacer inmediato, reparar exige la descarga (QA27-04; ver `docs/STORAGE.md`).
 - Restaurar una copia valida TODO el archivo y no aplica nada si hay un error. CSV del banco: cada fila
   con error se muestra con su motivo y no se importa; las filas marcadas se guardan todo o nada.
 - Cambios de formato de datos: subir `SCHEMA_VERSION` (hoy 14) y añadir migración con prueba.

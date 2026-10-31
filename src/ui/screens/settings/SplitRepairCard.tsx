@@ -16,7 +16,7 @@ import { ConfirmDialog } from '../../components/Dialog'
 import { Icon } from '../../components/Icon'
 import { useToast } from '../../components/toastContext'
 import { useFormat } from '../../format'
-import { keepCopyBeforeReplace, localBackups } from '../../useAutoBackup'
+import { keepCopyBeforeReplace, useLocalCopiesAvailable } from '../../useAutoBackup'
 
 export function SplitRepairCard() {
   const { t } = useT()
@@ -34,7 +34,8 @@ export function SplitRepairCard() {
   // copia falla, vale una copia DESCARGADA desde esta tarjeta de los datos tal como están ahora (`updatedAt`): si algo
   // cambia después, hay que descargarla de nuevo.
   const [exportedFor, setExportedFor] = useState<string | null>(null)
-  const localCopies = localBackups() !== null
+  // Comprobado abriendo la base (no basta con que `indexedDB` exista; revisión de seguridad QA27, O-3).
+  const localCopies = useLocalCopiesAvailable() !== false
   const drifts = useMemo(() => driftedSplits(data, today), [data, today])
   if (drifts.length === 0) return null
 
@@ -42,8 +43,8 @@ export function SplitRepairCard() {
   const exportFirst = async () => {
     if (busy) return
     const before = getStore().data?.updatedAt ?? null
-    const ok = await exportData()
-    if (ok && before !== null) setExportedFor(before)
+    const { delivered } = await exportData()
+    if (delivered && before !== null) setExportedFor(before)
   }
   const restore = async (d: DriftedSplit) => {
     setConfirm(null)
@@ -110,7 +111,7 @@ export function SplitRepairCard() {
                 </button>
                 <button type="button" className="btn btn--ghost btn--small" onClick={() => void exportFirst()}>
                   <Icon name="download" size={16} />
-                  {t('splitRepair.exportFirst')}
+                  {t('backup.exportFirst')}
                 </button>
               </div>
             </li>
