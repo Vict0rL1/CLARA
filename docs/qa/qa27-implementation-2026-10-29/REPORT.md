@@ -400,3 +400,135 @@ Remaining blockers: **none known in the audited scope.** Conditions and cautions
    intended fix (a nullable summary through its five screens).
 4. Pushing the branch and updating PR #15 are external writes and were not done: they need the user's explicit
    authorization. The tested SHA and the documentation-only SHA are recorded in §1 so the auditor can tell them apart.
+5. After this handoff an upgrade pass took up the documented limits (§11): the exact-range bound, lazy text packs,
+   the import dialog's real-protection wording, the bounded History scan and one percent shape. Its own chain is green
+   at `3f4054b` (§11); the recommendation stands for that head.
+
+## 11. Upgrade pass after the handoff (2026-10-31)
+
+After the handoff the user asked to keep upgrading. The review observations that the pass had documented as limits
+were taken up one by one, on top of `6b4e6ba`, in the same worktree and under the same rules (tests first, one
+writer, serial browser runs, no push). Eight commits, each verified by the same chain as the pass (§6 shape;
+`evidence/final-upgrade/`).
+
+| Commit | What | Why (review id) | Tests |
+|---|---|---|---|
+| `dece723` | Nine i18n keys no screen used removed from the four dictionaries | initial-bundle headroom | type check (shared key type), `find-literals` |
+| `8f87c11` | Legal paragraphs and design-gallery texts become lazy per-language packs (`src/i18n/packs/`, `usePackT`); the two screens draw nothing until loaded | the 844.6 KB budget had no room for new texts (never raised): 865 175 → 860 132 bytes | `src/i18n/packs.test.ts`; english, settings-v2, theme-nav browser specs re-run |
+| `510d926` | **Exact-range bound** (`domain/exactRange.ts`): inflows and outflows (anchors, movements, trash) each ≤ 2⁵³ − 1; `saveTransaction` (and through it mark-paid, realize, bank import row by row, receipts), `updateAccountBalance`, `saveAccount` refuse with `amountsBeyondExactRange`; `validateAppData` rejects a backup beyond it; the audit's 5 000 + 5 000 × 987 654 321 000 fixture (≈ 4.9 × 10¹⁵ per side) stays accepted | financial O1 (float accumulation), security O-10 (`sumMinor` throw class), browser O-1 (Home balance overflow) | `exactRange.test.ts` (8), `tests/e2e/exact-range.spec.ts` (2) |
+| `0a6e1d7` | Error boundary copy no longer blames another tab or the connection | browser O-3 | — (text) |
+| `f329dc1` | Test-only fix of the exact-range import case (seeds a budget, direct route) | — | — |
+| `e20c442` | Import dialog says the real protection (local copy, or immediate undo only) and offers «Descargar copia antes»; `probeLocalCopies` opens the database once (IndexedDB may exist and not open); export distinguishes delivered file from saved record | security O-1, O-3, O-4 | `src/ui/localCopiesProbe.test.ts`, `tests/e2e/import-copy.spec.ts` (3) |
+| `e1fa8d5` | `revertDependents` scans only the entry's own transactions and those linked to a touched schedule (same result, proven against brute force); History memoises its rows | security O-9 (measured first: 722–817 ms cold) | `historyRevertScan.test.ts` (3), `tests/e2e/performance-history.spec.ts` (first entry 39–43 ms from Home on the second navigation, ≈ 310 ms on the first incl. the lazy chunk; budget 300 ms best of two) |
+| `3f4054b` | `fmt.percentPoints` gives comparison percentages one shape («200 %») in Statistics, Analysis and the weekly review | browser O-2 (O-4, the toast, is the undo window: unchanged) | `src/ui/percentPoints.test.ts` |
+
+- **Tested SHA of this upgrade pass:** `3f4054b72ccee374583b7fd170500a860a267b2a` (`git status` at the start of the chain: clean). The
+  documentation-only commit that adds this section is its child.
+- **Design decision on the bound:** a first version bounded Σ|amount| (all kinds together) and would have refused
+  the auditor's own QA27-03 fixture (Σ|amount| ≈ 9.9 × 10¹⁵), which the app computes exactly; the bound was refined to
+  the two signed sides. Every sum the app forms is a signed sub-sum of those terms, so each side ≤ 2⁵³ − 1 keeps every
+  intermediate exact (FORMULAS §1). Transfers count on both sides; adjustments by direction.
+- **Migration, backup, recovery:** no schema change (14). A backup whose amounts exceed the bound is refused with one
+  explicit issue (`issue.amountsBeyondExactRange`); nothing else about backups changed. The lazy packs are ordinary
+  code chunks: the service worker precache lists them like every other asset (the chain's `dist/sw.js` lists the 9 pack chunks: four `legal.*`, four `gallery.*` and the loader). Import without local
+  copies proceeds with the immediate undo as the only net, now said in the dialog with a download offered first; a
+  failing local copy where one is expected still blocks the import.
+- **Verification** (`evidence/final-upgrade/`):
+
+```
+Verification of the upgrade pass at 3f4054b72ccee374583b7fd170500a860a267b2a
+
+SHA 3f4054b72ccee374583b7fd170500a860a267b2a · git status at start: 0 entries (clean)
+started 2026-10-31T12:58:40Z · finished 2026-10-31T13:53:04Z
+
+== Each commit of this pass on its own (temporary worktree: tsc -b, oxlint ., vitest run)
+0a6e1d7: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1160 passed | 1 skipped (1161)
+3f4054b: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1165 passed | 1 skipped (1166)
+510d926: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1160 passed | 1 skipped (1161)
+8f87c11: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1152 passed | 1 skipped (1153)
+dece723: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1150 passed | 1 skipped (1151)
+e1fa8d5: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1164 passed | 1 skipped (1165)
+e20c442: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1161 passed | 1 skipped (1162)
+f329dc1: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1160 passed | 1 skipped (1161)
+
+== Steps at HEAD
+check EXIT 0
+build EXIT 0
+size EXIT 0
+audit EXIT 0
+vitest --reporter=json EXIT 0
+e2e celular EXIT 0 · shots celular EXIT 0
+e2e celular-pequeno EXIT 0 · shots celular-pequeno EXIT 0
+e2e escritorio EXIT 0 · shots escritorio EXIT 0
+DONE
+
+== npm run check (typecheck, oxlint, i18n literals, Vitest)
+Test Files  122 passed (122)
+Tests  1165 passed | 1 skipped (1166)
+> node scripts/find-literals.mjs
+find-literals: sin texto visible fuera de i18n en src/ui.
+vitest.json: 407 files, 1165 passed, 0 failed, 1 skipped, success=True
+
+== npm run build (identified build)
+✓ 241 modules transformed.
+✓ built in 1.19s
+dist id (sha256 of the sorted sha256 list of every dist file): ba154631257eb4acb1557ffd496b73665a75a16fae65dc598103d8c59a3669e4 · 84 files
+
+== npm run size
+JS inicial: 841.0 KB en 13 archivos (gzip 252.2 KB)
+Referencia: 767.8 KB · límite 844.6 KB · cambio +9.5 %
+
+== npm audit --audit-level=high
+found 0 vulnerabilities
+
+== Playwright, full matrix, one project at a time, --workers=2 --fail-on-flaky-tests, --reporter=list,json, one preview of the build above
+-- celular
+1 skipped
+381 passed (13.1m)
+Inicio con 10k: cifra principal a los 379 / 366 ms
+e2e-celular.json: expected=381 unexpected=0 flaky=0 skipped=1 duration=787s
+-- celular-pequeno
+382 passed (12.0m)
+Inicio con 10k: cifra principal a los 488 / 428 ms
+e2e-celular-pequeno.json: expected=382 unexpected=0 flaky=0 skipped=0 duration=719s
+-- escritorio
+3 skipped
+379 passed (12.6m)
+Inicio con 10k: cifra principal a los 523 / 498 ms
+e2e-escritorio.json: expected=379 unexpected=0 flaky=0 skipped=3 duration=754s
+
+== Screenshot runs (qa27, qa-lead, qa-followup, qa-corrective; --workers=1; QA_LEAD_SHOTS)
+-- celular: 31 passed (1.6m)
+-- celular-pequeno: 31 passed (1.6m)
+-- escritorio: 31 passed (1.7m)
+111 screenshots in shots/
+
+== Serial A/B, desktop, 10k startup: audited baseline build (21b4ed8) vs frozen build (3 rounds, alternating)
+perf A/B started 2026-10-31T13:52:25Z; serial, nothing else running; old = 6b4e6ba (main checkout), new = 3f4054b
+
+✓ built in 1.37s
+--- round 1 old (http://localhost:4174)
+Inicio con 10k: cifra principal a los 356 / 314 ms
+  1 passed (4.4s)
+--- round 1 new (http://localhost:4173)
+Inicio con 10k: cifra principal a los 351 / 273 ms
+  1 passed (4.3s)
+--- round 2 old (http://localhost:4174)
+Inicio con 10k: cifra principal a los 364 / 278 ms
+  1 passed (4.5s)
+--- round 2 new (http://localhost:4173)
+Inicio con 10k: cifra principal a los 423 / 324 ms
+  1 passed (4.7s)
+--- round 3 old (http://localhost:4174)
+Inicio con 10k: cifra principal a los 367 / 326 ms
+  1 passed (4.7s)
+--- round 3 new (http://localhost:4173)
+Inicio con 10k: cifra principal a los 370 / 363 ms
+  1 passed (4.7s)
+finished 2026-10-31T13:53:04Z
+```
+- **Residual risks of this upgrade:** the bound rejects synthetic files beyond 9 008 near-maximum movements per side
+  (documented in FORMULAS §1 and §11); projections with hundreds of near-maximum daily schedules can still leave the
+  exact range in the 30-day projections that do not use `stopWhenOutOfRange` (Projection, Analysis, shortfall,
+  scenarios, affordability), as before; progress fractions (goals, cards, assistant confidence) keep the Intl percent
+  shape, by design; the first navigation to History pays the lazy chunk (≈ 270 ms on a local preview).
