@@ -33,7 +33,22 @@ export function History() {
   const [confirm, setConfirm] = useState<HistoryEntry | null>(null)
   const [error, setError] = useState<string | null>(null)
   const entries = useMemo(() => [...data.history].reverse(), [data.history])
-  const shown = entries.slice(0, limit)
+  const shown = useMemo(() => entries.slice(0, limit), [entries, limit])
+  // Lo que cuesta por entrada (descripción, si se puede revertir, conflictos y dependientes) se calcula una vez por
+  // datos y día, no en cada dibujo (revisión de seguridad QA27, O-9).
+  const rows = useMemo(
+    () =>
+      shown.map((entry) => {
+        const lines = entry.changes.map((c) => describeChange(c, entry, data, t, fmt)).filter((l): l is Line => l !== null)
+        const status = canRevert(data, entry, today)
+        const conflicts = status === 'conflict' ? revertConflicts(data, entry, today) : []
+        // F-02: lo que seguiría apuntando a un programado que la reversión eliminaría (misma regla que `revertEntry`).
+        const dependents = status === 'dependents' ? revertDependents(data, entry, today) : []
+        const original = entry.revertOf ? data.history.find((e) => e.id === entry.revertOf) : undefined
+        return { entry, lines, status, conflicts, dependents, original }
+      }),
+    [shown, data, today, t, fmt],
+  )
 
   const revert = async (entry: HistoryEntry) => {
     setConfirm(null)
@@ -64,13 +79,7 @@ export function History() {
         <EmptyState icon="clock" title={t('history.empty')} text={t('history.emptyText')} />
       ) : (
         <ul className="item-list history-list" aria-label={t('history.title')}>
-          {shown.map((entry) => {
-            const lines = entry.changes.map((c) => describeChange(c, entry, data, t, fmt)).filter((l): l is Line => l !== null)
-            const status = canRevert(data, entry, today)
-            const conflicts = status === 'conflict' ? revertConflicts(data, entry, today) : []
-            // F-02: lo que seguiría apuntando a un programado que la reversión eliminaría (misma regla que `revertEntry`).
-            const dependents = status === 'dependents' ? revertDependents(data, entry, today) : []
-            const original = entry.revertOf ? data.history.find((e) => e.id === entry.revertOf) : undefined
+          {rows.map(({ entry, lines, status, conflicts, dependents, original }) => {
             return (
               <li key={entry.id}>
                 <Card as="article" className="history-entry">

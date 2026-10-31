@@ -124,11 +124,15 @@ export function revertDependents(data: AppData, entry: HistoryEntry, today?: Loc
     const removed = new Set(data.schedules.filter((s) => !after.has(s.id)).map((s) => s.id))
     if (removed.size > 0) out.push(...scheduleReferences(next, today).filter((r) => removed.has(r.scheduleId)))
   }
-  // Pagos: con programados tocados, todos los vinculados; si la entrada solo toca movimientos, basta con esos.
-  const current = new Map(data.transactions.map((t) => [t.id, t]))
+  // Pagos: solo pueden cambiar de estado los movimientos que la propia entrada cambió y los vinculados a un programado
+  // que la entrada toca (un programado igual en los dos estados liquida igual): recorrer el resto es trabajo inútil con
+  // un libro grande (revisión de seguridad QA27, O-9: 10 000 movimientos y 30 entradas tardaban más de 700 ms).
+  const touched = new Set(entry.changes.filter((c) => c.collection === 'schedules').map((c) => c.id))
   const own = new Set(entry.changes.filter((c) => c.collection === 'transactions').map((c) => c.id))
+  const candidate = (t: Transaction) => own.has(t.id) || (t.scheduleId !== undefined && touched.has(t.scheduleId))
+  const current = new Map(data.transactions.filter(candidate).map((t) => [t.id, t]))
   for (const t of next.transactions) {
-    if (!touchesSchedules && !own.has(t.id)) continue
+    if (!candidate(t)) continue
     const now = current.get(t.id)
     if (!settles(now, before) || settles(t, after)) continue
     out.push({ kind: 'payment', id: t.id, name: now!.occurrenceDate!, scheduleId: now!.scheduleId!, amountMinor: now!.amountMinor })

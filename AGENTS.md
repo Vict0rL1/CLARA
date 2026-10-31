@@ -39,6 +39,7 @@ npm run build        # production build
 npm run size         # initial JS budget: must stay ≤ 844.6 KB (≈ 840 KB after moving the Legal and Gallery texts to lazy packs, `src/i18n/packs/`; move rarely visited screen texts there to free bytes) — do not raise it
 npm audit --audit-level=high   # dependency audit (CI fails on a high/critical vulnerability)
 npm run test:e2e     # Playwright: 3 projects (celular 412 px, celular-pequeno 320 px, escritorio) + axe
+                     # budgets inside the suite: Home interactive < 500 ms with 10 000 movements (performance-10k.spec.ts); History's first entry < 300 ms after navigating from Home with 10 000 movements, 100 schedules, 1 000 linked payments and 30 schedule-touching entries (performance-history.spec.ts; measured 39–43 ms on the second navigation, ~310 ms on the first, which includes the lazy chunk)
 ```
 
 Useful variants:
