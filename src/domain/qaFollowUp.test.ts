@@ -185,7 +185,7 @@ describe('F-02 · deshacer no elimina un programado al que otros registros segui
     expect(revertDependents(stored, legacy, ctx.today)).toEqual([
       { kind: 'template', id: 't', name: 'Quincena', scheduleId: 'next' },
       { kind: 'scenario', id: 'sc', name: 'Si sube', scheduleId: 'next' },
-      { kind: 'snooze', id: 'due:schedule:next:2026-10-01', name: '2026-10-01', scheduleId: 'next' },
+      { kind: 'snooze', id: 'due:schedule:next:2026-10-01', name: '2026-10-01', scheduleId: 'next', occurrenceDate: '2026-10-01' },
     ])
     expect(revertEntry(stored, 'h-legacy', ctx)).toEqual({ ok: false, issues: [{ path: 'history', code: 'revertDependents', params: { count: 3 } }] })
     expect(JSON.stringify(stored)).toBe(serialized)

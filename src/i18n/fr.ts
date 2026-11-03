@@ -3280,6 +3280,7 @@ export const fr: Record<keyof typeof es, string> = {
   'history.dependent.template': 'Modèle « {name} »',
   'history.dependent.scenario': 'Scénario « {name} »',
   'history.dependent.goal': 'Dépense planifiée « {name} »',
+  'history.dependent.goalLinked': 'Dépense planifiée « {name} », liée au paiement du {date} : cette date n’existerait plus et le même paiement compterait deux fois (le montant mis de côté et la date rétablie)',
   'history.dependent.snooze': 'Rappel reporté du {date}',
   'history.dependent.payment': 'Paiement enregistré pour le {date} ({amount}) : il resterait enregistré mais ne réglerait plus aucune date, et cette date compterait de nouveau',
   'issue.revertDependents': 'Impossible d\'annuler : {count} enregistrement(s) pointeraient encore vers un paiement programmé, ou vers une date de paiement, que ce changement supprimerait ou déplacerait. Modifiez-les ou supprimez-les d\'abord.',

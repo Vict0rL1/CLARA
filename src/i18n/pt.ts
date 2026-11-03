@@ -3280,6 +3280,7 @@ export const pt: Record<keyof typeof es, string> = {
   'history.dependent.template': 'Modelo "{name}"',
   'history.dependent.scenario': 'Cenário "{name}"',
   'history.dependent.goal': 'Despesa planejada "{name}"',
+  'history.dependent.goalLinked': 'Despesa planejada "{name}", vinculada ao pagamento de {date}: essa data deixaria de existir e o mesmo pagamento contaria duas vezes (o valor reservado e a data restaurada)',
   'history.dependent.snooze': 'Aviso adiado de {date}',
   'history.dependent.payment': 'Pagamento registrado para {date} ({amount}): continuaria registrado, mas já não liquidaria nenhuma data, e essa data voltaria a contar',
   'issue.revertDependents': 'Não é possível reverter: {count} registro(s) continuariam apontando para um agendamento, ou para uma data de pagamento, que esta alteração eliminaria ou mudaria. Altere-os ou exclua-os primeiro.',

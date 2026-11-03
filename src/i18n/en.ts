@@ -3282,6 +3282,7 @@ export const en: Record<keyof typeof es, string> = {
   'history.dependent.template': 'Template "{name}"',
   'history.dependent.scenario': 'Scenario "{name}"',
   'history.dependent.goal': 'Planned expense "{name}"',
+  'history.dependent.goalLinked': 'Planned expense "{name}", linked to the payment of {date}: that date would no longer exist and the same payment would count twice (the money set aside and the restored date)',
   'history.dependent.snooze': 'Snoozed reminder for {date}',
   'history.dependent.payment': 'Recorded payment for {date} ({amount}): it would stay recorded but no longer settle any date, and that date would count again',
   'issue.revertDependents': 'Cannot revert: {count} record(s) would still point to a scheduled payment, or to a payment date, this change would remove or move. Change or delete them first.',

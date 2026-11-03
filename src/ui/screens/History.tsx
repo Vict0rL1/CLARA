@@ -127,7 +127,9 @@ export function History() {
                               ? t('history.dependent.snooze', { date: fmt.date(d.name, { compact: true, today }) })
                               : d.kind === 'payment'
                                 ? t('history.dependent.payment', { date: fmt.date(d.name, { compact: true, today }), amount: fmt.money(d.amountMinor ?? 0) })
-                                : t(`history.dependent.${d.kind}`, { name: d.name })}
+                                : d.kind === 'goal' && d.occurrenceDate
+                                  ? t('history.dependent.goalLinked', { name: d.name, date: fmt.date(d.occurrenceDate, { compact: true, today }) })
+                                  : t(`history.dependent.${d.kind}`, { name: d.name })}
                           </li>
                         ))}
                       </ul>

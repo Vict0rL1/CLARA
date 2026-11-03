@@ -3281,6 +3281,7 @@ export const es = {
   'history.dependent.template': 'Plantilla «{name}»',
   'history.dependent.scenario': 'Escenario «{name}»',
   'history.dependent.goal': 'Gasto planificado «{name}»',
+  'history.dependent.goalLinked': 'Gasto planificado «{name}», vinculado al pago del {date}: esa fecha ya no existiría y el mismo pago contaría dos veces (lo apartado y la fecha restaurada)',
   'history.dependent.snooze': 'Aviso aplazado del {date}',
   'history.dependent.payment': 'Pago registrado para el {date} ({amount}): seguiría registrado pero ya no liquidaría ninguna fecha, y esa fecha volvería a contar',
   'issue.revertDependents': 'No se puede revertir: {count} registro(s) seguirían apuntando a un programado, o a una fecha de pago, que este cambio eliminaría o cambiaría. Cámbialos o bórralos primero.',
