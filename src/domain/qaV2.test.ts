@@ -390,16 +390,18 @@ describe('FIN-01 · el resumen de pagos recurrentes tiene un rango exacto explí
 
   it('la proyección del calendario se detiene en el último día exacto; después no hay cifra (como más allá de 400 días)', () => {
     const data = baseData({ schedules: Array.from({ length: 25 }, (_, i) => daily(i, MAX_AMOUNT_MINOR)) })
-    // Sin pedirlo, la proyección sigue sin aceptar una suma inexacta (las demás pantallas no cambian).
-    expect(() => projectBalance(data, ctx.today, { days: 400 })).toThrow()
-    const p = projectBalance(data, ctx.today, { days: 400, stopWhenOutOfRange: true })
+    // Auditoría del 2026-11-02 (P4): la proyección nunca lanza; se detiene en el último día exacto y lo dice, para
+    // todas las pantallas (antes solo el calendario lo pedía con `stopWhenOutOfRange` y las demás caían).
+    expect(() => projectBalance(data, ctx.today, { days: 400 })).not.toThrow()
+    const p = projectBalance(data, ctx.today, { days: 400 })
     expect(p.outOfRangeFrom).not.toBeNull()
+    expect(p.horizonDays).toBe(400)
     const last = p.days[p.days.length - 1]!
     expect(Number.isSafeInteger(last.endMinor)).toBe(true)
     expect(p.days.length).toBeLessThan(400)
     expect(dayBalance(p, p.outOfRangeFrom!)).toEqual({ state: 'outOfRange', from: p.outOfRangeFrom })
     // Con importes normales llega al final y no hay fecha fuera de rango.
-    const normal = projectBalance(baseData({ schedules: [daily(0, 1000)] }), ctx.today, { days: 400, stopWhenOutOfRange: true })
+    const normal = projectBalance(baseData({ schedules: [daily(0, 1000)] }), ctx.today, { days: 400 })
     expect(normal.days).toHaveLength(400)
     expect(normal.outOfRangeFrom).toBeNull()
   })

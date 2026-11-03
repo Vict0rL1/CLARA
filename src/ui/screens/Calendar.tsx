@@ -55,7 +55,7 @@ export function Calendar() {
   const projectionEnd = maxDate(monthEnd, addDays(today, MIN_PROJECTION_DAYS - 1))
   const projectionDays = Math.min(CALENDAR_PROJECTION_MAX_DAYS, daysBetween(today, projectionEnd) + 1)
   // QA V2 (FIN-01): con importes extremos la proyección acaba en el último día exacto; después no hay cifra.
-  const projection = useMemo(() => projectBalance(data, today, { days: projectionDays, stopWhenOutOfRange: true }), [data, today, projectionDays])
+  const projection = useMemo(() => projectBalance(data, today, { days: projectionDays }), [data, today, projectionDays])
   const byDate = useMemo(() => new Map<string, ProjectionDay>(projection.days.map((d) => [d.date, d])), [projection])
   const lastProjected = projection.days[projection.days.length - 1]?.date ?? today
   const firstNegative = projection.firstNegativeDate ? byDate.get(projection.firstNegativeDate) : undefined
@@ -64,7 +64,7 @@ export function Calendar() {
   const simParsed = simText.trim() ? parseMoneyText(simText, fmt) : null
   const simMinor = simParsed?.ok ? simParsed.minor : 0
   // Un mes de proyección es barato: se recalcula al escribir, sin memorizar.
-  const simulated = simMinor > 0 ? projectBalance(data, today, { days: projectionDays, extraOutflows: [{ date: simDay, amountMinor: simMinor }], stopWhenOutOfRange: true }) : null
+  const simulated = simMinor > 0 ? projectBalance(data, today, { days: projectionDays, extraOutflows: [{ date: simDay, amountMinor: simMinor }] }) : null
   // Lo que se dice del día simulado sale de ESA simulación, con la misma regla que el día elegido (`dayBalance`): más
   // allá de sus días o desde que deja de ser exacta no hay cifra (revisión propia, R3).
   const simBalance = simulated ? dayBalance(simulated, simDay) : null

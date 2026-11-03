@@ -42,17 +42,19 @@ export interface ProjectionOptions {
   scenario?: IncomeScenario
   /** Simulaciones (etapa 3): salidas extra en fechas concretas; nunca se guardan. Fechas pasadas cuentan hoy. */
   extraOutflows?: { date: LocalDate; amountMinor: number }[]
-  /**
-   * QA V2 (FIN-01): si el saldo de un día deja de ser un entero exacto (importes extremos), la proyección
-   * termina el día anterior y lo dice (`outOfRangeFrom`) en vez de fallar. Solo lo pide el calendario, que
-   * ya muestra «sin cifra» después del último día proyectado; sin pedirlo, una suma inexacta sigue siendo un error.
-   */
-  stopWhenOutOfRange?: boolean
 }
 
 export interface ProjectionResult {
   today: LocalDate
-  /** Primer día cuyo saldo ya no es un entero exacto (con `stopWhenOutOfRange`): la proyección acaba el día antes. */
+  /** Días pedidos (30 por defecto). Si `outOfRangeFrom` no es `null`, `days` cubre menos: solo los exactos. */
+  horizonDays: number
+  /**
+   * Primer día cuyo saldo ya no es un entero exacto (QA V2, FIN-01): la proyección acaba el día antes y ese día y los
+   * siguientes no tienen cifra. Nunca se lanza un error ni se inventa, recorta o redondea un saldo (auditoría del
+   * 2026-11-02, prioridad 4: antes solo el calendario y Estadísticas lo pedían y Proyección, Análisis, Plan ante
+   * faltante, Escenarios y «¿Me alcanza?» caían en «No se pudo abrir esta pantalla»). Quien proyecta lo dice y no
+   * afirma nada sobre el horizonte completo (saldo al final, «sin faltante») cuando no es `null`.
+   */
   outOfRangeFrom: LocalDate | null
   startMinor: number
   goalsReservedMinor: number
@@ -114,7 +116,6 @@ export function projectBalance(data: AppData, today: LocalDate, options: Project
     const dayMinor = checkedSumMinor(events.map((e) => e.budgetEffectMinor))
     const endMinor = dayMinor === null ? null : checkedSumMinor([balance, dayMinor, -dailySpendMinor, extraMinor])
     if (dayMinor === null || endMinor === null) {
-      if (!options.stopWhenOutOfRange) throw new RangeError('Desbordamiento al sumar importes')
       outOfRangeFrom = date
       break
     }
@@ -129,6 +130,7 @@ export function projectBalance(data: AppData, today: LocalDate, options: Project
 
   return {
     today,
+    horizonDays: totalDays,
     outOfRangeFrom,
     startMinor,
     goalsReservedMinor,
@@ -149,10 +151,13 @@ export function projectBalance(data: AppData, today: LocalDate, options: Project
 
 export interface ScenarioComparison {
   scenario: IncomeScenario
+  /** Ingresos contados en los días exactos (parcial si `outOfRangeFrom` no es `null`). */
   incomeMinor: number
+  /** Saldo al cierre del último día exacto: el del horizonte solo si `outOfRangeFrom` es `null`. */
   endMinor: number
   lowest: { date: LocalDate; minor: number }
   firstNegativeDate: LocalDate | null
+  outOfRangeFrom: LocalDate | null
 }
 
 /**
@@ -163,7 +168,7 @@ export function compareScenarios(data: AppData, today: LocalDate, options: Omit<
   return (['min', 'expected', 'extra'] as const).map((scenario) => {
     const p = projectBalance(data, today, { ...options, scenario })
     const incomeMinor = sumMinor(p.days.flatMap((d) => d.events).filter((e) => e.budgetEffectMinor > 0).map((e) => e.budgetEffectMinor))
-    return { scenario, incomeMinor, endMinor: p.endMinor, lowest: p.lowest, firstNegativeDate: p.firstNegativeDate }
+    return { scenario, incomeMinor, endMinor: p.endMinor, lowest: p.lowest, firstNegativeDate: p.firstNegativeDate, outOfRangeFrom: p.outOfRangeFrom }
   })
 }
 
@@ -205,7 +210,7 @@ export const CALENDAR_PROJECTION_MAX_DAYS = 400
 export type DayBalance =
   | { state: 'past' }
   | { state: 'projected'; endMinor: number }
-  /** Desde `from` el saldo deja de ser un entero exacto (`stopWhenOutOfRange`): sin cifra, y se dice desde cuándo. */
+  /** Desde `from` el saldo deja de ser un entero exacto (`outOfRangeFrom`): sin cifra, y se dice desde cuándo. */
   | { state: 'outOfRange'; from: LocalDate }
   /** Más allá de los días proyectados: `lastDate` es el último con cifra. */
   | { state: 'beyond'; lastDate: LocalDate }

@@ -45,6 +45,8 @@ export function Insights() {
         return t('insights.shortfall.title', { date: date('date'), amount: money('amount') })
       case 'belowReserves':
         return t('insights.belowReserves.title', { date: date('date'), amount: money('amount'), reserved: money('reserved') })
+      case 'projectionOutOfRange':
+        return t('insights.projectionOutOfRange.title', { until: date('until'), horizon: Number(p.horizon) })
       case 'limitOver':
         return t('insights.limitOver.title', { name: String(p.name), remaining: money('remaining') })
       case 'limitNear':

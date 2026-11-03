@@ -15,7 +15,7 @@ import { projectBalance } from './projection'
 import { trackedSince } from './weeklyReview'
 import type { AppData, LocalDate } from './types'
 
-export type AnalysisId = 'overdueBills' | 'shortfall' | 'belowReserves' | 'limitOver' | 'limitNear' | 'goalBehind' | 'spendingUp' | 'spendingDown' | 'topCategory' | 'backupDue'
+export type AnalysisId = 'overdueBills' | 'shortfall' | 'belowReserves' | 'projectionOutOfRange' | 'limitOver' | 'limitNear' | 'goalBehind' | 'spendingUp' | 'spendingDown' | 'topCategory' | 'backupDue'
 export type AnalysisSeverity = 'critical' | 'warning' | 'info'
 export type BecauseId =
   | 'overdueCount'
@@ -39,6 +39,8 @@ export type BecauseId =
   | 'share'
   | 'lastExport'
   | 'neverExported'
+  | 'exactUntil'
+  | 'outOfRangeFrom'
 
 export interface Because {
   id: BecauseId
@@ -132,6 +134,24 @@ export function analysisItems(data: AppData, today: LocalDate): AnalysisItem[] {
       params: { date: projection.firstBelowGoalsDate, amount: point.amount, reserved: projection.goalsReservedMinor },
       because: [...point.because, { id: 'reserved', kind: 'money', value: projection.goalsReservedMinor }],
       href: '/plan/proyeccion',
+    })
+  }
+
+  // 2b. Proyección incompleta (auditoría del 2026-11-02, P4): desde `outOfRangeFrom` el saldo proyectado deja de ser un
+  // entero exacto y no hay cifra. Lo visto hasta el día antes es exacto (un faltante encontrado sigue siendo real); lo
+  // que no se vio no se afirma: se dice hasta qué día llega la proyección en vez de romper la pantalla o callar.
+  if (projection.outOfRangeFrom) {
+    const lastExact = projection.days[projection.days.length - 1]?.date ?? today
+    out.push({
+      key: 'projectionOutOfRange',
+      id: 'projectionOutOfRange',
+      severity: 'info',
+      params: { date: projection.outOfRangeFrom, until: lastExact, days: projection.days.length, horizon: ANALYSIS_HORIZON_DAYS },
+      because: [
+        { id: 'exactUntil', kind: 'date', value: lastExact },
+        { id: 'outOfRangeFrom', kind: 'date', value: projection.outOfRangeFrom },
+      ],
+      href: '/plan/calendario',
     })
   }
 

@@ -24,9 +24,12 @@ export const MAX_SAVED_SCENARIOS = 20
 const SIM_PREFIX = 'sim-'
 
 export interface ScenarioResult {
+  /** Saldo al cierre del último día exacto: el del horizonte solo si `outOfRangeFrom` es `null`. */
   endMinor: number
   lowest: { date: LocalDate; minor: number }
   firstNegativeDate: LocalDate | null
+  /** Desde ese día la proyección no tiene cifra (fuera del rango exacto); «sin faltante» solo vale hasta el día antes. */
+  outOfRangeFrom: LocalDate | null
   /** Cuánto faltaría en el peor día (0 si nunca baja de cero). */
   shortfallMinor: number
   /** «Puedes gastar hasta tu próximo ingreso» en el escenario. */
@@ -103,6 +106,7 @@ export function evaluate(data: AppData, today: LocalDate, changes: ScenarioChang
     endMinor: p.endMinor,
     lowest: p.lowest,
     firstNegativeDate: p.firstNegativeDate,
+    outOfRangeFrom: p.outOfRangeFrom,
     shortfallMinor: Math.max(0, -p.lowest.minor),
     availableMinor: budget.availableMinor,
     belowGoalsDate: p.firstBelowGoalsDate,

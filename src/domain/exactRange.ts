@@ -15,7 +15,7 @@
  * 2⁵³ − 1 y es un entero exacto, también en cada paso intermedio de una resta. Por eso los datos que pasan de la cota
  * no se aceptan (importar una copia, cargar lo guardado) ni se crean (guardar un movimiento, marcar pagado, importar
  * del banco, saldo de referencia, cuenta nueva con saldo). La papelera cuenta para que restaurar nunca cambie la cota.
- * Lo programado no entra: sus proyecciones usan `stopWhenOutOfRange` (FIN-01) o se declaran sin cifra.
+ * Lo programado no entra: sus proyecciones se detienen en el último día exacto (`outOfRangeFrom`, FIN-01) y lo dicen.
  *
  * Hacen falta ≥ 9 008 movimientos de 10¹² del mismo lado para alcanzarla: solo datos sintéticos. Los 5 000 gastos y
  * 5 000 devoluciones de 987 654 321 000 de la auditoría (≈ 4,9 × 10¹⁵ por lado) entran.

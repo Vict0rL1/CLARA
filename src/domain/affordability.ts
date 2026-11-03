@@ -34,6 +34,8 @@ export interface AffordResult {
   futureShortfallDate: LocalDate | null
   /** La proyección ya caía bajo cero ANTES de la compra (la compra no es la causa). */
   shortfallExistedBefore: boolean
+  /** Desde ese día ninguna de las dos proyecciones tiene cifra (fuera del rango exacto): no ver un faltante solo vale hasta el día antes. */
+  projectionOutOfRangeFrom: LocalDate | null
 }
 
 export function simulatePurchase(
@@ -70,6 +72,8 @@ export function simulatePurchase(
   const projectionAfter = projectBalance(data, today, { dailySpendMinor, extraOutflowTodayMinor: priceMinor })
   const futureShortfallDate =
     availableAfterMinor >= 0 && projectionAfter.firstNegativeDate ? projectionAfter.firstNegativeDate : null
+  // Sin cifra desde ese día (fuera del rango exacto): que no se haya visto un faltante solo vale hasta el día antes.
+  const projectionOutOfRangeFrom = [projectionBefore.outOfRangeFrom, projectionAfter.outOfRangeFrom].filter((d): d is LocalDate => d !== null).sort()[0] ?? null
   const shortfallExistedBefore = projectionBefore.firstNegativeDate !== null
   if (verdict === 'fits' && futureShortfallDate) verdict = 'tight'
 
@@ -84,5 +88,6 @@ export function simulatePurchase(
     projectionAfter,
     futureShortfallDate,
     shortfallExistedBefore,
+    projectionOutOfRangeFrom,
   }
 }

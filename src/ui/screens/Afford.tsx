@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { simulatePurchase, type AffordVerdict } from '../../domain/affordability'
+import { addDays } from '../../domain/dates'
 import { estimateDailySpend } from '../../domain/projection'
 import { useT } from '../../i18n'
 import { useToday } from '../../state/hooks'
@@ -95,6 +96,11 @@ export function Afford() {
                   {t('afford.futureShortfallText')}
                 </Alert>
               )}
+              {result.projectionOutOfRangeFrom && !result.futureShortfallDate && (
+                <Alert tone="info" title={t('afford.partialTitle', { until: fmt.date(addDays(result.projectionOutOfRangeFrom, -1), { compact: true, today }) })} role="status">
+                  <span data-testid="afford-partial">{t('afford.partialText', { date: fmt.date(result.projectionOutOfRangeFrom, { compact: true, today }), until: fmt.date(addDays(result.projectionOutOfRangeFrom, -1), { compact: true, today }) })}</span>
+                </Alert>
+              )}
               {result.futureShortfallDate && result.shortfallExistedBefore && result.projectionBefore.firstNegativeDate && (
                 <Alert tone="warning" title={t('afford.existingShortfall', { date: fmt.date(result.projectionBefore.firstNegativeDate, { weekday: true }) })}>
                   {t('afford.existingShortfallText', { before: fmt.money(result.projectionBefore.lowest.minor), after: fmt.money(result.projectionAfter.lowest.minor) })}
@@ -133,10 +139,12 @@ export function Afford() {
                     <td>
                       {fmt.money(result.projectionBefore.lowest.minor)}
                       <span className="compare__sub">{fmt.date(result.projectionBefore.lowest.date, { compact: true, today })}</span>
+                      {result.projectionBefore.outOfRangeFrom && <span className="compare__sub">{t('afford.partialLowest', { until: fmt.date(addDays(result.projectionBefore.outOfRangeFrom, -1), { compact: true, today }) })}</span>}
                     </td>
                     <td>
                       {fmt.money(result.projectionAfter.lowest.minor)}
                       <span className="compare__sub">{fmt.date(result.projectionAfter.lowest.date, { compact: true, today })}</span>
+                      {result.projectionAfter.outOfRangeFrom && <span className="compare__sub">{t('afford.partialLowest', { until: fmt.date(addDays(result.projectionAfter.outOfRangeFrom, -1), { compact: true, today }) })}</span>}
                     </td>
                   </tr>
                 </tbody>
