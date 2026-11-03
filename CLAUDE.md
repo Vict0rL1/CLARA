@@ -31,7 +31,10 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   directamente en componentes: añadir cada clave a `es.ts`, `en.ts`, `pt.ts` **y** `fr.ts`
   (el tipo compartido obliga a tener todas las claves en los cuatro). Los textos de pantallas poco visitadas (Legal,
   Galería) son paquetes diferidos fuera del JS inicial: `src/i18n/packs/<paquete>.<idioma>.ts` (mismas claves en los
-  cuatro, el tipo lo exige) cargados con `usePackT` (`src/i18n/packs.ts`); la pantalla no dibuja nada hasta que carga.
+  cuatro, el tipo lo exige) cargados con `usePack` (`src/i18n/packs.ts`): estados `loading`, `ready` (con `fallback`
+  si el texto salió en español porque el idioma pedido no cargó) y `failed`; un fallo nunca se guarda como paquete ni
+  se enseña una clave; `PackNotice` muestra el estado con «Reintentar» (pide el archivo con otra marca en la dirección,
+  porque el navegador recuerda el fallo del módulo) y «Recargar la app» (auditoría 2026-11-02, P3).
 
 ## Reglas financieras (ver `docs/FORMULAS.md`)
 
@@ -39,7 +42,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   Divisiones con `floorDiv`/`ceilDiv`/`mulDivFloor`/`mulDivCeil`; nunca `importe * k` antes de dividir. Un agregado
   que no cabe en un entero exacto (> 2⁵³ − 1) no se redondea ni se recorta: `checkedSumMinor`/`checkedMulDivFloor`
   devuelven `null` y la pantalla dice que no hay cifra (QA V2, FIN-01: `recurringCosts` → `ok: false`;
-  `projectBalance` con `stopWhenOutOfRange` → `outOfRangeFrom`). Cota de exactitud (`domain/exactRange.ts`):
+  `projectBalance` nunca lanza: se detiene en el último día exacto → `outOfRangeFrom`, y cada pantalla que proyecta dice
+  hasta qué día hay cifra y no afirma nada del resto, auditoría 2026-11-02 P4). Cota de exactitud (`domain/exactRange.ts`):
   Σ|saldos de referencia| + Σ|importes| (movimientos y papelera) ≤ 2⁵³ − 1; guardar, marcar pagado, importar, mover
   un saldo de referencia o crear una cuenta con saldo que la pasarían se rechazan (`amountsBeyondExactRange`) y una
   copia que la pasa no se acepta: así toda suma parcial de la app es exacta (revisiones QA27).
@@ -137,8 +141,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   cabe, QA27-03); si el cociente no cabe en un entero exacto la señal sale sin `percent` y la pantalla lo dice
   (`insights.*.titleNoFigure`), la fila «diferencia» solo sale si cabe (`checkedSubMinor`), nunca una cifra inexacta ni
   una pantalla rota (F-03). Estadísticas y Revisión semanal usan los mismos dos ayudantes (`diffMinor` `null` → se dice).
-  El saldo futuro a 90 días proyecta con `stopWhenOutOfRange`: si no cabe, no hay curva y se dice (revisión en navegador
-  QA27).
+  El saldo futuro a 90 días se detiene en el último día exacto (`outOfRangeFrom`): si no cabe, no hay curva y se dice
+  (revisión en navegador QA27).
 - Límite sugerido (`domain/planSuggestion.ts`): mediana del gasto neto de los últimos 3 ciclos completos con
   datos (≥ 2), redondeada hacia arriba a una unidad; sin IA; «Usar» solo rellena el importe.
 - Hitos de metas (`domain/goalMilestones.ts`): 25/50/75/100 % en enteros, solo el más alto y solo 7 días desde
@@ -160,7 +164,10 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   guarda posponer/descartar (con huella). Nunca elimina ni combina duplicados; como mucho 50 parejas de posibles
   duplicados por grupo, en orden fijo (`DUPLICATE_PAIRS_PER_GROUP`; QA27-03b). Las sugerencias de pagos
   fijos (`domain/recurringDetect.ts`: mismo comercio, mismo importe exacto, cadencia regular y activa) solo
-  abren el formulario relleno; nunca se programa nada solo y no cuentan como pendientes.
+  abren el formulario relleno; nunca se programa nada solo y no cuentan como pendientes. El tope de duplicados cuenta
+  solo parejas SIN revisar (`scanDuplicates` con el predicado de la vista): lo descartado o pospuesto se lista pero no
+  ocupa sitio, y si quedan más de las que caben la bandeja lo dice (`moreDuplicates`); nunca se da por completa
+  (auditoría 2026-11-02, P2).
 - Distribuir un ingreso (`domain/incomeDistribution.ts`): solo ingresos realizados; crea
   apartados virtuales (metas), nunca dinero ni movimientos; pagos ya reservados no se
   restan dos veces; todo o nada; deshacer solo si es coherente.
@@ -178,7 +185,11 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   referencia que ya no resolvía antes no cuenta, ni un aplazamiento ya caducado (inerte, R5; revisión S-R1). Tampoco se
   revierte lo que dejaría un pago o cobro realizado (también parcial o automático) vinculado a una ocurrencia que ya no
   existiría —tramo eliminado o mismo id con otra fecha de siempre, regla, inicio o fin—: el pago no liquidaría nada y
-  la ocurrencia volvería a reservarse (QA27-01, `kind: 'payment'`).
+  la ocurrencia volvería a reservarse (QA27-01, `kind: 'payment'`). Lo mismo para el vínculo de un gasto planificado y
+  un aplazamiento vigente a una ocurrencia que dejaría de existir bajo el mismo id (`kind: 'goal'`/`'snooze'` con
+  `occurrenceDate`; auditoría 2026-11-02, P1: 980 → 560 con la misma factura reservada dos veces); cada referencia se
+  compara tal como es hoy contra hoy y tal como quedaría contra después, y una referencia solo por id sigue válida
+  mientras el programado exista.
 - Deshacer importar/restaurar (`state/replaceUndo.ts`): ligado a la revisión que fija el propio reemplazo
   (`AppStore.commitTracked`, antes de esperar al almacenamiento), nunca a lo último guardado. Cualquier
   cambio posterior —de la persona o automático, aunque su escritura siga pendiente— lo invalida (RT-02).

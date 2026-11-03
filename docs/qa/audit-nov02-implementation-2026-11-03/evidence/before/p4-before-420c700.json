@@ -1,0 +1,37 @@
+  "validateAppDataOk": true,
+  "withStop": {
+    "exactDays": 22,
+    "outOfRangeFrom": "2026-11-24"
+  },
+  "homeBudget": {
+    "status": "ok",
+    "available": -3199999999500000
+  },
+  "consumers": [
+    [
+      "projectBalance (Proyección)",
+      "throws",
+      "Desbordamiento al sumar importes"
+    ],
+    [
+      "analysisItems (Análisis)",
+      "throws",
+      "Desbordamiento al sumar importes"
+    ],
+    [
+      "analyzeShortfall (Plan ante faltante)",
+      "throws",
+      "Desbordamiento al sumar importes"
+    ],
+    [
+      "scenarios.compare (Escenarios)",
+      "throws",
+      "Desbordamiento al sumar importes"
+    ],
+    [
+      "simulatePurchase (¿Me alcanza?)",
+      "throws",
+      "Desbordamiento al sumar importes"
+    ]
+  ]
+}

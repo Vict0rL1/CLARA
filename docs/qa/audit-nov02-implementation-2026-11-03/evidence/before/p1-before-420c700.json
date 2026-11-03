@@ -1,0 +1,15 @@
+  "availableBefore": 98000,
+  "canRevert": "ok",
+  "revertAccepted": true,
+  "availableAfterRevert": 56000,
+  "goalLinkAfter": {
+    "scheduleId": "b2",
+    "occurrenceDate": "2026-03-31"
+  },
+  "b2After": {
+    "anchorDate": null
+  },
+  "validateAppDataOk": true,
+  "roundTripOk": true,
+  "availableAfterRoundTrip": 56000
+}

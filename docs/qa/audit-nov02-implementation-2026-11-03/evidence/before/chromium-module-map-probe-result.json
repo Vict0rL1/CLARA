@@ -1,0 +1,11 @@
+{
+  "chunk": "legal.es-C-RZlY4S.js",
+  "first": "rejected: Failed to fetch dynamically imported module: http://localhost:4174/assets/legal.es-C-RZlY4S.js",
+  "second": "rejected: Failed to fetch dynamically imported module: http://localhost:4174/assets/legal.es-C-RZlY4S.js",
+  "busted": "ok keys=22",
+  "requests": [
+    "http://localhost:4174/assets/legal.es-C-RZlY4S.js",
+    "http://localhost:4174/assets/legal.es-C-RZlY4S.js?retry=1"
+  ],
+  "note": "Playwright's Chromium after a failed fetch of a dynamically imported module: a second import() of the same URL rejects without any network request; the same file with a different query string is fetched and loads. Probe run on 2026-11-03 against a vite preview of the fixed build; this is why the retry imports the reported chunk URL with a cache-busting query."
+}

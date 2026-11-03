@@ -52,8 +52,9 @@ aparece en la proyección pero no en el disponible.
   saldo inicial se rechazan con `amountsBeyondExactRange`, y una copia que la pasa no se acepta (`validateAppData`).
   La papelera cuenta para que restaurar no la cambie; eliminar definitivamente la reduce. Se comprueba sumando
   magnitudes en coma flotante, exacto para esta comparación (términos ≥ 0: por debajo de 2⁵³ cada suma parcial es
-  representable; al pasarla el resultado queda ≥ 2⁵³). Lo programado no entra en la cota: sus proyecciones usan
-  `stopWhenOutOfRange` (§37) o se declaran sin cifra (§35). Hacen falta ≥ 9 008 movimientos de 10¹² para alcanzarla.
+  representable; al pasarla el resultado queda ≥ 2⁵³). Lo programado no entra en la cota: sus proyecciones se detienen
+  en el último día exacto y lo dicen (`outOfRangeFrom`, §9) o se declaran sin cifra (§35). Hacen falta ≥ 9 008
+  movimientos de 10¹² para alcanzarla.
 - Al escribir importes se aceptan `12,50`, `12.50`, `1,234.56`, `1.234,56`, `$ 45`.
   Si hay un solo separador seguido de exactamente 3 dígitos (`1,234`) se usa el
   formato elegido en Ajustes para decidir si son miles o decimales.
@@ -358,9 +359,16 @@ Suposiciones (se muestran en pantalla):
   saldo proyectado cae por debajo de ellos.
 - El gráfico distingue el **punto real de hoy** (círculo) de la **proyección** (línea
   discontinua). Hay una tabla con los mismos valores.
-- **Rango exacto (QA V2, FIN-01):** cada día se suma con `checkedSumMinor`. Con `stopWhenOutOfRange`
-  (solo lo pide el calendario) la proyección termina en el último día exacto y dice desde qué fecha no hay
-  cifra (`outOfRangeFrom`); sin pedirlo, una suma inexacta sigue siendo un error, como antes.
+- **Rango exacto (QA V2, FIN-01; auditoría del 2026-11-02, P4):** cada día se suma con `checkedSumMinor`. La
+  proyección NUNCA lanza: termina en el último día exacto y dice desde qué fecha no hay cifra (`outOfRangeFrom`;
+  `horizonDays` es lo pedido). Antes solo el calendario lo pedía (`stopWhenOutOfRange`) y Proyección, Análisis, Plan
+  ante faltante, Escenarios y «¿Me alcanza?» caían en «No se pudo abrir esta pantalla» con 400 programados diarios de
+  10¹² (datos que validan). Con `outOfRangeFrom` ningún consumidor afirma nada sobre el horizonte completo: Proyección
+  avisa «Sin cifra desde el {fecha}» (un faltante encontrado antes sigue siendo exacto y se dice), Análisis añade la
+  señal `projectionOutOfRange` (último día exacto y primer día sin cifra), el plan ante faltante no dice «sin faltante»
+  ni «lo evita» (`LeverEffect.resolves` exige la proyección completa), Escenarios deja el saldo al final sin cifra y
+  marca «no hasta el {día antes}», y «¿Me alcanza?» mantiene el veredicto del disponible de hoy (§6) y declara hasta qué
+  día vale no haber visto un faltante. Nada se redondea, recorta ni inventa; con importes normales nada cambia.
 
 ## 10. Devoluciones y tarjetas de crédito
 
@@ -889,6 +897,12 @@ pago>`, `dup:<a>:<b>`, `bal:<cuenta>:<motivo>`, `int:…`), así nunca aparecen 
   fijo (fecha, id): más allá no son duplicados sueltos sino un volcado masivo, y la lista crecía al
   cuadrado (5 000 movimientos iguales el mismo día = 12,5 millones de avisos: la pestaña se quedaba
   sin memoria, también en `21b4ed8`; auditoría del 2026-10-29, QA27-03b).
+  Auditoría del 2026-11-02 (P2): el tope cuenta solo parejas SIN revisar. Una ya descartada («Son distintos», misma
+  huella) o pospuesta hasta una fecha futura se lista para poder recuperarla pero no ocupa sitio, así revisar las
+  primeras deja ver las siguientes (antes 50 parejas antiguas ya descartadas impedían ofrecer una nueva para siempre).
+  Cuando un grupo tiene más parejas sin revisar que el tope, la bandeja lo dice (`InboxView.moreDuplicates`) y nunca
+  da la revisión por completa; el recorrido sigue acotado (tope de nuevas por grupo más lo revisado a mano) y las notas
+  se normalizan una vez por movimiento. Ids, huellas y exclusiones no cambian.
 - **Saldos por verificar:** cuentas del presupuesto y tarjetas nunca verificadas, verificadas
   hace más de 30 días o con la verificación «por revisar». Muestra por separado el
   **último movimiento registrado** y la **última verificación con el banco**.
@@ -1005,7 +1019,14 @@ Código: `src/domain/history.ts`. Pantalla: `Ajustes › Historial de cambios`.
   que solo toca movimientos comprueba los suyos (así la lista del historial no recorre todos los pagos).
   Si hay alguno, `canRevert` devuelve `dependents`, la pantalla lista cada registro (plantilla, escenario,
   gasto planificado, aviso del {fecha} o «Pago registrado para el {fecha} ({importe})») y `revertEntry`
-  rechaza con `revertDependents` sin cambiar nada.
+  rechaza con `revertDependents` sin cambiar nada. Auditoría del 2026-11-02 (P1): la misma regla para
+  las referencias a una OCURRENCIA concreta bajo el mismo id —el vínculo de un gasto planificado (§18) y un aplazamiento
+  vigente (§24)—: cada referencia se compara tal como es hoy contra los programados de hoy y tal como quedaría contra
+  los de después; la que resuelve hoy y no resolvería después (reparación en el sitio, u otra fecha de siempre, regla,
+  inicio o fin) es dependiente (`kind: 'goal'` o `'snooze'`, con `occurrenceDate`), se dice cuál y nada cambia. Antes
+  un gasto planificado vinculado al 31-mar corregido cubría esa factura; revertir devolvía el 28-mar con el vínculo en
+  el 31-mar y la factura se reservaba dos veces (980 → 560), y ese estado pasaba la validación y la copia. Una
+  referencia solo por id (plantilla, escenario) sigue válida mientras el programado exista.
   Pasa con una entrada grabada antes de v14 (solo instantáneas de programados, aunque la partición movió
   plantillas, escenarios y aplazamientos) y con una plantilla, escenario o meta creados DESPUÉS de una
   partición corregida. Solo cuentan las referencias que hoy resuelven y dejarían de resolver: una línea
@@ -1274,8 +1295,8 @@ Pruebas: `ui/preferences.test.ts` y e2e `personalize.spec.ts`.
 - **Saldo futuro (90 días)**: base = proyección (§8) con el gasto diario estimado (§9, 30 días) y el
   escenario mínimo de ingresos variables; optimista = 75 % del gasto diario con ingresos esperados;
   pesimista = 125 % con mínimos. Marcas en hoy, 30, 60 y 90 días. Oculto con menos de 14 días desde
-  `trackedSince`, menos de 7 días de gasto observado o sin movimientos. Las tres proyecciones van con
-  `stopWhenOutOfRange`: si el saldo proyectado deja de caber en un entero exacto antes de los 90 días (importes de
+  `trackedSince`, menos de 7 días de gasto observado o sin movimientos. Las tres proyecciones se detienen en el
+  último día exacto (`outOfRangeFrom`): si el saldo proyectado deja de caber en un entero exacto antes de los 90 días (importes de
   auditoría), no hay curva y la pantalla dice que no cabe (`outOfRange`; revisión en navegador QA27): nunca una
   cifra recortada ni una pantalla rota.
 - **PDF** = impresión del navegador de la vista (hoja de estilos `@media print`); no hay servicio.
@@ -1444,7 +1465,7 @@ compactos ni se redondean para calcular.
   se proyectan (el saldo real está en Cuentas). El **primer día en negativo** es `firstNegativeDate`
   con el saldo de ese día; si no lo hay, se dice hasta qué fecha llega la proyección. Un día con
   saldo proyectado negativo lleva la marca «−» y texto accesible, nunca solo color. Con importes
-  extremos la proyección se detiene en el último día exacto (`stopWhenOutOfRange`, §9) y el calendario
+  extremos la proyección se detiene en el último día exacto (`outOfRangeFrom`, §9) y el calendario
   dice desde qué fecha no hay cifra, igual que más allá de los 400 días (QA V2, FIN-01).
 - **Simulación** (`ProjectionOptions.extraOutflows`): un pago extra en una fecha concreta se resta
   ese día (una fecha pasada cuenta hoy) sobre una copia; el resultado dice el saldo al cerrar ese

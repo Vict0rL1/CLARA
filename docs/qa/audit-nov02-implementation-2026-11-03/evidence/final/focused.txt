@@ -1,0 +1,33 @@
+
+ RUN  v5.0.5 /home/user/ALCANZA
+
+ ✓ src/domain/qaV2.test.ts (29 tests) 231ms
+ ✓ src/domain/auditNov02Duplicates.test.ts (7 tests) 101ms
+ ✓ src/domain/exactRange.test.ts (8 tests) 552ms
+ ✓ src/domain/historyRevertScan.test.ts (3 tests) 87ms
+ ✓ src/domain/qaLead.test.ts (26 tests) 63ms
+ ✓ src/domain/qaFollowUp.test.ts (32 tests) 49ms
+ ✓ src/domain/qa27FutureBalance.test.ts (2 tests) 73ms
+ ✓ src/domain/qa27Duplicates.test.ts (2 tests) 42ms
+ ✓ src/domain/auditNov02GoalUndo.test.ts (8 tests) 48ms
+ ✓ src/domain/inbox.test.ts (14 tests) 67ms
+ ✓ src/i18n/packs.test.ts (2 tests) 26ms
+ ✓ src/domain/qa27Undo.test.ts (8 tests) 36ms
+ ✓ src/domain/scenarios.test.ts (12 tests) 41ms
+ ✓ src/domain/projection.test.ts (13 tests) 27ms
+ ✓ src/domain/shortfall.test.ts (5 tests) 25ms
+ ✓ src/i18n/auditNov02Packs.test.ts (8 tests) 14ms
+ ✓ src/domain/auditNov02Projection.test.ts (7 tests) 2441ms
+   ✓ Auditoría 2026-11-02 · P4: proyección fuera del rango exacto en todas las pantallas que proyectan (7)
+     ✓ Escenarios no lanzan: la situación actual y cada alternativa llevan la fecha desde la que no hay cifra; el saldo al final es el del último día exacto 1087ms
+     ✓ «¿Me alcanza?» no lanza: el veredicto sale del disponible de hoy y la proyección declara desde cuándo no hay cifra 1078ms
+
+ Test Files  17 passed (17)
+      Tests  186 passed (186)
+   Start at  08:17:25
+   Duration  2.67s (tests 78%, import 15%, transform 6%, worker 1%)
+
+    Isolate  17 workers spawned · ~101ms startup each (spawn + environment, per file)
+             at least ~473ms faster with isolate: false — reuses workers across files instead of one per file
+
+exit 0
