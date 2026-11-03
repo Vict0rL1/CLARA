@@ -5,13 +5,14 @@
  */
 import { useState } from 'react'
 import { useT } from '../../i18n'
-import { usePackT } from '../../i18n/packs'
+import { usePack } from '../../i18n/packs'
 import { CATEGORY_COLOR_LIST, EXPENSE_CATEGORY_IDS, INCOME_CATEGORY_IDS, systemCategoryMeta } from '../../domain/categories'
 import { formatDate, formatMoney, formatRelativeDate } from '../../domain/formatters'
 import { useData } from '../../state/store'
 import { useToday } from '../../state/hooks'
 import { BottomSheet, CategoryChip, CoachMark, FAB, ListRow, MonthNavigator, PrimaryButton, ProgressBar, SearchBar, SecondaryButton, Skeleton, TextButton, TimePickerRow, Toggle } from '../components/base'
 import { Alert, Badge, Card, EmptyState, PageHeader, StatTile } from '../components/common'
+import { PackNotice } from '../components/PackNotice'
 import { ConfirmDialog } from '../components/Dialog'
 import { CheckboxField, MoneyField, Segmented, SelectField, TextField } from '../components/fields'
 import { Icon } from '../components/Icon'
@@ -25,8 +26,9 @@ const TOKENS = ['bg', 'bg-elevated', 'card', 'text-primary', 'text-secondary', '
 
 export function Gallery() {
   const { t, language } = useT()
-  // Sus textos son un paquete diferido: hasta que carga no se dibuja nada (ninguna clave a la vista).
-  const g = usePackT('gallery')
+  // Sus textos son un paquete diferido: hasta que está listo solo se dibujan la cabecera y el estado de carga (ninguna
+  // clave a la vista); si no carga, se dice y se puede reintentar.
+  const pack = usePack('gallery')
   const data = useData()
   const today = useToday()
   const [theme, setTheme] = useThemePreference()
@@ -45,10 +47,21 @@ export function Gallery() {
   const currency = data.settings.currency
   const sample = 1234567
 
-  if (!g) return null
+  if (pack.status !== 'ready') {
+    return (
+      <div className="stack gallery">
+        <PageHeader title={t('settings.toc.gallery')} back={{ href: href('/ajustes'), label: t('common.back') }} />
+        <Card>
+          <PackNotice state={pack} />
+        </Card>
+      </div>
+    )
+  }
+  const g = pack.t
   return (
     <div className="stack gallery">
       <PageHeader title={g('gallery.title')} back={{ href: href('/ajustes'), label: t('common.back') }} />
+      <PackNotice state={pack} />
       <p className="muted">{g('gallery.intro')}</p>
 
       <Card labelledBy="g-tokens">
