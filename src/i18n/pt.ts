@@ -1452,6 +1452,7 @@ export const pt: Record<keyof typeof es, string> = {
   'inbox.action.reviewed': 'Já revisei',
   'inbox.action.keep': 'Está bem assim',
   'inbox.duplicateNote': 'Se um está sobrando, abra-o e exclua (vai para a lixeira e pode ser restaurado).',
+  'inbox.moreDuplicates': 'Há mais possíveis duplicados do que os mostrados (mesmo tipo, conta e valor): revise estes e os seguintes aparecerão. A revisão não está completa enquanto restar algum.',
   'inbox.snoozedToast_one': 'Adiado por {count} dia. Voltará se continuar pendente.',
   'inbox.snoozedToast_other': 'Adiado por {count} dias. Voltará se continuar pendente.',
   'inbox.dismissedToast': 'Decisão salva. Voltará a aparecer se seus dados mudarem.',

@@ -81,6 +81,8 @@ export interface InboxView {
   snoozed: (InboxItem & { until: LocalDate })[]
   /** Descartados cuyo motivo sigue igual (se pueden recuperar). */
   dismissed: InboxItem[]
+  /** Hay más posibles duplicados sin revisar de los que se muestran: al revisar estos aparecen los siguientes. */
+  moreDuplicates: boolean
 }
 
 /** Cada cuántos días conviene volver a verificar el saldo de una cuenta. */
@@ -88,9 +90,11 @@ export const VERIFY_EVERY_DAYS = 30
 /** Ventana para posibles duplicados (mismo importe y cuenta). */
 export const DUPLICATE_WINDOW_DAYS = 3
 /**
- * Tope de parejas por grupo (mismo tipo, cuenta e importe). Más allá no son duplicados sueltos que alguien vaya a
- * revisar uno a uno sino un volcado masivo, y la lista crecía al cuadrado: 5 000 movimientos iguales el mismo día
- * eran 12,5 millones de avisos y la pestaña se quedaba sin memoria (auditoría del 2026-10-29, QA27-03b).
+ * Tope de parejas SIN REVISAR por grupo (mismo tipo, cuenta e importe). Más allá no son duplicados sueltos que alguien
+ * vaya a revisar uno a uno sino un volcado masivo, y la lista crecía al cuadrado: 5 000 movimientos iguales el mismo
+ * día eran 12,5 millones de avisos y la pestaña se quedaba sin memoria (auditoría del 2026-10-29, QA27-03b). Las
+ * parejas ya revisadas (descartadas o pospuestas) no ocupan sitio: al revisar las mostradas aparecen las siguientes
+ * (auditoría del 2026-11-02, prioridad 2).
  */
 export const DUPLICATE_PAIRS_PER_GROUP = 50
 
@@ -130,14 +134,35 @@ function overdue(data: AppData, today: LocalDate): InboxItem[] {
     }))
 }
 
+/** Id estable y huella de una pareja de posibles duplicados (los dos ordenados por id). */
+const duplicateIdentity = (a: Transaction, b: Transaction): Pick<InboxItem, 'id' | 'fingerprint'> => ({ id: `dup:${a.id}:${b.id}`, fingerprint: `${txKey(a)}~${txKey(b)}` })
+
+/** ¿La pareja ya se revisó (descartada con la misma huella, o pospuesta hasta después de hoy)? */
+export type ReviewedPredicate = (item: Pick<InboxItem, 'id' | 'fingerprint'>) => boolean
+
+export interface DuplicateScan {
+  /** Parejas en orden fijo (fecha, id): las sin revisar hasta el tope por grupo y las revisadas que se cruzaron por el camino. */
+  pairs: [Transaction, Transaction][]
+  /** Algún grupo tiene más parejas sin revisar de las que caben en el tope: la revisión no está completa. */
+  truncated: boolean
+}
+
 /**
  * Posibles duplicados: dos movimientos realizados del mismo tipo, cuenta e importe, a
  * ±3 días, cuyas notas coinciden (o alguna falta). Nunca se consideran:
  *  - transferencias (los dos lados son UN registro) ni ajustes de conciliación;
  *  - las líneas de una compra dividida (son el mismo movimiento);
  *  - cobros o pagos de la misma ocurrencia del calendario (parciales deliberados).
+ *
+ * El recorrido va por grupo (tipo, cuenta e importe) y en orden fijo (fecha, id), así que las parejas y sus ids son
+ * siempre los mismos. El tope por grupo cuenta solo parejas SIN revisar: una ya descartada («Son distintos», misma
+ * huella) o pospuesta hasta una fecha futura se lista para poder recuperarla pero no ocupa sitio, de modo que revisar
+ * las primeras deja ver las siguientes (auditoría del 2026-11-02, prioridad 2: antes el tope se aplicaba antes de
+ * descontar lo revisado y 50 parejas antiguas ya descartadas impedían ofrecer una pareja nueva para siempre). Un grupo
+ * con más parejas sin revisar que el tope se declara (`truncated`): nunca se da la revisión por completa. El trabajo
+ * sigue acotado: a lo sumo el tope de parejas nuevas por grupo más las que la persona ya revisó a mano.
  */
-export function possibleDuplicates(data: Pick<AppData, 'transactions'>): [Transaction, Transaction][] {
+export function scanDuplicates(data: Pick<AppData, 'transactions'>, reviewed?: ReviewedPredicate): DuplicateScan {
   const groups = new Map<string, Transaction[]>()
   for (const t of data.transactions) {
     if (t.status !== 'realized' || (t.kind !== 'expense' && t.kind !== 'income' && t.kind !== 'refund')) continue
@@ -147,40 +172,57 @@ export function possibleDuplicates(data: Pick<AppData, 'transactions'>): [Transa
     else groups.set(key, [t])
   }
   const pairs: [Transaction, Transaction][] = []
+  let truncated = false
   for (const list of groups.values()) {
     if (list.length < 2) continue
     list.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.id < b.id ? -1 : 1))
-    // Orden fijo (fecha, id): las primeras parejas son siempre las mismas y sus ids no cambian de una vez a otra.
-    let produced = 0
+    // La nota se normaliza una vez por movimiento, no una vez por pareja.
+    const notes = list.map((t) => normalizeText(t.note ?? ''))
+    let unreviewed = 0
     outer: for (let i = 0; i < list.length; i++) {
       for (let j = i + 1; j < list.length; j++) {
         const a = list[i]!
         const b = list[j]!
         if (daysBetween(a.date, b.date) > DUPLICATE_WINDOW_DAYS) break
         if (a.scheduleId && a.scheduleId === b.scheduleId) continue
-        const na = normalizeText(a.note ?? '')
-        const nb = normalizeText(b.note ?? '')
+        const na = notes[i]!
+        const nb = notes[j]!
         if (na && nb && na !== nb) continue
-        pairs.push(a.id < b.id ? [a, b] : [b, a])
-        if (++produced >= DUPLICATE_PAIRS_PER_GROUP) break outer
+        const pair: [Transaction, Transaction] = a.id < b.id ? [a, b] : [b, a]
+        if (reviewed?.(duplicateIdentity(pair[0], pair[1]))) {
+          pairs.push(pair)
+          continue
+        }
+        if (unreviewed >= DUPLICATE_PAIRS_PER_GROUP) {
+          truncated = true
+          break outer
+        }
+        pairs.push(pair)
+        unreviewed++
       }
     }
   }
-  return pairs
+  return { pairs, truncated }
 }
 
-function duplicates(data: AppData): InboxItem[] {
-  return possibleDuplicates(data).map(([a, b]) => ({
-    id: `dup:${a.id}:${b.id}`,
+/** Las parejas con el tope aplicado a todas (sin saber cuáles están revisadas); la bandeja usa `scanDuplicates`. */
+export function possibleDuplicates(data: Pick<AppData, 'transactions'>): [Transaction, Transaction][] {
+  return scanDuplicates(data).pairs
+}
+
+function duplicates(data: AppData, reviewed?: ReviewedPredicate): { items: InboxItem[]; truncated: boolean } {
+  const scan = scanDuplicates(data, reviewed)
+  const items = scan.pairs.map(([a, b]) => ({
+    ...duplicateIdentity(a, b),
     kind: 'duplicate' as const,
     reason: 'possibleDuplicate' as const,
-    fingerprint: `${txKey(a)}~${txKey(b)}`,
     date: a.date > b.date ? a.date : b.date,
     amountMinor: a.amountMinor,
     txIds: [a.id, b.id],
     accountId: a.accountId,
     canDismiss: true,
   }))
+  return { items, truncated: scan.truncated }
 }
 
 function balances(data: AppData, today: LocalDate): InboxItem[] {
@@ -373,16 +415,30 @@ function suggestions(data: AppData, today: LocalDate): InboxItem[] {
   }))
 }
 
+/**
+ * Todos los pendientes calculados (sin aplicar posponer/descartar), y si quedan más posibles duplicados de los que
+ * caben. `reviewed` solo sirve para que las parejas ya revisadas no ocupen sitio en el tope de duplicados.
+ */
+export function computeInboxDetailed(data: AppData, today: LocalDate, reviewed?: ReviewedPredicate): { items: InboxItem[]; moreDuplicates: boolean } {
+  const dup = duplicates(data, reviewed)
+  return {
+    items: [...overdue(data, today), ...balances(data, today), ...attention(data, today), ...dup.items, ...uncategorized(data), ...integrity(data), ...suggestions(data, today)],
+    moreDuplicates: dup.truncated,
+  }
+}
+
 /** Todos los pendientes calculados (sin aplicar posponer/descartar). */
-export function computeInbox(data: AppData, today: LocalDate): InboxItem[] {
-  return [...overdue(data, today), ...balances(data, today), ...attention(data, today), ...duplicates(data), ...uncategorized(data), ...integrity(data), ...suggestions(data, today)]
+export function computeInbox(data: AppData, today: LocalDate, reviewed?: ReviewedPredicate): InboxItem[] {
+  return computeInboxDetailed(data, today, reviewed).items
 }
 
 export function inboxView(data: AppData, today: LocalDate): InboxView {
   const snoozedUntil = new Map(data.inbox.snoozed.map((s) => [s.id, s.until]))
   const dismissedAt = new Map(data.inbox.dismissed.map((d) => [d.id, d.fingerprint]))
-  const view: InboxView = { active: [], snoozed: [], dismissed: [] }
-  for (const item of computeInbox(data, today)) {
+  const reviewed: ReviewedPredicate = (item) => dismissedAt.get(item.id) === item.fingerprint || (snoozedUntil.get(item.id) ?? '') > today
+  const { items, moreDuplicates } = computeInboxDetailed(data, today, reviewed)
+  const view: InboxView = { active: [], snoozed: [], dismissed: [], moreDuplicates }
+  for (const item of items) {
     if (item.canDismiss && dismissedAt.get(item.id) === item.fingerprint) view.dismissed.push(item)
     else {
       const until = snoozedUntil.get(item.id)

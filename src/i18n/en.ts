@@ -1454,6 +1454,7 @@ export const en: Record<keyof typeof es, string> = {
   'inbox.action.reviewed': 'I\'ve reviewed it',
   'inbox.action.keep': 'It\'s fine as is',
   'inbox.duplicateNote': 'If one is extra, open it and delete it (it goes to the trash and can be restored).',
+  'inbox.moreDuplicates': 'There are more possible duplicates than shown (same type, account and amount): review these and the next ones will appear. The review is not complete until none remain.',
   'inbox.snoozedToast_one': 'Snoozed for {count} day. It will come back if still pending.',
   'inbox.snoozedToast_other': 'Snoozed for {count} days. It will come back if still pending.',
   'inbox.dismissedToast': 'Decision saved. It will reappear if its data changes.',

@@ -1453,6 +1453,7 @@ export const es = {
   'inbox.action.reviewed': 'Ya lo revisé',
   'inbox.action.keep': 'Está bien así',
   'inbox.duplicateNote': 'Si uno sobra, ábrelo y elimínalo (irá a la papelera y se puede restaurar).',
+  'inbox.moreDuplicates': 'Hay más posibles duplicados de los que se muestran (mismo tipo, cuenta e importe): revisa estos y aparecerán los siguientes. La revisión no está completa hasta que no quede ninguno.',
   'inbox.snoozedToast_one': 'Pospuesto {count} día. Volverá si sigue pendiente.',
   'inbox.snoozedToast_other': 'Pospuesto {count} días. Volverá si sigue pendiente.',
   'inbox.dismissedToast': 'Decisión guardada. Volverá a aparecer si cambian sus datos.',

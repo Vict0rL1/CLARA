@@ -93,6 +93,11 @@ export function Inbox() {
                 {t('movements.showMore', { count: g.items.length - shown.length })}
               </button>
             )}
+            {g.kind === 'duplicate' && view.moreDuplicates && (
+              <p className="note note--icon" data-testid="inbox-more-duplicates">
+                <Icon name="list" size={16} /> {t('inbox.moreDuplicates')}
+              </p>
+            )}
           </section>
         )
       })}

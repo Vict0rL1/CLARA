@@ -1452,6 +1452,7 @@ export const fr: Record<keyof typeof es, string> = {
   'inbox.action.reviewed': 'Je l’ai vérifié',
   'inbox.action.keep': 'C’est bien ainsi',
   'inbox.duplicateNote': 'Si l’une est en trop, ouvrez-la et supprimez-la (elle va dans la corbeille et peut être restaurée).',
+  'inbox.moreDuplicates': 'Il y a plus de doublons possibles que ceux affichés (même type, compte et montant) : passez ceux-ci en revue et les suivants apparaîtront. La vérification n’est pas terminée tant qu’il en reste.',
   'inbox.snoozedToast_one': 'Reporté de {count} jour. Il reviendra s’il est toujours en attente.',
   'inbox.snoozedToast_other': 'Reporté de {count} jours. Il reviendra s’il est toujours en attente.',
   'inbox.dismissedToast': 'Décision enregistrée. Il réapparaîtra si ses données changent.',
