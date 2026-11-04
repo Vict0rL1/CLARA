@@ -15,7 +15,7 @@ import { upcomingItems } from './budget'
 import { addDays, daysBetween, localDateInTimeZone, minDate, weekday } from './dates'
 import { goalProgress } from './goals'
 import { periodSummary, type CategorySpending } from './insights'
-import { floorDiv, sumMinor } from './money'
+import { checkedPercentChange, checkedSubMinor, sumMinor } from './money'
 import type { PlanItem } from './planItems'
 import type { AppData, Goal, LocalDate } from './types'
 
@@ -45,8 +45,9 @@ export interface WeekTotals {
 }
 
 export interface WeekChange {
-  diffMinor: number
-  /** Porcentaje entero (floor); null si la base es 0 o faltan datos. */
+  /** Diferencia exacta; `null` si no cabe en un entero exacto (QA27-03). */
+  diffMinor: number | null
+  /** Porcentaje entero truncado hacia cero; null si la base es 0, faltan datos o la cifra no cabe. */
   percent: number | null
 }
 
@@ -114,10 +115,9 @@ function totals(data: AppData, from: LocalDate, to: LocalDate, since: LocalDate)
 }
 
 function change(current: number, previous: number, comparable: boolean): WeekChange {
-  const diffMinor = current - previous
-  // Nunca se divide entre cero ni se da un porcentaje con datos incompletos.
-  const percent = comparable && previous > 0 ? floorDiv(diffMinor * 100, previous) : null
-  return { diffMinor, percent }
+  // Nunca se divide entre cero ni se da un porcentaje con datos incompletos (ni uno que no cabe en un entero exacto).
+  // Entero truncado hacia cero (F-R3): −9,99 % es −9, igual que +9,99 % es 9; desde los operandos (QA27-03).
+  return { diffMinor: checkedSubMinor(current, previous), percent: comparable && previous > 0 ? checkedPercentChange(current, previous) : null }
 }
 
 export function weeklyReview(data: AppData, weekStart: LocalDate, today: LocalDate): WeeklyReview {
@@ -151,9 +151,11 @@ export function weeklyReview(data: AppData, weekStart: LocalDate, today: LocalDa
   const overdue = upcoming.filter((i) => i.state === 'overdue')
   if (overdue.length > 0) observations.push({ id: 'overdueBills', params: { count: overdue.length } })
   if (comparable && current.realizedCount > 0) {
-    if (spendingChange.diffMinor > 0) observations.push({ id: 'spendingMore', params: { amountMinor: spendingChange.diffMinor } })
-    else if (spendingChange.diffMinor < 0) observations.push({ id: 'spendingLess', params: { amountMinor: -spendingChange.diffMinor } })
-    else observations.push({ id: 'spendingSame', params: {} })
+    if (spendingChange.diffMinor !== null && spendingChange.diffMinor > 0) observations.push({ id: 'spendingMore', params: { amountMinor: spendingChange.diffMinor } })
+    else if (spendingChange.diffMinor !== null && spendingChange.diffMinor < 0) observations.push({ id: 'spendingLess', params: { amountMinor: -spendingChange.diffMinor } })
+    // «Lo mismo» solo con diferencia exactamente 0; sin cifra (`null`, no cabe en un entero exacto) no se afirma nada:
+    // la comparación ya lo dice (revisión financiera QA27, F2).
+    else if (spendingChange.diffMinor === 0) observations.push({ id: 'spendingSame', params: {} })
   } else if (previous.coverage === 'complete' && previous.spendingMinor === 0 && current.spendingMinor > 0) {
     observations.push({ id: 'previousZero', params: {} })
   }

@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
+import { SCHEMA_VERSION } from '../../src/domain/types'
 import { available, go, showAllNotices, START, startDemo, storedData, storedRecord, seedLegacyLocalStorage } from './helpers'
 
 /** Convierte los datos guardados en una copia v4 real (sin los campos nuevos), no demo y creada hace 10 días. */
@@ -68,7 +69,7 @@ test('datos v4 del navegador se migran sin perder nada; recordatorio en Inicio, 
 
   // Migración: mismos importes, copia previa guardada y nada eliminado.
   await expect(page.getByTestId('available')).toHaveText('$136.78')
-  const preserved = (await storedRecord(page, 'margen.data.before-v12')) as { fromVersion: number }
+  const preserved = (await storedRecord(page, `margen.data.before-v${SCHEMA_VERSION}`)) as { fromVersion: number }
   expect(preserved.fromVersion).toBe(4)
   await showAllNotices(page)
   await expect(page.getByText('Haz una copia de seguridad')).toBeVisible()

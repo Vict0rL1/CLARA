@@ -1,0 +1,74 @@
+Lead pass, first chain at 14d50d3 (superseded: npm audit reported new advisories; see the chain at the frozen SHA)
+
+SHA 14d50d3a462faddfa9de999d53d5d4a1bac11131 · git status at start: 1 entries (?? docs/qa/implementation-lead-2026-10-27/)
+started 2026-10-27T07:10:19Z · finished 2026-10-27T07:56:05Z
+
+== Each commit on its own (temporary worktree: tsc -b, oxlint ., vitest run)
+0eb5be2: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1115 passed | 1 skipped (1116)
+14d50d3: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1120 passed | 1 skipped (1121)
+1e23b8e: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1082 passed | 1 skipped (1083)
+20beaf0: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1089 passed | 1 skipped (1090)
+31e165d: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1120 passed | 1 skipped (1121)
+36d0441: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1067 passed | 1 skipped (1068)
+426de6a: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1070 passed | 1 skipped (1071)
+58e4b79: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1094 passed | 1 skipped (1095)
+7e4b82a: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1111 passed | 1 skipped (1112)
+7e5e5d0: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1061 passed | 1 skipped (1062)
+8f78494: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1094 passed | 1 skipped (1095)
+b07a25f: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1102 passed | 1 skipped (1103)
+cb12d02: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1077 passed | 1 skipped (1078)
+dfd241c: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1073 passed | 1 skipped (1074)
+e38b07b: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1094 passed | 1 skipped (1095)
+e9ee629: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1118 passed | 1 skipped (1119)
+
+== Steps at HEAD
+check EXIT 0
+build EXIT 0
+size EXIT 0
+audit EXIT 1
+vitest --reporter=json EXIT 0
+e2e celular EXIT 0 · shots celular EXIT 0
+e2e celular-pequeno EXIT 0 · shots celular-pequeno EXIT 0
+e2e escritorio EXIT 0 · shots escritorio EXIT 0
+DONE
+
+== npm run check (typecheck, oxlint, i18n literals, Vitest)
+Test Files  110 passed (110)
+Tests  1120 passed | 1 skipped (1121)
+> node scripts/find-literals.mjs
+find-literals: sin texto visible fuera de i18n en src/ui.
+vitest.json: 379 files, 1120 passed, 0 failed, 1 skipped, success=True
+
+== npm run build (identified build)
+✓ 231 modules transformed.
+✓ built in 933ms
+dist id (sha256 of the sorted sha256 list of every dist file): fb6411d26216cbfdc4ad7311443fcfb907c84d47b5adf8c1a86427f95aaf08c3 · 75 files
+
+== npm run size
+JS inicial: 842.3 KB en 13 archivos (gzip 252.5 KB)
+Referencia: 767.8 KB · límite 844.6 KB · cambio +9.7 %
+
+== npm audit --audit-level=high
+3 vulnerabilities (2 moderate, 1 high)
+
+== Playwright, full matrix, one project at a time, --workers=2 --fail-on-flaky-tests, --reporter=list,json, one preview of the build above
+-- celular
+1 skipped
+368 passed (9.1m)
+Inicio con 10k: cifra principal a los 303 / 338 ms
+e2e-celular.json: expected=368 unexpected=0 flaky=0 skipped=1 duration=549s
+-- celular-pequeno
+369 passed (8.7m)
+Inicio con 10k: cifra principal a los 226 / 219 ms
+e2e-celular-pequeno.json: expected=369 unexpected=0 flaky=0 skipped=0 duration=519s
+-- escritorio
+3 skipped
+366 passed (9.5m)
+Inicio con 10k: cifra principal a los 364 / 388 ms
+e2e-escritorio.json: expected=366 unexpected=0 flaky=0 skipped=3 duration=572s
+
+== Screenshot runs (qa-followup, qa-corrective, qa-lead; --workers=1; QA_LEAD_SHOTS)
+-- celular: 24 passed (1.0m)
+-- celular-pequeno: 24 passed (1.0m)
+-- escritorio: 24 passed (1.1m)
+84 screenshots in shots/

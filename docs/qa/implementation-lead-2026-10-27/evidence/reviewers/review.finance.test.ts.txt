@@ -1,0 +1,534 @@
+/**
+ * Independent financial review of 7e5e5d0..e38b07b (QA-01 historical repair, F-03, preservation).
+ * Every expectation below was computed by hand BEFORE running (see comments). Synthetic data only.
+ */
+import { describe, expect, it } from 'vitest'
+import { computeBudget } from './budget'
+import { analysisItems } from './analysis'
+import { checkedMulDivFloor, MAX_AMOUNT_MINOR, mulDivFloor } from './money'
+import { saveSchedule, type ScheduleDraft } from './operations'
+import { occurrencesBetween } from './recurrence'
+import { defaultSplitDate, saveScheduleFrom } from './scheduleFrom'
+import { dismissSplitRepair, driftedSplits, repairSplit } from './splitRepair'
+import type { AppData, Schedule } from './types'
+import { validateAppData } from '../storage/backup'
+import { account, baseData, bill, goal, income, tx } from '../test/fixtures'
+
+const at = (today: string) => ({ today, now: `${today}T12:00:00.000Z` })
+function amountOnly(s: Schedule, startDate: string, amountMinor: number, id: string): ScheduleDraft {
+  const { createdAt: _c, updatedAt: _u, currency: _cur, skippedDates: _k, ...rest } = s
+  return { ...rest, id, startDate, amountMinor }
+}
+const split = (d: AppData, id: string, draft: ScheduleDraft, today: string) => {
+  const r = saveScheduleFrom(d, id, draft, at(today))
+  if (!r.ok) throw new Error(`split: ${JSON.stringify(r.issues)}`)
+  return r
+}
+const figures = (d: AppData, today: string) => {
+  const b = computeBudget(d, today)
+  return [b.horizon?.endDate, b.reservedTotalMinor, b.availableMinor] as const
+}
+const main = (amountMinor: number, date: string) => account({ id: 'main', name: 'Principal', anchor: { amountMinor, date, setAt: `${date}T12:00:00.000Z` } })
+
+/** Legacy (schema 13) amount-only split as 819eaa9 wrote it: old ends the day before, new starts on `from`, NO anchorDate. */
+function legacySplit(old: Schedule, from: string, amountMinor: number, id: string, extra: Partial<Schedule> = {}): Schedule[] {
+  const ended: Schedule = { ...old, endDate: addDaysStr(from, -1) }
+  const next: Schedule = { ...old, id, startDate: from, amountMinor, endDate: undefined, skippedDates: [], ...extra }
+  if (next.endDate === undefined) delete (next as Partial<Schedule>).endDate
+  return [ended, next]
+}
+function addDaysStr(date: string, days: number): string {
+  const [y, m, d] = date.split('-').map(Number) as [number, number, number]
+  const t = new Date(Date.UTC(y, m - 1, d) + days * 86_400_000)
+  return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+describe('A · driftedSplits must NOT fire', () => {
+  const TODAY = '2026-03-15'
+  const salary = income('2026-01-31', 300000, { id: 's1', name: 'Sueldo', frequency: 'monthly' })
+
+  it('A1 rule change on a series date (monthly 31 → quarterly from 28-feb, legacy): sameRule false → nothing', () => {
+    const [ended, next] = legacySplit(salary, '2026-02-28', 300000, 's2', { frequency: 'quarterly' })
+    expect(driftedSplits(baseData({ schedules: [ended!, next!] }), TODAY)).toEqual([])
+  })
+
+  it('A2 custom interval change (every 10 → every 14 days, legacy split on a series date 31-ene): nothing', () => {
+    const c10 = bill('2026-01-01', 1000, { id: 'c1', name: 'Cuota', frequency: 'custom', intervalDays: 10 })
+    const [ended, next] = legacySplit(c10, '2026-01-31', 1200, 'c2', { intervalDays: 14 })
+    expect(driftedSplits(baseData({ schedules: [ended!, next!] }), '2026-02-01')).toEqual([])
+  })
+
+  it('A3 semimonthly «1 y 20» legacy split on the 20-oct could only be saved with another secondDay (5): different rule → nothing (declared limit)', () => {
+    const tw = bill('2026-08-01', 5000, { id: 'tw1', name: 'Cuota', frequency: 'semimonthly', secondDay: 20 })
+    // Same secondDay on the high day is INVALID data (|20 − 20| < 7): legacy could not have saved it.
+    const invalid = baseData({ schedules: legacySplit(tw, '2026-10-20', 5500, 'tw2') })
+    const v = validateAppData(JSON.parse(JSON.stringify(invalid)) as AppData)
+    expect(v.ok ? [] : v.issues.map((i) => i.code)).toContain('semimonthlyDays')
+    // What legacy actually wrote when the person did not fix it by hand: default second day of 20-oct = 5 → 5 and 20.
+    const [ended, next] = legacySplit(tw, '2026-10-20', 5500, 'tw2', { secondDay: 5 })
+    expect(occurrencesBetween(next!, '2026-10-20', '2026-12-31')).toEqual(['2026-10-20', '2026-11-05', '2026-11-20', '2026-12-05', '2026-12-20'])
+    expect(driftedSplits(baseData({ schedules: [ended!, next!] }), '2026-10-25')).toEqual([])
+    // Low-day split keeps the same rule but the dates are identical → nothing to repair.
+    const [e2, n2] = legacySplit(tw, '2026-11-01', 5500, 'tw3')
+    expect(driftedSplits(baseData({ schedules: [e2!, n2!] }), '2026-11-02')).toEqual([])
+  })
+
+  it('A4 ended segments: endDate yesterday → nothing; endDate = today (no future dates) → nothing', () => {
+    const [ended, next] = legacySplit(salary, '2026-02-28', 320000, 's2')
+    expect(driftedSplits(baseData({ schedules: [ended!, { ...next!, endDate: '2026-03-14' }] }), TODAY)).toEqual([])
+    expect(driftedSplits(baseData({ schedules: [ended!, { ...next!, endDate: TODAY }] }), TODAY)).toEqual([])
+  })
+
+  it('A5 no predecessor, non-adjacent predecessor (ends 26-feb), different name, different kind: nothing', () => {
+    const [ended, next] = legacySplit(salary, '2026-02-28', 320000, 's2')
+    expect(driftedSplits(baseData({ schedules: [next!] }), TODAY)).toEqual([])
+    expect(driftedSplits(baseData({ schedules: [{ ...ended!, endDate: '2026-02-26' }, next!] }), TODAY)).toEqual([])
+    expect(driftedSplits(baseData({ schedules: [{ ...ended!, name: 'Sueldo 2' }, next!] }), TODAY)).toEqual([])
+    expect(driftedSplits(baseData({ schedules: [{ ...ended!, kind: 'expense', categoryId: 'utilities' }, next!] }), TODAY)).toEqual([])
+  })
+
+  it('A6 weekly / custom / monthly-15 legacy splits on a series date: dates identical → nothing to repair', () => {
+    const weekly = bill('2026-01-05', 1000, { id: 'w1', name: 'Gym', frequency: 'weekly' }) // Mondays
+    const [we, wn] = legacySplit(weekly, '2026-03-02', 1100, 'w2') // 01-05 + 56 days = 03-02
+    expect(occurrencesBetween(wn!, '2026-03-02', '2026-03-31')).toEqual(['2026-03-02', '2026-03-09', '2026-03-16', '2026-03-23', '2026-03-30'])
+    expect(driftedSplits(baseData({ schedules: [we!, wn!] }), '2026-03-10')).toEqual([])
+    const c10 = bill('2026-01-01', 1000, { id: 'c1', name: 'Cuota', frequency: 'custom', intervalDays: 10 })
+    const [ce, cn] = legacySplit(c10, '2026-01-31', 1200, 'c2')
+    expect(driftedSplits(baseData({ schedules: [ce!, cn!] }), '2026-02-01')).toEqual([])
+    const m15 = income('2026-01-15', 1000, { id: 'm1', name: 'Sueldo', frequency: 'monthly' })
+    const [me, mn] = legacySplit(m15, '2026-03-15', 1200, 'm2')
+    expect(driftedSplits(baseData({ schedules: [me!, mn!] }), '2026-03-20')).toEqual([])
+  })
+
+  it('A7 yearly 29-feb legacy split on 28-feb-2029: the first different date (29-feb-2032) is beyond the 400-day window → NOT flagged until 2031 (window rule)', () => {
+    const y = bill('2028-02-29', 1000, { id: 'y1', name: 'Seguro', frequency: 'yearly' })
+    const [ye, yn] = legacySplit(y, '2029-02-28', 1100, 'y2')
+    expect(driftedSplits(baseData({ schedules: [ye!, yn!] }), '2029-03-01')).toEqual([])
+    // From 2031-03-01 the window reaches 2032: current 2032-02-28 vs proposed 2032-02-29.
+    expect(driftedSplits(baseData({ schedules: [ye!, yn!] }), '2031-03-01').map((f) => [f.current, f.proposed])).toEqual([[['2032-02-28'], ['2032-02-29']]])
+  })
+})
+
+// ---------------------------------------------------------------------------------------------------------------
+describe('B · driftedSplits MUST fire (hand-computed dates)', () => {
+  it('B1 chain of three legacy splits 31 → 28-feb → 28-abr → 28-jun: the last segment is proposed the 31 (07-31, 08-31, 09-30); ended segments are not', () => {
+    const s1 = income('2026-01-31', 300000, { id: 's1', name: 'Sueldo', frequency: 'monthly' })
+    const [e1, s2] = legacySplit(s1, '2026-02-28', 310000, 's2')
+    const [e2, s3] = legacySplit(s2!, '2026-04-28', 320000, 's3')
+    const [e3, s4] = legacySplit(s3!, '2026-06-28', 330000, 's4')
+    const d = baseData({ schedules: [e1!, e2!, e3!, s4!] })
+    expect(driftedSplits(d, '2026-07-10')).toEqual([
+      { scheduleId: 's4', endedId: 's3', name: 'Sueldo', anchor: '2026-01-31', startDate: '2026-06-28', current: ['2026-07-28', '2026-08-28', '2026-09-28'], proposed: ['2026-07-31', '2026-08-31', '2026-09-30'] },
+    ])
+    const r = repairSplit(d, 's4', at('2026-07-10'))
+    if (!r.ok) throw new Error(JSON.stringify(r.issues))
+    // NOTE (hand-calc corrected after the first run): 06-28 is NOT a date of the 31-series; the repaired s4 counts from
+    // 06-28 but its first date is 06-30 → the past 06-28 occurrence vanishes and 06-30 (before today) appears unpaid.
+    expect(occurrencesBetween(r.value, '2026-06-28', '2026-12-31')).toEqual(['2026-06-30', '2026-07-31', '2026-08-31', '2026-09-30', '2026-10-31', '2026-11-30', '2026-12-31'])
+    expect(computeBudget(r.data, '2026-07-10').overdueIncomes.map((i) => i.key)).toContain('schedule:s4:2026-06-30')
+    // Only anchorDate (+ updatedAt) changed on s4; s1..s3 byte-identical.
+    const { anchorDate, updatedAt, ...restRepaired } = r.value
+    const { updatedAt: _u, ...restOriginal } = s4!
+    expect(anchorDate).toBe('2026-01-31')
+    expect(updatedAt).toBe('2026-07-10T12:00:00.000Z')
+    expect(restRepaired).toEqual(restOriginal)
+    expect(r.data.schedules.filter((s) => s.id !== 's4')).toEqual([e1!, e2!, e3!])
+    expect(validateAppData(JSON.parse(JSON.stringify(r.data)) as AppData).ok).toBe(true)
+    expect(repairSplit(r.data, 's4', at('2026-07-10'))).toMatchObject({ ok: false, issues: [{ code: 'notFound' }] })
+  })
+
+  it.each([
+    ['monthly 30', income('2026-01-30', 1000, { id: 'm1', name: 'Sueldo', frequency: 'monthly' }), '2026-02-28', '2026-03-15', ['2026-03-28', '2026-04-28', '2026-05-28'], ['2026-03-30', '2026-04-30', '2026-05-30']],
+    ['monthly 29 (non-leap)', income('2026-01-29', 1000, { id: 'm1', name: 'Sueldo', frequency: 'monthly' }), '2026-02-28', '2026-03-15', ['2026-03-28', '2026-04-28', '2026-05-28'], ['2026-03-29', '2026-04-29', '2026-05-29']],
+    ['monthly 31 split on 29-feb-2028 (leap)', income('2028-01-31', 1000, { id: 'm1', name: 'Sueldo', frequency: 'monthly' }), '2028-02-29', '2028-03-10', ['2028-03-29', '2028-04-29', '2028-05-29'], ['2028-03-31', '2028-04-30', '2028-05-31']],
+    ['quarterly 30-nov split on 28-feb', income('2025-11-30', 1000, { id: 'm1', name: 'Sueldo', frequency: 'quarterly' }), '2026-02-28', '2026-03-15', ['2026-05-28', '2026-08-28', '2026-11-28'], ['2026-05-30', '2026-08-30', '2026-11-30']],
+  ] as const)('B2 %s: current vs proposed', (_l, s, from, today, current, proposed) => {
+    const [e, n] = legacySplit(s, from, 1100, 'm2')
+    const found = driftedSplits(baseData({ schedules: [e!, n!] }), today)
+    expect(found.map((f) => [f.anchor, f.current, f.proposed])).toEqual([[s.startDate, [...current], [...proposed]]])
+  })
+
+  it('B3 skippedDates on the new segment are respected in both lists and untouched by the repair', () => {
+    const s1 = income('2026-01-31', 300000, { id: 's1', name: 'Sueldo', frequency: 'monthly' })
+    const [e1, s2] = legacySplit(s1, '2026-02-28', 320000, 's2', { skippedDates: ['2026-03-28', '2026-04-30'] })
+    const d = baseData({ accounts: [main(180000, '2026-03-01')], schedules: [e1!, s2!] })
+    // current: 03-28 skipped → 04-28, 05-28, 06-28; proposed: 03-31, (04-30 skipped), 05-31, 06-30
+    expect(driftedSplits(d, '2026-03-15').map((f) => [f.current, f.proposed])).toEqual([[['2026-04-28', '2026-05-28', '2026-06-28'], ['2026-03-31', '2026-05-31', '2026-06-30']]])
+    const r = repairSplit(d, 's2', at('2026-03-15'))
+    if (!r.ok) throw new Error(JSON.stringify(r.issues))
+    expect(r.value.skippedDates).toEqual(['2026-03-28', '2026-04-30'])
+    expect(computeBudget(r.data, '2026-03-15').horizon?.endDate).toBe('2026-03-31')
+    // Before the repair the skipped drifted 03-28 pushed the horizon to 04-28.
+    expect(computeBudget(d, '2026-03-15').horizon?.endDate).toBe('2026-04-28')
+  })
+
+  it('B4 endDate in the future (31-dic): active → flagged; repair keeps the endDate and the series ends on 12-31', () => {
+    const s1 = income('2026-01-31', 300000, { id: 's1', name: 'Sueldo', frequency: 'monthly' })
+    const [e1, s2] = legacySplit(s1, '2026-02-28', 320000, 's2', { endDate: '2026-12-31' })
+    const d = baseData({ schedules: [e1!, s2!] })
+    expect(driftedSplits(d, '2026-03-15').map((f) => f.proposed)).toEqual([['2026-03-31', '2026-04-30', '2026-05-31']])
+    const r = repairSplit(d, 's2', at('2026-03-15'))
+    if (!r.ok) throw new Error(JSON.stringify(r.issues))
+    expect(r.value.endDate).toBe('2026-12-31')
+    expect(occurrencesBetween(r.value, '2026-10-01', '2027-03-31')).toEqual(['2026-10-31', '2026-11-30', '2026-12-31'])
+  })
+
+  it('B5 segment that starts in the future (split made ahead of time): compared from its startDate', () => {
+    const s1 = income('2026-01-31', 300000, { id: 's1', name: 'Sueldo', frequency: 'monthly' })
+    const [e1, s2] = legacySplit(s1, '2026-02-28', 320000, 's2')
+    expect(driftedSplits(baseData({ schedules: [e1!, s2!] }), '2026-02-20').map((f) => [f.current, f.proposed])).toEqual([[['2026-02-28', '2026-03-28', '2026-04-28'], ['2026-02-28', '2026-03-31', '2026-04-30']]])
+  })
+
+  it('B6 a paused drifted segment is still proposed (and repairable)', () => {
+    const s1 = income('2026-01-31', 300000, { id: 's1', name: 'Sueldo', frequency: 'monthly' })
+    const [e1, s2] = legacySplit(s1, '2026-02-28', 320000, 's2', { paused: true })
+    expect(driftedSplits(baseData({ schedules: [e1!, s2!] }), '2026-03-15').length).toBe(1)
+  })
+
+  it('B7 false-positive shape: two unrelated schedules with the same name/kind/rule that happen to be adjacent are proposed too (person can decline)', () => {
+    const oldRent = bill('2025-06-30', 150000, { id: 'r1', name: 'Renta', frequency: 'monthly', endDate: '2026-02-27', accountId: 'main' })
+    const newRent = bill('2026-02-28', 170000, { id: 'r2', name: 'Renta', frequency: 'monthly' })
+    expect(driftedSplits(baseData({ schedules: [oldRent, newRent] }), '2026-03-15').map((f) => [f.anchor, f.proposed[0]])).toEqual([['2025-06-30', '2026-03-30']])
+  })
+})
+
+// ---------------------------------------------------------------------------------------------------------------
+describe('C · the repair opportunity after routine edits', () => {
+  const s1 = income('2026-01-31', 300000, { id: 's1', name: 'Sueldo', frequency: 'monthly' })
+  const fixture = () => {
+    const [e1, s2] = legacySplit(s1, '2026-02-28', 320000, 's2')
+    return baseData({ accounts: [main(180000, '2026-03-01')], schedules: [e1!, s2!, bill('2026-03-29', 125000, { id: 'bill', name: 'Seguro', frequency: 'once' })] })
+  }
+
+  it('C1 plain edit of the drifted segment (amount only, scope «todas») keeps it detectable', () => {
+    const d = fixture()
+    const draft: ScheduleDraft = amountOnly(d.schedules[1]!, '2026-02-28', 330000, 's2')
+    const r = saveSchedule(d, draft, at('2026-03-15'))
+    if (!r.ok) throw new Error(JSON.stringify(r.issues))
+    expect(r.value.anchorDate).toBeUndefined()
+    expect(driftedSplits(r.data, '2026-03-15').map((f) => f.scheduleId)).toEqual(['s2'])
+  })
+
+  it('C2 a v14 «desde una fecha» split of the still-drifted segment at its proposed default date bakes the 28 in forever: nothing is detectable afterwards', () => {
+    const d = fixture()
+    const from = defaultSplitDate(d, d.schedules[1]!, '2026-03-15')
+    expect(from).toBe('2026-03-28') // the drifted date is what the form proposes
+    const r = split(d, 's2', amountOnly(d.schedules[1]!, from!, 330000, 's3'), '2026-03-15')
+    expect(r.value.next).toMatchObject({ anchorDate: '2026-02-28', startDate: '2026-03-28' })
+    expect(occurrencesBetween(r.value.next, '2026-03-28', '2026-06-30')).toEqual(['2026-03-28', '2026-04-28', '2026-05-28', '2026-06-28'])
+    // Expected by the audit's intent: the chain s1 → s2 → s3 still comes from the 31 and s3 should be proposed the 31.
+    // Actual: s3 has an anchorDate (skipped) and s2 is ended (skipped) → the drift is now permanent and invisible.
+    expect(driftedSplits(r.data, '2026-03-15')).toEqual([])
+    expect(driftedSplits(r.data, '2026-03-29')).toEqual([])
+    expect(figures(r.data, '2026-03-21')).toEqual(['2026-03-28', 0, 180000])
+  })
+
+  it('C3 dismiss, then edit the amount: fingerprint unchanged → stays dismissed; after a repair the dismissal is irrelevant', () => {
+    const d = fixture()
+    const dis = dismissSplitRepair(d, 's2', at('2026-03-15'))
+    if (!dis.ok) throw new Error('dismiss')
+    const edited = saveSchedule(dis.data, amountOnly(dis.data.schedules[1]!, '2026-02-28', 330000, 's2'), at('2026-03-16'))
+    if (!edited.ok) throw new Error('edit')
+    expect(driftedSplits(edited.data, '2026-03-16')).toEqual([])
+  })
+})
+
+// ---------------------------------------------------------------------------------------------------------------
+describe('D · known-intent fixture: CAD 1 800 on 15-feb, salary 2 400 anchored 31-ene, bill 1 250 once on 29-mar, legacy split 28-feb amount 2 407.77', () => {
+  const build = (billDate = '2026-03-29') => {
+    const s1 = income('2026-01-31', 240000, { id: 's1', name: 'Sueldo', frequency: 'monthly' })
+    const [e1, s2] = legacySplit(s1, '2026-02-28', 240777, 's2')
+    return baseData({ accounts: [main(180000, '2026-02-15')], schedules: [e1!, s2!, bill(billDate, 125000, { id: 'bill', name: 'Seguro', frequency: 'once' })] })
+  }
+  const repaired = (d: AppData, today: string) => {
+    const r = repairSplit(d, 's2', at(today))
+    if (!r.ok) throw new Error(JSON.stringify(r.issues))
+    return r.data
+  }
+
+  it('D1 on 2026-03-21: before [28-mar, 0, 180000] (daily 25714, weekly 180000); after [31-mar, 125000, 55000] (daily 5500, weekly 38500)', () => {
+    const d = build()
+    const before = computeBudget(d, '2026-03-21')
+    expect([before.horizon?.endDate, before.horizon?.days, before.reservedTotalMinor, before.availableMinor, before.dailyMinor, before.weeklyMinor, before.weeklyDays]).toEqual(['2026-03-28', 7, 0, 180000, 25714, 180000, 7])
+    const after = computeBudget(repaired(d, '2026-03-21'), '2026-03-21')
+    expect([after.horizon?.endDate, after.horizon?.days, after.reservedTotalMinor, after.availableMinor, after.dailyMinor, after.weeklyMinor, after.weeklyDays]).toEqual(['2026-03-31', 10, 125000, 55000, 5500, 38500, 7])
+    // The new (higher) salary is never part of the money of today, before or after.
+    expect(before.spendableMinor).toBe(180000)
+    expect(after.spendableMinor).toBe(180000)
+    expect(after.reservedItems.map((i) => i.key)).toEqual(['schedule:bill:2026-03-29'])
+  })
+
+  it.each([
+    // today, before [horizon, days, reserved, available, daily], after [...]
+    ['2026-03-28', ['2026-04-28', 31, 125000, 55000, 1774], ['2026-03-31', 3, 125000, 55000, 18333]],
+    ['2026-03-29', ['2026-04-28', 30, 125000, 55000, 1833], ['2026-03-31', 2, 125000, 55000, 27500]],
+    ['2026-03-31', ['2026-04-28', 28, 125000, 55000, 1964], ['2026-04-30', 30, 125000, 55000, 1833]],
+    ['2026-04-01', ['2026-04-28', 27, 125000, 55000, 2037], ['2026-04-30', 29, 125000, 55000, 1896]],
+  ] as const)('D2 evaluation date %s', (today, b, a) => {
+    const d = build()
+    const before = computeBudget(d, today)
+    expect([before.horizon?.endDate, before.horizon?.days, before.reservedTotalMinor, before.availableMinor, before.dailyMinor]).toEqual([...b])
+    const rep = repairSplit(d, 's2', at('2026-03-21')) // repaired earlier, evaluated today
+    if (!rep.ok) throw new Error('repair')
+    const after = computeBudget(rep.data, today)
+    expect([after.horizon?.endDate, after.horizon?.days, after.reservedTotalMinor, after.availableMinor, after.dailyMinor]).toEqual([...a])
+  })
+
+  it('D2b state details: 28-mar before = income due today (not counted); 31-mar after = income due today; 29-mar before = drifted 28-mar income overdue; 04-01 both = bill overdue, still reserved', () => {
+    const d = build()
+    const rep = repaired(d, '2026-03-21')
+    expect(computeBudget(d, '2026-03-28').incomeDueToday.map((i) => i.key)).toEqual(['schedule:s2:2026-03-28'])
+    expect(computeBudget(rep, '2026-03-31').incomeDueToday.map((i) => i.key)).toEqual(['schedule:s2:2026-03-31'])
+    expect(computeBudget(d, '2026-03-29').overdueIncomes.map((i) => i.key)).toEqual(['schedule:s1:2026-01-31', 'schedule:s2:2026-02-28', 'schedule:s2:2026-03-28'])
+    expect(computeBudget(d, '2026-04-01').overdueBills.map((i) => i.key)).toEqual(['schedule:bill:2026-03-29'])
+    expect(computeBudget(rep, '2026-04-01').overdueBills.map((i) => i.key)).toEqual(['schedule:bill:2026-03-29'])
+  })
+
+  it.each([
+    ['2026-03-21', ['2026-03-28', 125000, 55000], ['2026-03-31', 125000, 55000]], // bill today: reserved both ways
+    ['2026-03-28', ['2026-03-28', 125000, 55000], ['2026-03-31', 125000, 55000]], // bill on the drifted income day: reserved both ways
+    ['2026-03-31', ['2026-03-28', 0, 180000], ['2026-03-31', 125000, 55000]], // bill on the real income day: only after the repair
+    ['2026-04-01', ['2026-03-28', 0, 180000], ['2026-03-31', 0, 180000]], // bill after both horizons: never reserved on 21-mar
+  ] as const)('D3 bill date %s on 2026-03-21', (billDate, b, a) => {
+    const d = build(billDate)
+    expect(figures(d, '2026-03-21')).toEqual([...b])
+    expect(figures(repaired(d, '2026-03-21'), '2026-03-21')).toEqual([...a])
+  })
+
+  it('D4 goals and buffer subtract after the repair too: apartado 300 and colchón 100 → 55000 − 30000 − 10000 = 15000', () => {
+    const d0 = build()
+    const d: AppData = {
+      ...d0,
+      goals: [goal({ id: 'g', name: 'Viaje', allocations: [{ id: 'al', amountMinor: 30000, date: '2026-03-01', createdAt: '2026-03-01T12:00:00.000Z' }] })],
+      settings: { ...d0.settings, safeToSpend: { ...d0.settings.safeToSpend, bufferMinor: 10000 } },
+    }
+    const after = computeBudget(repaired(d, '2026-03-21'), '2026-03-21')
+    expect([after.goalsReservedMinor, after.safetyBufferMinor, after.availableMinor]).toEqual([30000, 10000, 15000])
+  })
+})
+
+// ---------------------------------------------------------------------------------------------------------------
+describe('E · F-03 exact percentage (analysis) and the other percent sites', () => {
+  const MAX = MAX_AMOUNT_MINOR
+  const seed = (previous: number[], current: number[]) =>
+    baseData({
+      accounts: [main(0, '2026-07-01')],
+      transactions: [
+        ...previous.map((amountMinor, i) => tx({ id: `p${i}`, date: '2026-08-10', amountMinor: Math.abs(amountMinor), kind: amountMinor < 0 ? 'refund' : 'expense', categoryId: 'groceries' })),
+        ...current.map((amountMinor, i) => tx({ id: `c${i}`, date: '2026-09-10', amountMinor: Math.abs(amountMinor), kind: amountMinor < 0 ? 'refund' : 'expense', categoryId: 'groceries' })),
+      ],
+    })
+  const change = (d: AppData) => analysisItems(d, '2026-09-28').find((i) => i.id === 'spendingUp' || i.id === 'spendingDown')
+
+  it('E1 checkedMulDivFloor at the exact safe boundary: (90071992547409 × 100) is exact, one minor unit more is null', () => {
+    expect(checkedMulDivFloor(90071992547409, 100, 1)).toBe(9007199254740900)
+    expect(checkedMulDivFloor(90071992547410, 100, 1)).toBeNull()
+    expect(checkedMulDivFloor(-90071992547409, 100, 1)).toBe(-9007199254740900)
+    expect(checkedMulDivFloor(-90071992547410, 100, 1)).toBeNull()
+    // floor semantics with negatives: −1/3 → −1; −3/3 → −1; 1/3 → 0.
+    expect([checkedMulDivFloor(-1, 1, 3), checkedMulDivFloor(-3, 1, 3), checkedMulDivFloor(1, 1, 3)]).toEqual([-1, -1, 0])
+  })
+
+  it('E2 through analysisItems: previous 1 minor, current 900 719 925 474.10 → percent 9 007 199 254 740 900 exactly; one minor more → no figure', () => {
+    const big = [...Array.from({ length: 90 }, () => MAX), 71992547410] // Σ = 90 071 992 547 410
+    const up = change(seed([1], big))!
+    expect(up.id).toBe('spendingUp')
+    expect(up.params).toMatchObject({ percent: 9007199254740900, current: 90071992547410, previous: 1 })
+    const over = change(seed([1], [...big, 1]))!
+    expect(over.id).toBe('spendingUp')
+    expect(over.params.percent).toBeUndefined()
+    expect(over.params).toMatchObject({ current: 90071992547411, previous: 1 })
+  })
+
+  it('E3 large decrease: 100 × MAX → 0 is −100 % (spendingDown 100); 100 × MAX → 1 minor is also reported as 100 (floor of −99.99…)', () => {
+    const prev = Array.from({ length: 100 }, () => MAX)
+    expect(change(seed(prev, []))?.params).toMatchObject({ percent: 100, current: 0, previous: 100 * MAX })
+    expect(change(seed(prev, []))?.id).toBe('spendingDown')
+    expect(change(seed(prev, [1]))?.params).toMatchObject({ percent: 100, current: 1 })
+  })
+
+  it('E4 previous = 0 → no signal; previous negative (net refunds) → no signal; current negative with previous positive → spendingDown 150', () => {
+    expect(change(seed([], [500000]))).toBeUndefined()
+    expect(change(seed([2000, -5000], [500000]))).toBeUndefined()
+    const down = change(seed([10000], [-5000]))!
+    expect(down.id).toBe('spendingDown')
+    expect(down.params).toMatchObject({ percent: 150, current: -5000, previous: 10000 })
+    expect(down.because.find((b) => b.id === 'difference')?.value).toBe(-15000)
+  })
+
+  it('E5 threshold edges: +10.00 % fires, +9.99 % does not, −10.00 % fires, −9.99 % ALSO fires (floor rounds a decrease away from zero) and −9.00 % does not', () => {
+    expect(change(seed([10000], [11000]))?.params).toMatchObject({ percent: 10 })
+    expect(change(seed([10000], [10999]))).toBeUndefined()
+    expect(change(seed([10000], [9000]))?.params).toMatchObject({ percent: 10 })
+    // Documented formula floor(−999 × 100 / 10000) = floor(−9.99) = −10 → |−10| = 10 ≥ 10: the signal fires and says 10 %.
+    expect(change(seed([10000], [9001]))?.params).toMatchObject({ percent: 10 })
+    expect(change(seed([10000], [9100]))).toBeUndefined()
+  })
+
+  it('E6 plans.ts / categoryBreakdown use the unchecked mulDivFloor: a quotient above 2^53 comes back as an inexact Number (pre-existing, outside this diff)', () => {
+    // spent 360 287 970 189 641 (odd) over a limit of 4 minor units: 9 007 199 254 741 025 (odd, > 2^53) cannot be a double.
+    const q = mulDivFloor(360287970189641, 100, 4)
+    expect(Number.isSafeInteger(q)).toBe(false)
+    expect(checkedMulDivFloor(360287970189641, 100, 4)).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------------------------------------------
+describe('F · preservation (v14 splits and budget semantics)', () => {
+  const data = (schedules: Schedule[], anchorDate = '2026-02-15', amountMinor = 100000) => baseData({ accounts: [main(amountMinor, anchorDate)], schedules })
+  const salary = (startDate: string, extra: Partial<Schedule> = {}) => income(startDate, 300000, { id: 'salary', name: 'Sueldo', frequency: 'monthly', ...extra })
+
+  it('F1 amount-only split with the bill ON the income day (31-mar) and on the would-be drifted day (28-mar): reservations never released, horizon stays 31-mar', () => {
+    for (const billDate of ['2026-03-31', '2026-03-28']) {
+      const d = data([salary('2026-01-31'), bill(billDate, 90000, { id: 'bill', name: 'Pago', frequency: 'once' })])
+      expect(figures(d, '2026-03-20')).toEqual(['2026-03-31', 90000, 10000])
+      const r = split(d, 'salary', amountOnly(d.schedules[0]!, '2026-02-28', 400000, 'next'), '2026-02-15')
+      expect(figures(r.data, '2026-03-20')).toEqual(['2026-03-31', 90000, 10000])
+      // Splitting exactly on the income day itself (from = 31-mar) keeps it too.
+      const r2 = split(d, 'salary', amountOnly(d.schedules[0]!, '2026-03-31', 400000, 'next'), '2026-03-20')
+      expect(figures(r2.data, '2026-03-20')).toEqual(['2026-03-31', 90000, 10000])
+      expect(r2.value.next.anchorDate).toBe('2026-01-31')
+    }
+  })
+
+  it('F2 repeated splits and re-saves keep the nominal 31 (monthly) and 31 (quarterly)', () => {
+    const d = data([salary('2026-01-31')])
+    const first = split(d, 'salary', amountOnly(d.schedules[0]!, '2026-02-28', 320000, 'n1'), '2026-02-15')
+    const second = split(first.data, 'n1', amountOnly(first.value.next, '2026-04-30', 340000, 'n2'), '2026-04-10')
+    expect(second.value.next).toMatchObject({ anchorDate: '2026-01-31', startDate: '2026-04-30' })
+    expect(second.value.ended.endDate).toBe('2026-04-29')
+    expect(occurrencesBetween(second.value.next, '2026-04-30', '2026-08-31')).toEqual(['2026-04-30', '2026-05-31', '2026-06-30', '2026-07-31', '2026-08-31'])
+    // Plain re-save as the form does for scope «todas» (same startDate & rule → draft carries anchorDate): nothing moves.
+    const draft: ScheduleDraft = { ...amountOnly(second.value.next, '2026-04-30', 345000, 'n2'), anchorDate: '2026-01-31', endDate: '2026-12-31' }
+    const resaved = saveSchedule(second.data, draft, at('2026-05-01'))
+    if (!resaved.ok) throw new Error(JSON.stringify(resaved.issues))
+    expect(resaved.value).toMatchObject({ anchorDate: '2026-01-31', endDate: '2026-12-31' })
+    expect(occurrencesBetween(resaved.value, '2026-05-01', '2026-12-31')).toEqual(['2026-05-31', '2026-06-30', '2026-07-31', '2026-08-31', '2026-09-30', '2026-10-31', '2026-11-30', '2026-12-31'])
+    // Changing the startDate explicitly (the form drops anchorDate) re-anchors: an explicit change.
+    const { anchorDate: _dropped, ...moveDraft } = amountOnly(second.value.next, '2026-05-05', 345000, 'n2')
+    const moved = saveSchedule(second.data, moveDraft, at('2026-05-01'))
+    if (!moved.ok) throw new Error(JSON.stringify(moved.issues))
+    expect(moved.value.anchorDate).toBeUndefined()
+    expect(occurrencesBetween(moved.value, '2026-05-01', '2026-07-31')).toEqual(['2026-05-05', '2026-06-05', '2026-07-05'])
+    expect(driftedSplits(second.data, '2026-05-01')).toEqual([])
+    expect(driftedSplits(resaved.data, '2026-05-01')).toEqual([])
+    // Quarterly 31-oct: 2025-10-31 → 2026-01-31 → 04-30 → 07-31 → 10-31; split on 04-30 then on 10-31.
+    const q = data([income('2025-10-31', 1000, { id: 'q', name: 'Bono', frequency: 'quarterly' })], '2025-01-01')
+    const q1 = split(q, 'q', amountOnly(q.schedules[0]!, '2026-04-30', 1100, 'q1'), '2026-04-10')
+    expect(occurrencesBetween(q1.value.next, '2026-04-30', '2027-01-31')).toEqual(['2026-04-30', '2026-07-31', '2026-10-31', '2027-01-31'])
+    const q2 = split(q1.data, 'q1', amountOnly(q1.value.next, '2026-10-31', 1200, 'q2'), '2026-10-10')
+    expect(q2.value.next.anchorDate).toBe('2025-10-31')
+    expect(occurrencesBetween(q2.value.next, '2026-10-31', '2027-07-31')).toEqual(['2026-10-31', '2027-01-31', '2027-04-30', '2027-07-31'])
+    expect(validateAppData(q2.data).ok).toBe(true)
+  })
+
+  it('F3 explicit changes re-anchor: rule change on a series date (monthly → quarterly from 31-mar) and an off-series date (30-mar); neither is later proposed for repair', () => {
+    const d = data([salary('2026-01-31')])
+    const rule = split(d, 'salary', { ...amountOnly(d.schedules[0]!, '2026-03-31', 300000, 'n1'), frequency: 'quarterly' }, '2026-02-15')
+    expect(rule.value.next.anchorDate).toBeUndefined()
+    expect(occurrencesBetween(rule.value.next, '2026-03-31', '2026-12-31')).toEqual(['2026-03-31', '2026-06-30', '2026-09-30', '2026-12-31'])
+    expect(driftedSplits(rule.data, '2026-04-01')).toEqual([])
+    const off = split(d, 'salary', amountOnly(d.schedules[0]!, '2026-03-30', 300000, 'n1'), '2026-02-15')
+    expect(off.value.next.anchorDate).toBeUndefined()
+    expect(occurrencesBetween(off.value.next, '2026-03-30', '2026-06-30')).toEqual(['2026-03-30', '2026-04-30', '2026-05-30', '2026-06-30'])
+    expect(driftedSplits(off.data, '2026-04-01')).toEqual([])
+    // Semimonthly «1 y 20» → «1 y 15» from 20-oct (same frequency, other secondDay) re-anchors on 10-20: 20 and 5.
+    const tw = data([bill('2026-08-01', 5000, { id: 'tw', name: 'Cuota', frequency: 'semimonthly', secondDay: 20 })])
+    const changed = split(tw, 'tw', { ...amountOnly(tw.schedules[0]!, '2026-10-20', 5000, 'tw2'), secondDay: 5 }, '2026-10-17')
+    expect(changed.value.next.anchorDate).toBeUndefined()
+    expect(occurrencesBetween(changed.value.next, '2026-10-20', '2026-12-31')).toEqual(['2026-10-20', '2026-11-05', '2026-11-20', '2026-12-05', '2026-12-20'])
+  })
+
+  it('F4 safe-to-spend never adds income: a 10 000 000 000 CAD salary due today, overdue, or on the horizon day changes nothing', () => {
+    const d = data([salary('2026-01-31', { amountMinor: MAX_AMOUNT_MINOR }), bill('2026-04-05', 40000, { id: 'bill', name: 'Pago', frequency: 'once' })], '2026-03-01')
+    // today 31-mar: income due today (not counted) → next 30-abr; bill 04-05 reserved.
+    const due = computeBudget(d, '2026-03-31')
+    expect([due.horizon?.endDate, due.incomeDueToday.length, due.reservedTotalMinor, due.availableMinor]).toEqual(['2026-04-30', 1, 40000, 60000])
+    // today 01-abr: 31-mar overdue (not counted, warned).
+    const late = computeBudget(d, '2026-04-01')
+    expect([late.horizon?.endDate, late.overdueIncomes.map((i) => i.date), late.availableMinor]).toEqual(['2026-04-30', ['2026-01-31', '2026-02-28', '2026-03-31'], 60000])
+    // today 20-mar: horizon 31-mar, bill outside → 100000; the income on 31-mar is not added.
+    expect(figures(d, '2026-03-20')).toEqual(['2026-03-31', 0, 100000])
+  })
+
+  it('F5 transfers and refunds: budget↔budget transfer (card payment) nets zero, budget→savings reduces, refund adds, a planned transfer out is reserved', () => {
+    const d0 = baseData({
+      accounts: [
+        main(100000, '2026-03-01'),
+        account({ id: 'savings', name: 'Ahorro', includeInBudget: false, anchor: { amountMinor: 0, date: '2026-03-01', setAt: '2026-03-01T12:00:00.000Z' } }),
+        account({ id: 'card', name: 'Tarjeta', kind: 'credit', anchor: { amountMinor: -50000, date: '2026-03-01', setAt: '2026-03-01T12:00:00.000Z' } }),
+      ],
+      schedules: [income('2026-04-01', 200000, { id: 'pay', name: 'Sueldo', frequency: 'monthly' })],
+      transactions: [
+        tx({ id: 't1', kind: 'transfer', amountMinor: 20000, date: '2026-03-05', accountId: 'main', toAccountId: 'savings', categoryId: undefined }),
+        tx({ id: 't2', kind: 'refund', amountMinor: 5000, date: '2026-03-06', accountId: 'main', categoryId: 'groceries' }),
+        tx({ id: 't3', kind: 'transfer', amountMinor: 30000, date: '2026-03-07', accountId: 'main', toAccountId: 'card', categoryId: undefined }),
+        tx({ id: 't4', kind: 'transfer', status: 'planned', amountMinor: 10000, date: '2026-03-20', accountId: 'main', toAccountId: 'savings', categoryId: undefined }),
+      ],
+    })
+    const b = computeBudget(d0, '2026-03-10')
+    // main 100000 − 20000 + 5000 − 30000 = 55000; card −50000 + 30000 = −20000; pool 35000; planned transfer out 10000.
+    expect(b.accountBalances.map((a) => [a.account.id, a.balanceMinor])).toEqual([['main', 55000], ['card', -20000]])
+    expect([b.spendableMinor, b.horizon?.endDate, b.reservedTotalMinor, b.availableMinor]).toEqual([35000, '2026-04-01', 10000, 25000])
+  })
+})
+
+// ---------------------------------------------------------------------------------------------------------------
+describe('G · repairSplit and PAST drifted occurrences that were paid or skipped (expected to FAIL: documents the defect)', () => {
+  // Rent on the 31st, legacy amount-only split on 28-feb; the person paid the drifted 28-feb, 28-mar and 28-abr.
+  const rent = bill('2026-01-31', 150000, { id: 'r1', name: 'Renta', frequency: 'monthly', categoryId: 'housing' })
+  const paid = (scheduleId: string, date: string, amountMinor: number, id: string) =>
+    tx({ id, kind: 'expense', amountMinor, date, categoryId: 'housing', scheduleId, occurrenceDate: date })
+  const build = (skipped: string[] = []) => {
+    const [e1, r2] = legacySplit(rent, '2026-02-28', 160000, 'r2', { skippedDates: skipped })
+    const d0 = baseData({
+      accounts: [main(1000000, '2026-01-01')],
+      schedules: [e1!, r2!],
+      transactions: [paid('r1', '2026-01-31', 150000, 'p0'), paid('r2', '2026-02-28', 160000, 'p1'), paid('r2', '2026-03-28', 160000, 'p2'), ...(skipped.includes('2026-04-28') ? [] : [paid('r2', '2026-04-28', 160000, 'p3')])],
+    })
+    return { ...d0, settings: { ...d0.settings, fallbackHorizonDays: 30 } }
+  }
+
+  it('G1 expense: after the repair, 31-mar and 30-abr re-appear as overdue and are reserved although 28-mar and 28-abr were paid (double count)', () => {
+    const d = build()
+    const TODAY = '2026-05-15'
+    // balance 1 000 000 − 150 000 − 3 × 160 000 = 370 000; before: only 28-may pending within 30 days → reserved 160 000 → 210 000.
+    const before = computeBudget(d, TODAY)
+    expect([before.spendableMinor, before.horizon?.endDate, before.reservedTotalMinor, before.availableMinor, before.overdueBills.length]).toEqual([370000, '2026-06-14', 160000, 210000, 0])
+    expect(driftedSplits(d, TODAY).map((f) => [f.current, f.proposed])).toEqual([[['2026-05-28', '2026-06-28', '2026-07-28'], ['2026-05-31', '2026-06-30', '2026-07-31']]])
+    const r = repairSplit(d, 'r2', at(TODAY))
+    if (!r.ok) throw new Error(JSON.stringify(r.issues))
+    const after = computeBudget(r.data, TODAY)
+    // Invariant (CLAUDE.md, FORMULAS §5): a paid occurrence counts as a movement OR a reserve, never both.
+    // Expected: the three paid months stay settled → reserved 160 000 (31-may only), available 210 000, no overdue bills.
+    expect(after.overdueBills.map((i) => i.key)).toEqual([])
+    expect([after.spendableMinor, after.reservedTotalMinor, after.availableMinor]).toEqual([370000, 160000, 210000])
+  })
+
+  it('G2 income: after the repair, the received 28-mar / 28-abr salary comes back as «ingreso retrasado» on 31-mar / 30-abr', () => {
+    const s1 = income('2026-01-31', 300000, { id: 's1', name: 'Sueldo', frequency: 'monthly' })
+    const [e1, s2] = legacySplit(s1, '2026-02-28', 320000, 's2')
+    const got = (date: string, id: string) => tx({ id, kind: 'income', amountMinor: 320000, date, categoryId: 'salary', scheduleId: 's2', occurrenceDate: date })
+    const d = baseData({ accounts: [main(500000, '2026-01-01')], schedules: [e1!, s2!], transactions: [got('2026-02-28', 'i1'), got('2026-03-28', 'i2'), got('2026-04-28', 'i3')] })
+    const r = repairSplit(d, 's2', at('2026-05-15'))
+    if (!r.ok) throw new Error(JSON.stringify(r.issues))
+    // Expected: nothing overdue (every month up to April was received). Only the unpaid 31-ene of s1 was already overdue before.
+    expect(computeBudget(d, '2026-05-15').overdueIncomes.map((i) => i.key)).toEqual(['schedule:s1:2026-01-31'])
+    expect(computeBudget(r.data, '2026-05-15').overdueIncomes.map((i) => i.key)).toEqual(['schedule:s1:2026-01-31'])
+  })
+
+  it('G3 a skipped drifted date (28-abr omitted on purpose) is resurrected on 30-abr and reserved', () => {
+    const d = build(['2026-04-28'])
+    const r = repairSplit(d, 'r2', at('2026-05-15'))
+    if (!r.ok) throw new Error(JSON.stringify(r.issues))
+    expect(r.value.skippedDates).toEqual(['2026-04-28'])
+    expect(computeBudget(r.data, '2026-05-15').overdueBills.map((i) => i.key)).toEqual([])
+  })
+
+  it('G4 detection and preview only look from today: the card never says that past occurrences will change', () => {
+    const d = build()
+    const found = driftedSplits(d, '2026-05-15')[0]!
+    expect(found.current[0]! >= '2026-05-15' && found.proposed[0]! >= '2026-05-15').toBe(true)
+  })
+})

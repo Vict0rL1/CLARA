@@ -1,0 +1,116 @@
+
+Running 71 tests using 3 workers
+
+  ✓   2 [celular] › tests/e2e/audit-regressions.spec.ts:87:1 › QA-03 · sin arrastre: referencia −500 e ingreso de 1000 → saldo 500 y «Puedes gastar» 500, no 1000; la explicación lo dice (2.2s)
+  ✓   4 [celular] › tests/e2e/audit-regressions.spec.ts:104:1 › QA-04 · un apartado hecho en septiembre no reduce el disponible de agosto; la pancarta declara el límite de la reconstrucción (2.0s)
+  ✓   1 [celular] › tests/e2e/audit-regressions.spec.ts:25:1 › QA-01 · con saldo de referencia y sin movimientos, cambiar a JPY o USD se bloquea y tras recargar sigue CAD 2000 (5.5s)
+  ✓   3 [celular] › tests/e2e/audit-regressions.spec.ts:44:1 › QA-02 · cobro parcial de 400 sobre un ingreso de 1000 con registro automático: al recargar se registra 600, no 1000; otra recarga no añade nada (6.6s)
+  ✓   5 [celular] › tests/e2e/audit-regressions.spec.ts:123:1 › QA-05 · un CSV con «USD 100.00» no se importa en un presupuesto CAD; «CAD 20.00» sí; la vista previa dice cuánto cambiará el saldo (2.5s)
+  ✓   6 [celular] › tests/e2e/audit-regressions.spec.ts:160:1 › QA-06 · un pago diario desde 2020 con 2 000 ocurrencias pagadas: los vencidos y el pago de hoy siguen reservados; nada se trunca en silencio (4.1s)
+  ✓   7 [celular] › tests/e2e/audit-regressions.spec.ts:184:1 › QA-07 · una nota «=1+1» sale del CSV como texto (con apóstrofo) y los importes siguen siendo números (4.7s)
+  ✓   9 [celular] › tests/e2e/audit-regressions.spec.ts:252:1 › UX-01 · en inglés con formato numérico es-MX, la moneda se llama «Canadian Dollar» y la sección se llama como la cifra de Inicio (2.2s)
+  ✓   8 [celular] › tests/e2e/audit-regressions.spec.ts:210:1 › QA-08 · una copia cifrada con parámetros imposibles se rechaza al instante sin tocar los datos; una válida sigue abriéndose (7.5s)
+  ✓  11 [celular] › tests/e2e/clara2.spec.ts:59:1 › dos veces al mes: el segundo día se elige, se explica y se valida antes de guardar (3.6s)
+  ✓  10 [celular] › tests/e2e/clara2.spec.ts:18:1 › colchón de seguridad: se resta de «Puedes gastar», se explica, sobrevive a recargar y se puede quitar (5.2s)
+  ✓  12 [celular] › tests/e2e/clara2.spec.ts:83:1 › tipos de cuenta: un monedero digital con su emisor y una inversión que no cuenta para gastar (4.0s)
+  ✓  13 [celular] › tests/e2e/clara2.spec.ts:117:1 › avisos de un límite al 50/75/90 %: apagados por defecto, se guardan y se ven al editar (4.1s)
+  ✓  14 [celular] › tests/e2e/clara2.spec.ts:138:1 › corregir la categoría que propone una regla ofrece recordarla; solo se guarda al pulsar «Recordar» (4.2s)
+  ✓  15 [celular] › tests/e2e/clara2.spec.ts:177:1 › configuración inicial: un sueldo dos veces al mes con su segundo día, validado antes de seguir (2.5s)
+  ✓  16 [celular] › tests/e2e/clara2.spec.ts:202:1 › «Repetir» dos veces al mes: el programado guarda el segundo día elegido (3.7s)
+  ✓  18 [celular] › tests/e2e/clara2.spec.ts:252:1 › comercios: una regla escrita normal reconoce la forma del extracto («UBER *EATS 8XK2L») y «Crear regla» propone el nombre sin el código (3.2s)
+  ✓  17 [celular] › tests/e2e/clara2.spec.ts:222:1 › asistente: corregir la categoría que proponía una regla ofrece recordarla; «Recordar» guarda y se puede deshacer (4.2s)
+  ✓  19 [celular] › tests/e2e/clara2.spec.ts:276:1 › pagos recurrentes: el calendario dice cuánto cuestan en 12 meses y al mes, igual que el cálculo del dominio (2.3s)
+  ✓  20 [celular] › tests/e2e/clara2.spec.ts:296:1 › pagos que parecen fijos: la bandeja lo sugiere, «Programar» abre el formulario relleno y, al guardarlo, la sugerencia desaparece (2.9s)
+  ✓  21 [celular] › tests/e2e/clara2.spec.ts:328:1 › cambiar un programado desde una fecha: lo anterior queda igual, desde esa fecha el importe nuevo (3.0s)
+  ✓  22 [celular] › tests/e2e/clara2.spec.ts:373:1 › límite sugerido según lo gastado: mediana de los meses completos, explicada; solo se usa al pulsar (3.0s)
+  ✓  23 [celular] › tests/e2e/clara2.spec.ts:407:1 › hitos de una meta: con «Alertas de planes», aviso dentro de la app al cruzar el 50 %; una meta que ya estaba ahí no avisa (2.0s)
+  ✓  24 [celular] › tests/e2e/clara2.spec.ts:429:1 › estadísticas con filtros de cuenta, etiqueta y comercio: las cifras son las de esos movimientos y el filtro sobrevive a recargar (3.5s)
+  ✓  26 [celular] › tests/e2e/history-tools.spec.ts:39:1 › historial: deslizar una fila la envía a la papelera con Deshacer (3.0s)
+  ✓  25 [celular] › tests/e2e/history-tools.spec.ts:4:1 › historial: selección múltiple a la papelera (con restauración) y exportación CSV del filtro (8.2s)
+  ✓  27 [celular] › tests/e2e/history.spec.ts:13:1 › historial: muestra antes y después, revierte y explica conflictos (5.4s)
+  ✓  28 [celular] › tests/e2e/inbox-split-distribution.spec.ts:12:1 › compra dividida: líneas exactas, resto explícito, saldo una vez, filtros y quitar la división (7.0s)
+  ✓  29 [celular] › tests/e2e/inbox-split-distribution.spec.ts:54:1 › bandeja de pendientes: acceso en Inicio, resolver, posponer y «son distintos» (5.8s)
+  ✓  30 [celular] › tests/e2e/inbox-split-distribution.spec.ts:87:1 › distribuir un ingreso recibido: vista previa, saldo intacto, pago ya reservado sin doble resta y deshacer (5.7s)
+  ✓  33 [celular] › tests/e2e/inbox-split-distribution.spec.ts:179:1 › bandeja: un plan superado lleva a su detalle, sin cambiar cifras (3.6s)
+  ✓  32 [celular] › tests/e2e/inbox-split-distribution.spec.ts:157:1 › sugerencia: dividir como la última vez en el mismo comercio (solo propone) (3.8s)
+  ✓  31 [celular] › tests/e2e/inbox-split-distribution.spec.ts:124:1 › pantallas nuevas: sin desplazamiento horizontal, accesibles y en inglés (8.9s)
+  ✓  34 [celular] › tests/e2e/qa-pr15.spec.ts:29:1 › QA-01 · sueldo del 31 partido el 30-sep (el 31 movido) cambiando solo el importe: el 20-oct el seguro del 31-oct sigue reservado («Puedes gastar» $100.00) y la copia conserva la serie (4.6s)
+  ✓  35 [celular] › tests/e2e/qa-pr15.spec.ts:67:1 › QA-02 · con un colchón de seguridad guardado y nada más, la moneda no se puede cambiar y se explica; nada cambia al recargar ni en la copia; con el colchón en 0 sí se puede (4.4s)
+  ✓  36 [celular] › tests/e2e/qa-pr15.spec.ts:98:1 › QA-03 · Estadísticas de julio (personalizado): las cifras siguen siendo solo de julio tras cada filtro, al quitarlos, con atrás/adelante, al recargar y al abrir la dirección; el saldo futuro dice que no se filtra (4.0s)
+  ✓  37 [celular] › tests/e2e/qa-pr15.spec.ts:144:1 › QA-05 · partir un programado que usan una plantilla, un escenario y un aplazamiento; revertirlo desde el historial los devuelve y no queda referencia al tramo nuevo (3.6s)
+  ✓  39 [celular] › tests/e2e/qa-v2.spec.ts:32:1 › CUR-01 · «coffee USD $10» en CAD conserva USD y bloquea la línea; corregida, se registra en CAD y sobrevive a recargar @smoke (2.4s)
+  ✓  40 [celular] › tests/e2e/qa-v2.spec.ts:67:1 › CUR-01/02 · dos monedas distintas en el asistente: el campo conserva las dos y la línea no se registra (2.1s)
+  ✓  41 [celular] › tests/e2e/qa-v2.spec.ts:86:1 › CUR-02 · formulario, CSV y atajo: una contradicción nunca se acepta como CAD; lo compatible sí (3.2s)
+  ✘  38 [celular] › tests/e2e/qa-pr15.spec.ts:188:1 › R2 (revisión propia) · Estadísticas: el periodo personalizado vive solo en la dirección; chips, «Hoy» y atrás/adelante nunca la contradicen (7.4s)
+  ✓  42 [celular] › tests/e2e/qa-v2.spec.ts:145:1 › CUR-03 · foto: «TOTAL PEN 10.00» propone 10.00 PEN y bloquea la línea; corregida, se registra en CAD (2.6s)
+  ✓  43 [celular] › tests/e2e/qa-v2.spec.ts:165:1 › CUR-03 · control: «PEN 2.99» en una línea de artículo es un bolígrafo; el total se propone en CAD (1.7s)
+  ✓  44 [celular] › tests/e2e/qa-v2.spec.ts:219:1 › STAT-01 · las fechas personalizadas viven en la dirección: sobreviven a un filtro, a recargar y a editarlas (3.6s)
+  ✓  45 [celular] › tests/e2e/qa-v2.spec.ts:250:1 › SCH-01 · partir un «dos veces al mes» (15 y 30) desde el 30 conserva los días sin tocar el segundo día; volver a «todas» restaura; 15 y 31 desde un 30-sep sigue siendo 15 y 31 (PR #15, QA-01) (4.6s)
+  ✓  47 [celular] › tests/e2e/retest.spec.ts:29:3 › RT-01 · «coffee 10€» en un presupuesto CAD no se puede registrar como CAD (2.5s)
+  ✓  48 [celular] › tests/e2e/retest.spec.ts:29:3 › RT-01 · «coffee GBP 10» en un presupuesto CAD no se puede registrar como CAD (2.7s)
+  ✓  49 [celular] › tests/e2e/retest.spec.ts:29:3 › RT-01 · «coffee EUR ten» en un presupuesto CAD no se puede registrar como CAD (2.6s)
+  ✓  50 [celular] › tests/e2e/retest.spec.ts:29:3 › RT-01 · «coffee ten USD» en un presupuesto CAD no se puede registrar como CAD (2.8s)
+  ✓  51 [celular] › tests/e2e/retest.spec.ts:53:1 › RT-01 · control: «coffee 10» y «coffee 10 CAD» se registran en CAD y sobreviven a recargar (2.6s)
+  ✓  52 [celular] › tests/e2e/retest.spec.ts:92:1 › RT-02 · importar una copia que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar (3.2s)
+  ✓  53 [celular] › tests/e2e/retest.spec.ts:102:1 › RT-02 · restaurar una copia local que dispara un registro automático: «Deshacer» se niega y el registro sobrevive a recargar (3.8s)
+  ✓  54 [celular] › tests/e2e/retest.spec.ts:235:1 › RT-02 · importar con la escritura retenida: un gasto de CAD 9 registrado mientras tanto sobrevive a «Deshacer» y a recargar (3.7s)
+  ✓  55 [celular] › tests/e2e/retest.spec.ts:247:1 › RT-02 · restaurar una copia local con la escritura retenida: un gasto de CAD 9 registrado mientras tanto sobrevive a «Deshacer» y a recargar (4.3s)
+  ✓  56 [celular] › tests/e2e/retest.spec.ts:293:1 › RT-03 · reconocer las filas omitidas de un archivo y elegir otro más grande: hay que reconocerlo de nuevo (3.4s)
+  ✓  57 [celular] › tests/e2e/retest.spec.ts:314:1 › RT-03 · el mismo nombre con otro contenido, o leer la primera fila de otra forma, también piden reconocerlo de nuevo (3.8s)
+  ✓  58 [celular] › tests/e2e/retest.spec.ts:330:1 › RT-03 · cancelar el selector de archivos deja la misma vista previa con su reconocimiento; un archivo pequeño no pide nada (3.5s)
+  ✓  60 [celular] › tests/e2e/scheduled-v2.spec.ts:37:1 › programado personalizado cada N días genera las fechas correctas (2.8s)
+  ✓  59 [celular] › tests/e2e/scheduled-v2.spec.ts:4:1 › programado con confirmación automática: se registra solo al abrir, avisa, es idempotente; en pausa no se reserva (4.9s)
+  ✓  61 [celular] › tests/e2e/scheduled-v2.spec.ts:54:1 › notificaciones: ajustes, horas de silencio y lista dentro de la app; sin permiso no se simula nada (2.6s)
+  ✓  62 [celular] › tests/e2e/stage3-flow.spec.ts:13:1 › calendario: saldo proyectado por día, sin faltante previsto; una simulación de $200 lo lleva a negativo el 16-oct y no guarda nada (2.3s)
+  ✓  63 [celular] › tests/e2e/stage3-flow.spec.ts:45:1 › calendario: un gasto registrado a mano que coincide con la luz vencida se propone y, al vincular, cuenta como pagado una sola vez (2.9s)
+  ✓  65 [celular] › tests/e2e/stage3-flow.spec.ts:110:1 › metas: ritmo explicado con cifras, efecto sobre el disponible e historial de aportes (1.9s)
+  ✓  64 [celular] › tests/e2e/stage3-flow.spec.ts:70:1 › límites: arrastre explícito en el formulario, compromisos programados del ciclo, comparación honesta y límite renovado con arrastre (4.7s)
+  ✓  66 [celular] › tests/e2e/stage4-datos-analisis.spec.ts:11:1 › navegación: seis huecos sin recortes, «Análisis» agrupa estadísticas, revisión y ¿qué cambió? (2.6s)
+  ✓  67 [celular] › tests/e2e/stage4-datos-analisis.spec.ts:38:1 › análisis: señales con cifras y regla; un gasto previsto grande produce «saldo en negativo» con su desglose; nada se guarda solo (2.8s)
+  ✓  68 [celular] › tests/e2e/stage4-datos-analisis.spec.ts:70:1 › centro de datos: estado con icono y texto, orden de recuperación y exportar desde ahí; el índice solo avisa si hay algo que revisar (2.1s)
+  ✓  70 [celular] › tests/e2e/statistics.spec.ts:58:1 › estadísticas: sin movimientos muestra el estado vacío y el saldo futuro queda oculto; modo privado oculta gráficos (2.3s)
+  ✓  69 [celular] › tests/e2e/statistics.spec.ts:4:1 › estadísticas: periodo, tres cifras, donut con enlace al historial, barras con tooltip, tendencia, top 5, promedio y saldo futuro (3.8s)
+  ✓  71 [celular] › tests/e2e/what-changed.spec.ts:4:1 › ¿Qué cambió?: desglose exacto desde el inicio del historial y sin inventar lo anterior (2.5s)
+  ✓  46 [celular] › tests/e2e/qa-v2.spec.ts:176:1 › FIN-01 · 25 pagos diarios de 10^12: el calendario se abre, dice que el total no se puede calcular exacto y se recupera al pausar uno (50.5s)
+
+
+  1) [celular] › tests/e2e/qa-pr15.spec.ts:188:1 › R2 (revisión propia) · Estadísticas: el periodo personalizado vive solo en la dirección; chips, «Hoy» y atrás/adelante nunca la contradicen 
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator:  getByLabel('Inicio del periodo personalizado')
+    Expected: "2026-07-01"
+    Received: ""
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveValue" getByLabel('Inicio del periodo personalizado') with timeout 5000ms
+      - waiting for getByLabel('Inicio del periodo personalizado')
+        13 × locator resolved to <input value="" id="_r_d_" type="date" class="input"/>
+           - unexpected value ""
+
+
+      197 |   const end = page.getByLabel('Fin del periodo personalizado')
+      198 |   const expectRange = async (from: string, to: string, expenses: string) => {
+    > 199 |     await expect(start).toHaveValue(from)
+          |                         ^
+      200 |     await expect(end).toHaveValue(to)
+      201 |     await expect(tiles).toContainText(expenses)
+      202 |     expect(new URL(page.url()).hash).toContain(`desde=${from}`)
+        at expectRange (/home/user/ALCANZA/tests/e2e/qa-pr15.spec.ts:199:25)
+        at /home/user/ALCANZA/tests/e2e/qa-pr15.spec.ts:211:9
+
+    Error Context: test-results/review-celular/qa-pr15-R2-revisión-propia-29eda-elante-nunca-la-contradicen-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/review-celular/qa-pr15-R2-revisión-propia-29eda-elante-nunca-la-contradicen-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/review-celular/qa-pr15-R2-revisión-propia-29eda-elante-nunca-la-contradicen-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [celular] › tests/e2e/qa-pr15.spec.ts:188:1 › R2 (revisión propia) · Estadísticas: el periodo personalizado vive solo en la dirección; chips, «Hoy» y atrás/adelante nunca la contradicen 
+  70 passed (1.9m)
+exit 1

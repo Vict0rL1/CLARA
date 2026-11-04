@@ -1,0 +1,178 @@
+
+> clara@1.0.0-beta.1 check
+> npm run typecheck && npm run lint && npm run lint:i18n && npm run test
+
+
+> clara@1.0.0-beta.1 typecheck
+> tsc -b
+
+
+> clara@1.0.0-beta.1 lint
+> oxlint
+
+
+> clara@1.0.0-beta.1 lint:i18n
+> node scripts/find-literals.mjs
+
+find-literals: sin texto visible fuera de i18n en src/ui.
+
+> clara@1.0.0-beta.1 test
+> vitest run
+
+
+ RUN  v5.0.5 /home/user/ALCANZA
+
+ ✓ src/storage/indexedDb.test.ts (8 tests) 1366ms
+   ✓ IndexedDB: guardado y pestañas (2)
+     ✓ 50.000 movimientos (no caben en localStorage) se guardan y se leen completos 1300ms
+ ✓ src/domain/ledger.property.test.ts (2 tests) 1427ms
+   ✓ Libro mayor · propiedades sobre secuencias aleatorias de operaciones reales (2)
+     ✓ cada operación cambia saldos, gasto, ingreso y disponible exactamente lo esperado, y los datos siguen siendo válidos 1420ms
+ ✓ src/domain/retest.test.ts (11 tests) 1044ms
+   ✓ RT-03 · reconocer las filas omitidas de un CSV vale solo para esa vista previa (2)
+     ✓ cambia con otro archivo más grande y al leer la primera fila de otra forma; no existe si caben todas 668ms
+ ✓ src/storage/roundtrip.test.ts (10 tests) 1091ms
+   ✓ copias grandes (1)
+     ✓ una copia exportada con 50.000 movimientos se puede restaurar íntegra (antes superaba el límite de 5 MB) 1034ms
+ ✓ src/domain/auditNov02Projection.test.ts (7 tests) 2734ms
+   ✓ Auditoría 2026-11-02 · P4: proyección fuera del rango exacto en todas las pantallas que proyectan (7)
+     ✓ Escenarios no lanzan: la situación actual y cada alternativa llevan la fecha desde la que no hay cifra; el saldo al final es el del último día exacto 1139ms
+     ✓ «¿Me alcanza?» no lanza: el veredicto sale del disponible de hoy y la proyección declara desde cuándo no hay cifra 1257ms
+ ✓ src/storage/encryptedBackup.test.ts (31 tests) 358ms
+ ✓ src/domain/exactRange.test.ts (8 tests) 458ms
+stdout | qa/security-storage.test.ts > seguridad y persistencia en entorno simulado > 50.000 movimientos: ida/vuelta JSON valida, sin perder centavos ni registros
+{"benchmark":"50000-flat-transactions-backup-roundtrip","durationMs":223.65,"bytes":13590572,"runtime":"v22.22.0"}
+
+ ✓ qa/security-storage.test.ts (7 tests) 537ms
+   ✓ seguridad y persistencia en entorno simulado (5)
+     ✓ 50.000 movimientos: ida/vuelta JSON valida, sin perder centavos ni registros 378ms
+ ✓ src/ui/localCopiesProbe.test.ts (1 test) 118ms
+ ✓ tests/config/playwright-config.test.ts (5 tests) 319ms
+   ✓ I2 · playwright.config en CI y en local (3)
+     ✓ en CI reintenta una vez (para que --fail-on-flaky-tests detecte la inestabilidad) y deja un informe HTML sin abrirlo y un JUnit 314ms
+ ✓ src/domain/stabilization.test.ts (35 tests) 321ms
+ ✓ src/domain/qa27Percent.test.ts (6 tests) 249ms
+ ✓ src/domain/qaV2.test.ts (29 tests) 211ms
+ ✓ src/i18n/i18n.test.ts (14 tests) 168ms
+ ✓ qa/financial-audit.test.ts (30 tests) 145ms
+ ✓ src/domain/planItems.test.ts (7 tests) 215ms
+ ✓ src/domain/parser.test.ts (81 tests) 126ms
+ ✓ src/domain/historyRevertScan.test.ts (3 tests) 89ms
+ ✓ src/domain/search.test.ts (9 tests) 110ms
+ ✓ src/domain/auditNov02Duplicates.test.ts (7 tests) 92ms
+ ✓ src/domain/parser.split.test.ts (27 tests) 93ms
+ ✓ src/domain/assistant.test.ts (4 tests) 78ms
+ ✓ src/state/replaceUndo.test.ts (18 tests) 90ms
+ ✓ src/domain/qaFollowUp.test.ts (32 tests) 53ms
+ ✓ src/storage/backup.test.ts (31 tests) 120ms
+ ✓ src/domain/balances.test.ts (3 tests) 57ms
+ ✓ src/i18n/packs.test.ts (2 tests) 30ms
+ ✓ src/domain/qaLead.test.ts (26 tests) 60ms
+ ✓ src/domain/bankImport.test.ts (36 tests) 56ms
+ ✓ src/domain/qa27FutureBalance.test.ts (2 tests) 66ms
+ ✓ src/domain/qaCorrective.test.ts (12 tests) 64ms
+ ✓ src/domain/scenarios.test.ts (12 tests) 33ms
+ ✓ src/domain/clara2.test.ts (38 tests) 56ms
+ ✓ src/domain/auditNov02GoalUndo.test.ts (8 tests) 48ms
+ ✓ src/domain/independent.test.ts (30 tests) 39ms
+ ✓ src/domain/shortcutLink.test.ts (8 tests) 47ms
+ ✓ src/domain/merchants.test.ts (8 tests) 37ms
+ ✓ src/domain/whatChanged.test.ts (7 tests) 42ms
+ ✓ src/domain/inbox.test.ts (14 tests) 44ms
+ ✓ src/domain/budget.test.ts (50 tests) 42ms
+ ✓ src/domain/qa27Duplicates.test.ts (2 tests) 43ms
+ ✓ pwa/sw.template.test.ts (2 tests) 46ms
+ ✓ src/domain/history.test.ts (13 tests) 38ms
+ ✓ src/domain/scheduledJobs.test.ts (14 tests) 36ms
+ ✓ src/domain/money.test.ts (23 tests) 37ms
+ ✓ src/domain/qaPr15Undo.test.ts (8 tests) 32ms
+ ✓ src/domain/qa27Undo.test.ts (8 tests) 42ms
+ ✓ src/domain/trash.test.ts (12 tests) 39ms
+ ✓ src/domain/incomeDistribution.test.ts (11 tests) 45ms
+ ✓ src/domain/plannedExpenses.test.ts (12 tests) 38ms
+ ✓ src/test/synthetic.test.ts (2 tests | 1 skipped) 43ms
+ ✓ src/domain/periodBudgets.test.ts (11 tests) 33ms
+ ✓ src/pwa/register.test.ts (3 tests) 26ms
+ ✓ src/storage/persistence.test.ts (7 tests) 30ms
+ ✓ src/domain/plans.test.ts (9 tests) 32ms
+ ✓ src/domain/statistics.test.ts (6 tests) 27ms
+ ✓ src/domain/qaPr15Anchor.test.ts (12 tests) 31ms
+ ✓ src/domain/stage4.test.ts (5 tests) 29ms
+ ✓ src/storage/autoBackup.test.ts (3 tests) 27ms
+ ✓ src/domain/formatters.test.ts (9 tests) 27ms
+ ✓ src/domain/backupReminder.test.ts (6 tests) 19ms
+ ✓ src/domain/qa27Snooze.test.ts (4 tests) 30ms
+ ✓ src/domain/splits.test.ts (13 tests) 31ms
+ ✓ src/domain/projection.test.ts (13 tests) 27ms
+ ✓ src/domain/currencyChange.test.ts (7 tests) 23ms
+ ✓ src/domain/homeSnapshot.test.ts (10 tests) 20ms
+ ✓ src/domain/variableIncome.test.ts (9 tests) 30ms
+ ✓ src/domain/qa27Trash.test.ts (4 tests) 38ms
+ ✓ src/domain/reconcile.test.ts (9 tests) 25ms
+ ✓ src/domain/categoryOps.test.ts (7 tests) 28ms
+ ✓ src/ui/errorLog.test.ts (7 tests) 23ms
+ ✓ src/domain/receipt.test.ts (4 tests) 23ms
+ ✓ src/domain/templates.test.ts (7 tests) 23ms
+ ✓ src/domain/qa27SplitWindow.test.ts (4 tests) 11ms
+ ✓ src/domain/repeat.test.ts (4 tests) 20ms
+ ✓ src/domain/favorites.test.ts (5 tests) 20ms
+ ✓ src/domain/stage3.test.ts (8 tests) 17ms
+ ✓ src/domain/shortfall.test.ts (5 tests) 20ms
+ ✓ src/domain/weeklyReview.test.ts (7 tests) 21ms
+ ✓ src/domain/dates.test.ts (13 tests) 19ms
+ ✓ src/ui/preferences.test.ts (3 tests) 18ms
+ ✓ src/domain/tagOps.test.ts (2 tests) 21ms
+ ✓ src/ui/install.test.ts (5 tests) 18ms
+ ✓ src/domain/statsFilter.test.ts (4 tests) 17ms
+ ✓ src/domain/qaPr15Currency.test.ts (2 tests) 26ms
+ ✓ src/domain/review.test.ts (5 tests) 19ms
+ ✓ src/domain/ids.test.ts (1 test) 15ms
+ ✓ src/domain/heroFigures.test.ts (3 tests) 16ms
+ ✓ src/ui/lock/pin.test.ts (3 tests) 11ms
+ ✓ src/domain/rules.test.ts (12 tests) 20ms
+ ✓ src/ui/percentPoints.test.ts (1 test) 16ms
+ ✓ src/i18n/auditNov02Packs.test.ts (8 tests) 16ms
+ ✓ src/domain/recurringCosts.test.ts (5 tests) 13ms
+ ✓ src/domain/categories.test.ts (3 tests) 13ms
+ ✓ src/domain/accounts.test.ts (10 tests) 11ms
+ ✓ src/storage/csp.test.ts (6 tests) 7ms
+ ✓ src/domain/cards.test.ts (10 tests) 11ms
+ ✓ src/domain/planSuggestion.test.ts (5 tests) 7ms
+ ✓ src/domain/aiConfig.test.ts (9 tests) 12ms
+ ✓ src/domain/scheduleFrom.test.ts (6 tests) 11ms
+ ✓ pwa/serviceWorkerPlugin.test.ts (3 tests) 8ms
+ ✓ src/domain/recurringDetect.test.ts (6 tests) 10ms
+ ✓ src/ui/backupDelivery.test.ts (5 tests) 6ms
+ ✓ src/domain/periods.test.ts (6 tests) 7ms
+ ✓ src/domain/percentExact.test.ts (2 tests) 6ms
+ ✓ src/ui/themeTokens.test.ts (6 tests) 7ms
+ ✓ src/domain/bulk.test.ts (4 tests) 7ms
+ ✓ src/domain/goalMilestones.test.ts (4 tests) 6ms
+ ✓ src/domain/csvExport.test.ts (8 tests) 7ms
+ ✓ src/storage/migrations.test.ts (4 tests) 5ms
+ ✓ src/domain/goalChart.test.ts (5 tests) 5ms
+ ✓ tests/config/smoke.test.ts (2 tests) 6ms
+ ✓ src/ui/screens/settings/sections.test.ts (2 tests) 5ms
+ ✓ src/ui/feedback.test.ts (4 tests) 5ms
+ ✓ src/domain/duplicates.test.ts (4 tests) 5ms
+ ✓ src/ui/components/axisLabels.test.ts (5 tests) 4ms
+ ✓ tests/config/can-rollback.test.ts (3 tests) 4ms
+ ✓ src/domain/featureGate.test.ts (2 tests) 4ms
+ ✓ tests/config/check-size.test.ts (3 tests) 4ms
+ ✓ src/domain/quickEntry.test.ts (2 tests) 4ms
+ ✓ src/domain/txFilters.test.ts (2 tests) 4ms
+ ✓ src/domain/plausibility.test.ts (5 tests) 4ms
+ ✓ src/domain/dayBalance.test.ts (3 tests) 5ms
+ ✓ src/domain/insights.test.ts (3 tests) 5ms
+ ✓ src/ui/secondDay.test.ts (2 tests) 3ms
+ ✓ src/ui/version.test.ts (1 test) 3ms
+
+ Test Files  126 passed (126)
+      Tests  1195 passed | 1 skipped (1196)
+   Start at  08:17:01
+   Duration  11.18s (tests 71%, import 22%, transform 5%, worker 2%)
+
+    Isolate  126 workers spawned · ~98ms startup each (spawn + environment, per file)
+             at least ~4.00s faster with isolate: false — reuses workers across files instead of one per file
+
+exit 0

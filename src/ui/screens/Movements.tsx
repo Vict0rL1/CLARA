@@ -2,7 +2,6 @@ import { memo, useCallback, useMemo, useState, useEffect, useRef } from 'react'
 import { adjustmentSign, sortedAccounts, txAppliesToAccount } from '../../domain/balances'
 import { sumMinor } from '../../domain/money'
 import { txCategoryIds } from '../../domain/splits'
-import { transactionsToCsv } from '../../domain/csvExport'
 import { restoreFromTrashMany, trashTransactions } from '../../domain/operations'
 import { recategorizeTransactions, setCategoriesEach, setTagsEach, tagTransactions } from '../../domain/bulk'
 import { matchesTxFilter, SOURCE_GROUPS, sourceGroupOf, type SourceGroup } from '../../domain/txFilters'
@@ -152,7 +151,16 @@ export function Movements({ route }: { route?: Route }) {
     setSource('all')
   }
 
-  const exportCsv = () => {
+  // El CSV se carga al exportar (presupuesto de tamaño del JS inicial: `npm run size`); la acción es la misma. Si el
+  // módulo no llega (sin conexión antes de que el service worker lo guardara, o tras un despliegue), se dice.
+  const exportCsv = async () => {
+    let transactionsToCsv: typeof import('../../domain/csvExport').transactionsToCsv
+    try {
+      ;({ transactionsToCsv } = await import('../../domain/csvExport'))
+    } catch {
+      toast({ message: t('export.failed'), tone: 'critical' })
+      return
+    }
     const csv = transactionsToCsv([...planned, ...realized], {
       headers: (['date', 'kind', 'status', 'amount', 'currency', 'category', 'account', 'toAccount', 'note', 'merchant', 'id', 'source'] as const).map((k) => t(`csv.${k}` as MessageKey)),
       kind: (tx) => t(`txKind.${tx.kind}` as MessageKey),
@@ -264,7 +272,7 @@ export function Movements({ route }: { route?: Route }) {
           <ListRow icon="trash" title={`${t('trash.link')}${data.trash.length > 0 ? ` (${data.trash.length})` : ''}`} href={href('/movimientos/papelera')} chevron />
           <ListRow icon="upload" title={t('movements.import')} href={href('/movimientos/importar')} chevron />
           {data.transactions.length > 0 && (
-            <button type="button" className="list-row list-row--link" onClick={() => { setMoreOpen(false); exportCsv() }} disabled={filtered.length === 0} title={t('movements.exportCsvHint', { count: filtered.length })}>
+            <button type="button" className="list-row list-row--link" onClick={() => { setMoreOpen(false); void exportCsv() }} disabled={filtered.length === 0} title={t('movements.exportCsvHint', { count: filtered.length })}>
               <CategoryIcon icon="download" />
               <span className="list-row__main">
                 <span className="list-row__title">{t('movements.exportCsv')}</span>

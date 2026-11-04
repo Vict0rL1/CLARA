@@ -7,7 +7,8 @@ French). The project rules — architecture layers, money as integer minor units
 `CLAUDE.md` (Spanish); follow them when changing code.
 
 `main` contains everything: stages 1–4 of the Clara program and the release-stabilization fixes of
-2026-10-13 (`docs/STABILIZATION-2026-10-13.md`).
+2026-10-13 (`docs/STABILIZATION-2026-10-13.md`). The follow-up fixes RT-01/02/03 from the independent
+retest of 2026-10-15 are described in the same document (section «Comprobación independiente…»).
 
 ## 1. Setup
 
@@ -33,11 +34,12 @@ relative to today, everything is marked as demo). «Ajustes › Demostración y 
 ## 3. Automated checks (run all of these before declaring a change done)
 
 ```bash
-npm run check        # typecheck + oxlint + i18n literal check + Vitest (≈880 unit tests, incl. qa/)
+npm run check        # typecheck + oxlint + i18n literal check + Vitest (≈1 200 unit tests, incl. qa/, the QA V2, the PR #15 audit, the self-review contracts, the follow-up audit, the lead pass, the QA27 pass and the 2026-11-02 audit pass)
 npm run build        # production build
-npm run size         # initial JS budget: must stay ≤ 844.6 KB (currently ≈ 816 KB) — do not raise it
-npm audit            # dependency audit
+npm run size         # initial JS budget: must stay ≤ 844.6 KB (≈ 844.1 KB after the 2026-11-02 audit pass: about 0.5 KB of margin; before adding visible text, move rarely visited screen texts to the lazy packs in `src/i18n/packs/` to free bytes) — do not raise it
+npm audit --audit-level=high   # dependency audit (CI fails on a high/critical vulnerability)
 npm run test:e2e     # Playwright: 3 projects (celular 412 px, celular-pequeno 320 px, escritorio) + axe
+                     # budgets inside the suite: Home interactive < 500 ms with 10 000 movements (performance-10k.spec.ts); History's first entry < 300 ms after navigating from Home with 10 000 movements, 100 schedules, 1 000 linked payments and 30 schedule-touching entries (performance-history.spec.ts; measured 39–43 ms on the second navigation, ~310 ms on the first, which includes the lazy chunk)
 ```
 
 Useful variants:
@@ -45,6 +47,9 @@ Useful variants:
 ```bash
 npx playwright test --project=celular-pequeno --workers=2         # one viewport, like CI
 npx playwright test tests/e2e/stabilization.spec.ts               # the stabilization regressions only
+npx playwright test tests/e2e/retest.spec.ts                      # the 2026-10-15 retest regressions (RT-01/02/03)
+npx playwright test tests/e2e/qa-v2.spec.ts                       # the QA V2 acceptance (CUR-01/02/03, FIN-01, STAT-01, SCH-01)
+npx playwright test tests/e2e/qa-pr15.spec.ts                     # the PR #15 audit acceptance (QA-01/02/03/05; QA-04 is CUR-02 above)
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/path/to/chrome npm run test:e2e   # use a preinstalled Chromium
 BASE_URL=http://localhost:4174 npx playwright test <spec>         # run specs against another running build
 ```
@@ -64,11 +69,21 @@ Notes for reliable runs:
 | Path | What |
 |---|---|
 | `src/domain/` | Pure financial logic (no React, no storage, "today" passed in). All formulas: `docs/FORMULAS.md` |
-| `src/storage/` | IndexedDB / localStorage repository, backups, migrations (schema 12) |
+| `src/storage/` | IndexedDB / localStorage repository, backups, migrations (schema 14) |
 | `src/state/` | In-memory store, undo of import/restore (`replaceUndo.ts`) |
 | `src/ui/` | Screens and components; all text comes from `src/i18n/{es,en,pt,fr}.ts` |
 | `tests/e2e/` | Playwright specs; `stabilization.spec.ts` = one test per audit finding |
 | `src/domain/stabilization.test.ts` | Unit regressions per audit finding |
+| `src/domain/retest.test.ts`, `src/state/replaceUndo.test.ts` | Unit regressions for RT-01/RT-03 and RT-02 (delayed IndexedDB writes) |
+| `src/domain/qaV2.test.ts`, `src/ui/secondDay.test.ts`, `tests/e2e/qa-v2.spec.ts` | QA V2 contracts (CUR-01/02/03, FIN-01, STAT-01, SCH-01); the CUR-01 browser test is also `@smoke` |
+| `src/domain/qaPr15{Anchor,Currency,Undo}.test.ts`, `tests/e2e/qa-pr15.spec.ts` | PR #15 audit contracts: QA-01 series anchor (schema 14, forward links), QA-02 buffer guard, QA-05 split undo (snooze rules R5/S1); browser acceptance incl. QA-03 filters and the R2 address rule |
+| `src/domain/percentExact.test.ts`, `src/domain/dayBalance.test.ts` | Self-review contracts: exact integer percentages (R6); one rule for what a calendar day says, base or simulated (`outOfRange`, R3/S3) |
+| `src/domain/qaCorrective.test.ts`, `tests/e2e/qa-corrective.spec.ts` | Corrective pass (independent audit 2026-10-19): P1 unsupported currency through bounded punctuation («coffee (RUB) 10», «TOTAL RUB: 10.00») blocks the line in the assistant, receipts, fields, CSV and shortcuts; P2 receipt keyword span classification («PEN 2.99 TAX 0.10» is an item). Report: `docs/qa/corrective-pass-2026-10-20/REPORT.md` |
+| `src/domain/qaFollowUp.test.ts`, `src/ui/components/axisLabels.test.ts`, `src/ui/themeTokens.test.ts` (F-04), `tests/e2e/qa-followup.spec.ts` | Follow-up audit (head 46fe617): F-01 history ids per collection and recovery of data written by the faulty version; QA-01 historical split review/repair (`domain/splitRepair.ts`); F-02 dependency-safe undo; F-03 exact Analysis percentage; F-04 computed contrast of «Sin comparación»; F-05 axis labels by slot width. Report: `docs/qa/followup-audit-2026-10-20/REPORT.md` |
+| `src/domain/qaLead.test.ts`, `src/test/v13-known-intent-backup.json`, `tests/e2e/qa-lead.spec.ts`, `tests/e2e/shots.ts` | Implementation lead pass (2026-10-27): the genuine schema-13 backup written by `819eaa9` (import, repair to 31-mar / 1 250 / 550, decline, round trip), F-02 later scenario, F-03 zero previous, keyboard/touch chart selection in es/en/pt/fr; the independent reviewers' findings re-encoded: F-R1 a repair never counts a paid occurrence twice (partition after the last settled one; skipped dates and links follow their period), F-R2 inherited anchors keep the review alive, F-R3 symmetric ±10 % threshold (`checkedPercentChange`), S-R1 expired snoozes are not undo dependents. Report: `docs/qa/implementation-lead-2026-10-27/REPORT.md` (reviewer reports and test code under `evidence/reviewers/`) |
+| `src/domain/qa27Undo.test.ts`, `qa27Snooze.test.ts`, `qa27Percent.test.ts`, `qa27Duplicates.test.ts`, `qa27SplitWindow.test.ts`, `qa27FutureBalance.test.ts`, `qa27Trash.test.ts`, `exactRange.test.ts`, `historyRevertScan.test.ts`, `src/i18n/packs.test.ts`, `src/ui/localCopiesProbe.test.ts`, `src/ui/percentPoints.test.ts`, `tests/e2e/qa27.spec.ts`, `exact-range.spec.ts`, `import-copy.spec.ts`, `performance-history.spec.ts` | Independent audit of 21b4ed8 (2026-10-29): QA27-01 undo refuses to leave a recorded payment without its occurrence (`revertDependents` compares settlements, kind `payment`); QA27-02 a partitioned repair carries a snooze whose date coincides; QA27-03 period comparisons exact from the operands (`checkedPercentChange(current, previous)`, `checkedSubMinor`); QA27-03b at most 50 possible-duplicate pairs per group; QA27-04 the repair never proceeds without its recovery copy (export-first path). From the independent reviews of the pass: the repair pairs the last date of its comparison window (F1), the weekly review never says «lo mismo» without an exact difference (F2), the 90-day future balance that leaves the exact range is omitted and said instead of crashing Statistics (browser review), and the trash never restores a payment to a date its schedule no longer has (`occurrenceMissing`, F-1). Upgrade pass after the handoff: the exact-range bound (`domain/exactRange.ts`: inflows and outflows each ≤ 2⁵³ − 1, refused on save and import), lazy text packs for Legal and Gallery, the import dialog's real-protection wording with export-first, the bounded History revert scan with its own budget, and one shape for comparison percentages (`fmt.percentPoints`). Report: `docs/qa/qa27-implementation-2026-10-29/REPORT.md` (reviewer reports and test code under `evidence/reviewers/`) |
+| `src/domain/auditNov02GoalUndo.test.ts`, `auditNov02Duplicates.test.ts`, `auditNov02Projection.test.ts`, `src/i18n/auditNov02Packs.test.ts`, `tests/e2e/audit-nov02.spec.ts` | Independent audit of 420c700 (2026-11-02): P1 undo refuses to leave a planned-expense link or an active snooze pointing at an occurrence that would stop existing under the same schedule id (`revertDependents` compares each reference now-vs-now and after-vs-after; kinds `goal`/`snooze` with `occurrenceDate`); P2 the possible-duplicate cap counts only unreviewed pairs (`scanDuplicates` with the view's reviewed predicate, `InboxView.moreDuplicates`, completeness checked against an independent pair calculation); P3 lazy text packs with distinct loading/ready/fallback/failed states, no failure cached, retry through a cache-busting import of the reported chunk URL, `PackNotice` in Legal and Gallery; P4 `projectBalance` never throws (`outOfRangeFrom`, `horizonDays`) and Projection, Analysis (`projectionOutOfRange`), Shortfall (`LeverEffect.resolves` needs the full horizon), Scenarios and Afford say up to which day there is a figure. Report: `docs/qa/audit-nov02-implementation-2026-11-03/REPORT.md` |
+| `docs/qa/qa-v2-implementation-2026-10-17/` | QA V2 implementation report, before/after evidence (JSON, logs) and screenshots |
 | `docs/STABILIZATION-2026-10-13.md` | What was fixed, before/after evidence, known limits, later roadmap |
 | `docs/screenshots/stabilization-2026-10-13/` | Before (audited `e7c9d87`) / after screenshots |
 
@@ -93,6 +108,9 @@ Start each case from a fresh demo (welcome screen → «Explorar con datos de de
 | 13 | Phone at 320 px with 200 % text (browser zoom/text size), es/en/pt/fr: Ajustes › Cuentas, Plan › Metas, Ajustes › Datos, Plan › Calendario | No horizontal scrolling; bottom bar may use two rows; nothing hidden behind it |
 | 14 | On a touch device, swipe a movement row quickly left | Row opens; «Eliminar» responds to the tap |
 | 15 | A goal with more than 50 history entries | «Mostrando 50 de N…» and «Mostrar más» until the oldest |
+| RT-01 | Assistant (CAD budget): `coffee 10€`, `coffee GBP 10`, `coffee EUR ten`, `coffee ten USD`, `café diez euros` | Each line keeps its currency in the amount field (`€10.00`, `10.00 GBP`…), says «No se convierte» and «Registrar» stays disabled; `coffee 10` / `tea 4 CAD` register in CAD |
+| RT-02 | Export a backup, set `autoConfirm: true` on «Recibo de luz» in the JSON, import it, then «Deshacer» (also via Copias locales › Restaurar) | The bill is recorded automatically; Undo answers «No se deshizo…» and the bill survives a reload |
+| RT-03 | Import: choose a 5,003-row CSV, tick «Entiendo que 3 filas…», then «Elegir otro archivo» with 6,000 rows (or the same name with other content, or untick the header option) | The new «Entiendo que N filas…» is unticked and Import stays disabled until ticked again |
 
 **Not covered by automated tests (please test on real devices):** physical phones (iOS Safari, Android
 Chrome), the OS text size at 200 %, a screen reader (VoiceOver / TalkBack), offline install and update of the

@@ -1,0 +1,103 @@
+
+ RUN  v5.0.2 /home/user/ALCANZA
+
+ ❯ src/domain/qaPr15Anchor.test.ts (11 tests | 1 failed) 83ms
+   ❯ QA-01 · partir un programado cambiando solo el importe conserva las fechas de la serie (11)
+     ✓ sueldo mensual del 31-ene, hoy 15-feb: se propone el 28-feb y la serie nueva sigue el día 31 (31-mar, 30-abr, 31-may) 60ms
+     ✓ caso financiero: con el sueldo partido, el pago del 30-mar sigue reservado por el ingreso del 31-mar (disponible 10 000, reservado 90 000) 5ms
+     ✓ dos veces al mes (1 y 20) desde el 20-oct: se guarda sin arreglar el segundo día a mano y conserva 1 y 20; desde el 1-nov también 2ms
+     × guardar dos veces el mismo tramo (mismo id, como al reintentar el formulario) conserva la fecha que fija la serie 7ms
+     ✓ mensual del 31 (febrero bisiesto): se propone la fecha movida y la serie nueva vuelve al día nominal 1ms
+     ✓ mensual del 30: se propone la fecha movida y la serie nueva vuelve al día nominal 0ms
+     ✓ mensual del 29 (febrero no bisiesto): se propone la fecha movida y la serie nueva vuelve al día nominal 1ms
+     ✓ trimestral del 30-nov: se propone la fecha movida y la serie nueva vuelve al día nominal 1ms
+     ✓ anual del 29-feb: se propone la fecha movida y la serie nueva vuelve al día nominal 1ms
+     ✓ omitidas, fecha de fin y pagos registrados: lo anterior no cambia y las guardas siguen 2ms
+     ✓ control: cambiar la regla explícitamente sigue valiendo (una fecha que no es de la serie la reancla) 0ms
+ ❯ src/domain/qaPr15Undo.test.ts (6 tests | 2 failed) 87ms
+   ✓ QA-05 · deshacer una partición devuelve también plantillas, escenarios y aplazamientos (3)
+     ✓ partir → guardar → recargar → revertir: no queda ninguna referencia a la serie nueva y todo vuelve exactamente a como estaba 60ms
+     ✓ un cambio posterior en una plantilla afectada impide revertir con un conflicto claro y sin cambios parciales 2ms
+     ✓ un cambio posterior que no toca lo partido sobrevive a revertir 2ms
+   ❯ R5 (revisión propia) · aplazamientos en el historial: solo acompañan a otros cambios y los caducados nunca bloquean revertir (3)
+     × posponer o retirar un aviso no crea una entrada del historial (no es un cambio financiero) 15ms
+     × una partición registra el aplazamiento que renombra; si caduca y otro aplazamiento lo retira de paso, revertir sigue siendo posible y no lo resucita 6ms
+     ✓ un aplazamiento vigente que la persona retiró a mano después sí es un conflicto: no se pisa lo que hizo 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/domain/qaPr15Anchor.test.ts > QA-01 · partir un programado cambiando solo el importe conserva las fechas de la serie > guardar dos veces el mismo tramo (mismo id, como al reintentar el formulario) conserva la fecha que fija la serie
+AssertionError: expected undefined to be '2026-01-31' // Object.is equality
+
+- Expected:
+"2026-01-31"
+
++ Received:
+undefined
+
+ ❯ src/domain/qaPr15Anchor.test.ts:74:41
+     72|     // Revisión propia (R1): la rama idempotente (el id del nuevo ya e…
+     73|     const again = split(first.data, 'salary', draft, '2026-02-15')
+     74|     expect(again.value.next.anchorDate).toBe('2026-01-31')
+       |                                         ^
+     75|     expect(occurrencesBetween(again.value.next, '2026-02-28', '2026-05…
+     76|     expect(again.data.schedules.map((s) => s.id)).toEqual(['salary', '…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/domain/qaPr15Undo.test.ts > R5 (revisión propia) · aplazamientos en el historial: solo acompañan a otros cambios y los caducados nunca bloquean revertir > posponer o retirar un aviso no crea una entrada del historial (no es un cambio financiero)
+AssertionError: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "after": {
++       "at": "2026-09-28T12:00:00.000Z",
++       "id": "backup:reminder",
++       "until": "2026-10-10",
++     },
++     "before": null,
++     "collection": "inboxSnoozed",
++     "id": "backup:reminder",
++   },
++ ]
+
+ ❯ src/domain/qaPr15Undo.test.ts:92:45
+     90|     const snoozed = snoozeInboxItem(d, 'backup:reminder', '2026-10-10'…
+     91|     if (!snoozed.ok) throw new Error('snooze')
+     92|     expect(diffForHistory(d, snoozed.data)).toEqual([])
+       |                                             ^
+     93|     expect(recordHistory(d, snoozed.data, NOW).history).toHaveLength(d…
+     94|     const removed = unsnoozeInboxItem(snoozed.data, 'backup:reminder',…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/domain/qaPr15Undo.test.ts > R5 (revisión propia) · aplazamientos en el historial: solo acompañan a otros cambios y los caducados nunca bloquean revertir > una partición registra el aplazamiento que renombra; si caduca y otro aplazamiento lo retira de paso, revertir sigue siendo posible y no lo resucita
+AssertionError: expected [ { …(4) }, { …(4) } ] to have a length of 1 but got 2
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ src/domain/qaPr15Undo.test.ts:109:29
+    107|     expect(later.data.inbox.snoozed.map((s) => s.id)).toEqual(['other:…
+    108|     const tracked = recordHistory(after, later.data, '2026-10-21T12:00…
+    109|     expect(tracked.history).toHaveLength(after.history.length)
+       |                             ^
+    110|     expect(canRevert(tracked, entry, '2026-10-21')).toBe('ok')
+    111|     const back = revertEntry(tracked, entry.id, at('2026-10-21'))
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  3 failed | 14 passed (17)
+   Start at  00:43:47
+   Duration  1.37s (transform 80%, import 11%, tests 8%, worker 1%)
+
+exit 1

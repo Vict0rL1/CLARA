@@ -1,0 +1,99 @@
+Final verification of the QA27 pass (frozen SHA)
+
+SHA 229228c801a4870d7449db83576eaa7c64506c88 · git status at start: 2 entries (M AGENTS.md | ?? docs/qa/qa27-implementation-2026-10-29/)
+started 2026-10-31T00:03:34Z · finished 2026-10-31T00:51:30Z
+
+== Each commit of this pass on its own (temporary worktree: tsc -b, oxlint ., vitest run)
+150bb9e: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1132 passed | 1 skipped (1133)
+229228c: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1150 passed | 1 skipped (1151)
+368a02b: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1141 passed | 1 skipped (1142)
+6046b93: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1146 passed | 1 skipped (1147)
+7d7a23a: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1135 passed | 1 skipped (1136)
+85b4a85: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1137 passed | 1 skipped (1138)
+96f64fb: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1128 passed | 1 skipped (1129)
+ac99396: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1137 passed | 1 skipped (1138)
+b6fcb69: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1150 passed | 1 skipped (1151)
+d3554fa: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1144 passed | 1 skipped (1145)
+fcfcdfe: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1137 passed | 1 skipped (1138)
+
+== Steps at HEAD
+check EXIT 0
+build EXIT 0
+size EXIT 0
+audit EXIT 0
+vitest --reporter=json EXIT 0
+e2e celular EXIT 1 · shots celular EXIT 1
+e2e celular-pequeno EXIT 1 · shots celular-pequeno EXIT 1
+e2e escritorio EXIT 1 · shots escritorio EXIT 1
+DONE
+
+== npm run check (typecheck, oxlint, i18n literals, Vitest)
+Test Files  117 passed (117)
+Tests  1150 passed | 1 skipped (1151)
+> node scripts/find-literals.mjs
+find-literals: sin texto visible fuera de i18n en src/ui.
+vitest.json: 394 files, 1150 passed, 0 failed, 1 skipped, success=True
+
+== npm run build (identified build)
+✓ 231 modules transformed.
+✓ built in 923ms
+dist id (sha256 of the sorted sha256 list of every dist file): 81f7543ed3cc98c6f018d4553e331d0b8340cb6eaac904cb848bc4c71f0a81e8 · 75 files
+
+== npm run size
+JS inicial: 844.3 KB en 13 archivos (gzip 253.1 KB)
+Referencia: 767.8 KB · límite 844.6 KB · cambio +10.0 %
+
+== npm audit --audit-level=high
+found 0 vulnerabilities
+
+== Playwright, full matrix, one project at a time, --workers=2 --fail-on-flaky-tests, --reporter=list,json, one preview of the build above
+-- celular
+1 failed
+1 skipped
+374 passed (10.4m)
+1) [celular] › tests/e2e/qa-followup.spec.ts:108:1 › F-02 · una partición grabada por una versión anterior (solo instantáneas de programados): el historial explica qué seguiría apuntando a la serie que desaparecería, no ofrece «Revertir» y nada cambia
+Inicio con 10k: cifra principal a los 426 / 342 ms
+e2e-celular.json: expected=374 unexpected=1 flaky=0 skipped=1 duration=621s
+-- celular-pequeno
+1 failed
+375 passed (10.2m)
+1) [celular-pequeno] › tests/e2e/qa-followup.spec.ts:108:1 › F-02 · una partición grabada por una versión anterior (solo instantáneas de programados): el historial explica qué seguiría apuntando a la serie que desaparecería, no ofrece «Revertir» y nada cambia
+Inicio con 10k: cifra principal a los 388 / 362 ms
+e2e-celular-pequeno.json: expected=375 unexpected=1 flaky=0 skipped=0 duration=611s
+-- escritorio
+1 failed
+3 skipped
+372 passed (11.1m)
+1) [escritorio] › tests/e2e/qa-followup.spec.ts:108:1 › F-02 · una partición grabada por una versión anterior (solo instantáneas de programados): el historial explica qué seguiría apuntando a la serie que desaparecería, no ofrece «Revertir» y nada cambia
+Inicio con 10k: cifra principal a los 585 / 362 ms
+e2e-escritorio.json: expected=372 unexpected=1 flaky=0 skipped=3 duration=666s
+
+== Screenshot runs (qa27, qa-lead, qa-followup, qa-corrective; --workers=1; QA_LEAD_SHOTS)
+-- celular: 1 failed · 30 passed (1.5m)
+-- celular-pequeno: 1 failed · 30 passed (1.5m)
+-- escritorio: 1 failed · 30 passed (1.6m)
+108 screenshots in shots/
+
+== Serial A/B, desktop, 10k startup: audited baseline build (21b4ed8) vs frozen build (3 rounds, alternating)
+perf A/B started 2026-10-31T00:50:57Z; serial, nothing else running; old = 21b4ed8 (main checkout), new = 229228c
+
+✓ built in 1.18s
+--- round 1 old (http://localhost:4174)
+Inicio con 10k: cifra principal a los 284 / 281 ms
+  1 passed (3.9s)
+--- round 1 new (http://localhost:4173)
+Inicio con 10k: cifra principal a los 318 / 264 ms
+  1 passed (3.9s)
+--- round 2 old (http://localhost:4174)
+Inicio con 10k: cifra principal a los 313 / 310 ms
+  1 passed (3.9s)
+--- round 2 new (http://localhost:4173)
+Inicio con 10k: cifra principal a los 303 / 247 ms
+  1 passed (3.8s)
+--- round 3 old (http://localhost:4174)
+Inicio con 10k: cifra principal a los 313 / 282 ms
+  1 passed (3.9s)
+--- round 3 new (http://localhost:4173)
+Inicio con 10k: cifra principal a los 328 / 314 ms
+  1 passed (4.0s)
+finished 2026-10-31T00:51:30Z

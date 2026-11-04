@@ -12,7 +12,7 @@
  */
 import { accountBalance } from './balances'
 import { daysInMonth, parseLocalDate, toLocalDate } from './dates'
-import { ceilDiv } from './money'
+import { mulDivCeil } from './money'
 import type { Account, AppData, LocalDate } from './types'
 
 export const DEFAULT_MIN_PAYMENT_BPS = 300
@@ -47,13 +47,13 @@ export function minimumPayment(debtMinor: number, account: Pick<Account, 'card'>
   if (debtMinor <= 0) return 0
   const bps = account.card?.minPaymentBps ?? DEFAULT_MIN_PAYMENT_BPS
   const floor = account.card?.minPaymentFloorMinor ?? DEFAULT_MIN_PAYMENT_FLOOR_MINOR
-  return Math.min(debtMinor, Math.max(floor, ceilDiv(debtMinor * bps, 10000)))
+  return Math.min(debtMinor, Math.max(floor, mulDivCeil(debtMinor, bps, 10000)))
 }
 
 export function monthlyInterest(debtMinor: number, aprBps: number | undefined): number | null {
   if (aprBps === undefined) return null
   if (debtMinor <= 0 || aprBps === 0) return 0
-  return ceilDiv(debtMinor * aprBps, 10000 * 12)
+  return mulDivCeil(debtMinor, aprBps, 10000 * 12)
 }
 
 export function cardSummary(data: Pick<AppData, 'transactions'>, account: Account, today: LocalDate): CardSummary {

@@ -33,6 +33,15 @@ export function navigate(to: string, options: { replace?: boolean } = {}) {
   else window.location.hash = to
 }
 
+/**
+ * Cambia la dirección SIN navegar (sin `hashchange`): la pantalla no se vuelve a montar ni mueve el foco o el
+ * desplazamiento. Para que la dirección refleje un valor que la pantalla ya muestra y sobreviva a recargar o
+ * a compartir el enlace (p. ej. las fechas de un periodo personalizado mientras se escriben, STAT-01).
+ */
+export function replaceRouteQuietly(to: string) {
+  window.history.replaceState(window.history.state, '', `#${to}`)
+}
+
 export function href(to: string): string {
   return `#${to}`
 }

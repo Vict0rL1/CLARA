@@ -1,0 +1,16 @@
+import { chromium } from '@playwright/test'
+const chunk = (await import('node:fs')).readdirSync('/home/user/ALCANZA/dist/assets').find((f) => f.startsWith('legal.es-'))
+const url = `http://localhost:4174/assets/${chunk}`
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' })
+const ctx = await browser.newContext({ serviceWorkers: 'block' })
+const page = await ctx.newPage()
+const requests = []
+page.on('request', (r) => { if (r.url().includes('legal.es-')) requests.push(r.url()) })
+await page.goto('http://localhost:4174/')
+await page.route('**/assets/legal.es-*.js', (route) => route.abort('failed'))
+const first = await page.evaluate((u) => import(/* @vite-ignore */ u).then(() => 'ok', (e) => `rejected: ${e.message}`), url)
+await page.unroute('**/assets/legal.es-*.js')
+const second = await page.evaluate((u) => import(/* @vite-ignore */ u).then(() => 'ok', (e) => `rejected: ${e.message}`), url)
+const busted = await page.evaluate((u) => import(/* @vite-ignore */ `${u}?retry=1`).then((m) => `ok keys=${Object.keys(m.legal ?? m.default ?? m).length}`, (e) => `rejected: ${e.message}`), url)
+console.log(JSON.stringify({ chunk, first, second, busted, requests }, null, 2))
+await browser.close()

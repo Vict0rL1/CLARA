@@ -1,0 +1,10 @@
+{
+  "autoRecordedBeforeUndo": 1,
+  "toastsAfterUndo": [
+    "Importación deshecha: se recuperaron los datos anteriores"
+  ],
+  "afterReload": {
+    "autoRecorded": 0,
+    "account0": "Cuenta de cheques"
+  }
+}

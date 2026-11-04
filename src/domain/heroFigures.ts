@@ -14,7 +14,7 @@
 import type { BudgetResult } from './budget'
 import { endOfMonth, startOfMonth } from './dates'
 import { periodSummary } from './insights'
-import { floorDiv } from './money'
+import { mulDivFloor } from './money'
 import type { AppData, LocalDate } from './types'
 
 export interface HeroFigures {
@@ -38,6 +38,7 @@ export function heroFigures(data: Pick<AppData, 'transactions'>, budget: Pick<Bu
   const s = periodSummary(data, start, end)
   const startBalanceMinor = budget.spendableMinor - (s.incomeMinor - s.netSpendingMinor)
   const baseMinor = startBalanceMinor + s.incomeMinor
-  const availablePct = baseMinor > 0 ? Math.min(100, Math.max(0, floorDiv(budget.availableMinor * 100, baseMinor))) : 0
+  // Entre 0 y 100 sin multiplicar antes de dividir: con importes extremos «disponible × 100» ya no es exacto (QA V2, FIN-01).
+  const availablePct = baseMinor <= 0 || budget.availableMinor <= 0 ? 0 : budget.availableMinor >= baseMinor ? 100 : mulDivFloor(budget.availableMinor, 100, baseMinor)
   return { start, end, isBudgetPeriod: !!budget.period, incomeMinor: s.incomeMinor, expensesMinor: s.netSpendingMinor, startBalanceMinor, baseMinor, availablePct }
 }

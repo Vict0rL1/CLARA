@@ -1,0 +1,27 @@
+/** Textos de Términos y privacidad (pantalla Legal) (en): paquete diferido, fuera del JS inicial (`src/i18n/packs.ts`). */
+import type { LegalPackKey } from './legal.es'
+
+export const legal: Record<LegalPackKey, string> = {
+  'legal.terms.1.title': 'What Clara is',
+  'legal.terms.1.text': 'Clara is a personal finance app that runs entirely on your device. There are no user accounts, no server and no bank connection.',
+  'legal.terms.2.title': 'Not financial advice',
+  'legal.terms.2.text': 'Figures, projections and alerts are computed with fixed rules from what you record. They are indicative and may be incomplete; decisions are yours.',
+  'legal.terms.3.title': 'Your data and backups',
+  'legal.terms.3.text': 'You are responsible for keeping exported backups. Clearing browser data, switching devices or uninstalling the app deletes what is stored.',
+  'legal.terms.4.title': 'No warranty',
+  'legal.terms.4.text': 'Clara is provided as is, as a prototype, with no guarantee of availability or accuracy. It may change or stop working without notice.',
+  'legal.terms.5.title': 'Acceptable use',
+  'legal.terms.5.text': 'Use it only with your own data or demo data. Do not try to extract other people\'s information or use it for unlawful purposes.',
+  'legal.privacy.1.title': 'Where your data lives',
+  'legal.privacy.1.text': 'Everything you record is stored in this device\'s browser storage (IndexedDB or localStorage). Nothing is sent to a Clara server because there is none.',
+  'legal.privacy.2.title': 'What we do not collect',
+  'legal.privacy.2.text': 'Clara collects no identifiers, usage analytics, location or contacts, and includes no trackers or ads.',
+  'legal.privacy.3.title': 'Assistant and external providers',
+  'legal.privacy.3.text': 'The text assistant runs on your device. Only if whoever builds the app configures an external provider would the text you type be sent to that provider; the assistant screen says so.',
+  'legal.privacy.4.title': 'Notifications and permissions',
+  'legal.privacy.4.text': 'Alerts are computed on the device and shown with the browser\'s permission, which you can revoke at any time. The microphone is used only if you turn on dictation.',
+  'legal.privacy.5.title': 'Lock and encryption',
+  'legal.privacy.5.text': 'The PIN and biometrics are a screen barrier: the data is not encrypted. Anyone with access to the browser or an exported backup can read it.',
+  'legal.privacy.6.title': 'Deleting your data',
+  'legal.privacy.6.text': 'You can delete everything from Settings › Danger zone or by clearing the site data in the browser. Automatic local backups and exported files are deleted separately.',
+}

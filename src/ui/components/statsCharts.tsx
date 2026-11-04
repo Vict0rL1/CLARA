@@ -11,6 +11,7 @@ import { daysBetween } from '../../domain/dates'
 import type { CategoryColor } from '../../domain/types'
 import { useT } from '../../i18n'
 import type { Formatter } from '../format'
+import { pickAxisLabels } from './axisLabels'
 import { Icon } from './Icon'
 import { signedScale } from '../chartScale'
 
@@ -89,7 +90,7 @@ export function CategoryDonut({ categories, total, fmt, label, color, icon, onSe
 /* Barras agrupadas: ingresos vs gastos                                */
 /* ------------------------------------------------------------------ */
 
-export function IncomeExpenseBars({ series, fmt, label, axisLabel, currentStart, onOpen }: { series: SeriesPoint[]; fmt: Formatter; label: (p: SeriesPoint) => string; axisLabel?: (p: SeriesPoint) => string; currentStart?: string; onOpen?: (p: SeriesPoint) => void }) {
+export function IncomeExpenseBars({ series, fmt, label, axisLabel, currentStart, onOpen }: { series: SeriesPoint[]; fmt: Formatter; label: (p: SeriesPoint) => string; axisLabel?: (p: SeriesPoint) => string | readonly string[]; currentStart?: string; onOpen?: (p: SeriesPoint) => void }) {
   const { t } = useT()
   const [active, setActive] = useState<number | null>(series.length - 1)
   const id = useId()
@@ -103,6 +104,13 @@ export function IncomeExpenseBars({ series, fmt, label, axisLabel, currentStart,
   const anyNegative = series.some((p) => p.expensesMinor < 0 || p.incomeMinor < 0)
   const group = (W - pad.l - pad.r) / Math.max(1, series.length)
   const bw = Math.max(6, Math.min(22, group * 0.32))
+  // F-05: la etiqueta visible de cada punto según lo que cabe en su hueco (una forma más corta o una de cada k); la
+  // completa (`label`) sigue en el nombre accesible, el tooltip y la tabla.
+  const axisForms = series.map((p) => {
+    const forms = (axisLabel ?? label)(p)
+    return typeof forms === 'string' ? [forms] : forms
+  })
+  const shownAxis = pickAxisLabels(axisForms, group)
   const sel = active !== null ? series[active] : undefined
   return (
     <div className="bars">
@@ -114,9 +122,11 @@ export function IncomeExpenseBars({ series, fmt, label, axisLabel, currentStart,
             <g key={p.range.start} className={`bars__group${active === i ? ' is-active' : ''}`}>
               <rect x={cx - bw - 1} {...bar(p.incomeMinor)} width={bw} className="bars__bar series-3" rx="2" />
               <rect x={cx + 1} {...bar(p.expensesMinor)} width={bw} className={`bars__bar series-2${p.expensesMinor < 0 ? ' bars__bar--negative' : ''}`} rx="2" data-value={p.expensesMinor} />
-              <text x={cx} y={H - 7} textAnchor="middle" className="stats-axis">
-                {(axisLabel ?? label)(p)}
-              </text>
+              {shownAxis[i] !== null && (
+                <text x={cx} y={H - 7} textAnchor="middle" className="stats-axis">
+                  {shownAxis[i]}
+                </text>
+              )}
               {/* Zona de toque de todo el grupo: un elemento con caja propia para teclado y lectores. */}
               <rect x={cx - group / 2} y={pad.t} width={group} height={H - pad.t} className="bars__hit" tabIndex={0} role="button" aria-label={`${label(p)}: ${t('stats.income')} ${fmt.money(p.incomeMinor)} · ${t('stats.expenses')} ${fmt.money(p.expensesMinor)}`} aria-describedby={`${id}-tip`} onClick={() => setActive(i)} onFocus={() => setActive(i)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActive(i) } }} />
             </g>

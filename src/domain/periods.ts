@@ -178,7 +178,10 @@ export function safeToSpend(availableMinor: number, committedMinor: number, days
   }
 }
 
-/** Comprometido que se resta del *safe to spend* según los ajustes (§7.7): pagos programados y/o apartados de metas. */
+/**
+ * Comprometido que se resta del *safe to spend* según los ajustes (§7.7): pagos programados y/o
+ * apartados de metas, y siempre el colchón de seguridad (Clara 2.0 §10).
+ */
 export function committedFor(settings: SafeToSpendSettings, reservedMinor: number, goalsMinor: number): number {
-  return (settings.subtractScheduled ? reservedMinor : 0) + (settings.subtractGoalContributions ? goalsMinor : 0)
+  return (settings.subtractScheduled ? reservedMinor : 0) + (settings.subtractGoalContributions ? goalsMinor : 0) + Math.max(0, settings.bufferMinor ?? 0)
 }

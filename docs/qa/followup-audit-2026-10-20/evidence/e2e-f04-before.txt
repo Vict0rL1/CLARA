@@ -1,0 +1,287 @@
+F-04 before run against the build of 46fe617b98c93902751bcf1949b226adfed65dce (2026-10-20T05:36:16Z), spec with the theme forced per test
+
+Running 9 tests using 2 workers
+
+  ✘  2 [celular] › tests/e2e/qa-followup.spec.ts:216:1 › F-04 · tema «Oscuro» explícito: «Sin comparación» (julio personalizado sin ingresos previos) cumple AA y axe no encuentra fallos de contraste (3.7s)
+  ✘  1 [celular] › tests/e2e/qa-followup.spec.ts:225:3 › F-04 · tema «Sistema» con el sistema en oscuro › «Sin comparación» cumple AA y axe no encuentra fallos de contraste (3.8s)
+  ✘  3 [celular] › tests/e2e/qa-followup.spec.ts:234:1 › F-04 · en claro sigue cumpliendo AA y las variaciones positiva y negativa conservan su color (3.1s)
+  ✘  4 [celular-pequeno] › tests/e2e/qa-followup.spec.ts:216:1 › F-04 · tema «Oscuro» explícito: «Sin comparación» (julio personalizado sin ingresos previos) cumple AA y axe no encuentra fallos de contraste (3.0s)
+  ✘  5 [celular-pequeno] › tests/e2e/qa-followup.spec.ts:225:3 › F-04 · tema «Sistema» con el sistema en oscuro › «Sin comparación» cumple AA y axe no encuentra fallos de contraste (2.5s)
+  ✘  6 [celular-pequeno] › tests/e2e/qa-followup.spec.ts:234:1 › F-04 · en claro sigue cumpliendo AA y las variaciones positiva y negativa conservan su color (2.7s)
+  ✘  7 [escritorio] › tests/e2e/qa-followup.spec.ts:216:1 › F-04 · tema «Oscuro» explícito: «Sin comparación» (julio personalizado sin ingresos previos) cumple AA y axe no encuentra fallos de contraste (3.5s)
+  ✘  8 [escritorio] › tests/e2e/qa-followup.spec.ts:225:3 › F-04 · tema «Sistema» con el sistema en oscuro › «Sin comparación» cumple AA y axe no encuentra fallos de contraste (3.3s)
+  ✘  9 [escritorio] › tests/e2e/qa-followup.spec.ts:234:1 › F-04 · en claro sigue cumpliendo AA y las variaciones positiva y negativa conservan su color (2.5s)
+
+
+  1) [celular] › tests/e2e/qa-followup.spec.ts:216:1 › F-04 · tema «Oscuro» explícito: «Sin comparación» (julio personalizado sin ingresos previos) cumple AA y axe no encuentra fallos de contraste 
+
+    Error: oscuro explícito: rgb(100, 116, 139) sobre rgb(18, 26, 42) (14px/600)
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 4.5
+    Received:    3.6563076568668715
+
+      209 |   await settleAnimations(page)
+      210 |   const c = await textContrast(page, '.stat__delta--neutral')
+    > 211 |   expect(c.ratio, `${label}: ${c.fg} sobre ${c.bg} (${c.fontSize}/${c.fontWeight})`).toBeGreaterThanOrEqual(4.5)
+          |                                                                                      ^
+      212 |   const results = await new AxeBuilder({ page }).include('#main').withRules(['color-contrast']).analyze()
+      213 |   expect(results.violations.map((v) => v.nodes.map((n) => n.target.join(' ')).join(' | ')), label).toEqual([])
+      214 | }
+        at expectNeutralDeltaAA (/tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:211:86)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:220:3
+
+    Error Context: test-results/followup-f04-before/qa-followup-F-04-·-tema-«O-2546c-cuentra-fallos-de-contraste-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-f04-before/qa-followup-F-04-·-tema-«O-2546c-cuentra-fallos-de-contraste-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-f04-before/qa-followup-F-04-·-tema-«O-2546c-cuentra-fallos-de-contraste-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [celular] › tests/e2e/qa-followup.spec.ts:225:3 › F-04 · tema «Sistema» con el sistema en oscuro › «Sin comparación» cumple AA y axe no encuentra fallos de contraste 
+
+    Error: sistema oscuro: rgb(100, 116, 139) sobre rgb(18, 26, 42) (14px/600)
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 4.5
+    Received:    3.6563076568668715
+
+      209 |   await settleAnimations(page)
+      210 |   const c = await textContrast(page, '.stat__delta--neutral')
+    > 211 |   expect(c.ratio, `${label}: ${c.fg} sobre ${c.bg} (${c.fontSize}/${c.fontWeight})`).toBeGreaterThanOrEqual(4.5)
+          |                                                                                      ^
+      212 |   const results = await new AxeBuilder({ page }).include('#main').withRules(['color-contrast']).analyze()
+      213 |   expect(results.violations.map((v) => v.nodes.map((n) => n.target.join(' ')).join(' | ')), label).toEqual([])
+      214 | }
+        at expectNeutralDeltaAA (/tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:211:86)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:230:5
+
+    Error Context: test-results/followup-f04-before/qa-followup-F-04-·-tema-«S-0a01d-cuentra-fallos-de-contraste-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-f04-before/qa-followup-F-04-·-tema-«S-0a01d-cuentra-fallos-de-contraste-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-f04-before/qa-followup-F-04-·-tema-«S-0a01d-cuentra-fallos-de-contraste-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [celular] › tests/e2e/qa-followup.spec.ts:234:1 › F-04 · en claro sigue cumpliendo AA y las variaciones positiva y negativa conservan su color 
+
+    Error: claro: rgb(148, 163, 184) sobre rgb(255, 255, 255) (14px/600)
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 4.5
+    Received:    2.5640413904962034
+
+      209 |   await settleAnimations(page)
+      210 |   const c = await textContrast(page, '.stat__delta--neutral')
+    > 211 |   expect(c.ratio, `${label}: ${c.fg} sobre ${c.bg} (${c.fontSize}/${c.fontWeight})`).toBeGreaterThanOrEqual(4.5)
+          |                                                                                      ^
+      212 |   const results = await new AxeBuilder({ page }).include('#main').withRules(['color-contrast']).analyze()
+      213 |   expect(results.violations.map((v) => v.nodes.map((n) => n.target.join(' ')).join(' | ')), label).toEqual([])
+      214 | }
+        at expectNeutralDeltaAA (/tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:211:86)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:238:3
+
+    Error Context: test-results/followup-f04-before/qa-followup-F-04-·-en-clar-27f23-negativa-conservan-su-color-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-f04-before/qa-followup-F-04-·-en-clar-27f23-negativa-conservan-su-color-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-f04-before/qa-followup-F-04-·-en-clar-27f23-negativa-conservan-su-color-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [celular-pequeno] › tests/e2e/qa-followup.spec.ts:216:1 › F-04 · tema «Oscuro» explícito: «Sin comparación» (julio personalizado sin ingresos previos) cumple AA y axe no encuentra fallos de contraste 
+
+    Error: oscuro explícito: rgb(100, 116, 139) sobre rgb(18, 26, 42) (14px/600)
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 4.5
+    Received:    3.6563076568668715
+
+      209 |   await settleAnimations(page)
+      210 |   const c = await textContrast(page, '.stat__delta--neutral')
+    > 211 |   expect(c.ratio, `${label}: ${c.fg} sobre ${c.bg} (${c.fontSize}/${c.fontWeight})`).toBeGreaterThanOrEqual(4.5)
+          |                                                                                      ^
+      212 |   const results = await new AxeBuilder({ page }).include('#main').withRules(['color-contrast']).analyze()
+      213 |   expect(results.violations.map((v) => v.nodes.map((n) => n.target.join(' ')).join(' | ')), label).toEqual([])
+      214 | }
+        at expectNeutralDeltaAA (/tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:211:86)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:220:3
+
+    Error Context: test-results/followup-f04-before/qa-followup-F-04-·-tema-«O-2546c-cuentra-fallos-de-contraste-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-f04-before/qa-followup-F-04-·-tema-«O-2546c-cuentra-fallos-de-contraste-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-f04-before/qa-followup-F-04-·-tema-«O-2546c-cuentra-fallos-de-contraste-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [celular-pequeno] › tests/e2e/qa-followup.spec.ts:225:3 › F-04 · tema «Sistema» con el sistema en oscuro › «Sin comparación» cumple AA y axe no encuentra fallos de contraste 
+
+    Error: sistema oscuro: rgb(100, 116, 139) sobre rgb(18, 26, 42) (14px/600)
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 4.5
+    Received:    3.6563076568668715
+
+      209 |   await settleAnimations(page)
+      210 |   const c = await textContrast(page, '.stat__delta--neutral')
+    > 211 |   expect(c.ratio, `${label}: ${c.fg} sobre ${c.bg} (${c.fontSize}/${c.fontWeight})`).toBeGreaterThanOrEqual(4.5)
+          |                                                                                      ^
+      212 |   const results = await new AxeBuilder({ page }).include('#main').withRules(['color-contrast']).analyze()
+      213 |   expect(results.violations.map((v) => v.nodes.map((n) => n.target.join(' ')).join(' | ')), label).toEqual([])
+      214 | }
+        at expectNeutralDeltaAA (/tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:211:86)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:230:5
+
+    Error Context: test-results/followup-f04-before/qa-followup-F-04-·-tema-«S-0a01d-cuentra-fallos-de-contraste-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-f04-before/qa-followup-F-04-·-tema-«S-0a01d-cuentra-fallos-de-contraste-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-f04-before/qa-followup-F-04-·-tema-«S-0a01d-cuentra-fallos-de-contraste-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) [celular-pequeno] › tests/e2e/qa-followup.spec.ts:234:1 › F-04 · en claro sigue cumpliendo AA y las variaciones positiva y negativa conservan su color 
+
+    Error: claro: rgb(148, 163, 184) sobre rgb(255, 255, 255) (14px/600)
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 4.5
+    Received:    2.5640413904962034
+
+      209 |   await settleAnimations(page)
+      210 |   const c = await textContrast(page, '.stat__delta--neutral')
+    > 211 |   expect(c.ratio, `${label}: ${c.fg} sobre ${c.bg} (${c.fontSize}/${c.fontWeight})`).toBeGreaterThanOrEqual(4.5)
+          |                                                                                      ^
+      212 |   const results = await new AxeBuilder({ page }).include('#main').withRules(['color-contrast']).analyze()
+      213 |   expect(results.violations.map((v) => v.nodes.map((n) => n.target.join(' ')).join(' | ')), label).toEqual([])
+      214 | }
+        at expectNeutralDeltaAA (/tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:211:86)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:238:3
+
+    Error Context: test-results/followup-f04-before/qa-followup-F-04-·-en-clar-27f23-negativa-conservan-su-color-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-f04-before/qa-followup-F-04-·-en-clar-27f23-negativa-conservan-su-color-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-f04-before/qa-followup-F-04-·-en-clar-27f23-negativa-conservan-su-color-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  7) [escritorio] › tests/e2e/qa-followup.spec.ts:216:1 › F-04 · tema «Oscuro» explícito: «Sin comparación» (julio personalizado sin ingresos previos) cumple AA y axe no encuentra fallos de contraste 
+
+    Error: oscuro explícito: rgb(100, 116, 139) sobre rgb(18, 26, 42) (14px/600)
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 4.5
+    Received:    3.6563076568668715
+
+      209 |   await settleAnimations(page)
+      210 |   const c = await textContrast(page, '.stat__delta--neutral')
+    > 211 |   expect(c.ratio, `${label}: ${c.fg} sobre ${c.bg} (${c.fontSize}/${c.fontWeight})`).toBeGreaterThanOrEqual(4.5)
+          |                                                                                      ^
+      212 |   const results = await new AxeBuilder({ page }).include('#main').withRules(['color-contrast']).analyze()
+      213 |   expect(results.violations.map((v) => v.nodes.map((n) => n.target.join(' ')).join(' | ')), label).toEqual([])
+      214 | }
+        at expectNeutralDeltaAA (/tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:211:86)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:220:3
+
+    Error Context: test-results/followup-f04-before/qa-followup-F-04-·-tema-«O-2546c-cuentra-fallos-de-contraste-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-f04-before/qa-followup-F-04-·-tema-«O-2546c-cuentra-fallos-de-contraste-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-f04-before/qa-followup-F-04-·-tema-«O-2546c-cuentra-fallos-de-contraste-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8) [escritorio] › tests/e2e/qa-followup.spec.ts:225:3 › F-04 · tema «Sistema» con el sistema en oscuro › «Sin comparación» cumple AA y axe no encuentra fallos de contraste 
+
+    Error: sistema oscuro: rgb(100, 116, 139) sobre rgb(18, 26, 42) (14px/600)
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 4.5
+    Received:    3.6563076568668715
+
+      209 |   await settleAnimations(page)
+      210 |   const c = await textContrast(page, '.stat__delta--neutral')
+    > 211 |   expect(c.ratio, `${label}: ${c.fg} sobre ${c.bg} (${c.fontSize}/${c.fontWeight})`).toBeGreaterThanOrEqual(4.5)
+          |                                                                                      ^
+      212 |   const results = await new AxeBuilder({ page }).include('#main').withRules(['color-contrast']).analyze()
+      213 |   expect(results.violations.map((v) => v.nodes.map((n) => n.target.join(' ')).join(' | ')), label).toEqual([])
+      214 | }
+        at expectNeutralDeltaAA (/tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:211:86)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:230:5
+
+    Error Context: test-results/followup-f04-before/qa-followup-F-04-·-tema-«S-0a01d-cuentra-fallos-de-contraste-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-f04-before/qa-followup-F-04-·-tema-«S-0a01d-cuentra-fallos-de-contraste-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-f04-before/qa-followup-F-04-·-tema-«S-0a01d-cuentra-fallos-de-contraste-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  9) [escritorio] › tests/e2e/qa-followup.spec.ts:234:1 › F-04 · en claro sigue cumpliendo AA y las variaciones positiva y negativa conservan su color 
+
+    Error: claro: rgb(148, 163, 184) sobre rgb(255, 255, 255) (14px/600)
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 4.5
+    Received:    2.5640413904962034
+
+      209 |   await settleAnimations(page)
+      210 |   const c = await textContrast(page, '.stat__delta--neutral')
+    > 211 |   expect(c.ratio, `${label}: ${c.fg} sobre ${c.bg} (${c.fontSize}/${c.fontWeight})`).toBeGreaterThanOrEqual(4.5)
+          |                                                                                      ^
+      212 |   const results = await new AxeBuilder({ page }).include('#main').withRules(['color-contrast']).analyze()
+      213 |   expect(results.violations.map((v) => v.nodes.map((n) => n.target.join(' ')).join(' | ')), label).toEqual([])
+      214 | }
+        at expectNeutralDeltaAA (/tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:211:86)
+        at /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before/tests/e2e/qa-followup.spec.ts:238:3
+
+    Error Context: test-results/followup-f04-before/qa-followup-F-04-·-en-clar-27f23-negativa-conservan-su-color-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/followup-f04-before/qa-followup-F-04-·-en-clar-27f23-negativa-conservan-su-color-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/followup-f04-before/qa-followup-F-04-·-en-clar-27f23-negativa-conservan-su-color-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  9 failed
+    [celular] › tests/e2e/qa-followup.spec.ts:216:1 › F-04 · tema «Oscuro» explícito: «Sin comparación» (julio personalizado sin ingresos previos) cumple AA y axe no encuentra fallos de contraste 
+    [celular] › tests/e2e/qa-followup.spec.ts:225:3 › F-04 · tema «Sistema» con el sistema en oscuro › «Sin comparación» cumple AA y axe no encuentra fallos de contraste 
+    [celular] › tests/e2e/qa-followup.spec.ts:234:1 › F-04 · en claro sigue cumpliendo AA y las variaciones positiva y negativa conservan su color 
+    [celular-pequeno] › tests/e2e/qa-followup.spec.ts:216:1 › F-04 · tema «Oscuro» explícito: «Sin comparación» (julio personalizado sin ingresos previos) cumple AA y axe no encuentra fallos de contraste 
+    [celular-pequeno] › tests/e2e/qa-followup.spec.ts:225:3 › F-04 · tema «Sistema» con el sistema en oscuro › «Sin comparación» cumple AA y axe no encuentra fallos de contraste 
+    [celular-pequeno] › tests/e2e/qa-followup.spec.ts:234:1 › F-04 · en claro sigue cumpliendo AA y las variaciones positiva y negativa conservan su color 
+    [escritorio] › tests/e2e/qa-followup.spec.ts:216:1 › F-04 · tema «Oscuro» explícito: «Sin comparación» (julio personalizado sin ingresos previos) cumple AA y axe no encuentra fallos de contraste 
+    [escritorio] › tests/e2e/qa-followup.spec.ts:225:3 › F-04 · tema «Sistema» con el sistema en oscuro › «Sin comparación» cumple AA y axe no encuentra fallos de contraste 
+    [escritorio] › tests/e2e/qa-followup.spec.ts:234:1 › F-04 · en claro sigue cumpliendo AA y las variaciones positiva y negativa conservan su color 
+before exit 1

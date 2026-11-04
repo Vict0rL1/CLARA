@@ -1,0 +1,33 @@
+import { expect, test } from '@playwright/test'
+import { account, baseData, tx } from '../../src/test/fixtures'
+import { seedStoredData } from './helpers'
+
+const cases: Array<[label: string, build: () => ReturnType<typeof tx>[]]> = [
+  ['2000 same day ×2', () => [...Array.from({ length: 2000 }, (_, i) => tx({ id: `e${i}`, date: '2026-09-10', amountMinor: 98765, kind: 'expense', status: 'realized', categoryId: 'groceries' })), ...Array.from({ length: 2000 }, (_, i) => tx({ id: `r${i}`, date: '2026-10-10', amountMinor: 98765, kind: 'refund', status: 'realized', categoryId: 'groceries' }))]],
+  ['5000 same day ×2', () => [...Array.from({ length: 5000 }, (_, i) => tx({ id: `e${i}`, date: '2026-09-10', amountMinor: 98765, kind: 'expense', status: 'realized', categoryId: 'groceries' })), ...Array.from({ length: 5000 }, (_, i) => tx({ id: `r${i}`, date: '2026-10-10', amountMinor: 98765, kind: 'refund', status: 'realized', categoryId: 'groceries' }))]],
+  ['10000 spread expenses', () => Array.from({ length: 10000 }, (_, i) => tx({ id: `s${i}`, date: `2026-${String(8 + (i % 3)).padStart(2, '0')}-${String(1 + (i % 28)).padStart(2, '0')}`, amountMinor: 1000 + (i % 500), kind: 'expense', status: 'realized', categoryId: 'groceries' }))],
+]
+for (const [label, build] of cases) {
+  test(`debug statistics ${label}`, async ({ page }) => {
+    test.setTimeout(240000)
+    const events: string[] = []
+    page.on('pageerror', (e) => events.push('pageerror ' + String(e)))
+    page.on('crash', () => events.push('CRASH'))
+    page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') events.push(m.type() + ' ' + m.text().slice(0, 200)) })
+    const data = baseData({ accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 0, date: '2026-08-01', setAt: '2026-08-01T12:00:00.000Z' } })], transactions: build() })
+    await page.clock.install({ time: new Date('2026-10-27T12:00:00-04:00') })
+    await page.goto('/')
+    await seedStoredData(page, data)
+    const heap0 = await page.evaluate(() => (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize ?? -1)
+    const t0 = Date.now()
+    try {
+      await page.evaluate(() => { window.location.hash = '/estadisticas?periodo=month&fecha=2026-10-27' })
+      await page.locator('#page-title').waitFor({ timeout: 120000 })
+      const heap1 = await page.evaluate(() => (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize ?? -1)
+      console.log(`RESULT ${label}: ok after ${Date.now() - t0} ms; heap ${Math.round(heap0 / 1e6)} → ${Math.round(heap1 / 1e6)} MB; events=${JSON.stringify(events).slice(0, 300)}`)
+    } catch (e) {
+      console.log(`RESULT ${label}: FAILED after ${Date.now() - t0} ms; heap0 ${Math.round(heap0 / 1e6)} MB; events=${JSON.stringify(events).slice(0, 300)}; ${String(e).slice(0, 120)}`)
+    }
+    expect(true).toBe(true)
+  })
+}

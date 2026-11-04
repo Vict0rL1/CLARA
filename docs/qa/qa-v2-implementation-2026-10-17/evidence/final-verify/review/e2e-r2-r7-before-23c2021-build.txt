@@ -1,0 +1,65 @@
+
+Running 2 tests using 2 workers
+
+  ✘  1 [escritorio] › tests/e2e/qa-pr15.spec.ts:188:1 › R2 (revisión propia) · Estadísticas: el periodo personalizado vive solo en la dirección; chips, «Hoy» y atrás/adelante nunca la contradicen (4.7s)
+  ✘  2 [escritorio] › tests/e2e/qa-v2.spec.ts:176:1 › FIN-01 · 25 pagos diarios de 10^12: el calendario se abre, dice que el total no se puede calcular exacto y se recupera al pausar uno (2.0m)
+
+
+  1) [escritorio] › tests/e2e/qa-pr15.spec.ts:188:1 › R2 (revisión propia) · Estadísticas: el periodo personalizado vive solo en la dirección; chips, «Hoy» y atrás/adelante nunca la contradicen 
+
+    Error: expect(received).not.toContain(expected) // indexOf
+
+    Expected substring: not "desde="
+    Received string:        "#/estadisticas?periodo=month&fecha=2026-09-28&desde=2026-07-01&hasta=2026-07-31"
+
+      207 |   await page.getByRole('button', { name: 'Mensual', exact: true }).click()
+      208 |   await expect(start).toHaveCount(0)
+    > 209 |   expect(new URL(page.url()).hash).not.toContain('desde=')
+          |                                        ^
+      210 |   await page.getByRole('button', { name: 'Personalizado', exact: true }).click()
+      211 |   await expectRange('2026-07-01', '2026-07-31', '$123.45')
+      212 |   // «Periodo siguiente» (agosto) y atrás/adelante: la pantalla sigue a la dirección.
+        at /home/user/ALCANZA/tests/e2e/qa-pr15.spec.ts:209:40
+
+    Error Context: test-results/review-before/qa-pr15-R2-revisión-propia-29eda-elante-nunca-la-contradicen-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/review-before/qa-pr15-R2-revisión-propia-29eda-elante-nunca-la-contradicen-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/review-before/qa-pr15-R2-revisión-propia-29eda-elante-nunca-la-contradicen-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [escritorio] › tests/e2e/qa-v2.spec.ts:176:1 › FIN-01 · 25 pagos diarios de 10^12: el calendario se abre, dice que el total no se puede calcular exacto y se recupera al pausar uno 
+
+    Test timeout of 120000ms exceeded.
+
+    Error: locator.click: Test timeout of 120000ms exceeded.
+    Call log:
+      - waiting for getByTestId('recurring-summary').locator('details.explain > summary')
+
+
+      188 |   await expect(summary.getByText('Pagos fijos al mes')).toHaveCount(0)
+      189 |   // Revisión propia (R7): la lista a la que remite el aviso está: cada pago con su total exacto y el total sin cifra.
+    > 190 |   await summary.locator('details.explain > summary').click()
+          |                                                      ^
+      191 |   await expect(summary.getByText(/Diario 0 · \d+ ×/)).toBeVisible()
+      192 |   await expect(summary.getByText('Sin cifra exacta').first()).toBeVisible()
+      193 |   await expectNoHorizontalScroll(page, 'calendario con importes fuera de rango')
+        at /home/user/ALCANZA/tests/e2e/qa-v2.spec.ts:190:54
+
+    Error Context: test-results/review-before/qa-v2-FIN-01-·-25-pagos-di-04180-y-se-recupera-al-pausar-uno-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/review-before/qa-v2-FIN-01-·-25-pagos-di-04180-y-se-recupera-al-pausar-uno-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/review-before/qa-v2-FIN-01-·-25-pagos-di-04180-y-se-recupera-al-pausar-uno-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [escritorio] › tests/e2e/qa-pr15.spec.ts:188:1 › R2 (revisión propia) · Estadísticas: el periodo personalizado vive solo en la dirección; chips, «Hoy» y atrás/adelante nunca la contradicen 
+    [escritorio] › tests/e2e/qa-v2.spec.ts:176:1 › FIN-01 · 25 pagos diarios de 10^12: el calendario se abre, dice que el total no se puede calcular exacto y se recupera al pausar uno 
+exit 1

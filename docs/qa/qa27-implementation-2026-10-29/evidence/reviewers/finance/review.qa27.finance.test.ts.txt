@@ -1,0 +1,757 @@
+/**
+ * Revisión financiera independiente (2026-10-30) de las correcciones QA27-01 … QA27-03b sobre `ac99396`.
+ * Casos propios, con cada cifra calculada a mano ANTES de ejecutarse; datos sintéticos, fechas explícitas. Solo se lee
+ * la implementación: ninguna prueba existente ni ningún archivo de la aplicación se modifica. Los títulos marcados
+ * «HALLAZGO» u «OBSERVACIÓN» codifican la regla documentada (FORMULAS §5, §20, §24, §26, §35, §38, §44); si fallan,
+ * es la implementación la que se aparta de ella (ver `review-finance.md`).
+ */
+import { readFileSync } from 'node:fs'
+import { describe, expect, it } from 'vitest'
+import { analysisItems, type AnalysisItem } from './analysis'
+import { computeBudget } from './budget'
+import { recordHistory } from './history'
+import { canRevert, revertDependents, revertEntry } from './historyRevert'
+import { DUPLICATE_PAIRS_PER_GROUP, inboxView, possibleDuplicates } from './inbox'
+import { periodSummary } from './insights'
+import { checkedPercentChange, checkedSubMinor, MAX_AMOUNT_MINOR } from './money'
+import { deleteSchedule, markOccurrence, saveSchedule, setOccurrenceSkipped, type OpResult, type ScheduleDraft } from './operations'
+import { planItems } from './planItems'
+import { projectBalance } from './projection'
+import { occurrencesBetween } from './recurrence'
+import { recurringCosts } from './recurringCosts'
+import { autoConfirmDue } from './scheduledJobs'
+import { dismissSplitRepair, driftedSplits, repairSplit } from './splitRepair'
+import { periodStats, statsRange } from './statistics'
+import type { AppData, HistoryEntry, Schedule, Transaction } from './types'
+import { weeklyReview } from './weeklyReview'
+import { backupText, parseBackup, validateAppData } from '../storage/backup'
+import { account, baseData, bill, goal, income, tx } from '../test/fixtures'
+
+/* ------------------------------------------------------------------ */
+/* Utilidades                                                          */
+/* ------------------------------------------------------------------ */
+
+const MAX = Number.MAX_SAFE_INTEGER // 9 007 199 254 740 991
+const persisted = (d: AppData): AppData => JSON.parse(JSON.stringify(d)) as AppData
+const at = (today: string) => ({ today, now: `${today}T12:00:00.000Z` })
+const roundTrip = (d: AppData, today: string): AppData => {
+  const r = parseBackup(backupText(persisted(d), new Date(`${today}T12:00:00.000Z`), 'test'))
+  if (!r.ok) throw new Error(JSON.stringify(r.issues))
+  return r.data
+}
+function must<T>(r: OpResult<T>): { data: AppData; value: T } {
+  if (!r.ok) throw new Error(JSON.stringify(r.issues))
+  return r
+}
+const figures = (d: AppData, today: string) => {
+  const b = computeBudget(d, today)
+  return {
+    spendable: b.spendableMinor,
+    horizon: b.horizon?.endDate ?? null,
+    reserved: b.reservedTotalMinor,
+    available: b.availableMinor,
+    overdue: b.overdueBills.map((i) => i.key),
+    overdueIncomes: b.overdueIncomes.map((i) => i.key),
+  }
+}
+const lastEntry = (d: AppData): HistoryEntry => d.history.at(-1)!
+const draftOf = (s: Schedule, patch: Partial<ScheduleDraft> = {}): ScheduleDraft => {
+  const { createdAt: _c, updatedAt: _u, currency: _cur, skippedDates: _k, ...rest } = s
+  return { ...rest, ...patch }
+}
+const track = (prev: AppData, next: AppData, today: string) => recordHistory(prev, next, at(today).now)
+const pay = (d: AppData, input: Parameters<typeof markOccurrence>[1], today: string) => track(d, must(markOccurrence(d, input, at(today))).data, today)
+const repaired = (d: AppData, id: string, today: string, nextId: string) => {
+  const r = must(repairSplit(d, id, at(today), nextId))
+  const data = track(d, r.data, today)
+  return { data, entry: lastEntry(data), value: r.value }
+}
+
+/** `canRevert` y `revertEntry` dicen siempre lo mismo, y una negativa no cambia nada (igualdad JSON). */
+const CODES = { notRevertible: 'notRevertible', alreadyReverted: 'alreadyReverted', conflict: 'revertConflict', dependents: 'revertDependents' } as const
+function agree(data: AppData, entry: HistoryEntry, today: string) {
+  const before = JSON.stringify(data)
+  const status = canRevert(data, entry, today)
+  const r = revertEntry(data, entry.id, at(today))
+  expect(r.ok).toBe(status === 'ok')
+  if (!r.ok) expect(r.issues[0]?.code).toBe(CODES[status as keyof typeof CODES])
+  expect(JSON.stringify(data)).toBe(before)
+  return status
+}
+type PaymentDependent = { id: string; scheduleId: string; name: string; amountMinor: number }
+function expectBlockedBy(data: AppData, entry: HistoryEntry, today: string, payments: PaymentDependent[]) {
+  expect(agree(data, entry, today)).toBe('dependents')
+  expect(revertDependents(data, entry, today)).toEqual(payments.map((p) => ({ kind: 'payment', ...p })))
+  expect(revertEntry(data, entry.id, at(today))).toMatchObject({ ok: false, issues: [{ path: 'history', code: 'revertDependents', params: { count: payments.length } }] })
+}
+/** Revertir permitido: el resultado valida entero (como al guardar) y se devuelve. */
+function revertOk(data: AppData, entry: HistoryEntry, today: string): AppData {
+  expect(agree(data, entry, today)).toBe('ok')
+  const back = must(revertEntry(data, entry.id, at(today)))
+  const v = validateAppData(persisted(back.data))
+  expect(v.ok ? [] : v.issues).toEqual([])
+  return back.data
+}
+
+/** Renta del 31 partida el 28-feb por una versión anterior (sin `anchorDate`); pagos del 28 en `paidDates`; saldo 10 000 el 1-ene; horizonte 30 días. */
+function legacyRent(paidDates: string[], r2: Partial<Schedule> = {}, extra: Partial<AppData> = {}): AppData {
+  const rent = bill('2026-01-31', 150000, { id: 'r1', name: 'Renta', frequency: 'monthly', categoryId: 'housing' })
+  const d = baseData({
+    accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 1000000, date: '2026-01-01', setAt: '2026-01-01T12:00:00.000Z' } })],
+    schedules: [{ ...rent, endDate: '2026-02-27' }, { ...rent, id: 'r2', startDate: '2026-02-28', amountMinor: 160000, ...r2 }],
+    transactions: [
+      tx({ id: 'p0', kind: 'expense', amountMinor: 150000, date: '2026-01-31', categoryId: 'housing', scheduleId: 'r1', occurrenceDate: '2026-01-31' }),
+      ...paidDates.map((date, i) => tx({ id: `p${i + 1}`, kind: 'expense', amountMinor: 160000, date, categoryId: 'housing', scheduleId: 'r2', occurrenceDate: date })),
+    ],
+    ...extra,
+  })
+  return { ...d, settings: { ...d.settings, fallbackHorizonDays: 30 } }
+}
+/** Luz del 31 partida el 28-feb (sin `anchorDate`) con FEBRERO SIN PAGAR; saldo 1 400 el 1-mar; horizonte 7 días. */
+function legacyLuz(): AppData {
+  const d = baseData({
+    accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 140000, date: '2026-03-01', setAt: '2026-03-01T12:00:00.000Z' } })],
+    schedules: [bill('2026-01-31', 42000, { id: 'b1', name: 'Luz', frequency: 'monthly', endDate: '2026-02-27' }), bill('2026-02-28', 42000, { id: 'b2', name: 'Luz', frequency: 'monthly' })],
+    transactions: [tx({ id: 'p-jan', kind: 'expense', amountMinor: 42000, date: '2026-01-31', categoryId: 'utilities', scheduleId: 'b1', occurrenceDate: '2026-01-31' })],
+  })
+  return { ...d, settings: { ...d.settings, fallbackHorizonDays: 7 } }
+}
+const money = (balance: number, date: string) => [account({ id: 'main', name: 'Principal', anchor: { amountMinor: balance, date, setAt: `${date}T12:00:00.000Z` } })]
+
+/* ------------------------------------------------------------------ */
+/* (a) QA27-01                                                         */
+/* ------------------------------------------------------------------ */
+
+describe('(a) QA27-01 · pagos sobre el tramo nuevo de una reparación PARTIDA', () => {
+  it.each([
+    ['adelantado', '2026-05-20', { reserved: 0, available: 210000 }],
+    ['el mismo día', '2026-05-31', { reserved: 160000, available: 50000 }],
+    ['tarde', '2026-06-03', { reserved: 160000, available: 50000 }],
+  ])('pago %s del 31-may (registrado el %s): revertir la reparación se rechaza nombrando ese pago y su importe; nada cambia', (_label, date, expected) => {
+    const { data, entry } = repaired(legacyRent(['2026-02-28', '2026-03-28', '2026-04-28']), 'r2', '2026-05-15', 'r3')
+    expect(data.schedules.map((s) => [s.id, s.endDate ?? null, s.anchorDate ?? null])).toEqual([['r1', '2026-02-27', null], ['r2', '2026-04-30', null], ['r3', null, '2026-01-31']])
+    const paid = pay(data, { scheduleId: 'r3', occurrenceDate: '2026-05-31', amountMinor: 160000, date, txId: 'p4' }, date)
+    // 1 000 000 − 150 000 − 3 × 160 000 − 160 000 = 210 000; el 31-may pagado cuenta como movimiento, nunca como reserva.
+    expect(figures(paid, date)).toMatchObject({ spendable: 210000, overdue: [], ...expected })
+    expectBlockedBy(paid, entry, date, [{ id: 'p4', scheduleId: 'r3', name: '2026-05-31', amountMinor: 160000 }])
+  })
+
+  it('un pago tardío sobre el tramo que TERMINÓ (el 28-mar vencido, pagado el 16-may) no bloquea: la reversión lo conserva liquidando el 28-mar y el disponible es el mismo', () => {
+    const d = legacyRent(['2026-02-28', '2026-04-28'])
+    const TODAY = '2026-05-15'
+    expect(driftedSplits(d, TODAY).map((f) => f.from)).toEqual(['2026-05-01'])
+    // 1 000 000 − 150 000 − 2 × 160 000 = 530 000; reservados: 28-mar vencido + 28-may = 320 000.
+    expect(figures(d, TODAY)).toEqual({ spendable: 530000, horizon: '2026-06-14', reserved: 320000, available: 210000, overdue: ['schedule:r2:2026-03-28'], overdueIncomes: [] })
+    const { data, entry } = repaired(d, 'r2', TODAY, 'r3')
+    expect(figures(data, TODAY)).toEqual({ spendable: 530000, horizon: '2026-06-14', reserved: 320000, available: 210000, overdue: ['schedule:r2:2026-03-28'], overdueIncomes: [] })
+    const paid = pay(data, { scheduleId: 'r2', occurrenceDate: '2026-03-28', amountMinor: 160000, date: '2026-05-16', txId: 'p5' }, '2026-05-16')
+    expect(figures(paid, '2026-05-16')).toEqual({ spendable: 370000, horizon: '2026-06-15', reserved: 160000, available: 210000, overdue: [], overdueIncomes: [] })
+    const back = revertOk(paid, entry, '2026-05-16')
+    expect(back.schedules.map((s) => [s.id, s.endDate ?? null])).toEqual([['r1', '2026-02-27'], ['r2', null]])
+    expect(back.transactions.map((t) => t.id)).toEqual(['p0', 'p1', 'p2', 'p5'])
+    expect(figures(back, '2026-05-16')).toEqual({ spendable: 370000, horizon: '2026-06-15', reserved: 160000, available: 210000, overdue: [], overdueIncomes: [] })
+  })
+
+  it('el tramo nuevo hereda la confirmación automática: el 31-may se registra solo y bloquea revertir la reparación; la entrada de la confirmación sí se revierte y el disponible no cambia (reserva o movimiento, nunca ambos)', () => {
+    const { data, entry } = repaired(legacyRent(['2026-02-28', '2026-03-28', '2026-04-28'], { autoConfirm: true }), 'r2', '2026-05-15', 'r3')
+    expect(data.schedules.find((s) => s.id === 'r3')?.autoConfirm).toBe(true)
+    const c = must(autoConfirmDue(data, at('2026-05-31')))
+    expect(c.value.confirmed.map((t) => [t.scheduleId, t.occurrenceDate, t.amountMinor, t.source])).toEqual([['r3', '2026-05-31', 160000, 'scheduled']])
+    const id = c.value.confirmed[0]!.id
+    const confirmed = track(data, c.data, '2026-05-31')
+    expectBlockedBy(confirmed, entry, '2026-05-31', [{ id, scheduleId: 'r3', name: '2026-05-31', amountMinor: 160000 }])
+    // Hoy 31-may, horizonte 30-jun: pagado → solo el 30-jun reservado; deshecho → 31-may y 30-jun reservados. Mismo disponible: 50 000.
+    expect(figures(confirmed, '2026-05-31')).toEqual({ spendable: 210000, horizon: '2026-06-30', reserved: 160000, available: 50000, overdue: [], overdueIncomes: [] })
+    const back = revertOk(confirmed, lastEntry(confirmed), '2026-05-31')
+    expect(back.transactions.some((t) => t.id === id)).toBe(false)
+    expect(figures(back, '2026-05-31')).toEqual({ spendable: 370000, horizon: '2026-06-30', reserved: 320000, available: 50000, overdue: [], overdueIncomes: [] })
+  })
+})
+
+describe('(a) QA27-01 · reparación EN EL SITIO: fechas de las dos series frente a fechas solo de la corregida', () => {
+  it('el 28-feb (fecha de las dos series) pagado tarde el 21-mar no bloquea; revertir deja ese pago liquidando el 28-feb y vuelve a reservar el 28-mar', () => {
+    const { data, entry, value } = repaired(legacyLuz(), 'b2', '2026-03-20', 'unused')
+    expect(value).toMatchObject({ id: 'b2', anchorDate: '2026-01-31', startDate: '2026-02-28' })
+    expect(data.schedules.map((s) => s.id)).toEqual(['b1', 'b2'])
+    const paid = pay(data, { scheduleId: 'b2', occurrenceDate: '2026-02-28', amountMinor: 42000, date: '2026-03-21', txId: 'p-feb' }, '2026-03-21')
+    // Hoy 21-mar: 1 400 − 420 = 980; con el 31 de siempre nada cae hasta el 28-mar.
+    expect(figures(paid, '2026-03-21')).toEqual({ spendable: 98000, horizon: '2026-03-28', reserved: 0, available: 98000, overdue: [], overdueIncomes: [] })
+    const back = revertOk(paid, entry, '2026-03-21')
+    expect(back.schedules.find((s) => s.id === 'b2')?.anchorDate).toBeUndefined()
+    expect(back.transactions.find((t) => t.id === 'p-feb')).toMatchObject({ scheduleId: 'b2', occurrenceDate: '2026-02-28', amountMinor: 42000 })
+    expect(figures(back, '2026-03-21')).toEqual({ spendable: 98000, horizon: '2026-03-28', reserved: 42000, available: 56000, overdue: [], overdueIncomes: [] })
+  })
+
+  it('con el 28-feb pagado (en las dos series) y el 31-mar pagado (solo en la corregida), el ÚNICO dependiente es el pago del 31-mar; dos pagos ya huérfanos (programado inexistente, fecha ajena) no cuentan', () => {
+    const { data, entry } = repaired(legacyLuz(), 'b2', '2026-03-20', 'unused')
+    const feb = pay(data, { scheduleId: 'b2', occurrenceDate: '2026-02-28', amountMinor: 42000, date: '2026-03-21', txId: 'p-feb' }, '2026-03-21')
+    const mar = pay(feb, { scheduleId: 'b2', occurrenceDate: '2026-03-31', amountMinor: 42000, date: '2026-03-30', txId: 'p-mar' }, '2026-03-30')
+    const ghosts: AppData = {
+      ...mar,
+      transactions: [
+        ...mar.transactions,
+        tx({ id: 'g1', date: '2026-03-10', amountMinor: 42000, kind: 'expense', scheduleId: 'nope', occurrenceDate: '2026-03-31' }),
+        tx({ id: 'g2', date: '2026-03-10', amountMinor: 42000, kind: 'expense', scheduleId: 'b2', occurrenceDate: '2026-03-30' }),
+      ],
+    }
+    expectBlockedBy(ghosts, entry, '2026-03-30', [{ id: 'p-mar', scheduleId: 'b2', name: '2026-03-31', amountMinor: 42000 }])
+  })
+
+  it('dos cobros parciales de un sueldo con rango sobre el 31-mar corregido: los dos son dependientes, en orden; cada entrada de cobro se revierte por sí sola; lo que falta se calcula una vez', () => {
+    const d = baseData({
+      accounts: money(100000, '2026-03-01'),
+      schedules: [
+        income('2026-01-31', 300000, { id: 's1', name: 'Sueldo', frequency: 'monthly', endDate: '2026-02-27' }),
+        income('2026-02-28', 320000, { id: 's2', name: 'Sueldo', frequency: 'monthly', amountIsEstimate: true, range: { minMinor: 100000, extraMinor: 220000 } }),
+      ],
+    })
+    const { data, entry } = repaired(d, 's2', '2026-03-20', 'unused')
+    const first = pay(data, { scheduleId: 's2', occurrenceDate: '2026-03-31', amountMinor: 100000, date: '2026-03-31', txId: 'i1', expectRemainder: true }, '2026-03-31')
+    expectBlockedBy(first, entry, '2026-03-31', [{ id: 'i1', scheduleId: 's2', name: '2026-03-31', amountMinor: 100000 }])
+    const second = pay(first, { scheduleId: 's2', occurrenceDate: '2026-03-31', amountMinor: 50000, date: '2026-04-02', txId: 'i2', expectRemainder: true }, '2026-04-02')
+    expectBlockedBy(second, entry, '2026-04-02', [
+      { id: 'i1', scheduleId: 's2', name: '2026-03-31', amountMinor: 100000 },
+      { id: 'i2', scheduleId: 's2', name: '2026-03-31', amountMinor: 50000 },
+    ])
+    expect(agree(second, lastEntry(second), '2026-04-02')).toBe('ok')
+    const item = planItems(second, { today: '2026-04-02', from: '2026-04-02', to: '2026-04-02', includeOverdueBefore: true }).find((i) => i.key === 'schedule:s2:2026-03-31')
+    expect(item).toMatchObject({ state: 'overdue', amountMinor: 170000, receivedMinor: 150000, partialTxIds: ['i1', 'i2'] })
+  })
+
+  it('pagar una fecha omitida (el 31-mar) deshace la omisión en la misma entrada; revertir ESA entrada se permite y la fecha vuelve a estar omitida (ni reservada ni pagada)', () => {
+    const { data } = repaired(legacyLuz(), 'b2', '2026-03-20', 'unused')
+    const skipped = track(data, must(setOccurrenceSkipped(data, 'b2', '2026-03-31', true, at('2026-03-21'))).data, '2026-03-21')
+    const paid = pay(skipped, { scheduleId: 'b2', occurrenceDate: '2026-03-31', amountMinor: 42000, date: '2026-03-25', txId: 'p-mar' }, '2026-03-25')
+    const e3 = lastEntry(paid)
+    expect(e3.changes.map((c) => [c.collection, c.id]).sort()).toEqual([['schedules', 'b2'], ['transactions', 'p-mar']])
+    expect(paid.schedules.find((s) => s.id === 'b2')?.skippedDates).toEqual([])
+    // Hoy 25-mar: 1 400 − 420 = 980; el 28-feb sigue vencido (420 reservados).
+    expect(figures(paid, '2026-03-25')).toEqual({ spendable: 98000, horizon: '2026-04-01', reserved: 42000, available: 56000, overdue: ['schedule:b2:2026-02-28'], overdueIncomes: [] })
+    const back = revertOk(paid, e3, '2026-03-25')
+    expect(back.schedules.find((s) => s.id === 'b2')?.skippedDates).toEqual(['2026-03-31'])
+    expect(back.transactions.map((t) => t.id)).toEqual(['p-jan'])
+    expect(figures(back, '2026-03-25')).toEqual({ spendable: 140000, horizon: '2026-04-01', reserved: 42000, available: 98000, overdue: ['schedule:b2:2026-02-28'], overdueIncomes: [] })
+  })
+})
+
+describe('(a) QA27-01 · edición normal («todas») que mueve el día, creación, borrado y fin de serie', () => {
+  const gym = () => {
+    const d = baseData({ accounts: money(100000, '2026-01-01'), schedules: [bill('2026-01-15', 5000, { id: 'gym', name: 'Gimnasio', frequency: 'monthly' })] })
+    return { ...d, settings: { ...d.settings, fallbackHorizonDays: 30 } }
+  }
+
+  it('mover el gimnasio del 15 al 20 (toda la serie) y pagar el 20-mar: la edición no se revierte; el pago sí (y la ocurrencia vuelve a reservarse); después la edición vuelve a ofrecerse; lo ya revertido se reconoce', () => {
+    const d = gym()
+    const edited = must(saveSchedule(d, draftOf(d.schedules[0]!, { startDate: '2026-03-20' }), at('2026-03-10')))
+    const e1Data = track(d, edited.data, '2026-03-10')
+    const e1 = lastEntry(e1Data)
+    expect(occurrencesBetween(edited.value, '2026-01-01', '2026-04-30')).toEqual(['2026-03-20', '2026-04-20'])
+    expect(agree(e1Data, e1, '2026-03-10')).toBe('ok')
+    const paidData = pay(e1Data, { scheduleId: 'gym', occurrenceDate: '2026-03-20', amountMinor: 5000, date: '2026-03-20', txId: 'g1' }, '2026-03-20')
+    const e2 = lastEntry(paidData)
+    expectBlockedBy(paidData, e1, '2026-03-20', [{ id: 'g1', scheduleId: 'gym', name: '2026-03-20', amountMinor: 5000 }])
+    // Hoy 20-mar, horizonte 19-abr: pagado → nada reservado; el 20-abr queda fuera.
+    expect(figures(paidData, '2026-03-20')).toEqual({ spendable: 95000, horizon: '2026-04-19', reserved: 0, available: 95000, overdue: [], overdueIncomes: [] })
+    const back = revertOk(paidData, e2, '2026-03-20')
+    expect(back.transactions).toEqual([])
+    expect(figures(back, '2026-03-20')).toEqual({ spendable: 100000, horizon: '2026-04-19', reserved: 5000, available: 95000, overdue: [], overdueIncomes: [] })
+    const reverted = recordHistory(paidData, back, at('2026-03-20').now, { source: 'revert', revertOf: e2.id })
+    expect(agree(reverted, e2, '2026-03-20')).toBe('alreadyReverted')
+    expect(agree(reverted, e1, '2026-03-20')).toBe('ok')
+  })
+
+  it('crear un programado y pagar su primera fecha: la creación no se revierte; borrarlo después conserva el pago, y revertir el borrado (que lo restaura) sí se permite', () => {
+    const d = gym()
+    const created = must(saveSchedule(d, draftOf(bill('2026-04-01', 3000, { id: 'net', name: 'Internet', frequency: 'monthly' })), at('2026-03-25')))
+    const e1Data = track(d, created.data, '2026-03-25')
+    const e1 = lastEntry(e1Data)
+    expect(agree(e1Data, e1, '2026-03-25')).toBe('ok')
+    const paidData = pay(e1Data, { scheduleId: 'net', occurrenceDate: '2026-04-01', amountMinor: 3000, date: '2026-04-01', txId: 'n1' }, '2026-04-01')
+    expectBlockedBy(paidData, e1, '2026-04-01', [{ id: 'n1', scheduleId: 'net', name: '2026-04-01', amountMinor: 3000 }])
+    const deleted = must(deleteSchedule(paidData, 'net', at('2026-04-02')))
+    const e3Data = track(paidData, deleted.data, '2026-04-02')
+    expect(e3Data.transactions.map((t) => [t.id, t.scheduleId])).toEqual([['n1', 'net']])
+    const back = revertOk(e3Data, lastEntry(e3Data), '2026-04-02')
+    expect(back.schedules.map((s) => s.id)).toEqual(['gym', 'net'])
+  })
+
+  it('alargar el fin de una serie (10-mar → 10-jun) y pagar el 10-abr: deshacer la edición dejaría ese pago sin fecha y se rechaza', () => {
+    const d = baseData({ accounts: money(100000, '2026-01-01'), schedules: [bill('2026-01-10', 8000, { id: 'course', name: 'Curso', frequency: 'monthly', endDate: '2026-03-10' })] })
+    const extended = must(saveSchedule(d, draftOf(d.schedules[0]!, { endDate: '2026-06-10' }), at('2026-03-15')))
+    const e1Data = track(d, extended.data, '2026-03-15')
+    const paidData = pay(e1Data, { scheduleId: 'course', occurrenceDate: '2026-04-10', amountMinor: 8000, date: '2026-04-10', txId: 'c1' }, '2026-04-10')
+    expectBlockedBy(paidData, lastEntry(e1Data), '2026-04-10', [{ id: 'c1', scheduleId: 'course', name: '2026-04-10', amountMinor: 8000 }])
+  })
+})
+
+describe('(a) QA27-01 · entradas que solo tocan movimientos (revincular un pago)', () => {
+  const water = () => {
+    const d = baseData({ accounts: money(140000, '2026-03-01'), schedules: [bill('2026-03-31', 42000, { id: 'water', name: 'Agua', frequency: 'monthly' })] })
+    return { ...d, settings: { ...d.settings, fallbackHorizonDays: 7 } }
+  }
+  const relink = (d: AppData, txId: string, occurrenceDate: string, today: string) =>
+    track(d, { ...d, transactions: d.transactions.map((t) => (t.id === txId ? { ...t, occurrenceDate, updatedAt: at(today).now } : t)) }, today)
+
+  it('mover el pago del 31-mar al 30-abr (las dos fechas existen): se revierte, exacto, y en ninguna de las dos situaciones se cuenta dos veces', () => {
+    const paid = pay(water(), { scheduleId: 'water', occurrenceDate: '2026-03-31', amountMinor: 42000, date: '2026-03-31', txId: 'w1' }, '2026-03-31')
+    const moved = relink(paid, 'w1', '2026-04-30', '2026-04-01')
+    const e2 = lastEntry(moved)
+    expect(e2.changes.map((c) => [c.collection, c.id])).toEqual([['transactions', 'w1']])
+    // Hoy 1-abr: el 31-mar queda vencido (420 reservados) y el 30-abr «pagado».
+    expect(figures(moved, '2026-04-01')).toEqual({ spendable: 98000, horizon: '2026-04-08', reserved: 42000, available: 56000, overdue: ['schedule:water:2026-03-31'], overdueIncomes: [] })
+    const back = revertOk(moved, e2, '2026-04-01')
+    expect(back.transactions.find((t) => t.id === 'w1')?.occurrenceDate).toBe('2026-03-31')
+    expect(figures(back, '2026-04-01')).toEqual({ spendable: 98000, horizon: '2026-04-08', reserved: 0, available: 98000, overdue: [], overdueIncomes: [] })
+  })
+
+  it('revincular y después cambiar la serie: si la fecha original ya no existe, la reversión del vínculo se rechaza y nombra la fecha ACTUAL del pago', () => {
+    const paid = pay(water(), { scheduleId: 'water', occurrenceDate: '2026-03-31', amountMinor: 42000, date: '2026-03-31', txId: 'w1' }, '2026-03-31')
+    const moved = relink(paid, 'w1', '2026-04-30', '2026-04-01')
+    const e2 = lastEntry(moved)
+    const edited = must(saveSchedule(moved, draftOf(moved.schedules[0]!, { startDate: '2026-04-30' }), at('2026-04-02')))
+    const e3Data = track(moved, edited.data, '2026-04-02')
+    expectBlockedBy(e3Data, e2, '2026-04-02', [{ id: 'w1', scheduleId: 'water', name: '2026-04-30', amountMinor: 42000 }])
+  })
+})
+
+describe('(a)+(e) QA27-01 · trimestral, anual y «dos veces al mes»: la fecha de siempre se conserva y solo los pagos sobre fechas corregidas bloquean', () => {
+  it('trimestral del 30-nov partida el 28-feb: propone 30-may / 30-ago / 30-nov; pagar el 28-feb (fecha común) no bloquea y pagar el 30-may sí', () => {
+    const a = bill('2025-11-30', 90000, { id: 'qa', name: 'Seguro', frequency: 'quarterly', endDate: '2026-02-27' })
+    const b = bill('2026-02-28', 90000, { id: 'qb', name: 'Seguro', frequency: 'quarterly' })
+    const d0 = baseData({ accounts: money(500000, '2026-01-01'), schedules: [a, b] })
+    const d = { ...d0, settings: { ...d0.settings, fallbackHorizonDays: 30 } }
+    expect(driftedSplits(d, '2026-03-15')).toEqual([
+      { scheduleId: 'qb', endedId: 'qa', name: 'Seguro', anchor: '2025-11-30', startDate: '2026-02-28', from: '2026-02-28', current: ['2026-05-28', '2026-08-28', '2026-11-28'], proposed: ['2026-05-30', '2026-08-30', '2026-11-30'] },
+    ])
+    const { data, entry, value } = repaired(d, 'qb', '2026-03-15', 'unused')
+    expect(data.schedules.map((s) => s.id)).toEqual(['qa', 'qb'])
+    expect(occurrencesBetween(value, '2026-02-28', '2027-02-28')).toEqual(['2026-02-28', '2026-05-30', '2026-08-30', '2026-11-30', '2027-02-28'])
+    const common = pay(data, { scheduleId: 'qb', occurrenceDate: '2026-02-28', amountMinor: 90000, date: '2026-03-16', txId: 'q1' }, '2026-03-16')
+    expect(agree(common, entry, '2026-03-16')).toBe('ok')
+    const corrected = pay(common, { scheduleId: 'qb', occurrenceDate: '2026-05-30', amountMinor: 90000, date: '2026-05-29', txId: 'q2' }, '2026-05-29')
+    expectBlockedBy(corrected, entry, '2026-05-29', [{ id: 'q2', scheduleId: 'qb', name: '2026-05-30', amountMinor: 90000 }])
+  })
+
+  it('anual del 29-feb partida el 28-feb-2025 (dos años cobrados el 28): se repara en el sitio y el 29-feb-2028 pagado por adelantado bloquea revertir', () => {
+    const a = bill('2024-02-29', 12000, { id: 'ya', name: 'Dominio', frequency: 'yearly', endDate: '2025-02-27' })
+    const b = bill('2025-02-28', 12000, { id: 'yb', name: 'Dominio', frequency: 'yearly' })
+    const paidOn = (date: string, id: string) => tx({ id, kind: 'expense', amountMinor: 12000, date, categoryId: 'utilities', scheduleId: 'yb', occurrenceDate: date })
+    const d = baseData({ accounts: money(500000, '2024-01-01'), schedules: [a, b], transactions: [paidOn('2025-02-28', 'y1'), paidOn('2026-02-28', 'y2')] })
+    const TODAY = '2027-03-01'
+    expect(driftedSplits(d, TODAY)).toEqual([
+      { scheduleId: 'yb', endedId: 'ya', name: 'Dominio', anchor: '2024-02-29', startDate: '2025-02-28', from: '2026-03-01', current: ['2028-02-28'], proposed: ['2028-02-29'] },
+    ])
+    const { data, entry, value } = repaired(d, 'yb', TODAY, 'unused')
+    expect(data.schedules.map((s) => s.id)).toEqual(['ya', 'yb'])
+    expect(value).toMatchObject({ id: 'yb', anchorDate: '2024-02-29', startDate: '2025-02-28' })
+    expect(occurrencesBetween(value, '2025-01-01', '2029-12-31')).toEqual(['2025-02-28', '2026-02-28', '2027-02-28', '2028-02-29', '2029-02-28'])
+    const paid = pay(data, { scheduleId: 'yb', occurrenceDate: '2028-02-29', amountMinor: 12000, date: '2028-02-20', txId: 'y4' }, '2028-02-20')
+    expectBlockedBy(paid, entry, '2028-02-20', [{ id: 'y4', scheduleId: 'yb', name: '2028-02-29', amountMinor: 12000 }])
+  })
+
+  it('«dos veces al mes» (15 y 31) partida el 28-feb: cuenta 15 y 28; reparada cuenta 15 y 31; el 15-mar común no bloquea y el 31-mar sí', () => {
+    const a = bill('2026-01-31', 20000, { id: 'sa', name: 'Cuota', frequency: 'semimonthly', secondDay: 15, endDate: '2026-02-27' })
+    const b = bill('2026-02-28', 20000, { id: 'sb', name: 'Cuota', frequency: 'semimonthly', secondDay: 15 })
+    const d = baseData({ accounts: money(500000, '2026-01-01'), schedules: [a, b] })
+    expect(occurrencesBetween(b, '2026-02-28', '2026-05-31')).toEqual(['2026-02-28', '2026-03-15', '2026-03-28', '2026-04-15', '2026-04-28', '2026-05-15', '2026-05-28'])
+    expect(driftedSplits(d, '2026-03-10').map((f) => [f.from, f.current, f.proposed])).toEqual([['2026-02-28', ['2026-03-15', '2026-03-28', '2026-04-15'], ['2026-03-15', '2026-03-31', '2026-04-15']]])
+    const { data, entry, value } = repaired(d, 'sb', '2026-03-10', 'unused')
+    expect(occurrencesBetween(value, '2026-02-28', '2026-05-31')).toEqual(['2026-02-28', '2026-03-15', '2026-03-31', '2026-04-15', '2026-04-30', '2026-05-15', '2026-05-31'])
+    const mid = pay(data, { scheduleId: 'sb', occurrenceDate: '2026-03-15', amountMinor: 20000, date: '2026-03-15', txId: 'h1' }, '2026-03-15')
+    expect(agree(mid, entry, '2026-03-15')).toBe('ok')
+    const end = pay(mid, { scheduleId: 'sb', occurrenceDate: '2026-03-31', amountMinor: 20000, date: '2026-03-31', txId: 'h2' }, '2026-03-31')
+    expectBlockedBy(end, entry, '2026-03-31', [{ id: 'h2', scheduleId: 'sb', name: '2026-03-31', amountMinor: 20000 }])
+  })
+})
+
+/* ------------------------------------------------------------------ */
+/* (b) QA27-02                                                         */
+/* ------------------------------------------------------------------ */
+
+describe('(b) QA27-02 · aplazamientos al reparar una partición', () => {
+  /** Renta del 31 partida el 30-abr (el 31 movido) por una versión anterior; abril y mayo pagados el 30; hoy 5-ago-2026. */
+  const fixture = (snoozed: AppData['inbox']['snoozed']) => {
+    const rent = bill('2026-01-31', 150000, { id: 'r1', name: 'Renta', frequency: 'monthly', categoryId: 'housing' })
+    const paidOn = (scheduleId: string, date: string, id: string) => tx({ id, kind: 'expense', amountMinor: 150000, date, categoryId: 'housing', scheduleId, occurrenceDate: date })
+    const d = baseData({
+      accounts: money(1000000, '2026-01-01'),
+      schedules: [{ ...rent, endDate: '2026-04-29' }, { ...rent, id: 'r2', startDate: '2026-04-30' }],
+      transactions: [paidOn('r1', '2026-01-31', 'p0'), paidOn('r1', '2026-02-28', 'p1'), paidOn('r1', '2026-03-31', 'p2'), paidOn('r2', '2026-04-30', 'p3'), paidOn('r2', '2026-05-30', 'p4')],
+      inbox: { snoozed, dismissed: [] },
+    })
+    return { ...d, settings: { ...d.settings, fallbackHorizonDays: 30 } }
+  }
+  const TODAY = '2026-08-05'
+  const Z = (id: string, until: string, n: number) => ({ id, until, at: `2026-07-0${n}T12:00:00.000Z` })
+  const overdueIds = (d: AppData, today: string) => {
+    const v = inboxView(d, today)
+    return { active: v.active.filter((i) => i.kind === 'overdue').map((i) => i.id), snoozed: v.snoozed.filter((i) => i.kind === 'overdue').map((i) => [i.id, i.until]) }
+  }
+  const byId = (list: AppData['inbox']['snoozed']) => [...list].sort((a, b) => (a.id < b.id ? -1 : 1))
+
+  it('la partición: el tramo termina el 31-may y el nuevo cuenta el 31 desde el 1-jun (30-jun común a las dos series, 31-jul distinto)', () => {
+    const d = fixture([])
+    expect(driftedSplits(d, TODAY)).toEqual([
+      { scheduleId: 'r2', endedId: 'r1', name: 'Renta', anchor: '2026-01-31', startDate: '2026-04-30', from: '2026-06-01', current: ['2026-08-30', '2026-09-30', '2026-10-30'], proposed: ['2026-08-31', '2026-09-30', '2026-10-31'] },
+    ])
+    const r = must(repairSplit(d, 'r2', at(TODAY), 'r3'))
+    expect(r.data.schedules.find((s) => s.id === 'r2')).toMatchObject({ endDate: '2026-05-31' })
+    expect(occurrencesBetween(d.schedules[1]!, '2026-06-01', '2026-08-31')).toEqual(['2026-06-30', '2026-07-30', '2026-08-30'])
+    expect(occurrencesBetween(r.value, '2026-06-01', '2026-08-31')).toEqual(['2026-06-30', '2026-07-31', '2026-08-31'])
+  })
+
+  it('fecha común (30-jun), fecha distinta (30-jul → 31-jul), un id antiguo que ya decía 31-jul (gana el `until` posterior), uno de una fecha pagada y los de otros avisos: cada uno en su sitio con sus metadatos; la bandeja lo refleja; revertir devuelve los seis', () => {
+    const d = fixture([
+      Z('due:schedule:r2:2026-06-30', '2026-08-12', 1),
+      Z('due:schedule:r2:2026-05-30', '2026-08-12', 2),
+      Z('due:schedule:r2:2026-07-30', '2026-08-15', 3),
+      Z('due:schedule:r2:2026-07-31', '2026-08-20', 4),
+      Z('due:schedule:other:2026-06-30', '2026-08-30', 6),
+      Z('dup:a:b', '2026-08-30', 7),
+    ])
+    expect(overdueIds(d, TODAY)).toEqual({ active: [], snoozed: [['due:schedule:r2:2026-06-30', '2026-08-12'], ['due:schedule:r2:2026-07-30', '2026-08-15']] })
+    const r = must(repairSplit(d, 'r2', at(TODAY), 'r3'))
+    expect(r.data.inbox.snoozed).toEqual([
+      Z('due:schedule:r3:2026-06-30', '2026-08-12', 1),
+      Z('due:schedule:r2:2026-05-30', '2026-08-12', 2),
+      Z('due:schedule:r3:2026-07-31', '2026-08-20', 4),
+      Z('due:schedule:other:2026-06-30', '2026-08-30', 6),
+      Z('dup:a:b', '2026-08-30', 7),
+    ])
+    expect(overdueIds(r.data, TODAY)).toEqual({ active: [], snoozed: [['due:schedule:r3:2026-06-30', '2026-08-12'], ['due:schedule:r3:2026-07-31', '2026-08-20']] })
+    for (const again of [persisted(r.data), roundTrip(r.data, TODAY)]) expect(again.inbox.snoozed).toEqual(r.data.inbox.snoozed)
+    const tracked = track(d, r.data, TODAY)
+    const back = revertOk(tracked, lastEntry(tracked), TODAY)
+    expect(byId(back.inbox.snoozed)).toEqual(byId(d.inbox.snoozed))
+    expect(back.schedules.map((s) => [s.id, s.endDate ?? null])).toEqual([['r1', '2026-04-29'], ['r2', null]])
+  })
+
+  it('un aplazamiento ya caducado se lleva con su `until` intacto (inerte): el aviso está activo antes y después', () => {
+    const d = fixture([Z('due:schedule:r2:2026-06-30', '2026-07-20', 1)])
+    expect(overdueIds(d, TODAY)).toEqual({ active: ['due:schedule:r2:2026-06-30', 'due:schedule:r2:2026-07-30'], snoozed: [] })
+    const r = must(repairSplit(d, 'r2', at(TODAY), 'r3'))
+    expect(r.data.inbox.snoozed).toEqual([Z('due:schedule:r3:2026-06-30', '2026-07-20', 1)])
+    expect(overdueIds(r.data, TODAY)).toEqual({ active: ['due:schedule:r3:2026-06-30', 'due:schedule:r3:2026-07-31'], snoozed: [] })
+  })
+
+  it('reparación EN EL SITIO: el aplazamiento del 28-mar pasa al 31-mar y, si ya había uno con ese id, queda uno solo con el `until` posterior; la bandeja antes y después; revertir devuelve los dos', () => {
+    const s1 = income('2026-01-31', 300000, { id: 's1', name: 'Sueldo', frequency: 'monthly', endDate: '2026-02-27' })
+    const s2 = income('2026-02-28', 320000, { id: 's2', name: 'Sueldo', frequency: 'monthly' })
+    const d = baseData({ schedules: [s1, s2], inbox: { snoozed: [Z('due:schedule:s2:2026-03-28', '2026-04-05', 1), Z('due:schedule:s2:2026-03-31', '2026-04-10', 2)], dismissed: [] } })
+    const T = '2026-04-02'
+    expect(overdueIds(d, T)).toEqual({ active: ['due:schedule:s1:2026-01-31', 'due:schedule:s2:2026-02-28'], snoozed: [['due:schedule:s2:2026-03-28', '2026-04-05']] })
+    const r = must(repairSplit(d, 's2', at(T), 'unused'))
+    expect(r.data.schedules.map((s) => s.id)).toEqual(['s1', 's2'])
+    expect(r.data.inbox.snoozed).toEqual([Z('due:schedule:s2:2026-03-31', '2026-04-10', 2)])
+    expect(overdueIds(r.data, T)).toEqual({ active: ['due:schedule:s1:2026-01-31', 'due:schedule:s2:2026-02-28'], snoozed: [['due:schedule:s2:2026-03-31', '2026-04-10']] })
+    const tracked = track(d, r.data, T)
+    const back = revertOk(tracked, lastEntry(tracked), T)
+    expect(byId(back.inbox.snoozed)).toEqual([Z('due:schedule:s2:2026-03-28', '2026-04-05', 1), Z('due:schedule:s2:2026-03-31', '2026-04-10', 2)])
+  })
+})
+
+describe('(b)+(e) · fechas vinculadas en el último periodo de la ventana de comparación (400 días desde hoy)', () => {
+  it('HALLAZGO · una fecha omitida 399 días adelante (28-jun-2027, visible en el calendario) tiene que seguir omitida el 30-jun-2027 tras reparar (FORMULAS §44)', () => {
+    const d = legacyRent(['2026-02-28', '2026-03-28', '2026-04-28'], { skippedDates: ['2027-06-28'] })
+    const TODAY = '2026-05-25'
+    expect(driftedSplits(d, TODAY).map((f) => f.from)).toEqual(['2026-05-01'])
+    const r = must(repairSplit(d, 'r2', at(TODAY), 'r3'))
+    expect(occurrencesBetween(r.value, '2027-06-01', '2027-06-30')).toEqual(['2027-06-30'])
+    expect(planItems(r.data, { today: TODAY, from: '2027-06-01', to: '2027-06-30' }).map((i) => [i.key, i.state])).toEqual([['schedule:r3:2027-06-30', 'skipped']])
+    expect(r.value.skippedDates).toEqual(['2027-06-30'])
+  })
+
+  it('HALLAZGO · un gasto planificado vinculado al 28-jun-2027 tiene equivalente (30-jun-2027): la reparación no debe rechazarse', () => {
+    const d = legacyRent(['2026-02-28', '2026-03-28', '2026-04-28'], {}, {
+      goals: [goal({ id: 'g', name: 'Renta jun-2027', kind: 'expense', targetMinor: 160000, targetDate: '2027-06-28', plan: { link: { scheduleId: 'r2', occurrenceDate: '2027-06-28' }, history: [] } })],
+    })
+    const r = repairSplit(d, 'r2', at('2026-05-25'), 'r3')
+    expect(r.ok ? r.data.goals[0]!.plan?.link : r.issues).toEqual({ scheduleId: 'r3', occurrenceDate: '2027-06-30' })
+  })
+
+  it('control: la misma fecha omitida un periodo antes (28-may-2027) sí pasa al 31-may-2027', () => {
+    const d = legacyRent(['2026-02-28', '2026-03-28', '2026-04-28'], { skippedDates: ['2027-05-28'] })
+    const r = must(repairSplit(d, 'r2', at('2026-05-25'), 'r3'))
+    expect(r.value.skippedDates).toEqual(['2027-05-31'])
+  })
+})
+
+/* ------------------------------------------------------------------ */
+/* (c) QA27-03                                                         */
+/* ------------------------------------------------------------------ */
+
+describe('(c) QA27-03 · porcentaje y diferencia exactos desde los operandos', () => {
+  it('ayudantes: truncado hacia cero a ambos lados, 9 999 % y 10 000 %, el producto justo en el límite exacto y `null` un paso más allá; entradas no enteras o base no positiva fallan', () => {
+    expect([checkedPercentChange(10999, 10000), checkedPercentChange(9001, 10000), checkedPercentChange(10001, 10000)]).toEqual([9, -9, 0])
+    expect(checkedPercentChange(9999, 10000) === 0).toBe(true)
+    expect([checkedPercentChange(19999, 10000), checkedPercentChange(20000, 10000), checkedPercentChange(1, 10000), checkedPercentChange(0, 10000)]).toEqual([99, 100, -99, -100])
+    expect([checkedPercentChange(-1, 10000), checkedPercentChange(-10000, 10000), checkedPercentChange(-10050, 10000), checkedPercentChange(-10100, 10000)]).toEqual([-100, -200, -200, -201])
+    expect([checkedPercentChange(1009900, 10000), checkedPercentChange(1010000, 10000)]).toEqual([9999, 10000])
+    // (actual − anterior) × 100 = 9 007 199 254 740 900 cabe; con una unidad más (…741 000) ya no.
+    expect([checkedPercentChange(90071992547410, 1), checkedPercentChange(90071992547411, 1)]).toEqual([9007199254740900, null])
+    expect([checkedPercentChange(MAX, MAX), checkedPercentChange(0, MAX), checkedPercentChange(-MAX, MAX), checkedPercentChange(MAX, 100), checkedPercentChange(MAX, 99)]).toEqual([0, -100, -200, MAX - 100, null])
+    expect([checkedSubMinor(MAX, 0), checkedSubMinor(MAX, -1), checkedSubMinor(-MAX, 1), checkedSubMinor(0, -MAX), checkedSubMinor(-MAX, 0)]).toEqual([MAX, null, null, MAX, -MAX])
+    expect(() => checkedPercentChange(1.5, 1)).toThrow()
+    expect(() => checkedPercentChange(5, 0)).toThrow()
+    expect(() => checkedPercentChange(5, -1)).toThrow()
+    expect(() => checkedSubMinor(1.5, 0)).toThrow()
+  })
+
+  /** Cuenta con saldo de referencia POSTERIOR a los movimientos (así el saldo no suma 10⁴ importes) y seguimiento desde el 1-jul (`createdAt`). */
+  const bigData = (transactions: Transaction[]): AppData => ({
+    ...baseData({ accounts: money(0, '2026-09-27'), transactions }),
+    createdAt: '2026-07-01T12:00:00.000Z',
+  })
+  /** `total` repartido en importes de 10¹² (el máximo de un importe) más el resto. */
+  const pile = (prefix: string, date: string, kind: 'expense' | 'refund', total: bigint): Transaction[] => {
+    const unit = BigInt(MAX_AMOUNT_MINOR)
+    const out = Array.from({ length: Number(total / unit) }, (_, i) => tx({ id: `${prefix}${i}`, date, amountMinor: MAX_AMOUNT_MINOR, kind, status: 'realized', categoryId: 'groceries' }))
+    const rest = Number(total % unit)
+    if (rest > 0) out.push(tx({ id: `${prefix}rest`, date, amountMinor: rest, kind, status: 'realized', categoryId: 'groceries' }))
+    return out
+  }
+  const P52 = 2n ** 52n // 4 503 599 627 370 496
+  const P51 = 2n ** 51n // 2 251 799 813 685 248
+  const spendingItem = (items: AnalysisItem[]) => items.find((i) => i.id === 'spendingUp' || i.id === 'spendingDown')
+
+  it('Análisis con totales cerca de 2⁵³ y una diferencia que SÍ cabe: de 2⁵² a 2⁵² + 2⁵¹ es +50 % con la fila «diferencia» = 2⁵¹ exacta', () => {
+    const d = bigData([...pile('p', '2026-08-10', 'expense', P52), ...pile('c', '2026-09-10', 'expense', P52 + P51)])
+    expect(d.transactions).toHaveLength(4504 + 6756)
+    const item = spendingItem(analysisItems(d, '2026-09-28'))
+    expect(item).toMatchObject({ id: 'spendingUp', params: { percent: 50, current: 6755399441055744, previous: 4503599627370496, date: '2026-08-28' } })
+    expect(item!.because).toEqual([
+      { id: 'currentToDate', kind: 'money', value: 6755399441055744 },
+      { id: 'previousToDate', kind: 'money', value: 4503599627370496, op: '−' },
+      { id: 'difference', kind: 'money', value: 2251799813685248, op: '=' },
+    ])
+  })
+
+  it('diferencia que NO cabe con porcentaje que sí: 2⁵² + 2⁵¹ de gasto frente a 2⁵² de devoluciones netas es −166 %, sin fila «diferencia»; Estadísticas dice lo mismo (y el neto, sin cifra alguna)', () => {
+    const d = bigData([...pile('p', '2026-08-10', 'expense', P52 + P51), ...pile('c', '2026-09-10', 'refund', P52)])
+    const item = spendingItem(analysisItems(d, '2026-09-28'))
+    expect(item).toMatchObject({ id: 'spendingDown', params: { percent: 166, current: -4503599627370496, previous: 6755399441055744 } })
+    expect(item!.because.map((b) => b.id)).toEqual(['currentToDate', 'previousToDate'])
+    for (const row of item!.because) expect(Number.isSafeInteger(row.value)).toBe(true)
+    const s = periodStats(d, 'month', statsRange('month', d.settings, '2026-09-28'))
+    expect([s.expenses, s.net, s.income]).toEqual([{ diffMinor: null, percent: -166 }, { diffMinor: null, percent: null }, { diffMinor: 0, percent: null }])
+  })
+
+  it('HALLAZGO · Revisión semanal con los mismos operandos: −166 % y diferencia sin cifra; la observación NO puede ser «gastaste lo mismo» (FORMULAS §20)', () => {
+    const w = bigData([...pile('p', '2026-09-16', 'expense', P52 + P51), ...pile('c', '2026-09-23', 'refund', P52)])
+    const review = weeklyReview(w, '2026-09-21', '2026-09-27')
+    expect(review.spendingChange).toEqual({ diffMinor: null, percent: -166 })
+    expect(review.observations.map((o) => o.id)).not.toContain('spendingSame')
+  })
+
+  it('ni el cociente ni la diferencia caben (1 frente a −MAX): la señal sale sin `percent` y solo con las dos filas de importes, todas enteras', () => {
+    const d = bigData([tx({ id: 'p', date: '2026-08-10', amountMinor: 1, kind: 'expense', status: 'realized', categoryId: 'groceries' }), ...pile('c', '2026-09-10', 'refund', BigInt(MAX))])
+    expect(d.transactions).toHaveLength(1 + 9008)
+    const item = spendingItem(analysisItems(d, '2026-09-28'))!
+    expect(item.id).toBe('spendingDown')
+    expect(item.params).toEqual({ current: -MAX, previous: 1, date: '2026-08-28' })
+    expect(item.because).toEqual([{ id: 'currentToDate', kind: 'money', value: -MAX }, { id: 'previousToDate', kind: 'money', value: 1, op: '−' }])
+  })
+
+  it('base anterior negativa (devoluciones netas) o cero: sin porcentaje y con diferencia exacta en Estadísticas y Revisión semanal; ±10 % simétrico en la semana', () => {
+    const week = (prev: { amountMinor: number; kind: 'expense' | 'refund' }, current: number) =>
+      baseData({ accounts: money(0, '2026-09-01'), transactions: [tx({ id: 'p', date: '2026-09-16', ...prev, status: 'realized' }), tx({ id: 'c', date: '2026-09-23', amountMinor: current, kind: 'expense', status: 'realized' })] })
+    const negative = weeklyReview(week({ amountMinor: 5000, kind: 'refund' }, 20000), '2026-09-21', '2026-09-27')
+    expect(negative.spendingChange).toEqual({ diffMinor: 25000, percent: null })
+    expect(negative.observations.map((o) => [o.id, o.params.amountMinor ?? null])).toContainEqual(['spendingMore', 25000])
+    const month = (prev: Transaction[], current: number) => baseData({ accounts: money(0, '2026-08-01'), transactions: [...prev, tx({ id: 'c', date: '2026-09-10', amountMinor: current, kind: 'expense', status: 'realized' })] })
+    const negMonth = month([tx({ id: 'p', date: '2026-08-10', amountMinor: 5000, kind: 'refund', status: 'realized' })], 20000)
+    expect(periodStats(negMonth, 'month', statsRange('month', negMonth.settings, '2026-09-28')).expenses).toEqual({ diffMinor: 25000, percent: null })
+    const zeroMonth = month([], 5000)
+    expect(periodStats(zeroMonth, 'month', statsRange('month', zeroMonth.settings, '2026-09-28')).expenses).toEqual({ diffMinor: 5000, percent: null })
+    expect(analysisItems(negMonth, '2026-09-28').some((i) => i.id === 'spendingUp' || i.id === 'spendingDown')).toBe(false)
+    const reviews = [11000, 9000, 10000].map((current) => weeklyReview(week({ amountMinor: 10000, kind: 'expense' }, current), '2026-09-21', '2026-09-27'))
+    expect(reviews.map((r) => r.spendingChange)).toEqual([{ diffMinor: 1000, percent: 10 }, { diffMinor: -1000, percent: -10 }, { diffMinor: 0, percent: 0 }])
+    expect(reviews.map((r) => r.observations.find((o) => o.id.startsWith('spending'))?.id)).toEqual(['spendingMore', 'spendingLess', 'spendingSame'])
+  })
+
+  it('OBSERVACIÓN · `periodSummary` acumula cada categoría con `+=` (coma flotante): 9 200 gastos impares de 987 654 321 001 y devoluciones por el MISMO total exacto deben dar un neto de 0', () => {
+    const A = 987654321001
+    const d = baseData({
+      accounts: money(0, '2026-09-27'),
+      transactions: [
+        ...Array.from({ length: 9200 }, (_, i) => tx({ id: `e${i}`, date: '2026-09-10', amountMinor: A, kind: 'expense', status: 'realized', categoryId: 'groceries' })),
+        ...Array.from({ length: 9200 }, (_, i) => tx({ id: `u${i}`, date: '2026-09-10', amountMinor: 1, kind: 'refund', status: 'realized', categoryId: 'groceries' })),
+        ...Array.from({ length: 9200 }, (_, i) => tx({ id: `r${i}`, date: '2026-09-10', amountMinor: A - 1, kind: 'refund', status: 'realized', categoryId: 'groceries' })),
+      ],
+    })
+    expect(validateAppData(persisted(d)).ok).toBe(true)
+    expect(periodSummary(d, '2026-09-01', '2026-09-30').netSpendingMinor).toBe(0)
+  })
+})
+
+/* ------------------------------------------------------------------ */
+/* (d) QA27-03b                                                        */
+/* ------------------------------------------------------------------ */
+
+describe('(d) QA27-03b · tope de 50 parejas de posibles duplicados por grupo', () => {
+  const pad = (i: number) => String(i).padStart(4, '0')
+  const day = (prefix: string, date: string, n: number, extra: Partial<Transaction> = {}) =>
+    Array.from({ length: n }, (_, i) => tx({ id: `${prefix}${pad(i)}`, date, amountMinor: 1200, kind: 'expense', status: 'realized', categoryId: 'groceries', ...extra }))
+  const seed = (transactions: Transaction[]) => baseData({ accounts: money(0, '2026-08-01'), transactions })
+  const ids = (d: AppData) => possibleDuplicates(d).map(([a, b]) => `${a.id}:${b.id}`)
+
+  it('10 iguales el mismo día son 45 parejas (todas); 11 son 55 y se listan 50: todas las de t0000…t0006 más t0007:t0008', () => {
+    expect(ids(seed(day('t', '2026-09-10', 10)))).toHaveLength(45)
+    expect(ids(seed(day('t', '2026-09-10', 10)))).toContain('t0008:t0009')
+    const eleven = ids(seed(day('t', '2026-09-10', 11)))
+    expect(eleven).toHaveLength(DUPLICATE_PAIRS_PER_GROUP)
+    expect(eleven.slice(0, 10)).toEqual(Array.from({ length: 10 }, (_, j) => `t0000:t${pad(j + 1)}`))
+    expect(eleven.filter((p) => p.startsWith('t0006:'))).toEqual(['t0006:t0007', 't0006:t0008', 't0006:t0009', 't0006:t0010'])
+    expect(eleven.at(-1)).toBe('t0007:t0008')
+    for (const missing of ['t0007:t0009', 't0007:t0010', 't0008:t0009', 't0008:t0010', 't0009:t0010']) expect(eleven).not.toContain(missing)
+  })
+
+  it('las 50 son las mismas en cada cálculo y no cambian con un movimiento de otro importe; uno igual pero posterior entra como pareja de los primeros (orden fijo fecha, id) y uno anterior pasa delante', () => {
+    const base = seed(day('t', '2026-09-10', 11))
+    const first = ids(base)
+    expect(ids(base)).toEqual(first)
+    expect(ids(seed([...base.transactions, tx({ id: 'u', date: '2026-09-10', amountMinor: 1300, kind: 'expense', status: 'realized' })]))).toEqual(first)
+    const later = ids(seed([...base.transactions, tx({ id: 'z', date: '2026-09-12', amountMinor: 1200, kind: 'expense', status: 'realized' })]))
+    expect(later).toHaveLength(50)
+    expect(later.slice(0, 10)).toEqual(first.slice(0, 10))
+    expect(later[10]).toBe('t0000:z')
+    const earlier = ids(seed([tx({ id: 'a', date: '2026-09-09', amountMinor: 1200, kind: 'expense', status: 'realized' }), ...base.transactions]))
+    expect(earlier).toHaveLength(50)
+    expect(earlier.slice(0, 11)).toEqual(Array.from({ length: 11 }, (_, j) => `a:t${pad(j)}`))
+    expect(earlier.at(-1)).toBe('t0004:t0009')
+    expect(earlier).not.toContain('t0007:t0008')
+  })
+
+  it('tres grupos (gasto, ingreso y otra cuenta): 50 + 3 + 1 parejas, cada una dentro de su tipo y cuenta', () => {
+    const d = seed([...day('t', '2026-09-10', 11), ...day('i', '2026-09-10', 3, { kind: 'income', categoryId: 'salary' }), ...day('o', '2026-09-10', 2, { accountId: 'other' })])
+    const pairs = possibleDuplicates(d)
+    expect(pairs).toHaveLength(54)
+    expect(pairs.filter(([a, b]) => a.kind === 'income' && b.kind === 'income')).toHaveLength(3)
+    expect(pairs.filter(([a, b]) => a.accountId === 'other' && b.accountId === 'other')).toHaveLength(1)
+    expect(pairs.filter(([a, b]) => a.kind === 'expense' && a.accountId === 'main' && b.kind === 'expense' && b.accountId === 'main')).toHaveLength(50)
+  })
+
+  it('ventana de ±3 días: a 3 días es pareja y a 4 no; con el tope, un segundo bloque del mismo importe diez días después no se lista nunca (observación)', () => {
+    const edge = seed([tx({ id: 'a', date: '2026-09-10', amountMinor: 1200 }), tx({ id: 'b', date: '2026-09-13', amountMinor: 1200 }), tx({ id: 'c', date: '2026-09-14', amountMinor: 1200 })])
+    expect(ids(edge)).toEqual(['a:b', 'b:c'])
+    const pairs = possibleDuplicates(seed([...day('x', '2026-09-10', 60), ...day('y', '2026-09-20', 60)]))
+    expect(pairs).toHaveLength(50)
+    expect(pairs.every(([a, b]) => a.date === '2026-09-10' && b.date === '2026-09-10')).toBe(true)
+  })
+
+  it('pagos de la misma ocurrencia nunca son pareja ni consumen el tope: 6 parciales + 5 sueltos = 40 parejas, todas listadas; dos pagos del mismo programado en ocurrencias distintas tampoco (conservador)', () => {
+    const d = seed([...day('l', '2026-09-10', 6, { scheduleId: 'rent', occurrenceDate: '2026-09-10', partialSettlement: true }), ...day('f', '2026-09-10', 5)])
+    const pairs = possibleDuplicates(d)
+    expect(pairs).toHaveLength(40)
+    expect(pairs.some(([a, b]) => a.scheduleId === 'rent' && b.scheduleId === 'rent')).toBe(false)
+    const other = seed([
+      tx({ id: 'a', date: '2026-09-10', amountMinor: 1200, scheduleId: 'rent', occurrenceDate: '2026-08-31' }),
+      tx({ id: 'b', date: '2026-09-11', amountMinor: 1200, scheduleId: 'rent', occurrenceDate: '2026-09-30' }),
+    ])
+    expect(ids(other)).toEqual([])
+  })
+
+  it('10 000 movimientos iguales el mismo día: 50 parejas, y `possibleDuplicates` + `inboxView` tardan menos de un segundo', () => {
+    const d = seed(day('m', '2026-09-10', 10000))
+    const t0 = performance.now()
+    const pairs = possibleDuplicates(d)
+    const view = inboxView(d, '2026-10-27')
+    const elapsed = performance.now() - t0
+    expect(pairs).toHaveLength(DUPLICATE_PAIRS_PER_GROUP)
+    expect(view.active.filter((i) => i.kind === 'duplicate').map((i) => i.id).slice(0, 2)).toEqual(['dup:m0000:m0001', 'dup:m0000:m0002'])
+    expect(elapsed).toBeLessThan(1000)
+  })
+})
+
+/* ------------------------------------------------------------------ */
+/* (e) Conservación                                                    */
+/* ------------------------------------------------------------------ */
+
+describe('(e) · conservación: la copia v13 genuina, declinar, omitidas antes de `from`, colchón y rangos', () => {
+  const V13 = readFileSync(new URL('../test/v13-known-intent-backup.json', import.meta.url), 'utf8')
+  const imported = (): AppData => {
+    const r = parseBackup(V13)
+    if (!r.ok) throw new Error(JSON.stringify(r.issues))
+    return r.data
+  }
+  const OVERDUE_INCOMES = ['schedule:salary:2026-01-31', 'schedule:salary-2:2026-02-28']
+
+  it('copia v13 reparada el 21-mar (31-mar / 1 250 / 550): el 30-mar queda 1 día (550 por día y por semana); el sueldo del 31-mar recibido deja 2 957,77 y la reparación ya no se revierte, pero su cobro sí; igual tras recargar y en la copia', () => {
+    const { data, entry } = repaired(imported(), 'salary-2', '2026-03-21', 'salary-3')
+    expect(figures(data, '2026-03-21')).toEqual({ spendable: 180000, horizon: '2026-03-31', reserved: 125000, available: 55000, overdue: [], overdueIncomes: OVERDUE_INCOMES })
+    const b30 = computeBudget(data, '2026-03-30')
+    expect([b30.horizon?.endDate, b30.horizon?.days, b30.reservedTotalMinor, b30.availableMinor, b30.dailyMinor, b30.weeklyMinor, b30.weeklyDays]).toEqual(['2026-03-31', 1, 125000, 55000, 55000, 55000, 1])
+    expect(b30.overdueBills.map((i) => i.key)).toEqual(['schedule:bill:2026-03-29'])
+    const got = pay(data, { scheduleId: 'salary-2', occurrenceDate: '2026-03-31', amountMinor: 240777, date: '2026-03-31', txId: 'salary-mar' }, '2026-03-31')
+    const after = { spendable: 420777, horizon: '2026-04-30', reserved: 125000, available: 295777, overdue: ['schedule:bill:2026-03-29'], overdueIncomes: OVERDUE_INCOMES }
+    expect(figures(got, '2026-03-31')).toEqual(after)
+    expectBlockedBy(got, entry, '2026-03-31', [{ id: 'salary-mar', scheduleId: 'salary-2', name: '2026-03-31', amountMinor: 240777 }])
+    expect(agree(got, lastEntry(got), '2026-03-31')).toBe('ok')
+    for (const again of [persisted(got), roundTrip(got, '2026-03-31')]) {
+      expect(figures(again, '2026-03-31')).toEqual(after)
+      expectBlockedBy(again, again.history.find((e) => e.id === entry.id)!, '2026-03-31', [{ id: 'salary-mar', scheduleId: 'salary-2', name: '2026-03-31', amountMinor: 240777 }])
+    }
+  })
+
+  it('declinar («Dejar como está») sobrevive a exportar e importar: el 28 se conserva, nada se propone, las cifras no cambian y reparar ya no es posible', () => {
+    const r = must(dismissSplitRepair(imported(), 'salary-2', at('2026-03-21')))
+    const again = roundTrip(r.data, '2026-03-21')
+    expect(again.inbox.dismissed).toEqual([{ id: 'int:split:salary-2', fingerprint: '2026-02-28||2026-01-31', at: '2026-03-21T12:00:00.000Z' }])
+    expect(driftedSplits(again, '2026-03-21')).toEqual([])
+    expect(figures(again, '2026-03-21')).toEqual({ spendable: 180000, horizon: '2026-03-28', reserved: 0, available: 180000, overdue: [], overdueIncomes: OVERDUE_INCOMES })
+    expect(repairSplit(again, 'salary-2', at('2026-03-21'), 'x')).toMatchObject({ ok: false, issues: [{ code: 'notFound' }] })
+  })
+
+  it('una fecha omitida ANTES de `from` (28-mar) se queda en el tramo que termina y el nuevo no la hereda; cifras iguales antes y después', () => {
+    const d = legacyRent(['2026-02-28', '2026-04-28'], { skippedDates: ['2026-03-28'] })
+    const TODAY = '2026-05-15'
+    const same = { spendable: 530000, horizon: '2026-06-14', reserved: 160000, available: 370000, overdue: [], overdueIncomes: [] }
+    expect(figures(d, TODAY)).toEqual(same)
+    const { data, value } = repaired(d, 'r2', TODAY, 'r3')
+    expect(data.schedules.find((s) => s.id === 'r2')).toMatchObject({ endDate: '2026-04-30', skippedDates: ['2026-03-28'] })
+    expect(value).toMatchObject({ id: 'r3', startDate: '2026-05-01', anchorDate: '2026-01-31', skippedDates: [] })
+    expect(figures(data, TODAY)).toEqual(same)
+    expect(validateAppData(persisted(data)).ok).toBe(true)
+  })
+
+  it('ancla del 31 a través de febrero bisiesto y de meses de 30 días; «dos veces al mes» 15 y 31 → 15 y 29 en febrero de 2028', () => {
+    const monthly = bill('2028-01-01', 1000, { id: 'm', frequency: 'monthly', anchorDate: '2026-01-31' })
+    expect(occurrencesBetween(monthly, '2028-01-01', '2028-04-30')).toEqual(['2028-01-31', '2028-02-29', '2028-03-31', '2028-04-30'])
+    const twice = bill('2028-02-01', 1000, { id: 't', frequency: 'semimonthly', secondDay: 15, anchorDate: '2026-01-31' })
+    expect(occurrencesBetween(twice, '2028-02-01', '2028-03-31')).toEqual(['2028-02-15', '2028-02-29', '2028-03-15', '2028-03-31'])
+  })
+
+  it('colchón de seguridad: se resta del disponible y nunca de lo reservado; con 100 el 21-mar quedan 450 (45 por día, 315 por semana); con 600 el disponible es negativo y no se sugiere nada', () => {
+    const { data } = repaired(imported(), 'salary-2', '2026-03-21', 'salary-3')
+    const withBuffer = (bufferMinor: number): AppData => ({ ...data, settings: { ...data.settings, safeToSpend: { ...data.settings.safeToSpend, bufferMinor } } })
+    const b = computeBudget(withBuffer(10000), '2026-03-21')
+    expect([b.reservedTotalMinor, b.safetyBufferMinor, b.availableMinor, b.dailyMinor, b.weeklyMinor]).toEqual([125000, 10000, 45000, 4500, 31500])
+    const c = computeBudget(withBuffer(60000), '2026-03-21')
+    expect([c.reservedTotalMinor, c.availableMinor, c.dailyMinor, c.weeklyMinor]).toEqual([125000, -5000, 0, 0])
+  })
+
+  it('`recurringCosts`: 24 pagos diarios de 10¹² caben (8,76 × 10¹⁵; 7,3 × 10¹⁴ al mes); 25 ya no (`ok: false`, cada producto exacto, total y promedio sin cifra); un tramo reparado del 31 cuenta 12 veces', () => {
+    const daily = (n: number) => Array.from({ length: n }, (_, i) => bill('2026-10-29', MAX_AMOUNT_MINOR, { id: `d${i}`, name: `Diario ${i}`, frequency: 'daily' }))
+    const ok = recurringCosts({ schedules: daily(24) }, '2026-10-29')
+    expect([ok.from, ok.to, ok.ok, ok.totalMinor, ok.monthlyMinor, ok.items.length, ok.items[0]?.occurrences, ok.items[0]?.totalMinor]).toEqual(['2026-10-29', '2027-10-28', true, 8760000000000000, 730000000000000, 24, 365, 365000000000000])
+    const over = recurringCosts({ schedules: daily(25) }, '2026-10-29')
+    expect([over.ok, over.totalMinor, over.monthlyMinor, over.items.length, over.items.every((i) => i.totalMinor === 365000000000000)]).toEqual([false, null, null, 25, true])
+    const { value } = repaired(legacyRent(['2026-02-28', '2026-03-28', '2026-04-28']), 'r2', '2026-05-15', 'r3')
+    const r = recurringCosts({ schedules: [value] }, '2026-05-15')
+    expect(r.ok && [r.items[0]!.occurrences, r.totalMinor, r.monthlyMinor]).toEqual([12, 1920000, 160000])
+  })
+
+  it('`projectBalance`: con 9 007 × 10¹² de saldo exacto y un ingreso previsto de 10¹² mañana, la proyección se detiene en `outOfRangeFrom` (y sin pedirlo es un error, nunca una cifra inexacta)', () => {
+    const d = baseData({
+      accounts: money(MAX_AMOUNT_MINOR, '2026-10-01'),
+      transactions: Array.from({ length: 9006 }, (_, i) => tx({ id: `i${i}`, date: '2026-10-02', amountMinor: MAX_AMOUNT_MINOR, kind: 'income', status: 'realized' })),
+      schedules: [income('2026-10-30', MAX_AMOUNT_MINOR, { id: 'bonus', name: 'Bono', frequency: 'once' })],
+    })
+    const start = 9007 * MAX_AMOUNT_MINOR
+    expect(Number.isSafeInteger(start)).toBe(true)
+    const p = projectBalance(d, '2026-10-29', { days: 3, stopWhenOutOfRange: true })
+    expect([p.startMinor, p.outOfRangeFrom, p.days.length, p.endMinor]).toEqual([start, '2026-10-30', 1, start])
+    expect(p.days[0]).toMatchObject({ date: '2026-10-29', startMinor: start, events: [], eventsMinor: 0, endMinor: start })
+    expect(() => projectBalance(d, '2026-10-29', { days: 3 })).toThrow(RangeError)
+  })
+})

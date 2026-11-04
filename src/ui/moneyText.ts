@@ -9,5 +9,5 @@ export function parseMoneyText(text: string, fmt: Formatter, options?: ParseMone
 
 export function moneyErrorMessage(t: Translator['t'], result: ParseMoneyResult): string | null {
   if (result.ok) return null
-  return t(`money.error.${result.error}` as MessageKey, { digits: result.digits, found: result.found ?? '', expected: result.expected ?? '' })
+  return t(`money.error.${result.error}` as MessageKey, { digits: result.digits, found: result.found ?? '', other: result.other ?? '', expected: result.expected ?? '' })
 }

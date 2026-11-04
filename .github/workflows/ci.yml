@@ -23,7 +23,13 @@ jobs:
       - uses: actions/setup-node@v7
         with: { node-version: 22, cache: npm }
       - run: npm ci
+      # QA V2: una dependencia con una vulnerabilidad alta o crítica conocida detiene la integración.
+      - run: npm audit --audit-level=high
       - run: npm run check
+      # Resultado de las pruebas unitarias en JSON (`vite.config.ts` lo escribe en CI), pase o falle.
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with: { name: unit-results, path: test-results/vitest.json, retention-days: 7 }
       - run: npm run build
       - run: npm run size
       - uses: actions/upload-artifact@v7
@@ -44,7 +50,9 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test --project=${{ matrix.project }} --workers=2 --fail-on-flaky-tests
-      - if: failure()
+      # QA V2: el informe HTML, el JUnit (`test-results/junit.xml`) y las trazas de los fallos se suben
+      # siempre, también cuando todo pasa, para poder revisar una ejecución remota sin repetirla.
+      - if: always()
         uses: actions/upload-artifact@v7
         with:
           # Entre comillas: `${{ }}` dentro de un mapa `{ }` no es YAML válido.

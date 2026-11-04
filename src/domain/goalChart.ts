@@ -9,7 +9,7 @@
  */
 import { addDays, daysBetween } from './dates'
 import { goalProgress } from './goals'
-import { ceilDiv, sumMinor } from './money'
+import { mulDivCeil, sumMinor } from './money'
 import type { Goal, GoalAllocation, LocalDate } from './types'
 
 export interface GoalPoint {
@@ -66,7 +66,7 @@ export function goalEta(goal: Goal, today: LocalDate): GoalEta {
   const recent = sumMinor(contributions.filter((a) => a.date > since && a.date <= today).map((a) => a.amountMinor))
   if (recent <= 0) return { status: 'noRecent' }
   // Ritmo = Σ últimos 30 días ÷ 30; días que faltan = ⌈restante × 30 ÷ Σ⌉ (sin flotantes).
-  const days = ceilDiv(progress.remainingMinor * 30, recent)
+  const days = mulDivCeil(progress.remainingMinor, 30, recent)
   return { status: 'ok', date: addDays(today, days), perDayMinor: Math.floor(recent / 30), days }
 }
 

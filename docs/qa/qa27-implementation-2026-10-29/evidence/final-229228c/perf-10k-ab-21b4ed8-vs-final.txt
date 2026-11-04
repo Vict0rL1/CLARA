@@ -1,0 +1,22 @@
+perf A/B started 2026-10-31T00:50:57Z; serial, nothing else running; old = 21b4ed8 (main checkout), new = 229228c
+
+✓ built in 1.18s
+--- round 1 old (http://localhost:4174)
+Inicio con 10k: cifra principal a los 284 / 281 ms
+  1 passed (3.9s)
+--- round 1 new (http://localhost:4173)
+Inicio con 10k: cifra principal a los 318 / 264 ms
+  1 passed (3.9s)
+--- round 2 old (http://localhost:4174)
+Inicio con 10k: cifra principal a los 313 / 310 ms
+  1 passed (3.9s)
+--- round 2 new (http://localhost:4173)
+Inicio con 10k: cifra principal a los 303 / 247 ms
+  1 passed (3.8s)
+--- round 3 old (http://localhost:4174)
+Inicio con 10k: cifra principal a los 313 / 282 ms
+  1 passed (3.9s)
+--- round 3 new (http://localhost:4173)
+Inicio con 10k: cifra principal a los 328 / 314 ms
+  1 passed (4.0s)
+finished 2026-10-31T00:51:30Z

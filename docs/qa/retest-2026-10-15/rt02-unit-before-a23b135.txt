@@ -1,0 +1,71 @@
+
+ RUN  v5.0.2 /home/user/ALCANZA
+
+ ❯ src/state/replaceUndo.test.ts (16 tests | 5 failed) 116ms
+   ❯ RT-02 · importar una copia: deshacer está ligado a la revisión que escribió el reemplazo (6)
+     × un gasto guardado mientras la escritura del reemplazo está pendiente: deshacer se niega y el gasto sobrevive a recargar 19ms
+     × una tarea automática que registra programados después del reemplazo también lo invalida (nunca se borran) 6ms
+   ❯ RT-02 · restaurar una copia local: deshacer está ligado a la revisión que escribió el reemplazo (6)
+     × un gasto guardado mientras la escritura del reemplazo está pendiente: deshacer se niega y el gasto sobrevive a recargar 5ms
+     × una tarea automática que registra programados después del reemplazo también lo invalida (nunca se borran) 4ms
+   ❯ RT-02 · la copia «Antes de restaurar» sigue siendo el camino para recuperar lo anterior (1)
+     × cuando deshacer se niega, lo anterior se puede leer de la copia local tal como estaba 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/state/replaceUndo.test.ts > RT-02 · importar una copia: deshacer está ligado a la revisión que escribió el reemplazo > un gasto guardado mientras la escritura del reemplazo está pendiente: deshacer se niega y el gasto sobrevive a recargar
+ FAIL  src/state/replaceUndo.test.ts > RT-02 · restaurar una copia local: deshacer está ligado a la revisión que escribió el reemplazo > un gasto guardado mientras la escritura del reemplazo está pendiente: deshacer se niega y el gasto sobrevive a recargar
+AssertionError: expected 'undone' to be 'stale' // Object.is equality
+
+Expected: "stale"
+Received: "undone"
+
+ ❯ src/state/replaceUndo.test.ts:184:30
+    182|       expect(await editing).toBe(true)
+    183|       repo.hold = false
+    184|       expect(await r.undo()).toBe('stale')
+       |                              ^
+    185|       expect(store.data!.transactions.some((t) => t.id === 'tx_cad9'))…
+    186|       const after = await reloaded()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  src/state/replaceUndo.test.ts > RT-02 · importar una copia: deshacer está ligado a la revisión que escribió el reemplazo > una tarea automática que registra programados después del reemplazo también lo invalida (nunca se borran)
+ FAIL  src/state/replaceUndo.test.ts > RT-02 · restaurar una copia local: deshacer está ligado a la revisión que escribió el reemplazo > una tarea automática que registra programados después del reemplazo también lo invalida (nunca se borran)
+AssertionError: expected 'undone' to be 'stale' // Object.is equality
+
+Expected: "stale"
+Received: "undone"
+
+ ❯ src/state/replaceUndo.test.ts:217:30
+    215|       await job
+    216|       repo.hold = false
+    217|       expect(await r.undo()).toBe('stale')
+       |                              ^
+    218|       expect((await reloaded()).transactions.some((t) => t.scheduleId …
+    219|     })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  src/state/replaceUndo.test.ts > RT-02 · la copia «Antes de restaurar» sigue siendo el camino para recuperar lo anterior > cuando deshacer se niega, lo anterior se puede leer de la copia local tal como estaba
+AssertionError: expected 'undone' to be 'stale' // Object.is equality
+
+Expected: "stale"
+Received: "undone"
+
+ ❯ src/state/replaceUndo.test.ts:271:28
+    269|     await editing
+    270|     repo.hold = false
+    271|     expect(await r.undo()).toBe('stale')
+       |                            ^
+    272|     const copy = (await backups.list()).find((b) => b.reason === 'befo…
+    273|     const parsed = parseBackup((await backups.read(copy.id))!)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 11 passed (16)
+   Start at  20:39:52
+   Duration  1.44s (transform 79%, import 11%, tests 9%)
+

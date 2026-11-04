@@ -1,0 +1,11 @@
+tsc exit 0
+oxlint exit 0
+ Test Files  125 passed (125)
+      Tests  1188 passed | 1 skipped (1189)
+   Start at  08:15:00
+   Duration  11.74s (tests 57%, import 23%, transform 18%, worker 2%)
+
+    Isolate  125 workers spawned · ~102ms startup each (spawn + environment, per file)
+             at least ~4.14s faster with isolate: false — reuses workers across files instead of one per file
+
+vitest exit 0

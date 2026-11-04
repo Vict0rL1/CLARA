@@ -1,0 +1,52 @@
+Verificación de 053f023 (revisión propia R1–R7 sobre la auditoría del PR #15) · 2026-10-19 · Chromium preinstalado, --workers=2 --fail-on-flaky-tests
+
+SHA 053f023aeeb31006b927d230d095ae2e56c9e1ac status: 0 changes
+started 2026-10-19T01:08:38Z · finished 2026-10-19T01:41:27Z
+706bf38 (worktree): tsc exit 0 · oxlint exit 0 · vitest exit 0 ·       Tests  1029 passed | 1 skipped (1030)
+868ddbe (worktree): tsc exit 0 · oxlint exit 0 · vitest exit 0 ·       Tests  1036 passed | 1 skipped (1037)
+a91d1bd (worktree): tsc exit 0 · oxlint exit 0 · vitest exit 0 ·       Tests  1038 passed | 1 skipped (1039)
+cb19294 (worktree): tsc exit 0 · oxlint exit 0 · vitest exit 0 ·       Tests  1033 passed | 1 skipped (1034)
+e785381 (worktree): tsc exit 0 · oxlint exit 0 · vitest exit 0 ·       Tests  1029 passed | 1 skipped (1030)
+e788ee4 (worktree): tsc exit 0 · oxlint exit 0 · vitest exit 0 ·       Tests  1032 passed | 1 skipped (1033)
+edc5742 (worktree): tsc exit 0 · oxlint exit 0 · vitest exit 0 ·       Tests  1038 passed | 1 skipped (1039)
+check EXIT 0
+build EXIT 0
+size EXIT 0
+audit EXIT 0
+e2e celular EXIT 0
+e2e celular-pequeno EXIT 0
+e2e escritorio EXIT 0
+shots sch01 EXIT 0
+DONE
+
+== npm run check (typecheck, oxlint, i18n literals, Vitest)
+ Test Files  106 passed (106)
+      Tests  1038 passed | 1 skipped (1039)
+
+== npm run build (identified build)
+✓ 228 modules transformed.
+✓ built in 1.00s
+dist id (sha256 of the sorted sha256 list of every dist file): a2b421165ee7793086a797f02dae79e1c2b79a5b4e97edda8644a6552ef1e27d · 70 files
+
+== npm run size
+JS inicial: 842.7 KB en 11 archivos (gzip 252.1 KB)
+Referencia: 767.8 KB · límite 844.6 KB · cambio +9.8 %
+
+== npm audit --audit-level=high
+found 0 vulnerabilities
+
+== Playwright, full matrix, one project at a time, --workers=2 --fail-on-flaky-tests, one preview of the build above
+-- celular
+  1 skipped
+  344 passed (8.7m)
+Inicio con 10k: cifra principal a los 376 / 314 ms
+-- celular-pequeno
+  345 passed (8.4m)
+Inicio con 10k: cifra principal a los 247 / 207 ms
+-- escritorio
+  3 skipped
+  342 passed (8.5m)
+Inicio con 10k: cifra principal a los 324 / 268 ms
+
+== SCH-01 «after» screenshots (celular, QA_V2_SHOTS)
+  1 passed (3.9s)

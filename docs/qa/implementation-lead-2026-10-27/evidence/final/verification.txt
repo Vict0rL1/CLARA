@@ -1,0 +1,102 @@
+Lead pass verification at the frozen SHA 4dc1ddf (2026-10-27)
+
+SHA 4dc1ddf277049496bfb525a1019221725608932b · git status at start: 2 entries (M AGENTS.md | ?? docs/qa/implementation-lead-2026-10-27/)
+started 2026-10-27T07:59:41Z · finished 2026-10-27T08:47:55Z
+
+== Each commit on its own (temporary worktree: tsc -b, oxlint ., vitest run)
+0eb5be2: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1115 passed | 1 skipped (1116)
+14d50d3: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1120 passed | 1 skipped (1121)
+1e23b8e: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1082 passed | 1 skipped (1083)
+20beaf0: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1089 passed | 1 skipped (1090)
+31e165d: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1120 passed | 1 skipped (1121)
+36d0441: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1067 passed | 1 skipped (1068)
+426de6a: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1070 passed | 1 skipped (1071)
+4dc1ddf: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1120 passed | 1 skipped (1121)
+58e4b79: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1094 passed | 1 skipped (1095)
+7e4b82a: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1111 passed | 1 skipped (1112)
+7e5e5d0: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1061 passed | 1 skipped (1062)
+8f78494: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1094 passed | 1 skipped (1095)
+b07a25f: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1102 passed | 1 skipped (1103)
+cb12d02: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1077 passed | 1 skipped (1078)
+dfd241c: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1073 passed | 1 skipped (1074)
+e38b07b: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1094 passed | 1 skipped (1095)
+e9ee629: tsc exit 0 · oxlint exit 0 · vitest exit 0 · Tests  1118 passed | 1 skipped (1119)
+
+== Steps at HEAD
+check EXIT 0
+build EXIT 0
+size EXIT 0
+audit EXIT 0
+vitest --reporter=json EXIT 0
+e2e celular EXIT 0 · shots celular EXIT 0
+e2e celular-pequeno EXIT 0 · shots celular-pequeno EXIT 0
+e2e escritorio EXIT 1 · shots escritorio EXIT 0
+DONE
+
+== npm run check (typecheck, oxlint, i18n literals, Vitest)
+Test Files  110 passed (110)
+Tests  1120 passed | 1 skipped (1121)
+> node scripts/find-literals.mjs
+find-literals: sin texto visible fuera de i18n en src/ui.
+vitest.json: 379 files, 1120 passed, 0 failed, 1 skipped, success=True
+
+== npm run build (identified build)
+✓ 231 modules transformed.
+✓ built in 993ms
+dist id (sha256 of the sorted sha256 list of every dist file): 288a5ead0c9d61bf68c45d3e3bd718fab0047329762e8e13fcc446f1298cab94 · 75 files
+
+== npm run size
+JS inicial: 842.4 KB en 13 archivos (gzip 252.6 KB)
+Referencia: 767.8 KB · límite 844.6 KB · cambio +9.7 %
+
+== npm audit --audit-level=high
+found 0 vulnerabilities
+
+== Playwright, full matrix, one project at a time, --workers=2 --fail-on-flaky-tests, --reporter=list,json, one preview of the build above
+-- celular
+1 skipped
+368 passed (9.2m)
+Inicio con 10k: cifra principal a los 308 / 296 ms
+e2e-celular.json: expected=368 unexpected=0 flaky=0 skipped=1 duration=552s
+-- celular-pequeno
+369 passed (9.2m)
+Inicio con 10k: cifra principal a los 325 / 351 ms
+e2e-celular-pequeno.json: expected=369 unexpected=0 flaky=0 skipped=0 duration=551s
+-- escritorio
+1 failed
+3 skipped
+365 passed (10.0m)
+1) [escritorio] › tests/e2e/statistics.spec.ts:58:1 › estadísticas: sin movimientos muestra el estado vacío y el saldo futuro queda oculto; modo privado oculta gráficos
+Inicio con 10k: cifra principal a los 365 / 320 ms
+e2e-escritorio.json: expected=365 unexpected=1 flaky=0 skipped=3 duration=598s
+
+== Screenshot runs (qa-followup, qa-corrective, qa-lead; --workers=1; QA_LEAD_SHOTS)
+-- celular: 24 passed (1.0m)
+-- celular-pequeno: 24 passed (1.0m)
+-- escritorio: 24 passed (1.2m)
+84 screenshots in shots/
+
+== Serial A/B, desktop, 10k startup: audited baseline build vs frozen build (3 rounds, alternating)
+perf A/B started 2026-10-27T09:00:44Z; serial, nothing else running; old = 46fe617 (wt-base), new = 4dc1ddf
+46fe617
+
+✓ built in 1.69s
+--- round 1 old (http://localhost:4174)
+Inicio con 10k: cifra principal a los 258 / 241 ms
+  1 passed (4.0s)
+--- round 1 new (http://localhost:4173)
+Inicio con 10k: cifra principal a los 357 / 249 ms
+  1 passed (4.0s)
+--- round 2 old (http://localhost:4174)
+Inicio con 10k: cifra principal a los 295 / 220 ms
+  1 passed (3.9s)
+--- round 2 new (http://localhost:4173)
+Inicio con 10k: cifra principal a los 274 / 247 ms
+  1 passed (3.8s)
+--- round 3 old (http://localhost:4174)
+Inicio con 10k: cifra principal a los 263 / 242 ms
+  1 passed (3.6s)
+--- round 3 new (http://localhost:4173)
+Inicio con 10k: cifra principal a los 257 / 264 ms
+  1 passed (3.6s)
+finished 2026-10-27T09:01:19Z

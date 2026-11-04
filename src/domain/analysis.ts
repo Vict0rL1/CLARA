@@ -8,14 +8,14 @@ import { backupStatus } from './backupReminder'
 import { addDays, addMonthsClamped, daysBetween, startOfMonth } from './dates'
 import { goalPace } from './goalChart'
 import { periodSummary } from './insights'
-import { floorDiv, sumMinor } from './money'
+import { checkedPercentChange, checkedSubMinor, mulDivFloor, sumMinor } from './money'
 import { planItems } from './planItems'
 import { planProgress } from './plans'
 import { projectBalance } from './projection'
 import { trackedSince } from './weeklyReview'
 import type { AppData, LocalDate } from './types'
 
-export type AnalysisId = 'overdueBills' | 'shortfall' | 'belowReserves' | 'limitOver' | 'limitNear' | 'goalBehind' | 'spendingUp' | 'spendingDown' | 'topCategory' | 'backupDue'
+export type AnalysisId = 'overdueBills' | 'shortfall' | 'belowReserves' | 'projectionOutOfRange' | 'limitOver' | 'limitNear' | 'goalBehind' | 'spendingUp' | 'spendingDown' | 'topCategory' | 'backupDue'
 export type AnalysisSeverity = 'critical' | 'warning' | 'info'
 export type BecauseId =
   | 'overdueCount'
@@ -39,6 +39,8 @@ export type BecauseId =
   | 'share'
   | 'lastExport'
   | 'neverExported'
+  | 'exactUntil'
+  | 'outOfRangeFrom'
 
 export interface Because {
   id: BecauseId
@@ -135,6 +137,24 @@ export function analysisItems(data: AppData, today: LocalDate): AnalysisItem[] {
     })
   }
 
+  // 2b. Proyección incompleta (auditoría del 2026-11-02, P4): desde `outOfRangeFrom` el saldo proyectado deja de ser un
+  // entero exacto y no hay cifra. Lo visto hasta el día antes es exacto (un faltante encontrado sigue siendo real); lo
+  // que no se vio no se afirma: se dice hasta qué día llega la proyección en vez de romper la pantalla o callar.
+  if (projection.outOfRangeFrom) {
+    const lastExact = projection.days[projection.days.length - 1]?.date ?? today
+    out.push({
+      key: 'projectionOutOfRange',
+      id: 'projectionOutOfRange',
+      severity: 'info',
+      params: { date: projection.outOfRangeFrom, until: lastExact, days: projection.days.length, horizon: ANALYSIS_HORIZON_DAYS },
+      because: [
+        { id: 'exactUntil', kind: 'date', value: lastExact },
+        { id: 'outOfRangeFrom', kind: 'date', value: projection.outOfRangeFrom },
+      ],
+      href: '/plan/calendario',
+    })
+  }
+
   // 3. Límites superados o cerca del límite.
   for (const plan of data.plans) {
     if (plan.status !== 'active') continue
@@ -184,17 +204,24 @@ export function analysisItems(data: AppData, today: LocalDate): AnalysisItem[] {
     const current = periodSummary(data, monthStart, today).netSpendingMinor
     const previous = periodSummary(data, prevStart, prevEnd).netSpendingMinor
     if (previous > 0) {
-      const percent = floorDiv((current - previous) * 100, previous)
-      if (Math.abs(percent) >= SPENDING_CHANGE_THRESHOLD) {
+      // Porcentaje exacto (F-03): el producto (diferencia × 100) puede pasar de 2^53 − 1 con sumas grandes y
+      // `floorDiv` fallaba; se calcula verificado desde los operandos (QA27-03: dos totales que caben pueden tener
+      // una diferencia que no cabe) y, si ni el cociente cabe en un entero exacto, el aviso sale sin cifra (`percent`
+      // ausente) en vez de inventar una o esconder la pantalla. Truncado hacia cero (F-R3): el umbral «desde ±10 %»
+      // es el mismo para subidas y bajadas (−9,99 % no es −10). Una diferencia que no cabe no se enseña como cifra.
+      const percent = checkedPercentChange(current, previous)
+      if (percent === null || Math.abs(percent) >= SPENDING_CHANGE_THRESHOLD) {
+        const up = current > previous
+        const difference = checkedSubMinor(current, previous)
         out.push({
-          key: percent > 0 ? 'spendingUp' : 'spendingDown',
-          id: percent > 0 ? 'spendingUp' : 'spendingDown',
+          key: up ? 'spendingUp' : 'spendingDown',
+          id: up ? 'spendingUp' : 'spendingDown',
           severity: 'info',
-          params: { percent: Math.abs(percent), current, previous, date: prevEnd },
+          params: { ...(percent === null ? {} : { percent: Math.abs(percent) }), current, previous, date: prevEnd },
           because: [
             { id: 'currentToDate', kind: 'money', value: current },
             { id: 'previousToDate', kind: 'money', value: previous, op: '−' },
-            { id: 'difference', kind: 'money', value: current - previous, op: '=' },
+            ...(difference === null ? [] : [{ id: 'difference' as const, kind: 'money' as const, value: difference, op: '=' as const }]),
           ],
           href: '/estadisticas',
         })
@@ -208,7 +235,7 @@ export function analysisItems(data: AppData, today: LocalDate): AnalysisItem[] {
   const total = sumMinor(positive.map((c) => c.netMinor))
   const top = positive.reduce<(typeof positive)[number] | null>((best, c) => (!best || c.netMinor > best.netMinor ? c : best), null)
   if (top && total > 0) {
-    const share = floorDiv(top.netMinor * 100, total)
+    const share = mulDivFloor(top.netMinor, 100, total)
     if (share >= TOP_CATEGORY_SHARE) {
       out.push({
         key: `topCategory:${top.categoryId}`,

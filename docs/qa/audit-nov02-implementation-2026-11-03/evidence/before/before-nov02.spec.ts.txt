@@ -1,0 +1,108 @@
+import { expect, test, type Page } from '@playwright/test'
+import { computeInbox } from '../../src/domain/inbox'
+import type { AppData } from '../../src/domain/types'
+import { account, baseData, bill, tx } from '../../src/test/fixtures'
+import { available, go, openApp, openDetails, startDemo, storedData, waitForSaved, writeStoredData } from './helpers'
+import { shot } from './shots'
+
+/**
+ * OBSERVACIÓN del estado defectuoso de `420c700` (auditoría del 2026-11-02), ejecutada contra una compilación de ese
+ * commit (BASE_URL). Cada prueba AFIRMA el comportamiento roto para dejar constancia; no forma parte de la suite.
+ */
+const anchor = (amountMinor: number, date: string) => ({ amountMinor, date, setAt: `${date}T12:00:00.000Z` })
+const clock = (iso: string) => new Date(`${iso}T12:00:00-04:00`)
+async function seedAt(page: Page, data: AppData, iso: string) {
+  await openApp(page, clock(iso))
+  await expect(page.getByRole('heading', { name: 'Hola, esto es Clara' })).toBeVisible()
+  await writeStoredData(page, data)
+  await page.reload()
+  await expect(page.getByTestId('available')).toBeVisible()
+}
+const internet = (): AppData => {
+  const d = baseData({
+    accounts: [account({ id: 'main', name: 'Principal', anchor: anchor(140000, '2026-03-01') })],
+    schedules: [bill('2026-01-31', 42000, { id: 'b1', name: 'Internet', frequency: 'monthly', endDate: '2026-02-27', skippedDates: ['2026-01-31'] }), bill('2026-02-28', 42000, { id: 'b2', name: 'Internet', frequency: 'monthly', skippedDates: ['2026-02-28'] })],
+  })
+  return { ...d, settings: { ...d.settings, fallbackHorizonDays: 30 } }
+}
+
+test('ANTES · P1: revertir la reparación con el gasto planificado vinculado se acepta y el disponible pasa de $980.00 a $560.00', async ({ page }) => {
+  await seedAt(page, internet(), '2026-03-20')
+  await go(page, '/ajustes/datos')
+  await page.getByTestId('split-repair').getByRole('button', { name: 'Restaurar las fechas de siempre' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Restaurar las fechas de siempre' }).click()
+  await expect(page.getByText('Fechas de siempre restauradas').first()).toBeVisible()
+  await waitForSaved(page)
+  await go(page, '/plan/metas')
+  await page.getByRole('link', { name: 'Nuevo gasto planificado' }).click()
+  const link = page.getByLabel('Vincular con un pago del calendario (opcional)')
+  await link.selectOption((await link.locator('option', { hasText: /Internet · 31 mar · faltan/ }).getAttribute('value'))!)
+  await page.getByLabel('Ya apartado (opcional)').fill('420')
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await waitForSaved(page)
+  await expect(await available(page)).toHaveText('$980.00')
+  await go(page, '/ajustes/historial')
+  const entry = page.locator('article.history-entry', { hasText: 'Internet' }).filter({ has: page.getByRole('button', { name: 'Revertir' }) }).last()
+  await expect(entry.getByRole('button', { name: 'Revertir' })).toBeVisible()
+  await shot(page, 'before-p1-history-offers-revert', entry)
+  await entry.getByRole('button', { name: 'Revertir' }).click()
+  const dialog = page.getByRole('dialog', { name: '¿Revertir este cambio?' })
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('button', { name: 'Revertir' }).click()
+  await expect(page.getByText('Cambio revertido').first()).toBeVisible()
+  await waitForSaved(page)
+  await expect(await available(page)).toHaveText('$560.00')
+  await shot(page, 'before-p1-home-560')
+  const s = JSON.parse((await storedData(page)) ?? '{}') as { goals: { plan?: { link?: unknown } }[]; schedules: { id: string; anchorDate?: string }[] }
+  expect(s.goals[0]?.plan?.link).toEqual({ scheduleId: 'b2', occurrenceDate: '2026-03-31' })
+  expect(s.schedules.find((x) => x.id === 'b2')?.anchorDate).toBeUndefined()
+  await page.reload()
+  await expect(await available(page)).toHaveText('$560.00')
+})
+
+const isoDay = (base: string, offset: number) => { const d = new Date(`${base}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + offset); return d.toISOString().slice(0, 10) }
+test('ANTES · P2: con 50 parejas descartadas, dos cafés nuevos no se ofrecen como posible duplicado', async ({ page }) => {
+  const pairs = Array.from({ length: 50 }, (_, k) => [tx({ id: `h${String(k).padStart(2, '0')}a`, date: isoDay('2026-01-02', 4 * k), amountMinor: 425, kind: 'expense', status: 'realized', categoryId: 'dining', note: 'Café' }), tx({ id: `h${String(k).padStart(2, '0')}b`, date: isoDay('2026-01-02', 4 * k), amountMinor: 425, kind: 'expense', status: 'realized', categoryId: 'dining', note: 'Café' })]).flat()
+  const d = baseData({ accounts: [account({ id: 'main', name: 'Principal', anchor: anchor(100000, '2026-01-01') })], transactions: pairs })
+  const dismissed = computeInbox(d, '2026-09-28').filter((i) => i.kind === 'duplicate').map((i) => ({ id: i.id, fingerprint: i.fingerprint, at: '2026-09-01T12:00:00.000Z' }))
+  await seedAt(page, { ...d, inbox: { snoozed: [], dismissed } }, '2026-09-28')
+  for (let i = 0; i < 2; i++) {
+    await go(page, '/movimientos/nuevo')
+    await page.getByLabel('Importe').fill('4.25')
+    await openDetails(page)
+    await page.getByLabel('Nota (opcional)').fill('Café')
+    await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+    await expect(page.getByText('Movimiento guardado').first()).toBeVisible()
+    await waitForSaved(page)
+  }
+  await go(page, '/pendientes')
+  await expect(page.getByRole('heading', { name: 'Pendientes', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Posibles duplicados/ })).toHaveCount(0)
+  await shot(page, 'before-p2-new-pair-missing')
+})
+
+test.describe('ANTES · P3', () => {
+  test.use({ serviceWorkers: 'block' })
+  test('Privacidad enseña claves internas con el archivo bloqueado, y sigue igual al volver la red y reabrir', async ({ page }) => {
+    await startDemo(page)
+    await page.route('**/assets/legal.es-*.js', (r) => r.abort('failed'))
+    await go(page, '/legal/privacidad')
+    await expect(page.getByText('legal.privacy.1.text')).toBeVisible()
+    await shot(page, 'before-p3-privacy-keys')
+    await page.unroute('**/assets/legal.es-*.js')
+    await go(page, '/ajustes')
+    await go(page, '/legal/privacidad')
+    await expect(page.getByText('legal.privacy.1.text')).toBeVisible()
+  })
+})
+
+test('ANTES · P4: Proyección y Análisis caen en «No se pudo abrir esta pantalla»', async ({ page }) => {
+  const d = baseData({ accounts: [account({ id: 'main', name: 'Principal', anchor: anchor(500000, '2026-11-01') })], schedules: Array.from({ length: 400 }, (_, i) => bill('2026-11-02', 1_000_000_000_000, { id: `d${i}`, name: `Diario ${i}`, frequency: 'daily' })) })
+  await seedAt(page, { ...d, settings: { ...d.settings, fallbackHorizonDays: 7 } }, '2026-11-02')
+  await page.goto('/#/plan/proyeccion')
+  await expect(page.getByText('No se pudo abrir esta pantalla')).toBeVisible()
+  await shot(page, 'before-p4-projection-failed')
+  await page.goto('/#/analisis')
+  await expect(page.getByText('No se pudo abrir esta pantalla')).toBeVisible()
+  await shot(page, 'before-p4-analysis-failed')
+})

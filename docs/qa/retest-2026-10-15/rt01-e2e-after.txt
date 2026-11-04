@@ -1,0 +1,27 @@
+
+Running 23 tests using 2 workers
+
+[1/23] [celular] › tests/e2e/assistant.spec.ts:4:1 › asistente: texto → vista previa editable → registro todo o nada; nada se guarda antes de confirmar
+[2/23] [celular] › tests/e2e/assistant-photo.spec.ts:8:1 › asistente: foto de un recibo sin OCR → línea con la foto adjunta, importe a mano, registro y retirada desde el formulario
+[3/23] [celular] › tests/e2e/assistant.spec.ts:44:1 › asistente: sin importe no inventa nada; un importe inválido bloquea todo el registro
+[4/23] [celular] › tests/e2e/assistant.spec.ts:64:1 › asistente: «café 4.50» y «cobré 500 de freelance» se registran; «café» solo no se puede guardar; 2 195,50 persiste
+[5/23] [celular] › tests/e2e/retest.spec.ts:27:3 › RT-01 · «coffee 10€» en un presupuesto CAD no se puede registrar como CAD
+[6/23] [celular] › tests/e2e/retest.spec.ts:27:3 › RT-01 · «coffee GBP 10» en un presupuesto CAD no se puede registrar como CAD
+[7/23] [celular] › tests/e2e/retest.spec.ts:27:3 › RT-01 · «coffee EUR ten» en un presupuesto CAD no se puede registrar como CAD
+[8/23] [celular] › tests/e2e/retest.spec.ts:27:3 › RT-01 · «coffee ten USD» en un presupuesto CAD no se puede registrar como CAD
+[9/23] [celular] › tests/e2e/retest.spec.ts:51:1 › RT-01 · control: «coffee 10» y «coffee 10 CAD» se registran en CAD y sobreviven a recargar
+[10/23] [celular] › tests/e2e/shortcut-link.spec.ts:17:1 › atajo de iPhone: rellena importe, comercio y categoría, avisa y solo guarda al pulsar Guardar @smoke
+[11/23] [celular] › tests/e2e/shortcut-link.spec.ts:35:1 › el origen «Atajo» aparece en el filtro del historial y en el CSV
+[12/23] [celular] › tests/e2e/shortcut-link.spec.ts:52:1 › `amount` sigue en unidades menores (25 → 0.25) e `importe` en mayores (25 → 25.00); si vienen los dos, manda `importe`
+[13/23] [celular] › tests/e2e/shortcut-link.spec.ts:71:3 › importe texto: el campo queda vacío y se dice que no se entendió (nunca se adivina)
+[14/23] [celular] › tests/e2e/shortcut-link.spec.ts:71:3 › importe vacío: el campo queda vacío y se dice que no se entendió (nunca se adivina)
+[15/23] [celular] › tests/e2e/shortcut-link.spec.ts:71:3 › importe enorme: el campo queda vacío y se dice que no se entendió (nunca se adivina)
+[16/23] [celular] › tests/e2e/shortcut-link.spec.ts:79:1 › importe en otra moneda: se rellena el número tal cual y se avisa
+[17/23] [celular] › tests/e2e/shortcut-link.spec.ts:86:1 › importe grande pero válido: pasa por la confirmación de importe desproporcionado (G5)
+[18/23] [celular] › tests/e2e/shortcut-link.spec.ts:125:1 › «Pegar del atajo»: abre la vista previa con la fila leída y solo registra al confirmar, con origen «Atajo»
+[19/23] [celular] › tests/e2e/shortcut-link.spec.ts:150:3 › «Pegar del atajo» sin importe: lo dice, no sale de la hoja y no crea nada
+[20/23] [celular] › tests/e2e/shortcut-link.spec.ts:150:3 › «Pegar del atajo» vacío: lo dice, no sale de la hoja y no crea nada
+[21/23] [celular] › tests/e2e/shortcut-link.spec.ts:150:3 › «Pegar del atajo» sin permiso: lo dice, no sale de la hoja y no crea nada
+[22/23] [celular] › tests/e2e/shortcut-link.spec.ts:163:1 › sin portapapeles en el navegador no se ofrece «Pegar del atajo»
+[23/23] [celular] › tests/e2e/shortcut-link.spec.ts:173:1 › Ajustes › Atajos › Atajos de iPhone: dos plantillas con esta dirección, «Copiar» y aviso honesto de lo pendiente
+  23 passed (1.6m)

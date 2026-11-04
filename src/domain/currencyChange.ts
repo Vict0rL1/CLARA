@@ -27,6 +27,7 @@ export type MonetaryRecordKind =
   | 'reconciliations'
   | 'incomeDistributions'
   | 'scenarios'
+  | 'safeToSpendBuffer'
 
 /** Qué registros con importe existen (vacío = se puede cambiar la moneda). */
 export function monetaryRecords(data: AppData): MonetaryRecordKind[] {
@@ -46,6 +47,9 @@ export function monetaryRecords(data: AppData): MonetaryRecordKind[] {
   if (data.reconciliations.length > 0) found.push('reconciliations')
   if (data.incomeDistributions.length > 0) found.push('incomeDistributions')
   if (data.scenarios.length > 0) found.push('scenarios')
+  // Auditoría del PR #15 (QA-02): el colchón de seguridad (v13) es un importe guardado en la moneda del
+  // presupuesto; sin esto, CAD 100 pasaba a leerse como JPY 10 000 al cambiar la moneda.
+  if ((data.settings.safeToSpend?.bufferMinor ?? 0) !== 0) found.push('safeToSpendBuffer')
   return found
 }
 

@@ -1,0 +1,56 @@
+
+ RUN  v5.0.2 /home/user/ALCANZA
+
+ ❯ src/domain/qaPr15Undo.test.ts (8 tests | 2 failed) 49ms
+   ✓ QA-05 · deshacer una partición devuelve también plantillas, escenarios y aplazamientos (3)
+     ✓ partir → guardar → recargar → revertir: no queda ninguna referencia a la serie nueva y todo vuelve exactamente a como estaba 28ms
+     ✓ un cambio posterior en una plantilla afectada impide revertir con un conflicto claro y sin cambios parciales 1ms
+     ✓ un cambio posterior que no toca lo partido sobrevive a revertir 1ms
+   ❯ R5 (revisión propia) · aplazamientos en el historial: solo acompañan a otros cambios y los caducados nunca bloquean revertir (5)
+     ✓ posponer o retirar un aviso no crea una entrada del historial (no es un cambio financiero) 1ms
+     ✓ una partición registra el aplazamiento que renombra; si caduca y otro aplazamiento lo retira de paso, revertir sigue siendo posible y no lo resucita 2ms
+     ✓ un aplazamiento vigente que la persona retiró a mano después sí es un conflicto: no se pisa lo que hizo 1ms
+     × una entrada antigua solo de aplazamientos (grabada por una compilación v14 anterior a R5) no se ofrece como revertible: revertirla no dejaría rastro 9ms
+     × revertir una partición solo limpia los aplazamientos caducados que la propia entrada tocó; uno ajeno caducado sigue ahí (la bandeja lo limpiará cuando toque) 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/domain/qaPr15Undo.test.ts > R5 (revisión propia) · aplazamientos en el historial: solo acompañan a otros cambios y los caducados nunca bloquean revertir > una entrada antigua solo de aplazamientos (grabada por una compilación v14 anterior a R5) no se ofrece como revertible: revertirla no dejaría rastro
+AssertionError: expected 'ok' to be 'notRevertible' // Object.is equality
+
+Expected: "notRevertible"
+Received: "ok"
+
+ ❯ src/domain/qaPr15Undo.test.ts:132:57
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/domain/qaPr15Undo.test.ts > R5 (revisión propia) · aplazamientos en el historial: solo acompañan a otros cambios y los caducados nunca bloquean revertir > revertir una partición solo limpia los aplazamientos caducados que la propia entrada tocó; uno ajeno caducado sigue ahí (la bandeja lo limpiará cuando toque)
+AssertionError: expected [] to deeply equal [ 'other:expired' ]
+
+- Expected
++ Received
+
+- [
+-   "other:expired",
+- ]
++ []
+
+ ❯ src/domain/qaPr15Undo.test.ts:143:54
+    141|     const back = revertEntry(after, entry.id, at('2026-10-21'))
+    142|     if (!back.ok) throw new Error(JSON.stringify(back.issues))
+    143|     expect(back.data.inbox.snoozed.map((s) => s.id)).toEqual(['other:e…
+       |                                                      ^
+    144|     const tracked = recordHistory(after, back.data, '2026-10-21T12:00:…
+    145|     expect(tracked.history.at(-1)!.changes.some((c) => c.collection ==…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 6 passed (8)
+   Start at  04:09:18
+   Duration  1.03s (transform 85%, import 9%, tests 6%)
+
+exit 1

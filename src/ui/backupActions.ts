@@ -31,20 +31,29 @@ export function downloadText(filename: string, text: string, type = 'application
  * la descarga de siempre (K1). Cerrar la hoja sin elegir destino no es exportar ni es un error.
  * El navegador no confirma dónde quedó el archivo: el texto lo dice así.
  */
+export interface ExportOutcome {
+  /** El archivo llegó a la persona (descarga pedida o compartido). */
+  delivered: boolean
+  /** Además se anotó en el registro de copias (si el almacén no pudo guardar, el archivo existe igual). */
+  recorded: boolean
+}
+
+const NOT_DELIVERED: ExportOutcome = { delivered: false, recorded: false }
+
 export function useExportBackup() {
   const { t } = useT()
   const run = useRun()
   const toast = useToast()
-  return async () => {
+  return async (): Promise<ExportOutcome> => {
     const data = getStore().data
-    if (!data) return false
+    if (!data) return NOT_DELIVERED
     let file: { filename: string; text: string } | null = null
     const result = performExport(data, new Date(), APP_VERSION, (filename, text) => {
       file = { filename, text }
     })
     if (!result.ok || !file) {
       toast({ message: t('backup.exportFailed'), tone: 'critical' })
-      return false
+      return NOT_DELIVERED
     }
     const { filename, text } = file as { filename: string; text: string }
     let delivery: Awaited<ReturnType<typeof deliverFile>>
@@ -53,13 +62,14 @@ export function useExportBackup() {
     } catch {
       // La descarga no se pudo pedir (p. ej. el navegador la bloquea): no se registra nada.
       toast({ message: t('backup.exportFailed'), tone: 'critical' })
-      return false
+      return NOT_DELIVERED
     }
-    if (delivery === 'cancelled') return false
+    if (delivery === 'cancelled') return NOT_DELIVERED
     const { saved } = await run((d) => recordExport(d, result.exportedAt))
     const done = delivery === 'shared' ? t('settings.backup.shared') : t('settings.backup.exported')
-    toast({ message: saved ? done : t('save.error.generic'), tone: saved ? 'good' : 'critical' })
-    return saved
+    // El archivo ya salió: si el registro no se pudo guardar se dice eso, no que la copia falló (revisión de seguridad QA27, O-1).
+    toast(saved ? { message: done, tone: 'good' } : { message: t('settings.backup.exportedNotRecorded'), tone: 'info', durationMs: 12_000 })
+    return { delivered: true, recorded: saved }
   }
 }
 

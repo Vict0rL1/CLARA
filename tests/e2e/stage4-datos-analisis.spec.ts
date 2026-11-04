@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { SCHEMA_VERSION } from '../../src/domain/types'
 import { expectNoHorizontalScroll, go, openDetails, startDemo } from './helpers'
 
 /**
@@ -80,7 +81,7 @@ test('centro de datos: estado con icono y texto, orden de recuperación y export
   await expect(rows.getByTestId('data-row-saving')).toContainText('IndexedDB')
   await expect(rows.getByTestId('data-row-export')).toContainText('Datos de demostración: no hace falta copia')
   await expect(rows.getByTestId('data-row-records')).toContainText(/\d+ movimientos · 3 cuentas · 7 programados · 2 metas/)
-  await expect(rows.getByTestId('data-row-schema')).toContainText('esquema 12')
+  await expect(rows.getByTestId('data-row-schema')).toContainText(`esquema ${SCHEMA_VERSION}`)
   await expect(rows.getByTestId('data-row-trash')).toContainText('Papelera vacía')
   await expect(rows.getByTestId('data-row-errors')).toContainText('Sin errores registrados')
   await expect(page.getByTestId('data-steps').locator('li')).toHaveCount(5)

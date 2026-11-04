@@ -1,4 +1,5 @@
 /** Textos derivados de datos (categorías, nombres, mensajes de validación). */
+import { isValidLocalDate } from '../domain/dates'
 import { activeAccounts } from '../domain/balances'
 import type { PlanItem } from '../domain/planItems'
 import type { Account, Frequency, Plan, Transaction } from '../domain/types'
@@ -63,7 +64,8 @@ export function transactionTitle(tx: Transaction, accounts: Account[], t: Transl
 export function issueMessage(t: Translator['t'], fmt: Formatter | null, issue: Issue | ImportIssue): string {
   const params: Record<string, string | number> = {}
   for (const [k, v] of Object.entries(issue.params ?? {})) {
-    params[k] = k.endsWith('Minor') && typeof v === 'number' && fmt ? fmt.money(v) : v
+    // Importes y fechas con el formato de la persona (una fecha `AAAA-MM-DD` en crudo no se lee bien).
+    params[k] = k.endsWith('Minor') && typeof v === 'number' && fmt ? fmt.money(v) : (k === 'date' || k.endsWith('Date')) && typeof v === 'string' && isValidLocalDate(v) && fmt ? fmt.date(v) : v
   }
   return t(`issue.${issue.code}` as MessageKey, params)
 }

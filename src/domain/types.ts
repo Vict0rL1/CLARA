@@ -15,14 +15,15 @@ export type Timestamp = string
 /** Código ISO 4217, por ejemplo 'CAD'. */
 export type CurrencyCode = string
 
-export const SCHEMA_VERSION = 12 as const
+export const SCHEMA_VERSION = 14 as const
 
 /**
  * 'credit' = tarjeta de crédito: su saldo es una DEUDA y se guarda como número
  * negativo. Las compras son gastos de esa cuenta; el pago de la tarjeta es una
  * transferencia desde otra cuenta (nunca un gasto), así nada se cuenta dos veces.
  */
-export type AccountKind = 'bank' | 'cash' | 'savings' | 'credit' | 'other'
+/** v13: `wallet` (monedero digital), `prepaid` (tarjeta prepagada) e `investment` (saldo de inversión escrito a mano; sin cotizaciones). */
+export type AccountKind = 'bank' | 'cash' | 'savings' | 'credit' | 'wallet' | 'prepaid' | 'investment' | 'other'
 
 /**
  * Saldo de referencia que el usuario escribe (por ejemplo, copiado de su banco).
@@ -63,6 +64,8 @@ export interface Account {
   anchor: BalanceAnchor
   /** Solo tarjetas de crédito. */
   card?: CardDetails
+  /** v13 · Banco o emisor, solo como texto para reconocerla (nunca se conecta a nada). */
+  institution?: string
   /**
    * v11. Archivada: conserva su historial y su saldo, pero no se ofrece para registrar ni
    * programar, y no cuenta para el presupuesto ni para el patrimonio. Se puede restaurar.
@@ -165,7 +168,10 @@ export interface IncomeRange {
 
 export type IncomeScenario = 'min' | 'expected' | 'extra'
 
-export type Frequency = 'once' | 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly' | 'custom'
+export type PlanEarlyAlertLevel = 50 | 75 | 90
+
+/** v13: `semimonthly` = dos veces al mes (el día de `startDate` y `secondDay`). */
+export type Frequency = 'once' | 'daily' | 'weekly' | 'biweekly' | 'semimonthly' | 'monthly' | 'quarterly' | 'yearly' | 'custom'
 export type ScheduleKind = 'income' | 'expense'
 
 /** Pago o ingreso programado (único o recurrente). */
@@ -182,7 +188,7 @@ export interface Schedule {
   accountId: string
   categoryId?: string
   frequency: Frequency
-  /** Primera fecha pendiente. También fija el día del mes para pagos mensuales. */
+  /** Primera fecha que cuenta. Sin `anchorDate`, también fija el día del mes (y la fase) de la serie. */
   startDate: LocalDate
   endDate?: LocalDate
   reminderDaysBefore: number
@@ -192,6 +198,15 @@ export interface Schedule {
   /* ---- v9 (opcionales) ---- */
   /** Solo `frequency: 'custom'`: cada N días. */
   intervalDays?: number
+  /** v13 · Solo `frequency: 'semimonthly'`: el otro día del mes (1–31, a ≥ 7 días del de la fecha que fija la serie). */
+  secondDay?: number
+  /**
+   * v14 · Fecha que fija la serie (el día del mes y la fase de los pasos) cuando `startDate` es solo el límite
+   * desde el que cuenta: al partir una serie «desde una fecha» sin cambiar su regla, el tramo nuevo conserva la
+   * de siempre y sus ocurrencias son exactamente las que ya había (auditoría del PR #15, QA-01). Ausente =
+   * `startDate`. Siempre ≤ `startDate`; nunca con `frequency: 'once'`.
+   */
+  anchorDate?: LocalDate
   /**
    * `true`: la ocurrencia se registra sola al llegar su fecha (al abrir la app o a medianoche).
    * Ausente o `false`: queda «por confirmar» (nunca se registra sin confirmación).
@@ -394,6 +409,8 @@ export interface Plan {
   previousPlanId?: string
   alertAt80: boolean
   alertAt100: boolean
+  /** v13 · Avisos tempranos además de 80/100 (Clara 2.0 §11): solo 50, 75 y 90, sin repetir. Ausente = ninguno. */
+  alertLevels?: PlanEarlyAlertLevel[]
   result?: PlanResult
   /**
    * v12. Arrastre al renovar un plan recurrente: `none` = cada ciclo empieza con el límite base;
@@ -532,6 +549,11 @@ export interface SafeToSpendSettings {
   granularity: 'day' | 'week' | 'period'
   subtractScheduled: boolean
   subtractGoalContributions: boolean
+  /**
+   * v13. Colchón de seguridad (unidades menores, ≥ 0): dinero que la persona quiere dejar siempre sin
+   * gastar. Se resta del disponible y del *safe to spend*; no es un gasto ni mueve dinero. 0 = sin colchón.
+   */
+  bufferMinor: number
 }
 
 /** Hora local `HH:MM`. */
@@ -731,7 +753,14 @@ export interface AppData {
 /* ------------------------------------------------------------------ */
 
 /** Colecciones con efecto financiero que se registran en el historial. */
-export type HistoryCollection = 'accounts' | 'transactions' | 'schedules' | 'goals' | 'trash' | 'reconciliations' | 'incomeDistributions' | 'periodBudgets' | 'settings'
+/**
+ * v14 (auditoría del PR #15, QA-05): también `templates`, `scenarios` e `inboxSnoozed` (los aplazamientos de la
+ * bandeja, `inbox.snoozed`), que partir un programado reescribe; así revertir la partición los devuelve y un cambio
+ * posterior en ellos es un conflicto. Las entradas anteriores no los tienen y siguen pudiendo revertirse. Los
+ * aplazamientos solo acompañan a otros cambios (posponer o retirar un aviso no crea entrada) y uno caducado que ya no
+ * está no es un conflicto ni se resucita al revertir (R5).
+ */
+export type HistoryCollection = 'accounts' | 'transactions' | 'schedules' | 'goals' | 'trash' | 'reconciliations' | 'incomeDistributions' | 'periodBudgets' | 'templates' | 'scenarios' | 'inboxSnoozed' | 'settings'
 
 /** Un registro cambiado: valor anterior y nuevo (`null` = no existía / dejó de existir). */
 export interface HistoryChange {

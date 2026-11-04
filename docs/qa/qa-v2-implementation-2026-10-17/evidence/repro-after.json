@@ -1,0 +1,319 @@
+{
+  "cur01": [
+    {
+      "input": "coffee USD $10",
+      "amountMinor": 1000,
+      "foreignCurrency": "USD"
+    },
+    {
+      "input": "coffee $10 USD",
+      "amountMinor": 1000,
+      "foreignCurrency": "USD"
+    },
+    {
+      "input": "café USD $ 10",
+      "amountMinor": 1000,
+      "foreignCurrency": "USD"
+    },
+    {
+      "input": "coffee EUR $10",
+      "amountMinor": 1000,
+      "foreignCurrency": null
+    },
+    {
+      "input": "coffee $10",
+      "amountMinor": 1000,
+      "foreignCurrency": null
+    },
+    {
+      "input": "coffee CAD $10",
+      "amountMinor": 1000,
+      "foreignCurrency": null
+    }
+  ],
+  "cur02": [
+    {
+      "input": "USD 10 CAD",
+      "strip": {
+        "text": "10",
+        "mark": {
+          "conflict": [
+            {
+              "code": "USD"
+            },
+            {
+              "code": "CAD"
+            }
+          ]
+        }
+      },
+      "parseMoney": {
+        "ok": false,
+        "error": "currencyConflict",
+        "digits": 2,
+        "found": "USD",
+        "other": "CAD",
+        "expected": "CAD"
+      },
+      "shortcut": {
+        "ok": false
+      }
+    },
+    {
+      "input": "€10 CAD",
+      "strip": {
+        "text": "10",
+        "mark": {
+          "conflict": [
+            {
+              "symbol": "€"
+            },
+            {
+              "code": "CAD"
+            }
+          ]
+        }
+      },
+      "parseMoney": {
+        "ok": false,
+        "error": "currencyConflict",
+        "digits": 2,
+        "found": "€",
+        "other": "CAD",
+        "expected": "CAD"
+      },
+      "shortcut": {
+        "ok": false
+      }
+    },
+    {
+      "input": "GBP 10 CAD",
+      "strip": {
+        "text": "10",
+        "mark": {
+          "conflict": [
+            {
+              "code": "GBP"
+            },
+            {
+              "code": "CAD"
+            }
+          ]
+        }
+      },
+      "parseMoney": {
+        "ok": false,
+        "error": "currencyConflict",
+        "digits": 2,
+        "found": "GBP",
+        "other": "CAD",
+        "expected": "CAD"
+      },
+      "shortcut": {
+        "ok": false
+      }
+    },
+    {
+      "input": "US$10 CAD",
+      "strip": {
+        "text": "10",
+        "mark": {
+          "conflict": [
+            {
+              "code": "USD"
+            },
+            {
+              "code": "CAD"
+            }
+          ]
+        }
+      },
+      "parseMoney": {
+        "ok": false,
+        "error": "currencyConflict",
+        "digits": 2,
+        "found": "USD",
+        "other": "CAD",
+        "expected": "CAD"
+      },
+      "shortcut": {
+        "ok": false
+      }
+    },
+    {
+      "input": "CAD 10 USD",
+      "strip": {
+        "text": "10",
+        "mark": {
+          "conflict": [
+            {
+              "code": "CAD"
+            },
+            {
+              "code": "USD"
+            }
+          ]
+        }
+      },
+      "parseMoney": {
+        "ok": false,
+        "error": "currencyConflict",
+        "digits": 2,
+        "found": "CAD",
+        "other": "USD",
+        "expected": "CAD"
+      },
+      "shortcut": {
+        "ok": false
+      }
+    },
+    {
+      "input": "-USD 10 CAD",
+      "strip": {
+        "text": "-10",
+        "mark": {
+          "conflict": [
+            {
+              "code": "USD"
+            },
+            {
+              "code": "CAD"
+            }
+          ]
+        }
+      },
+      "parseMoney": {
+        "ok": false,
+        "error": "currencyConflict",
+        "digits": 2,
+        "found": "USD",
+        "other": "CAD",
+        "expected": "CAD"
+      },
+      "shortcut": {
+        "ok": false
+      }
+    },
+    {
+      "input": "CAD 10 CAD",
+      "strip": {
+        "text": "10",
+        "mark": {
+          "code": "CAD"
+        }
+      },
+      "parseMoney": {
+        "ok": true,
+        "minor": 1000
+      },
+      "shortcut": {
+        "ok": true,
+        "minor": 1000
+      }
+    },
+    {
+      "input": "$10 CAD",
+      "strip": {
+        "text": "10",
+        "mark": {
+          "code": "CAD"
+        }
+      },
+      "parseMoney": {
+        "ok": true,
+        "minor": 1000
+      },
+      "shortcut": {
+        "ok": true,
+        "minor": 1000
+      }
+    },
+    {
+      "input": "10 CAD",
+      "strip": {
+        "text": "10",
+        "mark": {
+          "code": "CAD"
+        }
+      },
+      "parseMoney": {
+        "ok": true,
+        "minor": 1000
+      },
+      "shortcut": {
+        "ok": true,
+        "minor": 1000
+      }
+    }
+  ],
+  "cur02csv": [
+    {
+      "line": 1,
+      "status": "error",
+      "amountMinor": null,
+      "kind": null,
+      "error": "currencyConflict",
+      "currency": "USD"
+    },
+    {
+      "line": 2,
+      "status": "error",
+      "amountMinor": null,
+      "kind": null,
+      "error": "currencyConflict",
+      "currency": "€"
+    },
+    {
+      "line": 3,
+      "status": "new",
+      "amountMinor": 1000,
+      "kind": "expense",
+      "error": null,
+      "currency": "CAD"
+    }
+  ],
+  "cur02assistant": [
+    {
+      "input": "coffee USD 10 CAD",
+      "amountMinor": 1000,
+      "foreignCurrency": null
+    },
+    {
+      "input": "coffee €10 CAD",
+      "amountMinor": 1000,
+      "foreignCurrency": null
+    }
+  ],
+  "cur03": [
+    {
+      "input": "SHOP\nTOTAL PEN 10.00",
+      "totalMinor": 1000,
+      "foreignCurrency": "PEN"
+    },
+    {
+      "input": "SHOP\nTOTAL RUB 10.00",
+      "totalMinor": 1000,
+      "foreignCurrency": "RUB"
+    },
+    {
+      "input": "SHOP\nPEN 2.99\nTOTAL 2.99",
+      "totalMinor": 299,
+      "foreignCurrency": null
+    },
+    {
+      "input": "SHOP\nTOTAL USD 10.00",
+      "totalMinor": 1000,
+      "foreignCurrency": "USD"
+    },
+    {
+      "input": "SHOP\nTOTAL 10.00 €",
+      "totalMinor": 1000,
+      "foreignCurrency": "€"
+    }
+  ],
+  "fin01": {
+    "totalMinor": null,
+    "monthlyMinor": null,
+    "safe": false
+  }
+}

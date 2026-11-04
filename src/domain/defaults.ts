@@ -21,6 +21,7 @@ export const DEFAULT_SAFE_TO_SPEND: SafeToSpendSettings = {
   granularity: 'day',
   subtractScheduled: true,
   subtractGoalContributions: true,
+  bufferMinor: 0,
 }
 
 export const GUEST_PROFILE: UserProfile = { id: 'guest', isGuest: true }

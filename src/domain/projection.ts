@@ -15,7 +15,7 @@
 import { isBudgetAccount, spendableBalance } from './balances'
 import { addDays, daysBetween } from './dates'
 import { goalsReservedTotal } from './reserves'
-import { floorDiv, sumMinor } from './money'
+import { checkedSumMinor, floorDiv, sumMinor } from './money'
 import { openItemsUntil, type PlanItem } from './planItems'
 import type { AppData, IncomeScenario, LocalDate } from './types'
 
@@ -46,6 +46,16 @@ export interface ProjectionOptions {
 
 export interface ProjectionResult {
   today: LocalDate
+  /** Días pedidos (30 por defecto). Si `outOfRangeFrom` no es `null`, `days` cubre menos: solo los exactos. */
+  horizonDays: number
+  /**
+   * Primer día cuyo saldo ya no es un entero exacto (QA V2, FIN-01): la proyección acaba el día antes y ese día y los
+   * siguientes no tienen cifra. Nunca se lanza un error ni se inventa, recorta o redondea un saldo (auditoría del
+   * 2026-11-02, prioridad 4: antes solo el calendario y Estadísticas lo pedían y Proyección, Análisis, Plan ante
+   * faltante, Escenarios y «¿Me alcanza?» caían en «No se pudo abrir esta pantalla»). Quien proyecta lo dice y no
+   * afirma nada sobre el horizonte completo (saldo al final, «sin faltante») cuando no es `null`.
+   */
+  outOfRangeFrom: LocalDate | null
   startMinor: number
   goalsReservedMinor: number
   days: ProjectionDay[]
@@ -97,14 +107,21 @@ export function projectBalance(data: AppData, today: LocalDate, options: Project
   let lowest = { date: today, minor: startMinor }
   let firstNegativeDate: LocalDate | null = startMinor < 0 ? today : null
   let firstBelowGoalsDate: LocalDate | null = goalsReservedMinor > 0 && startMinor < goalsReservedMinor ? today : null
+  let outOfRangeFrom: LocalDate | null = null
 
   for (let d = 0; d < totalDays; d++) {
     const date = addDays(today, d)
     const events = byDate.get(date) ?? []
-    const eventsMinor = sumMinor(events.map((e) => e.budgetEffectMinor))
     const extraMinor = -(d === 0 ? extraToday : 0) - (extraByDate.get(date) ?? 0)
+    const dayMinor = checkedSumMinor(events.map((e) => e.budgetEffectMinor))
+    const endMinor = dayMinor === null ? null : checkedSumMinor([balance, dayMinor, -dailySpendMinor, extraMinor])
+    if (dayMinor === null || endMinor === null) {
+      outOfRangeFrom = date
+      break
+    }
+    const eventsMinor = dayMinor
     const startOfDay = balance
-    balance = sumMinor([balance, eventsMinor, -dailySpendMinor, extraMinor])
+    balance = endMinor
     days.push({ date, startMinor: startOfDay, events, eventsMinor, dailySpendMinor, extraMinor, endMinor: balance })
     if (balance < lowest.minor) lowest = { date, minor: balance }
     if (balance < 0 && firstNegativeDate === null) firstNegativeDate = date
@@ -113,6 +130,8 @@ export function projectBalance(data: AppData, today: LocalDate, options: Project
 
   return {
     today,
+    horizonDays: totalDays,
+    outOfRangeFrom,
     startMinor,
     goalsReservedMinor,
     days,
@@ -132,10 +151,13 @@ export function projectBalance(data: AppData, today: LocalDate, options: Project
 
 export interface ScenarioComparison {
   scenario: IncomeScenario
+  /** Ingresos contados en los días exactos (parcial si `outOfRangeFrom` no es `null`). */
   incomeMinor: number
+  /** Saldo al cierre del último día exacto: el del horizonte solo si `outOfRangeFrom` es `null`. */
   endMinor: number
   lowest: { date: LocalDate; minor: number }
   firstNegativeDate: LocalDate | null
+  outOfRangeFrom: LocalDate | null
 }
 
 /**
@@ -146,7 +168,7 @@ export function compareScenarios(data: AppData, today: LocalDate, options: Omit<
   return (['min', 'expected', 'extra'] as const).map((scenario) => {
     const p = projectBalance(data, today, { ...options, scenario })
     const incomeMinor = sumMinor(p.days.flatMap((d) => d.events).filter((e) => e.budgetEffectMinor > 0).map((e) => e.budgetEffectMinor))
-    return { scenario, incomeMinor, endMinor: p.endMinor, lowest: p.lowest, firstNegativeDate: p.firstNegativeDate }
+    return { scenario, incomeMinor, endMinor: p.endMinor, lowest: p.lowest, firstNegativeDate: p.firstNegativeDate, outOfRangeFrom: p.outOfRangeFrom }
   })
 }
 
@@ -185,15 +207,23 @@ export function estimateDailySpend(data: AppData, today: LocalDate, lookbackDays
 /** Días que el calendario proyecta como máximo (desde hoy, incluido). Más allá no hay cifra por día. */
 export const CALENDAR_PROJECTION_MAX_DAYS = 400
 
-export type DayBalance = { state: 'past' } | { state: 'projected'; endMinor: number } | { state: 'beyond'; lastDate: LocalDate }
+export type DayBalance =
+  | { state: 'past' }
+  | { state: 'projected'; endMinor: number }
+  /** Desde `from` el saldo deja de ser un entero exacto (`outOfRangeFrom`): sin cifra, y se dice desde cuándo. */
+  | { state: 'outOfRange'; from: LocalDate }
+  /** Más allá de los días proyectados: `lastDate` es el último con cifra. */
+  | { state: 'beyond'; lastDate: LocalDate }
 
 /**
- * Saldo de un día del calendario: pasado (vive en Cuentas), proyectado (cierre de ese día) o fuera de
- * la proyección. Nunca se toma el último día proyectado como si fuera el saldo de un día posterior.
+ * Saldo de un día del calendario: pasado (vive en Cuentas), proyectado (cierre de ese día), fuera del rango exacto
+ * (QA V2, FIN-01) o más allá de la proyección. Nunca se toma el último día proyectado como si fuera el saldo de un
+ * día posterior. La misma regla vale para la proyección base y para una simulación (revisión propia, R3).
  */
-export function dayBalance(projection: Pick<ProjectionResult, 'today' | 'days'>, date: LocalDate): DayBalance {
+export function dayBalance(projection: Pick<ProjectionResult, 'today' | 'days' | 'outOfRangeFrom'>, date: LocalDate): DayBalance {
   if (date < projection.today) return { state: 'past' }
   const day = projection.days.find((d) => d.date === date)
   if (day) return { state: 'projected', endMinor: day.endMinor }
+  if (projection.outOfRangeFrom && date >= projection.outOfRangeFrom) return { state: 'outOfRange', from: projection.outOfRangeFrom }
   return { state: 'beyond', lastDate: projection.days[projection.days.length - 1]?.date ?? projection.today }
 }

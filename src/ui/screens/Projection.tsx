@@ -33,6 +33,11 @@ export function Projection() {
   const comparison = hasVariable ? compareScenarios(data, today, { dailySpendMinor }) : []
   const budget = useMemo(() => computeBudget(data, today), [data, today])
   const eventDays = projection.days.filter((d) => d.events.length > 0 || d.endMinor < 0)
+  // Fuera del rango exacto (auditoría del 2026-11-02, P4): la curva y las cifras llegan hasta el último día exacto y se
+  // dice desde cuándo no hay cifra; «sin faltante» solo se afirma con la proyección completa.
+  const outOfRangeFrom = projection.outOfRangeFrom
+  const lastExact = projection.days[projection.days.length - 1]?.date ?? today
+  const partial = (date: string | null) => (date ? { date: fmt.date(date, { compact: true, today }), until: fmt.date(lastExact, { compact: true, today }) } : null)
 
   return (
     <div className="stack">
@@ -44,9 +49,14 @@ export function Projection() {
               {t('projection.shortfallText', { amount: fmt.money(projection.lowest.minor), date: fmt.date(projection.lowest.date) })}
             </Why>
           </Alert>
-        ) : (
+        ) : outOfRangeFrom ? null : (
           <Alert tone="good" title={t('projection.noShortfallTitle')}>
             {t('projection.noShortfallText', { amount: fmt.money(projection.lowest.minor), date: fmt.date(projection.lowest.date) })}
+          </Alert>
+        )}
+        {outOfRangeFrom && (
+          <Alert tone="warning" title={t('projection.partialTitle', partial(outOfRangeFrom)!)} role="status">
+            <span data-testid="projection-partial">{t(projection.firstNegativeDate ? 'projection.partialTextShortfall' : 'projection.partialText', partial(outOfRangeFrom)!)}</span>
           </Alert>
         )}
         {projection.firstBelowGoalsDate && !projection.firstNegativeDate && (
@@ -65,6 +75,7 @@ export function Projection() {
           />
         )}
         <ProjectionChart projection={projection} fmt={fmt} today={today} />
+        {outOfRangeFrom && <p className="note note--icon">{t('projection.partialChartNote', partial(outOfRangeFrom)!)}</p>}
         <Why short={t('projection.chartShort')}>{t('projection.chartNote')}</Why>
       </Card>
 
@@ -98,8 +109,14 @@ export function Projection() {
                     <th scope="row">{t(`projection.scenario.${c.scenario}` as MessageKey)}</th>
                     <td className="num">{fmt.money(c.incomeMinor)}</td>
                     <td className="num">{fmt.money(c.lowest.minor)}</td>
-                    <td className="num">{fmt.money(c.endMinor)}</td>
-                    <td>{c.firstNegativeDate ? `⚠ ${t('projection.shortfallFrom', { date: fmt.date(c.firstNegativeDate, { compact: true, today }) })}` : t('projection.noShortfallShort')}</td>
+                    <td className="num">{c.outOfRangeFrom ? t('projection.partialCell', { date: fmt.date(c.outOfRangeFrom, { compact: true, today }) }) : fmt.money(c.endMinor)}</td>
+                    <td>
+                      {c.firstNegativeDate
+                        ? `⚠ ${t('projection.shortfallFrom', { date: fmt.date(c.firstNegativeDate, { compact: true, today }) })}`
+                        : c.outOfRangeFrom
+                          ? t('projection.partialShortfall', { until: fmt.date(lastExact, { compact: true, today }) })
+                          : t('projection.noShortfallShort')}
+                    </td>
                   </tr>
                 ))}
               </tbody>

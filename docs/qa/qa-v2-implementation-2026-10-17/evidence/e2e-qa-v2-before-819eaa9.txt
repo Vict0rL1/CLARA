@@ -1,0 +1,784 @@
+
+Running 24 tests using 3 workers
+
+  ✘   1 [celular] › tests/e2e/qa-v2.spec.ts:63:1 › CUR-01/02 · dos monedas distintas en el asistente: el campo conserva las dos y la línea no se registra (9.2s)
+  ✘   2 [celular] › tests/e2e/qa-v2.spec.ts:28:1 › CUR-01 · «coffee USD $10» en CAD conserva USD y bloquea la línea; corregida, se registra en CAD y sobrevive a recargar (9.3s)
+  ✘   3 [celular] › tests/e2e/qa-v2.spec.ts:82:1 › CUR-02 · formulario, CSV y atajo: una contradicción nunca se acepta como CAD; lo compatible sí (9.5s)
+  ✓   5 [celular] › tests/e2e/qa-v2.spec.ts:160:1 › CUR-03 · control: «PEN 2.99» en una línea de artículo es un bolígrafo; el total se propone en CAD (1.9s)
+  ✘   6 [celular] › tests/e2e/qa-v2.spec.ts:171:1 › FIN-01 · 25 pagos diarios de 10^12: el calendario se abre, dice que el total no se puede calcular exacto y se recupera al pausar uno (6.5s)
+  ✘   4 [celular] › tests/e2e/qa-v2.spec.ts:140:1 › CUR-03 · foto: «TOTAL PEN 10.00» propone 10.00 PEN y bloquea la línea; corregida, se registra en CAD (7.7s)
+  ✘   7 [celular] › tests/e2e/qa-v2.spec.ts:207:1 › STAT-01 · las fechas personalizadas viven en la dirección: sobreviven a un filtro, a recargar y a editarlas (7.9s)
+  ✘   8 [celular] › tests/e2e/qa-v2.spec.ts:238:1 › SCH-01 · partir un «dos veces al mes» (15 y 30) desde el 30 conserva los días; volver a «todas» restaura; el borde de fin de mes se dice (7.1s)
+  ✘   9 [celular-pequeno] › tests/e2e/qa-v2.spec.ts:28:1 › CUR-01 · «coffee USD $10» en CAD conserva USD y bloquea la línea; corregida, se registra en CAD y sobrevive a recargar (7.1s)
+  ✘  10 [celular-pequeno] › tests/e2e/qa-v2.spec.ts:63:1 › CUR-01/02 · dos monedas distintas en el asistente: el campo conserva las dos y la línea no se registra (7.1s)
+  ✓  13 [celular-pequeno] › tests/e2e/qa-v2.spec.ts:160:1 › CUR-03 · control: «PEN 2.99» en una línea de artículo es un bolígrafo; el total se propone en CAD (1.2s)
+  ✘  11 [celular-pequeno] › tests/e2e/qa-v2.spec.ts:82:1 › CUR-02 · formulario, CSV y atajo: una contradicción nunca se acepta como CAD; lo compatible sí (6.9s)
+  ✘  12 [celular-pequeno] › tests/e2e/qa-v2.spec.ts:140:1 › CUR-03 · foto: «TOTAL PEN 10.00» propone 10.00 PEN y bloquea la línea; corregida, se registra en CAD (6.9s)
+  ✘  14 [celular-pequeno] › tests/e2e/qa-v2.spec.ts:171:1 › FIN-01 · 25 pagos diarios de 10^12: el calendario se abre, dice que el total no se puede calcular exacto y se recupera al pausar uno (5.8s)
+  ✘  15 [celular-pequeno] › tests/e2e/qa-v2.spec.ts:207:1 › STAT-01 · las fechas personalizadas viven en la dirección: sobreviven a un filtro, a recargar y a editarlas (7.3s)
+  ✘  16 [celular-pequeno] › tests/e2e/qa-v2.spec.ts:238:1 › SCH-01 · partir un «dos veces al mes» (15 y 30) desde el 30 conserva los días; volver a «todas» restaura; el borde de fin de mes se dice (7.0s)
+  ✘  17 [escritorio] › tests/e2e/qa-v2.spec.ts:28:1 › CUR-01 · «coffee USD $10» en CAD conserva USD y bloquea la línea; corregida, se registra en CAD y sobrevive a recargar (6.8s)
+  ✘  18 [escritorio] › tests/e2e/qa-v2.spec.ts:63:1 › CUR-01/02 · dos monedas distintas en el asistente: el campo conserva las dos y la línea no se registra (7.0s)
+  ✘  19 [escritorio] › tests/e2e/qa-v2.spec.ts:82:1 › CUR-02 · formulario, CSV y atajo: una contradicción nunca se acepta como CAD; lo compatible sí (7.1s)
+  ✓  21 [escritorio] › tests/e2e/qa-v2.spec.ts:160:1 › CUR-03 · control: «PEN 2.99» en una línea de artículo es un bolígrafo; el total se propone en CAD (1.6s)
+  ✘  20 [escritorio] › tests/e2e/qa-v2.spec.ts:140:1 › CUR-03 · foto: «TOTAL PEN 10.00» propone 10.00 PEN y bloquea la línea; corregida, se registra en CAD (6.9s)
+  ✘  23 [escritorio] › tests/e2e/qa-v2.spec.ts:171:1 › FIN-01 · 25 pagos diarios de 10^12: el calendario se abre, dice que el total no se puede calcular exacto y se recupera al pausar uno (6.4s)
+  ✘  22 [escritorio] › tests/e2e/qa-v2.spec.ts:207:1 › STAT-01 · las fechas personalizadas viven en la dirección: sobreviven a un filtro, a recargar y a editarlas (7.4s)
+  ✘  24 [escritorio] › tests/e2e/qa-v2.spec.ts:238:1 › SCH-01 · partir un «dos veces al mes» (15 y 30) desde el 30 conserva los días; volver a «todas» restaura; el borde de fin de mes se dice (6.7s)
+
+
+  1) [celular] › tests/e2e/qa-v2.spec.ts:28:1 › CUR-01 · «coffee USD $10» en CAD conserva USD y bloquea la línea; corregida, se registra en CAD y sobrevive a recargar 
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator:  getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+    Expected: "10.00 USD"
+    Received: "10.00"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveValue" getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+        14 × locator resolved to <input id="_r_5_" value="10.00" autocomplete="off" placeholder="0.00" inputmode="decimal" enterkeyhint="done" class="input money-input__field"/>
+           - unexpected value "10.00"
+
+
+      36 |   await shot(page, 'cur01-assistant')
+      37 |   const coffee = lines.first()
+    > 38 |   await expect(coffee.getByLabel('Importe')).toHaveValue('10.00 USD')
+         |                                              ^
+      39 |   await expect(coffee.getByText('El importe está en USD; este presupuesto usa CAD. No se convierte.')).toBeVisible()
+      40 |   await expect(coffee.getByTestId('review-currency')).toContainText('Escribiste USD; este presupuesto usa CAD')
+      41 |   await expect(lines.nth(1).getByLabel('Importe')).toHaveValue('4.00')
+        at /home/user/ALCANZA/tests/e2e/qa-v2.spec.ts:38:46
+
+    Error Context: test-results/qa-v2-CUR-01-·-«coffee-USD-9f805--CAD-y-sobrevive-a-recargar-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/qa-v2-CUR-01-·-«coffee-USD-9f805--CAD-y-sobrevive-a-recargar-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/qa-v2-CUR-01-·-«coffee-USD-9f805--CAD-y-sobrevive-a-recargar-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [celular] › tests/e2e/qa-v2.spec.ts:63:1 › CUR-01/02 · dos monedas distintas en el asistente: el campo conserva las dos y la línea no se registra 
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator:  getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+    Expected: "USD 10.00 CAD"
+    Received: "10.00 USD"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveValue" getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+        14 × locator resolved to <input id="_r_5_" value="10.00 USD" autocomplete="off" placeholder="0.00" inputmode="decimal" enterkeyhint="done" aria-invalid="true" aria-describedby="_r_5_-error" class="input money-input__field"/>
+           - unexpected value "10.00 USD"
+
+
+      69 |   const line = page.getByTestId('assistant-preview').locator('.assistant__line').first()
+      70 |   await shot(page, 'cur02-assistant-conflict')
+    > 71 |   await expect(line.getByLabel('Importe')).toHaveValue('USD 10.00 CAD')
+         |                                            ^
+      72 |   await expect(line.getByText('El importe tiene dos monedas distintas (USD y CAD). No se convierte: escribe solo el número en CAD.')).toBeVisible()
+      73 |   await expect(line.getByTestId('review-currency')).toContainText('Escribiste USD y CAD; este presupuesto usa CAD')
+      74 |   const register = page.getByRole('button', { name: 'Registrar 1 movimiento' })
+        at /home/user/ALCANZA/tests/e2e/qa-v2.spec.ts:71:44
+
+    Error Context: test-results/qa-v2-CUR-01-02-·-dos-mone-afec5-s-y-la-línea-no-se-registra-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/qa-v2-CUR-01-02-·-dos-mone-afec5-s-y-la-línea-no-se-registra-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/qa-v2-CUR-01-02-·-dos-mone-afec5-s-y-la-línea-no-se-registra-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [celular] › tests/e2e/qa-v2.spec.ts:82:1 › CUR-02 · formulario, CSV y atajo: una contradicción nunca se acepta como CAD; lo compatible sí 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText('El importe tiene dos monedas distintas (USD y CAD). No se convierte: escribe solo el número en CAD.')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText('El importe tiene dos monedas distintas (USD y CAD). No se convierte: escribe solo el número en CAD.') with timeout 5000ms
+      - waiting for getByText('El importe tiene dos monedas distintas (USD y CAD). No se convierte: escribe solo el número en CAD.')
+
+
+      90 |   await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+      91 |   await shot(page, 'cur02-form')
+    > 92 |   await expect(page.getByText('El importe tiene dos monedas distintas (USD y CAD). No se convierte: escribe solo el número en CAD.')).toBeVisible()
+         |                                                                                                                                       ^
+      93 |   expect(await count()).toBe(before)
+      94 |   await page.getByLabel('Importe').fill('$10 CAD')
+      95 |   await openDetails(page)
+        at /home/user/ALCANZA/tests/e2e/qa-v2.spec.ts:92:135
+
+    Error Context: test-results/qa-v2-CUR-02-·-formulario--33847-a-como-CAD-lo-compatible-sí-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/qa-v2-CUR-02-·-formulario--33847-a-como-CAD-lo-compatible-sí-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/qa-v2-CUR-02-·-formulario--33847-a-como-CAD-lo-compatible-sí-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [celular] › tests/e2e/qa-v2.spec.ts:140:1 › CUR-03 · foto: «TOTAL PEN 10.00» propone 10.00 PEN y bloquea la línea; corregida, se registra en CAD 
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator:  getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+    Expected: "10.00 PEN"
+    Received: "10.00"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveValue" getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+        14 × locator resolved to <input id="_r_5_" value="10.00" autocomplete="off" placeholder="0.00" inputmode="decimal" enterkeyhint="done" class="input money-input__field"/>
+           - unexpected value "10.00"
+
+
+      146 |   await expect(line).toBeVisible()
+      147 |   await shot(page, 'cur03-receipt')
+    > 148 |   await expect(line.getByLabel('Importe')).toHaveValue('10.00 PEN')
+          |                                            ^
+      149 |   await expect(line.getByText('El importe está en PEN; este presupuesto usa CAD. No se convierte.')).toBeVisible()
+      150 |   const register = page.getByRole('button', { name: 'Registrar 1 movimiento' })
+      151 |   await expect(register).toBeDisabled()
+        at /home/user/ALCANZA/tests/e2e/qa-v2.spec.ts:148:44
+
+    Error Context: test-results/qa-v2-CUR-03-·-foto-«TOTAL-acae4-orregida-se-registra-en-CAD-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/qa-v2-CUR-03-·-foto-«TOTAL-acae4-orregida-se-registra-en-CAD-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/qa-v2-CUR-03-·-foto-«TOTAL-acae4-orregida-se-registra-en-CAD-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [celular] › tests/e2e/qa-v2.spec.ts:171:1 › FIN-01 · 25 pagos diarios de 10^12: el calendario se abre, dice que el total no se puede calcular exacto y se recupera al pausar uno 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('available')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('available') with timeout 5000ms
+      - waiting for getByTestId('available')
+
+
+       at helpers.ts:106
+
+      104 |   await writeStoredData(page, data)
+      105 |   await page.reload()
+    > 106 |   await expect(page.getByTestId('available')).toBeVisible()
+          |                                               ^
+      107 | }
+      108 |
+      109 | /** Hace que IndexedDB rechace escrituras (como con el almacenamiento lleno). */
+        at seedStoredData (/home/user/ALCANZA/tests/e2e/helpers.ts:106:47)
+        at /home/user/ALCANZA/tests/e2e/qa-v2.spec.ts:173:3
+
+    Error Context: test-results/qa-v2-FIN-01-·-25-pagos-di-04180-y-se-recupera-al-pausar-uno-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/qa-v2-FIN-01-·-25-pagos-di-04180-y-se-recupera-al-pausar-uno-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/qa-v2-FIN-01-·-25-pagos-di-04180-y-se-recupera-al-pausar-uno-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) [celular] › tests/e2e/qa-v2.spec.ts:207:1 › STAT-01 · las fechas personalizadas viven en la dirección: sobreviven a un filtro, a recargar y a editarlas 
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator:  getByLabel('Inicio del periodo personalizado')
+    Expected: "2026-08-01"
+    Received: ""
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveValue" getByLabel('Inicio del periodo personalizado') with timeout 5000ms
+      - waiting for getByLabel('Inicio del periodo personalizado')
+        14 × locator resolved to <input value="" id="_r_6_" type="date" class="input"/>
+           - unexpected value ""
+
+
+      216 |   await expect(page.getByTestId('stats-filter-active')).toBeVisible()
+      217 |   await shot(page, 'stat01-filter')
+    > 218 |   await expect(start).toHaveValue('2026-08-01')
+          |                       ^
+      219 |   await expect(end).toHaveValue('2026-08-31')
+      220 |   expect(new URL(page.url()).hash).toMatch(/desde=2026-08-01/)
+      221 |   expect(new URL(page.url()).hash).toMatch(/hasta=2026-08-31/)
+        at /home/user/ALCANZA/tests/e2e/qa-v2.spec.ts:218:23
+
+    Error Context: test-results/qa-v2-STAT-01-·-las-fechas-368f8-ro-a-recargar-y-a-editarlas-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/qa-v2-STAT-01-·-las-fechas-368f8-ro-a-recargar-y-a-editarlas-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/qa-v2-STAT-01-·-las-fechas-368f8-ro-a-recargar-y-a-editarlas-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  7) [celular] › tests/e2e/qa-v2.spec.ts:238:1 › SCH-01 · partir un «dos veces al mes» (15 y 30) desde el 30 conserva los días; volver a «todas» restaura; el borde de fin de mes se dice 
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator:  getByLabel('Segundo día del mes')
+    Expected: "15"
+    Received: "30"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveValue" getByLabel('Segundo día del mes') with timeout 5000ms
+      - waiting for getByLabel('Segundo día del mes')
+        14 × locator resolved to <input min="1" max="31" id="_r_8_" value="30" class="input" type="number" placeholder="15" name="second-day" inputmode="numeric" aria-describedby="_r_8_-hint"/>
+           - unexpected value "30"
+
+
+      252 |   await expect(page.getByLabel('Desde (primera fecha con los cambios)')).toHaveValue('2026-09-30')
+      253 |   await shot(page, 'sch01-split')
+    > 254 |   await expect(second).toHaveValue('15')
+          |                        ^
+      255 |   await expect(page.getByText('Se repite el día 15 y el día 30 de cada mes.', { exact: false })).toBeVisible()
+      256 |   // Volver a «todas las fechas» deja todo como estaba.
+      257 |   await page.getByRole('radio', { name: 'A todas las fechas' }).check()
+        at /home/user/ALCANZA/tests/e2e/qa-v2.spec.ts:254:24
+
+    Error Context: test-results/qa-v2-SCH-01-·-partir-un-«-da742-borde-de-fin-de-mes-se-dice-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/qa-v2-SCH-01-·-partir-un-«-da742-borde-de-fin-de-mes-se-dice-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/qa-v2-SCH-01-·-partir-un-«-da742-borde-de-fin-de-mes-se-dice-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8) [celular-pequeno] › tests/e2e/qa-v2.spec.ts:28:1 › CUR-01 · «coffee USD $10» en CAD conserva USD y bloquea la línea; corregida, se registra en CAD y sobrevive a recargar 
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator:  getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+    Expected: "10.00 USD"
+    Received: "10.00"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveValue" getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+        14 × locator resolved to <input id="_r_5_" value="10.00" autocomplete="off" placeholder="0.00" inputmode="decimal" enterkeyhint="done" class="input money-input__field"/>
+           - unexpected value "10.00"
+
+
+      36 |   await shot(page, 'cur01-assistant')
+      37 |   const coffee = lines.first()
+    > 38 |   await expect(coffee.getByLabel('Importe')).toHaveValue('10.00 USD')
+         |                                              ^
+      39 |   await expect(coffee.getByText('El importe está en USD; este presupuesto usa CAD. No se convierte.')).toBeVisible()
+      40 |   await expect(coffee.getByTestId('review-currency')).toContainText('Escribiste USD; este presupuesto usa CAD')
+      41 |   await expect(lines.nth(1).getByLabel('Importe')).toHaveValue('4.00')
+        at /home/user/ALCANZA/tests/e2e/qa-v2.spec.ts:38:46
+
+    Error Context: test-results/qa-v2-CUR-01-·-«coffee-USD-9f805--CAD-y-sobrevive-a-recargar-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/qa-v2-CUR-01-·-«coffee-USD-9f805--CAD-y-sobrevive-a-recargar-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/qa-v2-CUR-01-·-«coffee-USD-9f805--CAD-y-sobrevive-a-recargar-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  9) [celular-pequeno] › tests/e2e/qa-v2.spec.ts:63:1 › CUR-01/02 · dos monedas distintas en el asistente: el campo conserva las dos y la línea no se registra 
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator:  getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+    Expected: "USD 10.00 CAD"
+    Received: "10.00 USD"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveValue" getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+        14 × locator resolved to <input id="_r_6_" value="10.00 USD" autocomplete="off" placeholder="0.00" inputmode="decimal" enterkeyhint="done" aria-invalid="true" aria-describedby="_r_6_-error" class="input money-input__field"/>
+           - unexpected value "10.00 USD"
+
+
+      69 |   const line = page.getByTestId('assistant-preview').locator('.assistant__line').first()
+      70 |   await shot(page, 'cur02-assistant-conflict')
+    > 71 |   await expect(line.getByLabel('Importe')).toHaveValue('USD 10.00 CAD')
+         |                                            ^
+      72 |   await expect(line.getByText('El importe tiene dos monedas distintas (USD y CAD). No se convierte: escribe solo el número en CAD.')).toBeVisible()
+      73 |   await expect(line.getByTestId('review-currency')).toContainText('Escribiste USD y CAD; este presupuesto usa CAD')
+      74 |   const register = page.getByRole('button', { name: 'Registrar 1 movimiento' })
+        at /home/user/ALCANZA/tests/e2e/qa-v2.spec.ts:71:44
+
+    Error Context: test-results/qa-v2-CUR-01-02-·-dos-mone-afec5-s-y-la-línea-no-se-registra-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/qa-v2-CUR-01-02-·-dos-mone-afec5-s-y-la-línea-no-se-registra-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/qa-v2-CUR-01-02-·-dos-mone-afec5-s-y-la-línea-no-se-registra-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  10) [celular-pequeno] › tests/e2e/qa-v2.spec.ts:82:1 › CUR-02 · formulario, CSV y atajo: una contradicción nunca se acepta como CAD; lo compatible sí 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText('El importe tiene dos monedas distintas (USD y CAD). No se convierte: escribe solo el número en CAD.')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText('El importe tiene dos monedas distintas (USD y CAD). No se convierte: escribe solo el número en CAD.') with timeout 5000ms
+      - waiting for getByText('El importe tiene dos monedas distintas (USD y CAD). No se convierte: escribe solo el número en CAD.')
+
+
+      90 |   await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+      91 |   await shot(page, 'cur02-form')
+    > 92 |   await expect(page.getByText('El importe tiene dos monedas distintas (USD y CAD). No se convierte: escribe solo el número en CAD.')).toBeVisible()
+         |                                                                                                                                       ^
+      93 |   expect(await count()).toBe(before)
+      94 |   await page.getByLabel('Importe').fill('$10 CAD')
+      95 |   await openDetails(page)
+        at /home/user/ALCANZA/tests/e2e/qa-v2.spec.ts:92:135
+
+    Error Context: test-results/qa-v2-CUR-02-·-formulario--33847-a-como-CAD-lo-compatible-sí-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/qa-v2-CUR-02-·-formulario--33847-a-como-CAD-lo-compatible-sí-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/qa-v2-CUR-02-·-formulario--33847-a-como-CAD-lo-compatible-sí-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  11) [celular-pequeno] › tests/e2e/qa-v2.spec.ts:140:1 › CUR-03 · foto: «TOTAL PEN 10.00» propone 10.00 PEN y bloquea la línea; corregida, se registra en CAD 
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator:  getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+    Expected: "10.00 PEN"
+    Received: "10.00"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveValue" getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+        14 × locator resolved to <input id="_r_5_" value="10.00" autocomplete="off" placeholder="0.00" inputmode="decimal" enterkeyhint="done" class="input money-input__field"/>
+           - unexpected value "10.00"
+
+
+      146 |   await expect(line).toBeVisible()
+      147 |   await shot(page, 'cur03-receipt')
+    > 148 |   await expect(line.getByLabel('Importe')).toHaveValue('10.00 PEN')
+          |                                            ^
+      149 |   await expect(line.getByText('El importe está en PEN; este presupuesto usa CAD. No se convierte.')).toBeVisible()
+      150 |   const register = page.getByRole('button', { name: 'Registrar 1 movimiento' })
+      151 |   await expect(register).toBeDisabled()
+        at /home/user/ALCANZA/tests/e2e/qa-v2.spec.ts:148:44
+
+    Error Context: test-results/qa-v2-CUR-03-·-foto-«TOTAL-acae4-orregida-se-registra-en-CAD-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/qa-v2-CUR-03-·-foto-«TOTAL-acae4-orregida-se-registra-en-CAD-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/qa-v2-CUR-03-·-foto-«TOTAL-acae4-orregida-se-registra-en-CAD-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  12) [celular-pequeno] › tests/e2e/qa-v2.spec.ts:171:1 › FIN-01 · 25 pagos diarios de 10^12: el calendario se abre, dice que el total no se puede calcular exacto y se recupera al pausar uno 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('available')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('available') with timeout 5000ms
+      - waiting for getByTestId('available')
+
+
+       at helpers.ts:106
+
+      104 |   await writeStoredData(page, data)
+      105 |   await page.reload()
+    > 106 |   await expect(page.getByTestId('available')).toBeVisible()
+          |                                               ^
+      107 | }
+      108 |
+      109 | /** Hace que IndexedDB rechace escrituras (como con el almacenamiento lleno). */
+        at seedStoredData (/home/user/ALCANZA/tests/e2e/helpers.ts:106:47)
+        at /home/user/ALCANZA/tests/e2e/qa-v2.spec.ts:173:3
+
+    Error Context: test-results/qa-v2-FIN-01-·-25-pagos-di-04180-y-se-recupera-al-pausar-uno-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/qa-v2-FIN-01-·-25-pagos-di-04180-y-se-recupera-al-pausar-uno-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/qa-v2-FIN-01-·-25-pagos-di-04180-y-se-recupera-al-pausar-uno-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  13) [celular-pequeno] › tests/e2e/qa-v2.spec.ts:207:1 › STAT-01 · las fechas personalizadas viven en la dirección: sobreviven a un filtro, a recargar y a editarlas 
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator:  getByLabel('Inicio del periodo personalizado')
+    Expected: "2026-08-01"
+    Received: ""
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveValue" getByLabel('Inicio del periodo personalizado') with timeout 5000ms
+      - waiting for getByLabel('Inicio del periodo personalizado')
+        14 × locator resolved to <input value="" id="_r_7_" type="date" class="input"/>
+           - unexpected value ""
+
+
+      216 |   await expect(page.getByTestId('stats-filter-active')).toBeVisible()
+      217 |   await shot(page, 'stat01-filter')
+    > 218 |   await expect(start).toHaveValue('2026-08-01')
+          |                       ^
+      219 |   await expect(end).toHaveValue('2026-08-31')
+      220 |   expect(new URL(page.url()).hash).toMatch(/desde=2026-08-01/)
+      221 |   expect(new URL(page.url()).hash).toMatch(/hasta=2026-08-31/)
+        at /home/user/ALCANZA/tests/e2e/qa-v2.spec.ts:218:23
+
+    Error Context: test-results/qa-v2-STAT-01-·-las-fechas-368f8-ro-a-recargar-y-a-editarlas-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/qa-v2-STAT-01-·-las-fechas-368f8-ro-a-recargar-y-a-editarlas-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/qa-v2-STAT-01-·-las-fechas-368f8-ro-a-recargar-y-a-editarlas-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  14) [celular-pequeno] › tests/e2e/qa-v2.spec.ts:238:1 › SCH-01 · partir un «dos veces al mes» (15 y 30) desde el 30 conserva los días; volver a «todas» restaura; el borde de fin de mes se dice 
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator:  getByLabel('Segundo día del mes')
+    Expected: "15"
+    Received: "30"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveValue" getByLabel('Segundo día del mes') with timeout 5000ms
+      - waiting for getByLabel('Segundo día del mes')
+        14 × locator resolved to <input min="1" max="31" id="_r_8_" value="30" class="input" type="number" placeholder="15" name="second-day" inputmode="numeric" aria-describedby="_r_8_-hint"/>
+           - unexpected value "30"
+
+
+      252 |   await expect(page.getByLabel('Desde (primera fecha con los cambios)')).toHaveValue('2026-09-30')
+      253 |   await shot(page, 'sch01-split')
+    > 254 |   await expect(second).toHaveValue('15')
+          |                        ^
+      255 |   await expect(page.getByText('Se repite el día 15 y el día 30 de cada mes.', { exact: false })).toBeVisible()
+      256 |   // Volver a «todas las fechas» deja todo como estaba.
+      257 |   await page.getByRole('radio', { name: 'A todas las fechas' }).check()
+        at /home/user/ALCANZA/tests/e2e/qa-v2.spec.ts:254:24
+
+    Error Context: test-results/qa-v2-SCH-01-·-partir-un-«-da742-borde-de-fin-de-mes-se-dice-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/qa-v2-SCH-01-·-partir-un-«-da742-borde-de-fin-de-mes-se-dice-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/qa-v2-SCH-01-·-partir-un-«-da742-borde-de-fin-de-mes-se-dice-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  15) [escritorio] › tests/e2e/qa-v2.spec.ts:28:1 › CUR-01 · «coffee USD $10» en CAD conserva USD y bloquea la línea; corregida, se registra en CAD y sobrevive a recargar 
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator:  getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+    Expected: "10.00 USD"
+    Received: "10.00"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveValue" getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+        14 × locator resolved to <input id="_r_5_" value="10.00" autocomplete="off" placeholder="0.00" inputmode="decimal" enterkeyhint="done" class="input money-input__field"/>
+           - unexpected value "10.00"
+
+
+      36 |   await shot(page, 'cur01-assistant')
+      37 |   const coffee = lines.first()
+    > 38 |   await expect(coffee.getByLabel('Importe')).toHaveValue('10.00 USD')
+         |                                              ^
+      39 |   await expect(coffee.getByText('El importe está en USD; este presupuesto usa CAD. No se convierte.')).toBeVisible()
+      40 |   await expect(coffee.getByTestId('review-currency')).toContainText('Escribiste USD; este presupuesto usa CAD')
+      41 |   await expect(lines.nth(1).getByLabel('Importe')).toHaveValue('4.00')
+        at /home/user/ALCANZA/tests/e2e/qa-v2.spec.ts:38:46
+
+    Error Context: test-results/qa-v2-CUR-01-·-«coffee-USD-9f805--CAD-y-sobrevive-a-recargar-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/qa-v2-CUR-01-·-«coffee-USD-9f805--CAD-y-sobrevive-a-recargar-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/qa-v2-CUR-01-·-«coffee-USD-9f805--CAD-y-sobrevive-a-recargar-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  16) [escritorio] › tests/e2e/qa-v2.spec.ts:63:1 › CUR-01/02 · dos monedas distintas en el asistente: el campo conserva las dos y la línea no se registra 
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator:  getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+    Expected: "USD 10.00 CAD"
+    Received: "10.00 USD"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveValue" getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+        14 × locator resolved to <input id="_r_5_" value="10.00 USD" autocomplete="off" placeholder="0.00" inputmode="decimal" enterkeyhint="done" aria-invalid="true" aria-describedby="_r_5_-error" class="input money-input__field"/>
+           - unexpected value "10.00 USD"
+
+
+      69 |   const line = page.getByTestId('assistant-preview').locator('.assistant__line').first()
+      70 |   await shot(page, 'cur02-assistant-conflict')
+    > 71 |   await expect(line.getByLabel('Importe')).toHaveValue('USD 10.00 CAD')
+         |                                            ^
+      72 |   await expect(line.getByText('El importe tiene dos monedas distintas (USD y CAD). No se convierte: escribe solo el número en CAD.')).toBeVisible()
+      73 |   await expect(line.getByTestId('review-currency')).toContainText('Escribiste USD y CAD; este presupuesto usa CAD')
+      74 |   const register = page.getByRole('button', { name: 'Registrar 1 movimiento' })
+        at /home/user/ALCANZA/tests/e2e/qa-v2.spec.ts:71:44
+
+    Error Context: test-results/qa-v2-CUR-01-02-·-dos-mone-afec5-s-y-la-línea-no-se-registra-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/qa-v2-CUR-01-02-·-dos-mone-afec5-s-y-la-línea-no-se-registra-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/qa-v2-CUR-01-02-·-dos-mone-afec5-s-y-la-línea-no-se-registra-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  17) [escritorio] › tests/e2e/qa-v2.spec.ts:82:1 › CUR-02 · formulario, CSV y atajo: una contradicción nunca se acepta como CAD; lo compatible sí 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText('El importe tiene dos monedas distintas (USD y CAD). No se convierte: escribe solo el número en CAD.')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText('El importe tiene dos monedas distintas (USD y CAD). No se convierte: escribe solo el número en CAD.') with timeout 5000ms
+      - waiting for getByText('El importe tiene dos monedas distintas (USD y CAD). No se convierte: escribe solo el número en CAD.')
+
+
+      90 |   await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+      91 |   await shot(page, 'cur02-form')
+    > 92 |   await expect(page.getByText('El importe tiene dos monedas distintas (USD y CAD). No se convierte: escribe solo el número en CAD.')).toBeVisible()
+         |                                                                                                                                       ^
+      93 |   expect(await count()).toBe(before)
+      94 |   await page.getByLabel('Importe').fill('$10 CAD')
+      95 |   await openDetails(page)
+        at /home/user/ALCANZA/tests/e2e/qa-v2.spec.ts:92:135
+
+    Error Context: test-results/qa-v2-CUR-02-·-formulario--33847-a-como-CAD-lo-compatible-sí-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/qa-v2-CUR-02-·-formulario--33847-a-como-CAD-lo-compatible-sí-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/qa-v2-CUR-02-·-formulario--33847-a-como-CAD-lo-compatible-sí-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  18) [escritorio] › tests/e2e/qa-v2.spec.ts:140:1 › CUR-03 · foto: «TOTAL PEN 10.00» propone 10.00 PEN y bloquea la línea; corregida, se registra en CAD 
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator:  getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+    Expected: "10.00 PEN"
+    Received: "10.00"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveValue" getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe') with timeout 5000ms
+      - waiting for getByTestId('assistant-preview').locator('.assistant__line').first().getByLabel('Importe')
+        14 × locator resolved to <input id="_r_5_" value="10.00" autocomplete="off" placeholder="0.00" inputmode="decimal" enterkeyhint="done" class="input money-input__field"/>
+           - unexpected value "10.00"
+
+
+      146 |   await expect(line).toBeVisible()
+      147 |   await shot(page, 'cur03-receipt')
+    > 148 |   await expect(line.getByLabel('Importe')).toHaveValue('10.00 PEN')
+          |                                            ^
+      149 |   await expect(line.getByText('El importe está en PEN; este presupuesto usa CAD. No se convierte.')).toBeVisible()
+      150 |   const register = page.getByRole('button', { name: 'Registrar 1 movimiento' })
+      151 |   await expect(register).toBeDisabled()
+        at /home/user/ALCANZA/tests/e2e/qa-v2.spec.ts:148:44
+
+    Error Context: test-results/qa-v2-CUR-03-·-foto-«TOTAL-acae4-orregida-se-registra-en-CAD-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/qa-v2-CUR-03-·-foto-«TOTAL-acae4-orregida-se-registra-en-CAD-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/qa-v2-CUR-03-·-foto-«TOTAL-acae4-orregida-se-registra-en-CAD-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  19) [escritorio] › tests/e2e/qa-v2.spec.ts:171:1 › FIN-01 · 25 pagos diarios de 10^12: el calendario se abre, dice que el total no se puede calcular exacto y se recupera al pausar uno 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('available')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('available') with timeout 5000ms
+      - waiting for getByTestId('available')
+
+
+       at helpers.ts:106
+
+      104 |   await writeStoredData(page, data)
+      105 |   await page.reload()
+    > 106 |   await expect(page.getByTestId('available')).toBeVisible()
+          |                                               ^
+      107 | }
+      108 |
+      109 | /** Hace que IndexedDB rechace escrituras (como con el almacenamiento lleno). */
+        at seedStoredData (/home/user/ALCANZA/tests/e2e/helpers.ts:106:47)
+        at /home/user/ALCANZA/tests/e2e/qa-v2.spec.ts:173:3
+
+    Error Context: test-results/qa-v2-FIN-01-·-25-pagos-di-04180-y-se-recupera-al-pausar-uno-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/qa-v2-FIN-01-·-25-pagos-di-04180-y-se-recupera-al-pausar-uno-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/qa-v2-FIN-01-·-25-pagos-di-04180-y-se-recupera-al-pausar-uno-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  20) [escritorio] › tests/e2e/qa-v2.spec.ts:207:1 › STAT-01 · las fechas personalizadas viven en la dirección: sobreviven a un filtro, a recargar y a editarlas 
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator:  getByLabel('Inicio del periodo personalizado')
+    Expected: "2026-08-01"
+    Received: ""
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveValue" getByLabel('Inicio del periodo personalizado') with timeout 5000ms
+      - waiting for getByLabel('Inicio del periodo personalizado')
+        14 × locator resolved to <input value="" id="_r_6_" type="date" class="input"/>
+           - unexpected value ""
+
+
+      216 |   await expect(page.getByTestId('stats-filter-active')).toBeVisible()
+      217 |   await shot(page, 'stat01-filter')
+    > 218 |   await expect(start).toHaveValue('2026-08-01')
+          |                       ^
+      219 |   await expect(end).toHaveValue('2026-08-31')
+      220 |   expect(new URL(page.url()).hash).toMatch(/desde=2026-08-01/)
+      221 |   expect(new URL(page.url()).hash).toMatch(/hasta=2026-08-31/)
+        at /home/user/ALCANZA/tests/e2e/qa-v2.spec.ts:218:23
+
+    Error Context: test-results/qa-v2-STAT-01-·-las-fechas-368f8-ro-a-recargar-y-a-editarlas-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/qa-v2-STAT-01-·-las-fechas-368f8-ro-a-recargar-y-a-editarlas-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/qa-v2-STAT-01-·-las-fechas-368f8-ro-a-recargar-y-a-editarlas-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  21) [escritorio] › tests/e2e/qa-v2.spec.ts:238:1 › SCH-01 · partir un «dos veces al mes» (15 y 30) desde el 30 conserva los días; volver a «todas» restaura; el borde de fin de mes se dice 
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator:  getByLabel('Segundo día del mes')
+    Expected: "15"
+    Received: "30"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveValue" getByLabel('Segundo día del mes') with timeout 5000ms
+      - waiting for getByLabel('Segundo día del mes')
+        14 × locator resolved to <input min="1" max="31" id="_r_8_" value="30" class="input" type="number" placeholder="15" name="second-day" inputmode="numeric" aria-describedby="_r_8_-hint"/>
+           - unexpected value "30"
+
+
+      252 |   await expect(page.getByLabel('Desde (primera fecha con los cambios)')).toHaveValue('2026-09-30')
+      253 |   await shot(page, 'sch01-split')
+    > 254 |   await expect(second).toHaveValue('15')
+          |                        ^
+      255 |   await expect(page.getByText('Se repite el día 15 y el día 30 de cada mes.', { exact: false })).toBeVisible()
+      256 |   // Volver a «todas las fechas» deja todo como estaba.
+      257 |   await page.getByRole('radio', { name: 'A todas las fechas' }).check()
+        at /home/user/ALCANZA/tests/e2e/qa-v2.spec.ts:254:24
+
+    Error Context: test-results/qa-v2-SCH-01-·-partir-un-«-da742-borde-de-fin-de-mes-se-dice-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/qa-v2-SCH-01-·-partir-un-«-da742-borde-de-fin-de-mes-se-dice-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/qa-v2-SCH-01-·-partir-un-«-da742-borde-de-fin-de-mes-se-dice-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  21 failed
+    [celular] › tests/e2e/qa-v2.spec.ts:28:1 › CUR-01 · «coffee USD $10» en CAD conserva USD y bloquea la línea; corregida, se registra en CAD y sobrevive a recargar 
+    [celular] › tests/e2e/qa-v2.spec.ts:63:1 › CUR-01/02 · dos monedas distintas en el asistente: el campo conserva las dos y la línea no se registra 
+    [celular] › tests/e2e/qa-v2.spec.ts:82:1 › CUR-02 · formulario, CSV y atajo: una contradicción nunca se acepta como CAD; lo compatible sí 
+    [celular] › tests/e2e/qa-v2.spec.ts:140:1 › CUR-03 · foto: «TOTAL PEN 10.00» propone 10.00 PEN y bloquea la línea; corregida, se registra en CAD 
+    [celular] › tests/e2e/qa-v2.spec.ts:171:1 › FIN-01 · 25 pagos diarios de 10^12: el calendario se abre, dice que el total no se puede calcular exacto y se recupera al pausar uno 
+    [celular] › tests/e2e/qa-v2.spec.ts:207:1 › STAT-01 · las fechas personalizadas viven en la dirección: sobreviven a un filtro, a recargar y a editarlas 
+    [celular] › tests/e2e/qa-v2.spec.ts:238:1 › SCH-01 · partir un «dos veces al mes» (15 y 30) desde el 30 conserva los días; volver a «todas» restaura; el borde de fin de mes se dice 
+    [celular-pequeno] › tests/e2e/qa-v2.spec.ts:28:1 › CUR-01 · «coffee USD $10» en CAD conserva USD y bloquea la línea; corregida, se registra en CAD y sobrevive a recargar 
+    [celular-pequeno] › tests/e2e/qa-v2.spec.ts:63:1 › CUR-01/02 · dos monedas distintas en el asistente: el campo conserva las dos y la línea no se registra 
+    [celular-pequeno] › tests/e2e/qa-v2.spec.ts:82:1 › CUR-02 · formulario, CSV y atajo: una contradicción nunca se acepta como CAD; lo compatible sí 
+    [celular-pequeno] › tests/e2e/qa-v2.spec.ts:140:1 › CUR-03 · foto: «TOTAL PEN 10.00» propone 10.00 PEN y bloquea la línea; corregida, se registra en CAD 
+    [celular-pequeno] › tests/e2e/qa-v2.spec.ts:171:1 › FIN-01 · 25 pagos diarios de 10^12: el calendario se abre, dice que el total no se puede calcular exacto y se recupera al pausar uno 
+    [celular-pequeno] › tests/e2e/qa-v2.spec.ts:207:1 › STAT-01 · las fechas personalizadas viven en la dirección: sobreviven a un filtro, a recargar y a editarlas 
+    [celular-pequeno] › tests/e2e/qa-v2.spec.ts:238:1 › SCH-01 · partir un «dos veces al mes» (15 y 30) desde el 30 conserva los días; volver a «todas» restaura; el borde de fin de mes se dice 
+    [escritorio] › tests/e2e/qa-v2.spec.ts:28:1 › CUR-01 · «coffee USD $10» en CAD conserva USD y bloquea la línea; corregida, se registra en CAD y sobrevive a recargar 
+    [escritorio] › tests/e2e/qa-v2.spec.ts:63:1 › CUR-01/02 · dos monedas distintas en el asistente: el campo conserva las dos y la línea no se registra 
+    [escritorio] › tests/e2e/qa-v2.spec.ts:82:1 › CUR-02 · formulario, CSV y atajo: una contradicción nunca se acepta como CAD; lo compatible sí 
+    [escritorio] › tests/e2e/qa-v2.spec.ts:140:1 › CUR-03 · foto: «TOTAL PEN 10.00» propone 10.00 PEN y bloquea la línea; corregida, se registra en CAD 
+    [escritorio] › tests/e2e/qa-v2.spec.ts:171:1 › FIN-01 · 25 pagos diarios de 10^12: el calendario se abre, dice que el total no se puede calcular exacto y se recupera al pausar uno 
+    [escritorio] › tests/e2e/qa-v2.spec.ts:207:1 › STAT-01 · las fechas personalizadas viven en la dirección: sobreviven a un filtro, a recargar y a editarlas 
+    [escritorio] › tests/e2e/qa-v2.spec.ts:238:1 › SCH-01 · partir un «dos veces al mes» (15 y 30) desde el 30 conserva los días; volver a «todas» restaura; el borde de fin de mes se dice 
+  3 passed (1.1m)

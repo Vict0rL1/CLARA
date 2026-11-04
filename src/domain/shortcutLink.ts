@@ -14,7 +14,7 @@
  * Nada de esto guarda: solo rellena el formulario, que la persona revisa.
  */
 import { categoriesForKind } from './categories'
-import { parseMoney, stripCurrencyMark } from './money'
+import { markLabel, markMatchesCurrency, parseMoney, stripCurrencyMark } from './money'
 import { dictionaryCategory, learnCategories, parseText, significantWords } from './parser'
 import { matchCategoryRule, normalizeText } from './rules'
 import type { AppData, CurrencyCode, Language } from './types'
@@ -27,15 +27,18 @@ export type ShortcutAmount = { ok: true; minor: number; foreignCurrency?: string
 /**
  * Lee el importe de un atajo con el mismo lector de marcas de moneda que el resto de la app
  * (`stripCurrencyMark`, QA-05). Aquí una moneda distinta NO es un error: el formulario se rellena
- * con el número y avisa (`foreignCurrency`), porque nada se guarda sin que la persona revise.
+ * con el número y avisa (`foreignCurrency`), porque nada se guarda sin que la persona revise. Dos monedas
+ * que se contradicen sí: no se sabe cuál es, así que el importe queda vacío y se dice (QA V2, CUR-02).
  */
 export function parseShortcutAmount(text: string, currency: string, numberLocale: string): ShortcutAmount {
   const { text: amount, mark } = stripCurrencyMark(text.replace(/[\u00a0\u202f]/g, ' '))
-  if (mark && 'unknown' in mark) return { ok: false }
+  // Una moneda desconocida, o dos que se contradicen («USD 10 CAD», QA V2): el importe no se rellena.
+  if (mark && ('unknown' in mark || 'conflict' in mark)) return { ok: false }
   const parsed = parseMoney(amount, currency as CurrencyCode, numberLocale)
   if (!parsed.ok) return { ok: false }
-  const marked = mark && 'code' in mark ? mark.code : mark && 'symbol' in mark ? SYMBOL[mark.symbol] : undefined
-  return marked && marked !== currency ? { ok: true, minor: parsed.minor, foreignCurrency: marked } : { ok: true, minor: parsed.minor }
+  // Cualquier marca que no pueda ser la moneda del presupuesto se avisa (RT-01): «€» se nombra EUR.
+  if (!mark || markMatchesCurrency(mark, currency as CurrencyCode)) return { ok: true, minor: parsed.minor }
+  return { ok: true, minor: parsed.minor, foreignCurrency: 'symbol' in mark ? (SYMBOL[mark.symbol] ?? mark.symbol) : markLabel(mark) }
 }
 
 export interface MovementLink {

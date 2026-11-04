@@ -1,0 +1,7 @@
+
+Running 1 test using 1 worker
+
+  ✓  1 [celular] › tests/e2e/qa-lead.spec.ts:148:1 › F-R1 · renta del 31 partida el 30-jun por una versión anterior y pagada el 30-jul y el 30-ago: restaurar deja $2,100.00 (no −$1,100.00), nada vencido, lo pagado en su tramo, también tras recargar (2.5s)
+
+  1 passed (39.7s)
+exit 0

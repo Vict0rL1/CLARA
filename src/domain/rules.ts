@@ -5,20 +5,14 @@
  * un movimiento nuevo. La persona siempre puede cambiarla. Nunca toca importes.
  */
 import { categoriesForKind } from './categories'
+import { merchantKey, merchantLabel } from './merchants'
+import { normalizeText } from './text'
 import type { AppData, CategoryRule, CustomCategory, Transaction, TxKind } from './types'
 
 export const RULE_PATTERN_MIN = 2
 export const RULE_PATTERN_MAX = 40
 
-/** Minúsculas, sin acentos y con espacios simples: "  CAFÉ  Central " → "cafe central". */
-export function normalizeText(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim()
-}
+export { normalizeText } from './text'
 
 /**
  * Regla que se aplica a una descripción. Si varias coinciden, gana el texto más
@@ -44,11 +38,41 @@ export function matchCategoryRule(
  */
 export function rankRuleMatches<R extends { pattern: string; createdAt?: string }>(normalizedText: string, candidates: readonly R[]): R[] {
   if (!normalizedText) return []
+  const textKey = merchantKey(normalizedText)
   return candidates
     .map((rule, index) => ({ rule, index, pattern: normalizeText(rule.pattern) }))
-    .filter((m) => m.pattern.length >= RULE_PATTERN_MIN && normalizedText.includes(m.pattern))
+    .filter((m) => m.pattern.length >= RULE_PATTERN_MIN && matches(normalizedText, textKey, m.pattern))
     .sort((a, b) => b.pattern.length - a.pattern.length || olderFirst(a.rule.createdAt, b.rule.createdAt) || a.index - b.index)
     .map((m) => m.rule)
+}
+
+/**
+ * Clara 2.0 fase 2: una regla coincide si su texto está en la descripción tal cual (lo de siempre) o si
+ * la clave de comercio del patrón está en la de la descripción («uber eats» ↔ «UBER *EATS 8XK2L»). Es un
+ * superconjunto: nada que coincidía antes deja de coincidir.
+ */
+function matches(normalizedText: string, textKey: string, normalizedPattern: string): boolean {
+  if (normalizedText.includes(normalizedPattern)) return true
+  const patternKey = patternKeyOf(normalizedPattern)
+  return patternKey.length >= RULE_PATTERN_MIN && textKey.includes(patternKey)
+}
+
+/** Igual que la decisión de `rankRuleMatches` para una sola regla (p. ej. «regla sin uso» en la bandeja). */
+export function ruleMatchesText(normalizedText: string, pattern: string): boolean {
+  const norm = normalizeText(pattern)
+  return norm.length >= RULE_PATTERN_MIN && !!normalizedText && matches(normalizedText, merchantKey(normalizedText), norm)
+}
+
+const patternKeys = new Map<string, string>()
+/** Clave de comercio de un patrón, en caché (una importación compara miles de filas con las mismas reglas). */
+function patternKeyOf(normalizedPattern: string): string {
+  let key = patternKeys.get(normalizedPattern)
+  if (key === undefined) {
+    if (patternKeys.size > 1000) patternKeys.clear()
+    key = merchantKey(normalizedPattern)
+    patternKeys.set(normalizedPattern, key)
+  }
+  return key
 }
 
 function olderFirst(a: string | undefined, b: string | undefined): number {
@@ -141,4 +165,67 @@ export function previewRule(data: Pick<AppData, 'transactions'>, pattern: string
     .filter((t) => kinds.includes(t.kind) && (normalizeText(t.note ?? '').includes(p) || normalizeText(t.merchant ?? '').includes(p)))
     .sort((a, b) => (a.date > b.date ? -1 : a.date < b.date ? 1 : a.id < b.id ? -1 : 1))
   return { total: matches.length, withOtherCategory: matches.filter((t) => t.categoryId !== categoryId).length, sample: matches.slice(0, sampleSize) }
+}
+
+/** Regla que se PROPONE recordar tras corregir una categoría (Clara 2.0 §7). Nunca se guarda sola. */
+export interface RuleSuggestion {
+  pattern: string
+  kind: 'expense' | 'income'
+  categoryId: string
+}
+
+/**
+ * Tras CORREGIR la categoría de un movimiento con descripción, ¿se puede ofrecer recordarla como regla?
+ *
+ * - Corrección = la categoría final es distinta de la que se proponía (`previousCategoryId`: la de la
+ *   regla que se aplicó al escribir, o la que tenía el movimiento antes de editarlo).
+ * - Texto usable: la descripción con espacios simples y sin prefijo de procesador ni códigos de referencia
+ *   (`merchantLabel`), de `RULE_PATTERN_MIN` a `RULE_PATTERN_MAX` caracteres normalizados y con al menos
+ *   una letra (un número suelto no es un comercio).
+ * - Nunca con transferencias, ajustes ni compras divididas (una regla nunca pisa una división).
+ * - La categoría final debe poder usarse (activa) y no debe existir ya una regla con ese mismo texto y tipo.
+ * - La regla nueva tiene que GANAR para ese texto (patrón más largo); si no, ofrecerla sería engañoso.
+ *
+ * Solo devuelve la propuesta; guardarla es una operación aparte (`saveCategoryRule`) que la persona confirma.
+ */
+export function suggestRuleFromCorrection(
+  data: Pick<AppData, 'categoryRules' | 'categories' | 'categoryPrefs'>,
+  input: { note?: string; kind: TxKind; categoryId?: string; previousCategoryId?: string; hasSplits?: boolean },
+): RuleSuggestion | null {
+  if (input.kind !== 'expense' && input.kind !== 'income' && input.kind !== 'refund') return null
+  if (input.hasSplits || !input.categoryId || !input.previousCategoryId || input.categoryId === input.previousCategoryId) return null
+  // Fase 2: sin prefijo del procesador ni códigos de referencia («UBER *EATS 8XK2L» → «UBER EATS»),
+  // que cambian en cada compra; si no queda nada, el texto tal cual.
+  const raw = (input.note ?? '').replace(/\s+/g, ' ').trim()
+  const pattern = merchantLabel(raw) || raw
+  const norm = normalizeText(pattern)
+  if (norm.length < RULE_PATTERN_MIN || pattern.length > RULE_PATTERN_MAX || !/\p{L}/u.test(norm)) return null
+  const kind = input.kind === 'income' ? 'income' : 'expense'
+  if (!categoriesForKind(kind, data.categories, { prefs: data.categoryPrefs }).includes(input.categoryId)) return null
+  if (data.categoryRules.some((r) => r.kind === kind && normalizeText(r.pattern) === norm)) return null
+  const candidate = { pattern, kind, categoryId: input.categoryId } as const
+  const usable = categoriesForKind(kind, data.categories, { prefs: data.categoryPrefs })
+  const ranked = rankRuleMatches(norm, [candidate, ...data.categoryRules.filter((r) => r.kind === kind && usable.includes(r.categoryId))])
+  return ranked[0] === candidate ? { ...candidate } : null
+}
+
+/**
+ * Varias correcciones a la vez (revisión del asistente): una propuesta por texto y tipo. Si dos líneas
+ * corrigen el mismo texto a categorías distintas, no se propone ninguna de las dos (sería adivinar).
+ * Solo propone; guardarlas es `saveCategoryRules`, que la persona confirma.
+ */
+export function suggestRulesFromCorrections(
+  data: Pick<AppData, 'categoryRules' | 'categories' | 'categoryPrefs'>,
+  inputs: readonly Parameters<typeof suggestRuleFromCorrection>[1][],
+): RuleSuggestion[] {
+  const byKey = new Map<string, RuleSuggestion | null>()
+  for (const input of inputs) {
+    const s = suggestRuleFromCorrection(data, input)
+    if (!s) continue
+    const key = `${s.kind}:${normalizeText(s.pattern)}`
+    const prev = byKey.get(key)
+    if (prev === undefined) byKey.set(key, s)
+    else if (prev && prev.categoryId !== s.categoryId) byKey.set(key, null)
+  }
+  return [...byKey.values()].filter((s): s is RuleSuggestion => s !== null)
 }

@@ -9,15 +9,17 @@
  *                     proyección a 30 días no cae bajo cero.
  *   - 'tight'         Disponible después ≥ 0 pero la compra usa más de la mitad,
  *                     o la proyección a 30 días cae bajo cero después de comprar.
- *   - 'onlyWithGoals' Solo alcanza si usas dinero apartado para metas.
- *   - 'doesNotFit'    Ni con los apartados alcanza.
+ *   - 'onlyWithBuffer' Solo alcanza si usas tu colchón de seguridad (Clara 2.0 §10).
+ *   - 'onlyWithGoals' Solo alcanza si usas el colchón y dinero apartado para metas.
+ *   - 'doesNotFit'    Ni con el colchón ni con los apartados alcanza.
+ * Sin colchón (0) los veredictos son los de siempre.
  */
 import { computeBudget, type BudgetResult } from './budget'
 import { floorDiv, mulDivFloor } from './money'
 import { projectBalance, type ProjectionResult } from './projection'
 import type { AppData, LocalDate } from './types'
 
-export type AffordVerdict = 'fits' | 'tight' | 'onlyWithGoals' | 'doesNotFit'
+export type AffordVerdict = 'fits' | 'tight' | 'onlyWithBuffer' | 'onlyWithGoals' | 'doesNotFit'
 
 export interface AffordResult {
   priceMinor: number
@@ -32,6 +34,8 @@ export interface AffordResult {
   futureShortfallDate: LocalDate | null
   /** La proyección ya caía bajo cero ANTES de la compra (la compra no es la causa). */
   shortfallExistedBefore: boolean
+  /** Desde ese día ninguna de las dos proyecciones tiene cifra (fuera del rango exacto): no ver un faltante solo vale hasta el día antes. */
+  projectionOutOfRangeFrom: LocalDate | null
 }
 
 export function simulatePurchase(
@@ -54,7 +58,9 @@ export function simulatePurchase(
   if (budget.status === 'ok') {
     if (availableAfterMinor >= 0) {
       verdict = availableAfterMinor * 2 >= budget.availableMinor ? 'fits' : 'tight'
-    } else if (availableAfterMinor + budget.goalsReservedMinor >= 0) {
+    } else if (budget.safetyBufferMinor > 0 && availableAfterMinor + budget.safetyBufferMinor >= 0) {
+      verdict = 'onlyWithBuffer'
+    } else if (availableAfterMinor + budget.safetyBufferMinor + budget.goalsReservedMinor >= 0) {
       verdict = 'onlyWithGoals'
     } else {
       verdict = 'doesNotFit'
@@ -66,6 +72,8 @@ export function simulatePurchase(
   const projectionAfter = projectBalance(data, today, { dailySpendMinor, extraOutflowTodayMinor: priceMinor })
   const futureShortfallDate =
     availableAfterMinor >= 0 && projectionAfter.firstNegativeDate ? projectionAfter.firstNegativeDate : null
+  // Sin cifra desde ese día (fuera del rango exacto): que no se haya visto un faltante solo vale hasta el día antes.
+  const projectionOutOfRangeFrom = [projectionBefore.outOfRangeFrom, projectionAfter.outOfRangeFrom].filter((d): d is LocalDate => d !== null).sort()[0] ?? null
   const shortfallExistedBefore = projectionBefore.firstNegativeDate !== null
   if (verdict === 'fits' && futureShortfallDate) verdict = 'tight'
 
@@ -80,5 +88,6 @@ export function simulatePurchase(
     projectionAfter,
     futureShortfallDate,
     shortfallExistedBefore,
+    projectionOutOfRangeFrom,
   }
 }

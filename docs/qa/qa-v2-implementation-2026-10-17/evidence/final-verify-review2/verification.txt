@@ -1,0 +1,56 @@
+Verificación de d28de42 (segunda revisión S1–S4 y criterios de aceptación QA-01/QA-03) · 2026-10-19 · Chromium preinstalado, --workers=2 --fail-on-flaky-tests
+
+SHA d28de4213937ed8ecdd229f3c0f8a75384e661a7 status: 0 changes
+started 2026-10-19T04:18:46Z · finished 2026-10-19T04:50:15Z
+19597ea (worktree): tsc exit 0 · oxlint exit 0 · vitest exit 0 ·       Tests  1040 passed | 1 skipped (1041)
+4a0ee9b (worktree): tsc exit 0 · oxlint exit 0 · vitest exit 0 ·       Tests  1041 passed | 1 skipped (1042)
+5d86c04 (worktree): tsc exit 0 · oxlint exit 0 · vitest exit 0 ·       Tests  1040 passed | 1 skipped (1041)
+9a650eb (worktree): tsc exit 0 · oxlint exit 0 · vitest exit 0 ·       Tests  1040 passed | 1 skipped (1041)
+check EXIT 0
+build EXIT 0
+size EXIT 0
+audit EXIT 0
+e2e celular EXIT 0
+e2e celular-pequeno EXIT 0
+e2e escritorio EXIT 0
+shots sch01 EXIT 0
+DONE
+
+== npm run check (typecheck, oxlint, i18n literals, Vitest)
+ Test Files  106 passed (106)
+      Tests  1041 passed | 1 skipped (1042)
+
+== npm run build (identified build)
+✓ 227 modules transformed.
+✓ built in 847ms
+dist id (sha256 of the sorted sha256 list of every dist file): 33786017053715dc4f1fe47ff2a127d72aa2e4a58e10d073cf4b5d2a03fd00db · 70 files
+
+== npm run size
+JS inicial: 842.8 KB en 11 archivos (gzip 252.2 KB)
+Referencia: 767.8 KB · límite 844.6 KB · cambio +9.8 %
+
+== npm audit --audit-level=high
+found 0 vulnerabilities
+
+== Playwright, full matrix, one project at a time, --workers=2 --fail-on-flaky-tests, one preview of the build above
+-- celular
+  1 skipped
+  344 passed (9.0m)
+Inicio con 10k: cifra principal a los 424 / 321 ms
+-- celular-pequeno
+  345 passed (8.5m)
+Inicio con 10k: cifra principal a los 291 / 208 ms
+-- escritorio
+  3 skipped
+  342 passed (9.2m)
+Inicio con 10k: cifra principal a los 416 / 508 ms
+
+== SCH-01 «after» screenshots (celular, QA_V2_SHOTS)
+  1 passed (4.4s)
+
+== performance-10k sola sobre la misma compilación (--workers=1; evidencia adicional, no sustituye la matriz)
+Inicio con 10k: cifra principal a los 239 / 217 ms
+Inicio con 10k: cifra principal a los 281 / 232 ms
+Inicio con 10k: cifra principal a los 255 / 241 ms
+  3 passed (10.1s)
+exit 0

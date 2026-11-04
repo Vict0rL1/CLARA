@@ -1,0 +1,17 @@
+
+Running 11 tests using 1 worker
+
+  ✓   1 [celular] › tests/e2e/audit-nov02.spec.ts:62:1 › P1 · reparar el 20-mar, apartar $420.00 para el 31-mar corregido ($980.00) y revertir la reparación: se rechaza por el gasto planificado y sigue en $980.00 tras recargar (4.0s)
+  ✓   2 [celular] › tests/e2e/audit-nov02.spec.ts:137:1 › P2 · con 50 parejas históricas descartadas, dos cafés nuevos de $4.25 el mismo día se ofrecen como posible duplicado y «Son distintos» los cierra (2.9s)
+  ✓   3 [celular] › tests/e2e/audit-nov02.spec.ts:168:1 › P2 · más parejas sin revisar que el tope: se dice que hay más y, al revisar, aparecen las siguientes (1.5s)
+  ✓   4 [celular] › tests/e2e/audit-nov02.spec.ts:193:3 › P3 · paquetes de texto diferidos (sin service worker: el archivo se pide a la red) › Privacidad en español con el archivo bloqueado: estado de fallo legible, ninguna clave; al volver la red basta con volver a abrir la pantalla (2.1s)
+  ✓   5 [celular] › tests/e2e/audit-nov02.spec.ts:215:3 › P3 · paquetes de texto diferidos (sin service worker: el archivo se pide a la red) › Privacidad en español: «Reintentar» recupera el texto sin recargar ni borrar nada; los datos siguen (1.8s)
+  ✓   6 [celular] › tests/e2e/audit-nov02.spec.ts:229:3 › P3 · paquetes de texto diferidos (sin service worker: el archivo se pide a la red) › inglés con su archivo bloqueado: el texto sale en español y se dice; «Retry» con red devuelve el inglés (1.7s)
+  ✓   7 [celular] › tests/e2e/audit-nov02.spec.ts:245:3 › P3 · paquetes de texto diferidos (sin service worker: el archivo se pide a la red) › inglés con los dos archivos bloqueados: estado de fallo en inglés; «Reload the app» con red recupera el texto y los datos siguen (3.0s)
+  ✓   8 [celular] › tests/e2e/audit-nov02.spec.ts:263:3 › P3 · paquetes de texto diferidos (sin service worker: el archivo se pide a la red) › Galería con su archivo bloqueado: cabecera y estado de fallo, ninguna clave; «Reintentar» con red dibuja la galería (1.7s)
+  ✓   9 [celular] › tests/e2e/audit-nov02.spec.ts:278:3 › P3 · paquetes de texto diferidos (sin service worker: el archivo se pide a la red) › con red, Privacidad, Términos y Galería salen en los cuatro idiomas y sin claves (2.9s)
+  ✓  10 [celular] › tests/e2e/audit-nov02.spec.ts:313:1 › P4 · 400 programados diarios de 10¹²: Proyección, Análisis, Plan ante faltante, Escenarios y «¿Me alcanza?» dicen desde cuándo no hay cifra en vez de romperse (6.5s)
+  ✓  11 [celular] › tests/e2e/audit-nov02.spec.ts:353:1 › P4 · la proyección parcial se explica en inglés, portugués y francés (4.1s)
+
+  11 passed (33.3s)
+exit 0

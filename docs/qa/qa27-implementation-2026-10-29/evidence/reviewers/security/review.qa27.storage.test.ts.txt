@@ -1,0 +1,327 @@
+/**
+ * Revisión independiente de seguridad y almacenamiento (2026-10-30) sobre `ac99396` (QA27-01/04), capa de
+ * almacenamiento: la negativa a revertir no toca lo guardado (localStorage e IndexedDB); la copia local «antes de
+ * restaurar» queda confirmada ANTES de que la reparación escriba y es todo o nada; el permiso por copia descargada se
+ * apoya en `updatedAt` (registrar la exportación no lo cambia, cualquier cambio de datos sí); `keepCopyBeforeReplace`
+ * distingue `unavailable`, `kept` y `failed`; deshacer un reemplazo (RT-02) alrededor de una reparación; cuota agotada.
+ * Datos sintéticos.
+ */
+import { IDBFactory, IDBObjectStore } from 'fake-indexeddb'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { recordExport, recordVerification, setBackupReminder, snoozeBackupReminder } from '../domain/backupReminder'
+import { recordHistory } from '../domain/history'
+import { canRevert, revertEntry } from '../domain/historyRevert'
+import { snoozeInboxItem } from '../domain/inbox'
+import { deleteTransaction, markOccurrence, saveTransaction, updateSettings, type OpResult } from '../domain/operations'
+import { dismissSplitRepair, repairSplit } from '../domain/splitRepair'
+import type { AppData, HistoryEntry } from '../domain/types'
+import { replaceWithUndo } from '../state/replaceUndo'
+import { AppStore } from '../state/store'
+import { keepCopyBeforeReplace, localBackups } from '../ui/useAutoBackup'
+import { LocalBackups } from './autoBackup'
+import { parseBackup, performExport } from './backup'
+import { IndexedDbRepository, openDatabase } from './indexedDbRepository'
+import { LocalStorageRepository, MemoryRepository, STORAGE_KEY } from './localStorageRepository'
+import type { SaveResult } from './repository'
+import { account, baseData, bill, tx } from '../test/fixtures'
+
+/* ------------------------------------------------------------------ */
+/* Ayudantes y datos                                                   */
+/* ------------------------------------------------------------------ */
+
+const persisted = (d: AppData): AppData => JSON.parse(JSON.stringify(d)) as AppData
+const at = (today: string) => ({ today, now: `${today}T12:00:00.000Z` })
+function unwrap<T>(r: OpResult<T>): Extract<OpResult<T>, { ok: true }> {
+  if (!r.ok) throw new Error(JSON.stringify(r.issues))
+  return r
+}
+const lastEntry = (d: AppData): HistoryEntry => d.history[d.history.length - 1]!
+
+/** «Internet» 420,00 del 31, partida el 28-feb por una versión anterior; saldo 1 400,00 el 1-mar; horizonte 7 días. */
+function internet(): AppData {
+  const d = baseData({
+    accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 140000, date: '2026-03-01', setAt: '2026-03-01T12:00:00.000Z' } })],
+    schedules: [
+      bill('2026-01-31', 42000, { id: 'b1', name: 'Internet', frequency: 'monthly', endDate: '2026-02-27' }),
+      bill('2026-02-28', 42000, { id: 'b2', name: 'Internet', frequency: 'monthly' }),
+    ],
+    transactions: [
+      tx({ id: 'p-jan', kind: 'expense', amountMinor: 42000, date: '2026-01-31', categoryId: 'utilities', scheduleId: 'b1', occurrenceDate: '2026-01-31' }),
+      tx({ id: 'p-feb', kind: 'expense', amountMinor: 42000, date: '2026-02-28', categoryId: 'utilities', scheduleId: 'b2', occurrenceDate: '2026-02-28' }),
+    ],
+  })
+  return { ...d, settings: { ...d.settings, fallbackHorizonDays: 7 } }
+}
+function repaired() {
+  const d = internet()
+  const r = unwrap(repairSplit(d, 'b2', at('2026-03-20'), 'b3'))
+  const data = recordHistory(d, r.data, at('2026-03-20').now)
+  return { d, data, repairEntry: lastEntry(data) }
+}
+function paid() {
+  const { d, data, repairEntry } = repaired()
+  const p = unwrap(markOccurrence(data, { scheduleId: 'b2', occurrenceDate: '2026-03-31', amountMinor: 42000, date: '2026-03-29', txId: 'p1' }, at('2026-03-29')))
+  const after = recordHistory(data, p.data, at('2026-03-29').now)
+  return { d, repairEntry, payEntry: lastEntry(after), data: after }
+}
+
+async function storeWith(data: AppData, repo: MemoryRepository = new MemoryRepository()) {
+  await repo.save(data)
+  const store = new AppStore(repo)
+  await store.init()
+  return { store, repo }
+}
+const anchorOfB2 = (d: AppData | null) => d?.schedules.find((s) => s.id === 'b2')?.anchorDate
+
+// `localStorage` de prueba (la migración de IndexedDB lo lee y el respaldo lo escribe).
+const LS = globalThis as { localStorage?: unknown }
+let lsOriginal: unknown
+let map: Map<string, string>
+beforeEach(() => {
+  lsOriginal = LS.localStorage
+  map = new Map<string, string>()
+  LS.localStorage = { getItem: (k: string) => map.get(k) ?? null, setItem: (k: string, v: string) => void map.set(k, v), removeItem: (k: string) => void map.delete(k) }
+})
+afterEach(() => {
+  LS.localStorage = lsOriginal
+})
+
+/* ------------------------------------------------------------------ */
+/* (a) La negativa no toca el almacenamiento                           */
+/* ------------------------------------------------------------------ */
+
+describe('(a) la negativa a revertir no toca el almacenamiento', () => {
+  it('localStorage: tras guardar y volver a leer se rechaza igual; el texto guardado y la revisión quedan byte a byte iguales', async () => {
+    const { data, repairEntry } = paid()
+    const repo = new LocalStorageRepository()
+    expect(await repo.load()).toEqual({ status: 'empty' })
+    expect(await repo.save(data)).toEqual({ ok: true })
+    const storedText = map.get(STORAGE_KEY)!
+    const loaded = await repo.load()
+    if (loaded.status !== 'ok') throw new Error(loaded.status)
+    const entry = loaded.data.history.find((e) => e.id === repairEntry.id)!
+    const snapshot = JSON.stringify(loaded.data)
+    expect(canRevert(loaded.data, entry, '2026-03-29')).toBe('dependents')
+    expect(revertEntry(loaded.data, entry.id, at('2026-03-29')).ok).toBe(false)
+    expect(JSON.stringify(loaded.data)).toBe(snapshot)
+    expect(map.get(STORAGE_KEY)).toBe(storedText)
+    // A través del almacén, como hace la pantalla: la operación falla antes de cualquier guardado.
+    const store = new AppStore(repo)
+    await store.init()
+    expect(revertEntry(store.data!, entry.id, at('2026-03-29')).ok).toBe(false)
+    expect(store.data!.revision).toBe(loaded.data.revision)
+    expect(map.get(STORAGE_KEY)).toBe(storedText)
+  })
+
+  it('IndexedDB: lo mismo, y lo que se vuelve a leer después es idéntico a lo leído antes', async () => {
+    const { data, repairEntry } = paid()
+    const factory = new IDBFactory() as unknown as globalThis.IDBFactory
+    const writer = new IndexedDbRepository(await openDatabase(factory))
+    await writer.load()
+    expect(await writer.save(data)).toEqual({ ok: true })
+    const reader = new IndexedDbRepository(await openDatabase(factory))
+    const loaded = await reader.load()
+    if (loaded.status !== 'ok') throw new Error(loaded.status)
+    const snapshot = JSON.stringify(loaded.data)
+    const entry = loaded.data.history.find((e) => e.id === repairEntry.id)!
+    expect(canRevert(loaded.data, entry, '2026-03-29')).toBe('dependents')
+    expect(revertEntry(loaded.data, entry.id, at('2026-03-29')).ok).toBe(false)
+    expect(JSON.stringify(loaded.data)).toBe(snapshot)
+    const again = await new IndexedDbRepository(await openDatabase(factory)).load()
+    expect(again.status === 'ok' && JSON.stringify(again.data)).toBe(snapshot)
+  })
+})
+
+/* ------------------------------------------------------------------ */
+/* (b) Copia local antes de reparar                                    */
+/* ------------------------------------------------------------------ */
+
+describe('(b) la copia local «antes de restaurar» queda confirmada antes de que la reparación escriba, y es todo o nada', () => {
+  it('al resolver `save`, otra conexión ya la lista y la lee: es el estado previo; la reparación que se guarda después no la toca', async () => {
+    const factory = new IDBFactory()
+    const before = internet()
+    const meta = await new LocalBackups(factory).save(before, 'beforeRestore', new Date('2026-03-20T12:00:00.000Z'), '1.0.0')
+    const other = new LocalBackups(factory)
+    expect((await other.list()).map((b) => [b.id, b.reason, b.dataUpdatedAt])).toEqual([[meta.id, 'beforeRestore', before.updatedAt]])
+    const copy = parseBackup((await other.read(meta.id))!)
+    expect(copy.ok && copy.data).toEqual(persisted(before))
+    const { store } = await storeWith(before)
+    expect(await store.commit(unwrap(repairSplit(store.data!, 'b2', at('2026-03-20'), 'b3')).data)).toBe(true)
+    expect(anchorOfB2(store.data)).toBe('2026-01-31')
+    const after = parseBackup((await other.read(meta.id))!)
+    expect(after.ok && anchorOfB2(after.data)).toBeUndefined()
+    expect(after.ok && after.data.history).toEqual([])
+  })
+
+  it('si la escritura de la copia falla (put rechazado, como una cuota agotada), `save` rechaza y la base queda como estaba', async () => {
+    const factory = new IDBFactory()
+    const backups = new LocalBackups(factory)
+    await backups.save(internet(), 'auto', new Date('2026-03-19T12:00:00.000Z'), '1.0.0')
+    const realPut = IDBObjectStore.prototype.put
+    IDBObjectStore.prototype.put = function (this: IDBObjectStore, ...args: Parameters<typeof realPut>) {
+      if (this.name === 'backups') throw new DOMException('simulado', 'QuotaExceededError')
+      return realPut.apply(this, args)
+    }
+    try {
+      await expect(backups.save(internet(), 'beforeRestore', new Date('2026-03-20T12:00:00.000Z'), '1.0.0')).rejects.toThrow('simulado')
+    } finally {
+      IDBObjectStore.prototype.put = realPut
+    }
+    expect((await backups.list()).map((b) => b.reason)).toEqual(['auto'])
+  })
+
+  it('`keepCopyBeforeReplace`: sin IndexedDB → unavailable (también sin datos); con IndexedDB → kept y la copia queda guardada; si la base falla → failed, y los tres se distinguen', async () => {
+    const g = globalThis as { indexedDB?: unknown }
+    const original = g.indexedDB
+    try {
+      delete g.indexedDB
+      const { data } = paid()
+      expect(await keepCopyBeforeReplace(data)).toBe('unavailable')
+      expect(await keepCopyBeforeReplace(null)).toBe('unavailable')
+      expect(localBackups()).toBeNull()
+      const factory = new IDBFactory()
+      g.indexedDB = factory
+      expect(await keepCopyBeforeReplace(null)).toBe('unavailable')
+      expect(await keepCopyBeforeReplace(data)).toBe('kept')
+      expect((await new LocalBackups(factory).list()).map((b) => [b.reason, b.budgetId, b.dataUpdatedAt])).toEqual([['beforeRestore', data.budgetId, data.updatedAt]])
+      const instance = localBackups() as unknown as { factory: unknown }
+      instance.factory = { open: () => { throw new Error('IndexedDB bloqueada') } }
+      expect(await keepCopyBeforeReplace(data)).toBe('failed')
+      expect(await new LocalBackups(factory).list()).toHaveLength(1)
+    } finally {
+      if (original === undefined) delete g.indexedDB
+      else g.indexedDB = original
+    }
+  })
+})
+
+/* ------------------------------------------------------------------ */
+/* (b) Permiso por copia descargada: `updatedAt`                       */
+/* ------------------------------------------------------------------ */
+
+describe('(b) permiso por copia descargada: `recordExport` y `updatedAt`', () => {
+  it('registrar la exportación no cambia `updatedAt`, ni en el dominio ni al guardarse (sube la revisión, no entra en el historial); tras recargar sigue igual', async () => {
+    const { data } = paid()
+    const { store, repo } = await storeWith(data)
+    const before = store.data!
+    const r = recordExport(before, '2026-03-29T13:00:00.000Z')
+    if (!r.ok) throw new Error('recordExport')
+    expect(r.data.updatedAt).toBe(before.updatedAt)
+    expect(r.data.backup).toEqual({ reminder: 'weekly', lastExportAt: '2026-03-29T13:00:00.000Z', lastExportDataAt: before.updatedAt })
+    expect(await store.commit(r.data)).toBe(true)
+    expect(store.data!.updatedAt).toBe(before.updatedAt)
+    expect(store.data!.revision).toBe(before.revision + 1)
+    expect(store.data!.history).toHaveLength(before.history.length)
+    const reloaded = new AppStore(repo)
+    await reloaded.init()
+    expect(reloaded.data!.updatedAt).toBe(before.updatedAt)
+  })
+
+  it('cualquier cambio de datos posterior deja otro `updatedAt` (el permiso caduca); verificar, posponer o cambiar el recordatorio de copia no lo cambian y solo tocan `backup`', () => {
+    const { data, payEntry } = paid()
+    const T = data.updatedAt
+    const c = at('2026-04-01')
+    expect(c.now).not.toBe(T)
+    const changes: Record<string, OpResult<unknown>> = {
+      'reparar una partición': repairSplit(internet(), 'b2', c, 'b3'),
+      'dejar como está': dismissSplitRepair(internet(), 'b2', c),
+      'posponer un aviso': snoozeInboxItem(data, 'bal:main:never', '2026-04-10', c),
+      'pagar otra fecha': markOccurrence(data, { scheduleId: 'b2', occurrenceDate: '2026-04-30', amountMinor: 42000, date: '2026-04-01', txId: 'p2' }, c),
+      'registrar un gasto': saveTransaction(data, { id: 'coffee', kind: 'expense', status: 'realized', amountMinor: 450, date: '2026-04-01', accountId: 'main', categoryId: 'dining' }, c),
+      'eliminar el pago': deleteTransaction(data, 'p1', c),
+      'cambiar el horizonte': updateSettings(data, { fallbackHorizonDays: 10 }, c),
+      'revertir el pago': revertEntry(data, payEntry.id, c),
+    }
+    for (const [name, r] of Object.entries(changes)) {
+      expect(r.ok, name).toBe(true)
+      if (r.ok) expect(r.data.updatedAt, name).toBe(c.now)
+    }
+    const metaOnly = [recordVerification(data, { budgetId: data.budgetId, exportedAt: '2026-03-29T13:00:00.000Z' }, c), snoozeBackupReminder(data, 3, c), setBackupReminder(data, 'monthly')]
+    for (const r of metaOnly) {
+      if (!r.ok) throw new Error('meta')
+      expect(r.data.updatedAt).toBe(T)
+      expect(JSON.stringify({ ...r.data, backup: data.backup })).toBe(JSON.stringify(data))
+    }
+  })
+
+  it('una exportación que falla al generar el archivo no da `exportedAt` (nada que registrar); una que sí entrega un archivo que se reimporta igual', () => {
+    const { data } = paid()
+    const now = new Date('2026-03-29T13:00:00.000Z')
+    expect(performExport(data, now, '1.0.0', () => { throw new Error('bloqueada') })).toEqual({ ok: false })
+    let file: { filename: string; text: string } | null = null
+    const ok = performExport(data, now, '1.0.0', (filename, text) => { file = { filename, text } })
+    expect(ok).toEqual({ ok: true, exportedAt: '2026-03-29T13:00:00.000Z', filename: 'clara-copia-2026-03-29-13-00.json' })
+    const delivered = file as { filename: string; text: string } | null
+    const back = parseBackup(delivered!.text)
+    expect(back.ok && back.data).toEqual(persisted(data))
+    expect(back.ok && back.exportedAt).toBe('2026-03-29T13:00:00.000Z')
+  })
+
+  class QuotaRepository extends MemoryRepository {
+    fail = false
+    override async save(data: AppData): Promise<SaveResult> {
+      return this.fail ? { ok: false, error: 'quota' } : super.save(data)
+    }
+  }
+
+  it('con la cuota agotada ni el registro de la exportación ni la reparación se guardan: la tarjeta no puede «reparar sin copia», y lo guardado sigue siendo lo anterior', async () => {
+    const repo = new QuotaRepository()
+    const { store } = await storeWith(internet(), repo)
+    repo.fail = true
+    const exp = recordExport(store.data!, '2026-03-20T12:00:00.000Z')
+    if (!exp.ok) throw new Error('recordExport')
+    expect(await store.commit(exp.data)).toBe(false)
+    expect(store.hasUnsavedChanges).toBe(true)
+    expect(await store.commit(unwrap(repairSplit(store.data!, 'b2', at('2026-03-20'), 'b3')).data)).toBe(false)
+    const stored = await repo.load()
+    if (stored.status !== 'ok') throw new Error(stored.status)
+    expect(anchorOfB2(stored.data)).toBeUndefined()
+    expect(stored.data.backup).toEqual({ reminder: 'weekly' })
+    expect(stored.data.history).toEqual([])
+  })
+})
+
+/* ------------------------------------------------------------------ */
+/* (a) RT-02 alrededor de una reparación                                */
+/* ------------------------------------------------------------------ */
+
+describe('(a) deshacer un reemplazo (RT-02) alrededor de una reparación', () => {
+  it('importar y después reparar: deshacer la importación se niega y la reparación sobrevive a recargar', async () => {
+    const { store, repo } = await storeWith(baseData())
+    const r = await replaceWithUndo({ ...internet(), budgetId: 'b_importado' }, store)
+    expect(r.ok).toBe(true)
+    expect(await store.commit(unwrap(repairSplit(store.data!, 'b2', at('2026-03-20'), 'b3')).data)).toBe(true)
+    expect(await r.undo()).toBe('stale')
+    const reloaded = new AppStore(repo)
+    await reloaded.init()
+    expect(reloaded.data!.budgetId).toBe('b_importado')
+    expect(anchorOfB2(reloaded.data)).toBe('2026-01-31')
+    expect(reloaded.data!.history.map((e) => e.source)).toEqual(['replace', 'app'])
+  })
+
+  it('importar y después pagar la fecha corregida: deshacer la importación se niega y el pago sobrevive', async () => {
+    const { store, repo } = await storeWith(baseData())
+    const r = await replaceWithUndo({ ...repaired().data, budgetId: 'b_importado' }, store)
+    expect(r.ok).toBe(true)
+    const p = unwrap(markOccurrence(store.data!, { scheduleId: 'b2', occurrenceDate: '2026-03-31', amountMinor: 42000, date: '2026-03-29', txId: 'p1' }, at('2026-03-29')))
+    expect(await store.commit(p.data)).toBe(true)
+    expect(await r.undo()).toBe('stale')
+    const reloaded = new AppStore(repo)
+    await reloaded.init()
+    expect(reloaded.data!.transactions.find((t) => t.id === 'p1')).toMatchObject({ scheduleId: 'b2', occurrenceDate: '2026-03-31' })
+  })
+
+  it('reparar y después importar: deshacer la importación devuelve la reparación con su entrada del historial', async () => {
+    const { data: fixed } = repaired()
+    const { store, repo } = await storeWith(fixed)
+    const r = await replaceWithUndo({ ...internet(), budgetId: 'b_otro' }, store)
+    expect(r.ok).toBe(true)
+    expect(store.data!.budgetId).toBe('b_otro')
+    expect(await r.undo()).toBe('undone')
+    const reloaded = new AppStore(repo)
+    await reloaded.init()
+    expect(reloaded.data!.budgetId).toBe(fixed.budgetId)
+    expect(anchorOfB2(reloaded.data)).toBe('2026-01-31')
+    expect(reloaded.data!.history.map((e) => e.source)).toEqual(['app', 'replace'])
+  })
+})

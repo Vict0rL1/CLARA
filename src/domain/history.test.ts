@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { computeBudget } from './budget'
-import { canRevert, diffForHistory, HISTORY_MAX_ENTRIES, recordHistory, revertConflicts, revertEntry, setValue, setValues, stateBefore } from './history'
+import { diffForHistory, HISTORY_MAX_ENTRIES, recordHistory, setValue, setValues } from './history'
+import { canRevert, revertConflicts, revertEntry, stateBefore } from './historyRevert'
 import { allocateToGoal, deleteTransaction, markOccurrence, saveTransaction, updateSettings } from './operations'
 import type { AppData } from './types'
 import { validateAppData } from '../storage/backup'

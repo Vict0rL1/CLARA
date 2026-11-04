@@ -1,0 +1,13 @@
+  theme.js                                             0.5 KB (gzip 0.3 KB)
+  assets/index-DO81KQth.js                           462.0 KB (gzip 136.9 KB)
+  assets/common-BZwEwWGj.js                          239.8 KB (gzip 73.2 KB)
+  assets/localStorageRepository-CFsvl6De.js           76.3 KB (gzip 21.1 KB)
+  assets/store-GjQtpd5C.js                             8.0 KB (gzip 3.0 KB)
+  assets/balances-DvFACdyK.js                          2.6 KB (gzip 1.0 KB)
+  assets/goals-Ba8cdZmk.js                             1.0 KB (gzip 0.5 KB)
+  assets/budget-OMGBri5Q.js                           10.5 KB (gzip 3.9 KB)
+  assets/categoryOps-BV8u3OFU.js                       5.2 KB (gzip 1.7 KB)
+  assets/operations-BBK1kuDV.js                       25.2 KB (gzip 7.0 KB)
+  assets/plannedExpenses-88Mvxwha.js                   5.6 KB (gzip 1.9 KB)
+JS inicial: 836.6 KB en 11 archivos (gzip 250.5 KB)
+Referencia: 767.8 KB · límite 844.6 KB · cambio +9.0 %

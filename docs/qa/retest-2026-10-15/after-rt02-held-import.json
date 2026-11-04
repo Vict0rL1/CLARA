@@ -1,0 +1,15 @@
+{
+  "cad9StoredBeforeUndo": 1,
+  "toastsAfterUndo": [
+    "No se deshizo: guardaste cambios después y se perderían. Lo anterior está en Copias locales como «Antes de restaurar».\nVer copias locales"
+  ],
+  "afterReload": {
+    "cad9": [
+      [
+        900,
+        "CAD"
+      ]
+    ],
+    "account0": "Cuenta reemplazada"
+  }
+}

@@ -1,0 +1,10 @@
+
+ RUN  v5.0.2 /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-before
+
+ ✓ src/domain/f02Before.test.ts (1 test) 12ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  05:23:37
+   Duration  1.57s (transform 90%, import 9%, tests 1%)
+

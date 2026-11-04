@@ -18,6 +18,7 @@ import {
   similarPlanned,
   type ScenarioResult,
 } from '../../domain/scenarios'
+import { addDays } from '../../domain/dates'
 import type { IncomeScenario, SavedScenario, ScenarioChange } from '../../domain/types'
 import { LIMITS, MAX_SCENARIO_CHANGES, type Issue } from '../../domain/validation'
 import { useT } from '../../i18n'
@@ -112,6 +113,12 @@ export function Scenarios() {
             </a>
           }
         />
+      )}
+
+      {result.base.outOfRangeFrom && (
+        <p className="note note--icon" data-testid="scenario-partial">
+          {t('projection.partialCell', { date: fmt.date(result.base.outOfRangeFrom, { compact: true, today }) })}. {t('scenario.partialNote')}
+        </p>
       )}
 
       {data.scenarios.length === 0 ? (
@@ -222,9 +229,19 @@ export function Scenarios() {
                   </tr>
                 </thead>
                 <tbody>
-                  <Row label={t('scenario.row.end', { days })} columns={columns} value={(r) => fmt.money(r.endMinor)} />
+                  <Row label={t('scenario.row.end', { days })} columns={columns} value={(r) => (r.outOfRangeFrom ? t('projection.partialCell', { date: fmt.date(r.outOfRangeFrom, { compact: true, today }) }) : fmt.money(r.endMinor))} />
                   <Row label={t('scenario.row.lowest')} columns={columns} value={(r) => `${fmt.money(r.lowest.minor)} · ${fmt.date(r.lowest.date, { compact: true, today })}`} />
-                  <Row label={t('scenario.row.shortfall')} columns={columns} value={(r) => (r.firstNegativeDate ? t('scenario.shortfallValue', { amount: fmt.money(r.shortfallMinor), date: fmt.date(r.firstNegativeDate, { compact: true, today }) }) : t('projection.noShortfallShort'))} />
+                  <Row
+                    label={t('scenario.row.shortfall')}
+                    columns={columns}
+                    value={(r) =>
+                      r.firstNegativeDate
+                        ? t('scenario.shortfallValue', { amount: fmt.money(r.shortfallMinor), date: fmt.date(r.firstNegativeDate, { compact: true, today }) })
+                        : r.outOfRangeFrom
+                          ? t('projection.partialShortfall', { until: fmt.date(addDays(r.outOfRangeFrom, -1), { compact: true, today }) })
+                          : t('projection.noShortfallShort')
+                    }
+                  />
                   <Row label={t('scenario.row.available')} columns={columns} value={(r) => fmt.money(r.availableMinor)} />
                   <Row label={t('scenario.row.availableDiff')} columns={columns} value={(r) => fmt.money(r.availableMinor - result.base.availableMinor, { sign: true })} />
                   <Row

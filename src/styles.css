@@ -2643,6 +2643,11 @@ fieldset.bill-row {
   background: var(--series-3);
 }
 
+/* Colchón de seguridad (Clara 2.0 §10): neutro, fuera de la paleta de series; ≥ 3:1 en ambos temas. */
+.series-buffer {
+  background: var(--border-input);
+}
+
 .legend {
   list-style: none;
   display: grid;
@@ -5073,7 +5078,7 @@ li.is-selected > .item--select {
   color: var(--critical-text);
 }
 .stat__delta--neutral {
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 .donut {
   display: grid;

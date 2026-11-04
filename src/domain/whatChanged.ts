@@ -16,7 +16,8 @@
  */
 import { computeBudget, type BudgetResult } from './budget'
 import { addDays, localDateInTimeZone } from './dates'
-import { applyEntries, stateBefore } from './history'
+import { applyEntries } from './history'
+import { stateBefore } from './historyRevert'
 import type { PlanItem } from './planItems'
 import type { AppData, HistoryEntry, LocalDate, Timestamp, Transaction } from './types'
 import { sumMinor } from './money'

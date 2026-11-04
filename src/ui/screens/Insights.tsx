@@ -21,7 +21,7 @@ const SIGNED = new Set<Because['id']>(['delta', 'difference', 'remaining'])
 function becauseValue(b: Because, fmt: Formatter, today: string): string {
   if (b.kind === 'money') return fmt.money(b.value as number, { sign: SIGNED.has(b.id) })
   if (b.kind === 'count') return String(b.value)
-  if (b.kind === 'percent') return `${b.value} %`
+  if (b.kind === 'percent') return fmt.percentPoints(b.value as number)
   if (b.kind === 'date') return fmt.date(String(b.value), { compact: true, today })
   if (b.id === 'lastExport' && b.value) return fmt.timestamp(String(b.value))
   return b.value ? String(b.value) : '—'
@@ -45,6 +45,8 @@ export function Insights() {
         return t('insights.shortfall.title', { date: date('date'), amount: money('amount') })
       case 'belowReserves':
         return t('insights.belowReserves.title', { date: date('date'), amount: money('amount'), reserved: money('reserved') })
+      case 'projectionOutOfRange':
+        return t('insights.projectionOutOfRange.title', { until: date('until'), horizon: Number(p.horizon) })
       case 'limitOver':
         return t('insights.limitOver.title', { name: String(p.name), remaining: money('remaining') })
       case 'limitNear':
@@ -53,7 +55,8 @@ export function Insights() {
         return t('insights.goalBehind.title', { name: String(p.name), behind: money('behind'), date: date('date') })
       case 'spendingUp':
       case 'spendingDown':
-        return t(`insights.${i.id}.title`, { percent: Number(p.percent) })
+        // Sin `percent` el cociente exacto no cabe en una cifra (F-03): se dice, con los importes en «¿Por qué?».
+        return p.percent === undefined ? t(`insights.${i.id}.titleNoFigure`) : t(`insights.${i.id}.title`, { percent: Number(p.percent) })
       case 'topCategory':
         return t('insights.topCategory.title', { category: categoryLabel(t, String(p.categoryId)), percent: Number(p.percent), amount: money('amount'), total: money('total') })
       case 'backupDue':

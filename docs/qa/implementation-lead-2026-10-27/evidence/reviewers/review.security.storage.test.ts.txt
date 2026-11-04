@@ -1,0 +1,115 @@
+/**
+ * Revisión independiente de seguridad y almacenamiento (e38b07b frente a 46fe617): copias de seguridad.
+ * Datos sintéticos. No repite backup.test / migrations.test / qaFollowUp.test.
+ */
+import { describe, expect, it } from 'vitest'
+import { BACKUP_FORMAT, BACKUP_FORMAT_VERSION, backupText, parseBackup, validateAppData } from './backup'
+import { migrate } from './migrations'
+import { SCHEMA_VERSION, type AppData, type HistoryEntry } from '../domain/types'
+import { validateHistory } from '../domain/validation'
+import { validateHistory as validateHistoryBaseline } from '../domain/validation.46fe617'
+import { account, baseData, bill, EARLIER, NOW } from '../test/fixtures'
+
+const persisted = (d: AppData): AppData => JSON.parse(JSON.stringify(d)) as AppData
+
+/** La copia tal como la escribía 46fe617: partición de un programado de id 64 con su aviso pospuesto renombrado. */
+function faultyVersionData(): AppData {
+  const oldId = 'a'.repeat(64)
+  const newId = 'b'.repeat(36)
+  const before = bill('2026-06-01', 40000, { id: oldId, name: 'Luz', frequency: 'monthly' })
+  const ended = { ...before, endDate: '2026-09-30', updatedAt: NOW }
+  const next = { ...before, id: newId, startDate: '2026-10-01', amountMinor: 42000, anchorDate: '2026-06-01', createdAt: NOW, updatedAt: NOW }
+  const oldSnooze = { id: `due:schedule:${oldId}:2026-10-01`, until: '2026-10-15', at: EARLIER }
+  const newSnooze = { id: `due:schedule:${newId}:2026-10-01`, until: '2026-10-15', at: EARLIER }
+  const entry: HistoryEntry = {
+    id: 'h-faulty',
+    at: NOW,
+    source: 'app',
+    changes: [
+      { collection: 'schedules', id: oldId, before, after: ended },
+      { collection: 'schedules', id: newId, before: null, after: next },
+      { collection: 'inboxSnoozed', id: newSnooze.id, before: null, after: newSnooze },
+      { collection: 'inboxSnoozed', id: oldSnooze.id, before: oldSnooze, after: null },
+    ],
+  }
+  return baseData({
+    accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 100000, date: '2026-09-01', setAt: EARLIER } })],
+    schedules: [ended, next],
+    inbox: { snoozed: [newSnooze], dismissed: [] },
+    history: [entry],
+    historyStartedAt: EARLIER,
+    updatedAt: NOW,
+    revision: 7,
+  })
+}
+
+describe('B · copia escrita por la versión con el fallo (46fe617): ids de aviso de 88 y 60 en el historial', () => {
+  const data = persisted(faultyVersionData())
+  const lengths = data.history[0]!.changes.filter((c) => c.collection === 'inboxSnoozed').map((c) => c.id.length)
+
+  it('la copia es la que se describe: ids de 88 y 60 bajo inboxSnoozed, esquema 14', () => {
+    expect(lengths.sort((a, b) => a - b)).toEqual([60, 88])
+    expect(data.schemaVersion).toBe(14)
+    expect(SCHEMA_VERSION).toBe(14)
+  })
+
+  it('el validador de 46fe617 la rechazaba (changes[3], el id de 88; el de 60 cabía en 64); el actual la acepta', () => {
+    expect(validateHistoryBaseline(data.history)).toEqual([{ path: 'history[0].changes[3]', code: 'invalidValue' }])
+    expect(validateHistory(data.history)).toEqual([])
+  })
+
+  it('un archivo de copia escrito A MANO con ese contenido (sobre margen-backup v1) se importa y los datos vuelven IDÉNTICOS: sin acortar ids, sin descartar entradas ni aplazamientos', () => {
+    const file = JSON.stringify({ format: BACKUP_FORMAT, formatVersion: BACKUP_FORMAT_VERSION, exportedAt: NOW, appVersion: '0.0.0-faulty', data })
+    const r = parseBackup(file)
+    expect(r.ok ? [] : r.issues).toEqual([])
+    if (!r.ok) return
+    expect(r.data).toEqual(data)
+    expect(r.data.history[0]!.changes.map((c) => c.id.length)).toEqual(data.history[0]!.changes.map((c) => c.id.length))
+    expect(r.data.inbox.snoozed).toEqual(data.inbox.snoozed)
+    expect(r.exportedAt).toBe(NOW)
+  })
+
+  it('la misma copia a través de backupText (como la exportaba aquella versión) también se importa igual, y migrate(v14) es identidad', () => {
+    const r = parseBackup(backupText(data, new Date(NOW), '0.0.0-faulty'))
+    expect(r.ok && r.data).toEqual(data)
+    const raw = JSON.parse(JSON.stringify(data)) as Record<string, unknown>
+    expect(migrate(raw)).toEqual(raw)
+  })
+
+  it('el mismo almacenamiento (lo que lee la app al recargar) valida entero: validateAppData sobre los datos guardados', () => {
+    expect(validateAppData(data).ok).toBe(true)
+  })
+})
+
+describe('B · formas de instantánea a través de parseBackup', () => {
+  const withSnapshot = (before: unknown) => {
+    const d = persisted(baseData({ schedules: [bill('2026-06-01', 1000, { id: 'a', frequency: 'monthly' })] }))
+    const history = [{ id: 'h1', at: NOW, source: 'app', changes: [{ collection: 'schedules', id: 'a', before, after: d.schedules[0] }] }]
+    return JSON.stringify({ format: BACKUP_FORMAT, formatVersion: BACKUP_FORMAT_VERSION, exportedAt: NOW, appVersion: 't', data: { ...d, history } })
+  }
+  it('un primitivo como instantánea rechaza la copia entera (nada se aplica)', () => {
+    for (const snap of ['x', 1, true]) {
+      const r = parseBackup(withSnapshot(snap))
+      expect(r.ok ? [] : r.issues, String(snap)).toEqual([{ path: 'history[0].changes[0]', code: 'invalidValue' }])
+    }
+  })
+  it('un array como instantánea pasa la importación (igual que antes) y se conserva tal cual en el historial importado', () => {
+    const r = parseBackup(withSnapshot([1, 2]))
+    expect(r.ok).toBe(true)
+    expect(r.ok && r.data.history[0]!.changes[0]!.before).toEqual([1, 2])
+  })
+  it('las entradas del historial se guardan sin recorte de claves: una clave extra sobrevive a la importación', () => {
+    const d = persisted(baseData())
+    const history = [{ id: 'h1', at: NOW, source: 'app', changes: [{ collection: 'accounts', id: 'main', before: null, after: { id: 'main', extra: 'x'.repeat(10) } }], unknownKey: 'kept' }]
+    const r = parseBackup(JSON.stringify({ format: BACKUP_FORMAT, formatVersion: BACKUP_FORMAT_VERSION, exportedAt: NOW, appVersion: 't', data: { ...d, history } }))
+    expect(r.ok && (r.data.history[0] as unknown as { unknownKey?: string }).unknownKey).toBe('kept')
+  })
+})
+
+describe('B · el descarte «Dejar como está» (int:split:<id>) viaja en la copia', () => {
+  it('ida y vuelta sin cambios', () => {
+    const d = persisted(baseData({ inbox: { snoozed: [], dismissed: [{ id: `int:split:${'z'.repeat(64)}`, fingerprint: '2026-02-28||2026-01-31', at: NOW }] } }))
+    const r = parseBackup(backupText(d, new Date(NOW), 't'))
+    expect(r.ok && r.data.inbox.dismissed).toEqual(d.inbox.dismissed)
+  })
+})

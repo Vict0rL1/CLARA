@@ -1,0 +1,83 @@
+
+## assets/index-DVcZudSQ.js (78 app sources)
+  62417  src/ui/screens/MovementForm.tsx
+  53849  src/ui/screens/Home.tsx
+  35926  src/ui/screens/Movements.tsx
+  30159  src/App.tsx
+  28479  src/domain/parser.ts
+  23927  src/domain/plans.ts
+  18926  src/ui/components/base.tsx
+  18735  src/domain/inbox.ts
+  16512  src/ui/dialogs.tsx
+  14567  src/domain/incomeDistribution.ts
+  13848  src/domain/periodBudgets.ts
+  13156  src/ui/components/charts.tsx
+  12747  src/ui/components/CategoryPicker.tsx
+  11261  src/storage/indexedDbRepository.ts
+   9066  src/domain/templates.ts
+   8031  src/domain/weeklyReview.ts
+   7570  src/domain/scheduledJobs.ts
+   6946  src/ui/favoritesUi.tsx
+   6934  src/ui/components/fields.tsx
+   5947  src/ui/errorLog.ts
+   5819  src/domain/notifications.ts
+   5799  src/domain/csvExport.ts
+   5741  src/domain/shortcutLink.ts
+   5684  src/domain/homeSnapshot.ts
+   5642  src/domain/recurringDetect.ts
+   5579  src/ui/install.ts
+   5548  src/ui/format.ts
+   5533  src/storage/autoBackup.ts
+
+## assets/common-CvX7wVFk.js (5 app sources)
+ 237601  src/i18n/es.ts
+   8896  src/ui/components/iconPaths.ts
+   7487  src/ui/components/common.tsx
+   4550  src/i18n/index.ts
+    732  src/ui/components/Icon.tsx
+
+## assets/localStorageRepository-CN_k3as3.js (14 app sources)
+  62619  src/domain/validation.ts
+  41072  src/domain/money.ts
+  26124  src/storage/backup.ts
+  11578  src/domain/rules.ts
+   9580  src/storage/migrations.ts
+   8971  src/domain/categories.ts
+   5724  src/domain/dates.ts
+   5534  src/domain/splits.ts
+   5484  src/storage/localStorageRepository.ts
+   2023  src/domain/defaults.ts
+   1915  src/domain/merchants.ts
+   1367  src/domain/txIndex.ts
+    892  src/domain/ids.ts
+    353  src/domain/text.ts
+
+## assets/store-KBa1o6yI.js (4 app sources)
+  18898  src/domain/history.ts
+   6742  src/state/store.ts
+   2779  src/domain/currencyChange.ts
+   1799  src/storage/drafts.ts
+
+## assets/balances-CLTZlp6d.js (1 app sources)
+   8098  src/domain/balances.ts
+
+## assets/goals-CKiUwT24.js (1 app sources)
+   3713  src/domain/goals.ts
+
+## assets/budget-DjHnMVjz.js (6 app sources)
+   9745  src/domain/planItems.ts
+   9230  src/domain/budget.ts
+   8737  src/domain/periods.ts
+   6788  src/domain/recurrence.ts
+   5259  src/domain/reserves.ts
+   2244  src/domain/insights.ts
+
+## assets/categoryOps-BUGQ_bSk.js (1 app sources)
+  12362  src/domain/categoryOps.ts
+
+## assets/operations-Duych2L9.js (2 app sources)
+  63219  src/domain/operations.ts
+   6621  src/domain/reconcile.ts
+
+## assets/plannedExpenses-Cb3hW2b6.js (1 app sources)
+  13797  src/domain/plannedExpenses.ts

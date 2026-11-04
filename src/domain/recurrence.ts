@@ -7,6 +7,13 @@
  *   Si un mes no tiene ese día (29, 30 o 31) se usa el último día de ese mes, y el mes
  *   siguiente se vuelve al día original (31 ene → 28 feb → 31 mar → 30 abr).
  * - Anual: el 29 de febrero pasa al 28 en años no bisiestos.
+ * - Dos veces al mes (Clara 2.0 §12): el día de `startDate` y `secondDay`, cada mes; un día que el
+ *   mes no tiene pasa al último (15 y 31 → 15 y 28 feb). Los dos días distan ≥ 7, así que nunca
+ *   caen en la misma fecha.
+ * - v14 (`anchorDate`, auditoría del PR #15 · QA-01): al partir una serie «desde una fecha» sin cambiar su
+ *   regla, el tramo nuevo conserva la fecha que fijaba la serie y `startDate` pasa a ser solo el límite desde
+ *   el que cuenta. Así el 31 sigue siendo el 31 aunque el tramo empiece un 28-feb movido, y «1 y 20» siguen
+ *   siendo 1 y 20.
  */
 import { addDays, addMonthsClamped, daysBetween, parseLocalDate } from './dates'
 import type { Frequency, LocalDate, Schedule } from './types'
@@ -26,7 +33,26 @@ export interface OccurrenceScan {
   truncated: boolean
 }
 
-export type RecurrenceRule = Pick<Schedule, 'frequency' | 'startDate'> & Partial<Pick<Schedule, 'endDate' | 'intervalDays'>>
+export type RecurrenceRule = Pick<Schedule, 'frequency' | 'startDate'> & Partial<Pick<Schedule, 'endDate' | 'intervalDays' | 'secondDay' | 'anchorDate'>>
+
+/** La fecha que fija la serie: `anchorDate` (v14, un tramo partido sin cambiar la regla) o, si no, `startDate`. */
+export function anchorOf(rule: Pick<RecurrenceRule, 'startDate' | 'anchorDate'>): LocalDate {
+  return rule.anchorDate ?? rule.startDate
+}
+
+/** Segundo día por defecto de un pago quincenal de calendario: 15 días después (o antes, si no cabe). */
+export function defaultSecondDay(startDate: LocalDate): number {
+  const day = parseLocalDate(startDate).day
+  return day <= 16 ? day + 15 : day - 15
+}
+
+/** Días del mes [menor, mayor] de un pago dos veces al mes. */
+function semimonthlyDays(rule: RecurrenceRule): [number, number] {
+  const anchor = anchorOf(rule)
+  const a = parseLocalDate(anchor).day
+  const b = rule.secondDay ?? defaultSecondDay(anchor)
+  return a < b ? [a, b] : [b, a]
+}
 
 function stepDays(frequency: Frequency, intervalDays: number | undefined): number | null {
   if (frequency === 'daily') return 1
@@ -44,10 +70,17 @@ function stepMonths(frequency: Frequency): number | null {
   return null
 }
 
-/** n-ésima ocurrencia (n = 0 es `startDate`). */
+/** n-ésima ocurrencia (n = 0 es la fecha que fija la serie: `anchorDate` o `startDate`). */
 export function nthOccurrence(schedule: RecurrenceRule, n: number): LocalDate {
-  const { frequency, startDate } = schedule
-  if (frequency === 'once') return startDate
+  const { frequency } = schedule
+  if (frequency === 'once') return schedule.startDate
+  const startDate = anchorOf(schedule)
+  if (frequency === 'semimonthly') {
+    // n = 0 es `startDate`; si es el día mayor del mes, la siguiente es el menor del mes siguiente.
+    const [low, high] = semimonthlyDays(schedule)
+    const m = n + (parseLocalDate(startDate).day === low ? 0 : 1)
+    return addMonthsClamped(startDate, Math.floor(m / 2), m % 2 === 0 ? low : high)
+  }
   const days = stepDays(frequency, schedule.intervalDays)
   if (days !== null) return addDays(startDate, days * n)
   const months = stepMonths(frequency) ?? 1
@@ -67,22 +100,29 @@ export function occurrencesBetween(schedule: RecurrenceRule, from: LocalDate, to
 export function scanOccurrences(schedule: RecurrenceRule, from: LocalDate, to: LocalDate, limit = MAX_OCCURRENCES): OccurrenceScan {
   if (to < from) return { dates: [], truncated: false }
   const end = schedule.endDate && schedule.endDate < to ? schedule.endDate : to
-  if (end < schedule.startDate) return { dates: [], truncated: false }
+  // `startDate` es el límite desde el que cuenta la serie; las fechas las fija `anchorDate` (v14) o la misma `startDate`.
+  const lower = from > schedule.startDate ? from : schedule.startDate
+  if (end < lower) return { dates: [], truncated: false }
 
   if (schedule.frequency === 'once') {
     return { dates: schedule.startDate >= from && schedule.startDate <= end ? [schedule.startDate] : [], truncated: false }
   }
 
   // Primera n candidata para no recorrer desde el principio en fechas lejanas.
+  const anchor = anchorOf(schedule)
   let n = 0
-  if (from > schedule.startDate) {
+  if (lower > anchor) {
     const days = stepDays(schedule.frequency, schedule.intervalDays)
-    if (days !== null) {
-      n = Math.max(0, Math.floor(daysBetween(schedule.startDate, from) / days))
+    if (schedule.frequency === 'semimonthly') {
+      const a = parseLocalDate(anchor)
+      const b = parseLocalDate(lower)
+      n = Math.max(0, ((b.year - a.year) * 12 + (b.month - a.month)) * 2 - 2)
+    } else if (days !== null) {
+      n = Math.max(0, Math.floor(daysBetween(anchor, lower) / days))
     } else {
       const months = stepMonths(schedule.frequency) ?? 1
-      const a = parseLocalDate(schedule.startDate)
-      const b = parseLocalDate(from)
+      const a = parseLocalDate(anchor)
+      const b = parseLocalDate(lower)
       const diff = (b.year - a.year) * 12 + (b.month - a.month)
       n = Math.max(0, Math.floor(diff / months) - 1)
     }
@@ -92,7 +132,7 @@ export function scanOccurrences(schedule: RecurrenceRule, from: LocalDate, to: L
   for (let i = 0; i < limit; i++, n++) {
     const date = nthOccurrence(schedule, n)
     if (date > end) return { dates, truncated: false }
-    if (date >= from) dates.push(date)
+    if (date >= lower) dates.push(date)
   }
   // Se agotó el tope sin pasar de `end`: ¿quedaba alguna más?
   return { dates, truncated: nthOccurrence(schedule, n) <= end }

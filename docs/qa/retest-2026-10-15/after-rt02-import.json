@@ -1,0 +1,10 @@
+{
+  "autoRecordedBeforeUndo": 1,
+  "toastsAfterUndo": [
+    "No se deshizo: guardaste cambios después y se perderían. Lo anterior está en Copias locales como «Antes de restaurar».\nVer copias locales"
+  ],
+  "afterReload": {
+    "autoRecorded": 1,
+    "account0": "Cuenta reemplazada"
+  }
+}

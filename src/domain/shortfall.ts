@@ -46,7 +46,10 @@ export interface LeverEffect {
   firstNegativeDate: LocalDate | null
   shortfallMinor: number
   lowest: { date: LocalDate; minor: number }
+  /** Solo con la proyección completa: sin cifra desde `outOfRangeFrom` no se afirma que lo evite. */
   resolves: boolean
+  /** Desde ese día la proyección simulada no tiene cifra (fuera del rango exacto). */
+  outOfRangeFrom: LocalDate | null
   /** Si sigue faltando: pagos programados (obligaciones) hasta el primer día negativo. */
   obligations: PlanItem[]
 }
@@ -60,6 +63,7 @@ export interface Contributor {
 }
 
 export type ShortfallAnalysis =
+  /** Sin día negativo entre los días exactos; si `projection.outOfRangeFrom` no es `null`, solo hasta el día antes. */
   | { status: 'none'; projection: ProjectionResult }
   | {
       status: 'shortfall'
@@ -137,7 +141,7 @@ export function evaluateLevers(data: AppData, today: LocalDate, levers: Shortfal
   const p = projectBalance(sim.data, today, { days: options.days ?? 30, dailySpendMinor: sim.dailySpendMinor ?? options.dailySpendMinor ?? 0, scenario: options.scenario ?? 'min' })
   const first = p.firstNegativeDate
   const obligations = first ? p.days.filter((d) => d.date <= first).flatMap((d) => d.events.filter((e) => e.budgetEffectMinor < 0 && e.source === 'schedule')) : []
-  return { firstNegativeDate: first, shortfallMinor: Math.max(0, -p.lowest.minor), lowest: p.lowest, resolves: first === null, obligations }
+  return { firstNegativeDate: first, shortfallMinor: Math.max(0, -p.lowest.minor), lowest: p.lowest, resolves: first === null && p.outOfRangeFrom === null, outOfRangeFrom: p.outOfRangeFrom, obligations }
 }
 
 export function analyzeShortfall(data: AppData, today: LocalDate, options: ShortfallOptions = {}): ShortfallAnalysis {

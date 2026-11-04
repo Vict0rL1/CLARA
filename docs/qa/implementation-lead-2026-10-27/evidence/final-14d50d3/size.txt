@@ -1,0 +1,20 @@
+
+> clara@1.0.0-beta.1 size
+> node scripts/check-size.mjs
+
+  theme.js                                             0.5 KB (gzip 0.3 KB)
+  assets/index-edGVDqRT.js                           461.3 KB (gzip 136.6 KB)
+  assets/common-uycoJqlV.js                          243.8 KB (gzip 74.2 KB)
+  assets/money-Cr_Cfqa4.js                            15.2 KB (gzip 5.5 KB)
+  assets/localStorageRepository-CDzieAMB.js           64.2 KB (gzip 16.9 KB)
+  assets/store-UT6oUKmG.js                             6.1 KB (gzip 2.4 KB)
+  assets/balances-B9lPemPd.js                          2.6 KB (gzip 0.9 KB)
+  assets/goals-DAi_UsBX.js                             1.1 KB (gzip 0.5 KB)
+  assets/budget-DZ0hK4oY.js                           10.5 KB (gzip 4.0 KB)
+  assets/currencyChange-D2ZMcZPQ.js                    0.9 KB (gzip 0.4 KB)
+  assets/categoryOps-CGTONMM0.js                       5.2 KB (gzip 1.8 KB)
+  assets/operations-BPyQjSLj.js                       25.3 KB (gzip 7.0 KB)
+  assets/plannedExpenses-Cgj2TLtR.js                   5.6 KB (gzip 1.9 KB)
+JS inicial: 842.3 KB en 13 archivos (gzip 252.5 KB)
+Referencia: 767.8 KB · límite 844.6 KB · cambio +9.7 %
+exit 0

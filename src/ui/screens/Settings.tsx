@@ -43,7 +43,7 @@ import { useEncryptedExport } from '../useEncryptedExport'
 import { DEV_MODE } from './Pro'
 import { aiUsagePercent, isPro } from '../../domain/featureGate'
 import { decryptBackup, isEncryptedBackup, looksEncrypted } from '../../storage/encryptedBackup'
-import { canChangeCurrency as canChangeCurrencyNow } from '../../domain/currencyChange'
+import { monetaryRecords } from '../../domain/currencyChange'
 import { CurrencyDialog } from './settings/CurrencyDialog'
 import { ExportSection } from './settings/ExportSection'
 import { LockSection } from './settings/LockSection'
@@ -51,7 +51,7 @@ import { SafeToSpendSection } from './settings/SafeToSpendSection'
 import { ScheduledSection } from './settings/ScheduledSection'
 import { TagsSection } from './settings/TagsSection'
 import { useLockState } from '../lock/lockContext'
-import { keepCopyBeforeReplace, localBackups } from '../useAutoBackup'
+import { keepCopyBeforeReplace, useLocalCopiesAvailable, localBackups } from '../useAutoBackup'
 import { replaceWithUndo, type UndoReplaceResult } from '../../state/replaceUndo'
 import { currencyName } from '../../domain/formatters'
 import { getPeriod } from '../../domain/periods'
@@ -126,6 +126,7 @@ export function Settings({ route }: { route: Route }) {
   }
 
   const exportData = useExportBackup()
+  const localCopies = useLocalCopiesAvailable()
   // Copia ligera sin fotos: no se registra como copia de seguridad, porque restaurarla las perdería.
   const exportWithoutReceipts = () => {
     const result = performExport(data, new Date(), APP_VERSION, downloadText, { withoutReceipts: true })
@@ -207,8 +208,11 @@ export function Settings({ route }: { route: Route }) {
     const next = importState.data
     setImportState(null)
     // REC-01: copia local de lo actual antes de reemplazarlo (camino de recuperación si «Deshacer» ya no es seguro).
+    // Si la copia falla donde SÍ debería guardarse (cuota, conflicto) no se importa: la persona cuenta con ella. Donde
+    // este navegador no guarda copias locales (sin IndexedDB, o no abre) el diálogo ya dijo que solo queda deshacer de
+    // inmediato y ofreció descargar antes (revisión de seguridad QA27, O-3/O-4).
     const copy = await keepCopyBeforeReplace(getStore().data)
-    if (copy === 'failed') {
+    if (copy === 'failed' && localCopies !== false) {
       toast({ message: t('localBackup.failed'), tone: 'critical' })
       return
     }
@@ -253,17 +257,21 @@ export function Settings({ route }: { route: Route }) {
     await getStore().clearAll()
   }
 
+  // La misma regla que la operación (QA-01): saldos distintos de cero también son importes guardados. Si lo
+  // único guardado es el colchón de seguridad (auditoría del PR #15, QA-02), se dice cuál es y cómo quitarlo.
+  const records = monetaryRecords(data)
+  const canChangeCurrency = records.length === 0
+  const bufferOnly = records.length === 1 && records[0] === 'safeToSpendBuffer'
+  const blockedMessage = () => (bufferOnly ? t('currency.bufferBlocks', { amount: fmt.money(data.settings.safeToSpend.bufferMinor), currency: data.settings.currency }) : t('currency.blocked'))
   const pickCurrency = async (code: CurrencyCode) => {
     setCurrencyOpen(false)
     const { result, saved } = await run((d, c) => changeCurrency(d, code, c))
     if (!result.ok) {
-      toast({ message: t('currency.blocked'), tone: 'critical' })
+      toast({ message: blockedMessage(), tone: 'critical' })
       return
     }
     if (!result.unchanged) toast({ message: saved ? t('currency.changed', { code }) : t('save.error.generic'), tone: saved ? 'good' : 'critical' })
   }
-  // La misma regla que la operación (QA-01): saldos distintos de cero también son importes guardados.
-  const canChangeCurrency = canChangeCurrencyNow(data)
   const currentPeriod = data.settings.budgetPeriod?.type && data.settings.budgetPeriod.type !== 'untilIncome' ? getPeriod(data.settings.budgetPeriod, today) : null
 
   const sample = createFormatter({ ...data.settings })
@@ -385,7 +393,7 @@ export function Settings({ route }: { route: Route }) {
             <Icon name="coins" size={16} />
             {t('currency.change')}
           </button>
-          <p className="field__hint">{canChangeCurrency ? t('currency.canChange') : t('settings.currency.hint')}</p>
+          <p className="field__hint" data-testid="currency-hint">{canChangeCurrency ? t('currency.canChange') : bufferOnly ? blockedMessage() : t('settings.currency.hint')}</p>
         </div>
         <fieldset className="field">
           <legend className="field__label">{t('settings.language.label')}</legend>
@@ -676,6 +684,12 @@ export function Settings({ route }: { route: Route }) {
               {importState.data.isDemo && <li>{t('settings.backup.summaryDemo')}</li>}
               {importState.withoutReceipts && <li data-testid="import-no-receipts">{t('settings.backup.summaryNoReceipts')}</li>}
             </ul>
+            <p className="note note--icon" data-testid="import-copy-note">{t(localCopies === false ? 'settings.backup.confirmNoLocalCopy' : 'settings.backup.confirmLocalCopy')}</p>
+            {localCopies === false && (
+              <button type="button" className="btn btn--ghost btn--small" onClick={() => void exportData()}>
+                {t('backup.exportFirst')}
+              </button>
+            )}
             <p className="note">{t('settings.backup.confirmHint')}</p>
           </>
         )}

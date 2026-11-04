@@ -92,6 +92,25 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
 
 ### Correcciones
 
+Auditoría independiente del 2 de noviembre de 2026 sobre `420c700`
+(`docs/qa/audit-nov02-implementation-2026-11-03/REPORT.md`):
+
+- **Deshacer con un gasto planificado vinculado** (auditoría independiente del 2026-11-02, P1): revertir una reparación
+  en el sitio (28-mar → 31-mar) con un gasto planificado creado después y vinculado al 31-mar dejaba el vínculo sin fecha
+  y la misma factura se reservaba dos veces (980 → 560), un estado que pasaba la validación y la copia. Ahora el
+  historial rechaza revertir cualquier cambio que dejaría un vínculo de gasto planificado o un aplazamiento vigente
+  apuntando a una ocurrencia que ya no existiría bajo el mismo programado, dice qué registro es y nada cambia.
+- **Posibles duplicados** (P2): las parejas ya descartadas o pospuestas ya no ocupan sitio en el tope de 50 por grupo,
+  así que una pareja nueva se ofrece aunque haya 50 antiguas revisadas; cuando quedan más de las que caben, Pendientes
+  lo dice en vez de dar la revisión por completa.
+- **Textos de Legal y Galería** (P3): si el archivo de texto no se puede cargar, la pantalla lo dice con «Reintentar» y
+  «Recargar la app» en vez de enseñar claves internas; el fallo nunca se guarda, y al volver la conexión basta con
+  reintentar o volver a abrir la pantalla. Si el idioma pedido no carga y el español sí, se muestra en español y se avisa.
+- **Proyección fuera del rango exacto** (P4): con importes programados extremos (400 pagos diarios de 10¹²) Proyección,
+  Análisis, Plan ante faltante, Escenarios y «¿Me alcanza?» ya no caen en «No se pudo abrir esta pantalla»: la
+  proyección se detiene en el último día exacto, cada pantalla dice desde qué día no hay cifra y no afirma nada del
+  resto (ni «sin faltante», ni «lo evita», ni saldo al final). Los presupuestos normales no cambian.
+
 Auditoría externa del 9–10 de octubre de 2026 (`docs/AUDIT-2026-10-10.md`; sus pruebas viven en `qa/` y
 forman parte de `npm run check`):
 

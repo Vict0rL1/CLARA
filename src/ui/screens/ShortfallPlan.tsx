@@ -4,8 +4,8 @@
  * planificación las palancas que lo permiten, mostrando cada cambio y con confirmación.
  */
 import { useMemo, useState } from 'react'
-import { isValidLocalDate } from '../../domain/dates'
-import { revertEntry } from '../../domain/history'
+import { addDays, isValidLocalDate } from '../../domain/dates'
+import { revertEntry } from '../../domain/historyRevert'
 import { estimateDailySpend } from '../../domain/projection'
 import { analyzeShortfall, applyShortfallPlan, evaluateLevers, leverBasis, type ShortfallLever } from '../../domain/shortfall'
 import type { AppData, IncomeScenario } from '../../domain/types'
@@ -98,6 +98,8 @@ export function ShortfallPlan({ route }: { route: Route }) {
   const invalidEdit = selected.some((s) => s.lever === null)
   const selectedLevers = selected.flatMap((s) => (s.lever ? [s.lever] : []))
   const combined = selectedLevers.length && !invalidEdit ? evaluateLevers(data, today, selectedLevers, options) : null
+  // Fuera del rango exacto (auditoría del 2026-11-02, P4): desde esa fecha no hay cifra; «sin faltante» solo hasta el día antes.
+  const partialParams = (from: string) => ({ date: fmt.date(from, { compact: true, today }), until: fmt.date(addDays(from, -1), { compact: true, today }) })
   const toApply = selected.filter((s) => s.applicable && s.lever).map((s) => ({ lever: s.lever!, basis: leverBasis(data, s.lever!) }))
   const simulationOnly = selected.filter((s) => !s.applicable)
 
@@ -158,10 +160,22 @@ export function ShortfallPlan({ route }: { route: Route }) {
         />
       </Card>
 
-      {analysis.status === 'none' && (
+      {analysis.status === 'none' && !analysis.projection.outOfRangeFrom && (
         <Alert tone="good" icon="check" title={t('shortfall.noneTitle', { days })}>
           {t('shortfall.noneText', { lowest: fmt.money(analysis.projection.lowest.minor), date: fmt.date(analysis.projection.lowest.date) })}
         </Alert>
+      )}
+      {analysis.status === 'none' && analysis.projection.outOfRangeFrom && (
+        <Alert tone="warning" title={t('shortfall.partialTitle', partialParams(analysis.projection.outOfRangeFrom))} role="status">
+          <span data-testid="shortfall-partial">
+            {t('shortfall.partialText', { ...partialParams(analysis.projection.outOfRangeFrom), lowest: fmt.money(analysis.projection.lowest.minor), lowestDate: fmt.date(analysis.projection.lowest.date, { compact: true, today }), days })}
+          </span>
+        </Alert>
+      )}
+      {analysis.status === 'shortfall' && analysis.projection.outOfRangeFrom && (
+        <p className="note note--icon" data-testid="shortfall-partial">
+          {t('shortfall.partialNote', partialParams(analysis.projection.outOfRangeFrom))}
+        </p>
       )}
 
       {analysis.status === 'shortfall' && (
@@ -243,6 +257,8 @@ export function ShortfallPlan({ route }: { route: Route }) {
                         <Badge tone="good" icon="check">
                           {t('shortfall.resolves')}
                         </Badge>
+                      ) : p.effect.firstNegativeDate === null && p.effect.outOfRangeFrom ? (
+                        <span>{t('shortfall.leverPartial', partialParams(p.effect.outOfRangeFrom))}</span>
                       ) : (
                         <span>{t('shortfall.stillShort', { amount: fmt.money(p.effect.shortfallMinor) })}</span>
                       )}
@@ -263,6 +279,8 @@ export function ShortfallPlan({ route }: { route: Route }) {
                 <p className="field__label">{t('shortfall.combinedTitle')}</p>
                 {combined.resolves ? (
                   <Alert tone="good" icon="check" title={t('shortfall.combinedResolves', { lowest: fmt.money(combined.lowest.minor), date: fmt.date(combined.lowest.date) })} />
+                ) : combined.firstNegativeDate === null && combined.outOfRangeFrom ? (
+                  <Alert tone="warning" title={t('shortfall.leverPartial', partialParams(combined.outOfRangeFrom))} />
                 ) : (
                   <Alert tone="warning" title={t('shortfall.combinedShort', { amount: fmt.money(combined.shortfallMinor), date: fmt.date(combined.firstNegativeDate!) })}>
                     <p>{t('shortfall.unresolved')}</p>

@@ -1,0 +1,10 @@
+{
+  "cad9StoredBeforeUndo": 1,
+  "toastsAfterUndo": [
+    "Restauración deshecha: se recuperaron los datos anteriores"
+  ],
+  "afterReload": {
+    "cad9": [],
+    "account0": "Cuenta de cheques"
+  }
+}

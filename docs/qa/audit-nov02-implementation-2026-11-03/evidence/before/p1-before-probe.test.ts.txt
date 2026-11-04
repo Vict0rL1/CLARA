@@ -1,0 +1,25 @@
+import { it } from 'vitest'
+import { computeBudget } from '../../../../../../home/user/ALCANZA/src/domain/budget'
+import { recordHistory } from '../../../../../../home/user/ALCANZA/src/domain/history'
+import { canRevert, revertEntry } from '../../../../../../home/user/ALCANZA/src/domain/historyRevert'
+import { savePlannedExpense } from '../../../../../../home/user/ALCANZA/src/domain/plannedExpenses'
+import { repairSplit } from '../../../../../../home/user/ALCANZA/src/domain/splitRepair'
+import { backupText, parseBackup, validateAppData } from '../../../../../../home/user/ALCANZA/src/storage/backup'
+import { account, baseData, bill } from '../../../../../../home/user/ALCANZA/src/test/fixtures'
+it('before (420c700): revert accepted, 980 -> 560, survives validation and round trip', () => {
+  const at = (today: string) => ({ today, now: `${today}T12:00:00.000Z` })
+  const d0 = baseData({ accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 140000, date: '2026-03-01', setAt: '2026-03-01T12:00:00.000Z' } })], schedules: [bill('2026-01-31', 42000, { id: 'b1', name: 'Internet', frequency: 'monthly', endDate: '2026-02-27', skippedDates: ['2026-01-31'] }), bill('2026-02-28', 42000, { id: 'b2', name: 'Internet', frequency: 'monthly', skippedDates: ['2026-02-28'] })] })
+  const d = { ...d0, settings: { ...d0.settings, fallbackHorizonDays: 30 } }
+  const r = repairSplit(d, 'b2', at('2026-03-20'), 'b3'); if (!r.ok) throw new Error('repair')
+  const repaired = recordHistory(d, r.data, at('2026-03-20').now); const entry = repaired.history.at(-1)!
+  const g = savePlannedExpense(repaired, { id: 'g1', name: 'Internet de marzo', targetMinor: 42000, dueDate: '2026-03-31', fundedFrom: 'budget', link: { scheduleId: 'b2', occurrenceDate: '2026-03-31' }, initialReservedMinor: 42000 }, at('2026-03-20')); if (!g.ok) throw new Error('goal')
+  const funded = recordHistory(repaired, g.data, at('2026-03-20').now)
+  const before = computeBudget(funded, '2026-03-20').availableMinor
+  const status = canRevert(funded, entry, '2026-03-20')
+  const back = revertEntry(funded, entry.id, at('2026-03-20'))
+  const after = back.ok ? computeBudget(back.data, '2026-03-20').availableMinor : null
+  const valid = back.ok ? validateAppData(JSON.parse(JSON.stringify(back.data))).ok : null
+  const rt = back.ok ? parseBackup(backupText(JSON.parse(JSON.stringify(back.data)), new Date('2026-03-20T12:00:00.000Z'), 'test')) : null
+  const afterRt = rt && rt.ok ? computeBudget(rt.data, '2026-03-20').availableMinor : null
+  console.log(JSON.stringify({ availableBefore: before, canRevert: status, revertAccepted: back.ok, availableAfterRevert: after, goalLinkAfter: back.ok ? back.data.goals[0]?.plan?.link : null, b2After: back.ok ? { anchorDate: back.data.schedules.find((s) => s.id === 'b2')?.anchorDate ?? null } : null, validateAppDataOk: valid, roundTripOk: rt?.ok, availableAfterRoundTrip: afterRt }, null, 2))
+})

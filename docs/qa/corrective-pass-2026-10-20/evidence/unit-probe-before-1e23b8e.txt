@@ -1,0 +1,187 @@
+
+ RUN  v5.0.2 /tmp/claude-0/-home-user-ALCANZA/0cc824fc-6662-5ccd-b6d7-dca2af46bc95/scratchpad/wt-repro
+
+ ❯ src/domain/corrective.probe.test.ts (8 tests | 7 failed) 80ms
+   ❯ P1 · moneda no admitida separada del importe por puntuación (6)
+     × asistente: «coffee (RUB) 10» → 1000 con marca RUB (bloquea) 28ms
+     × asistente: «coffee RUB: 10» → 1000 con marca RUB (bloquea) 7ms
+     × asistente: «coffee (RUB) $10» → 1000 con marca RUB (bloquea) 25ms
+     × recibo: «SHOP / TOTAL RUB: 10.00» → 1000 con marca RUB 9ms
+     × recibo: «SHOP / TOTAL (RUB) 10.00» → 1000 con marca RUB 2ms
+     ✓ controles: código admitido con la misma sintaxis y el directo «TOTAL RUB 10.00» 3ms
+   ❯ P2 · «PEN 2.99 TAX 0.10» es un artículo, no una moneda (2)
+     × SHOP / PEN 2.99 TAX 0.10 / TOTAL CAD 3.09 → 309 sin conflicto 2ms
+     × variante sin total escrito en CAD: SHOP / PEN 2.99 TAX 0.10 / TOTAL 3.09 → 309 sin moneda 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/domain/corrective.probe.test.ts > P1 · moneda no admitida separada del importe por puntuación > asistente: «coffee (RUB) 10» → 1000 con marca RUB (bloquea)
+AssertionError: coffee (RUB) 10: expected [ 1000, null, null ] to deeply equal [ 1000, 'RUB', null ]
+
+- Expected
++ Received
+
+  [
+    1000,
+-   "RUB",
++   null,
+    null,
+  ]
+
+ ❯ src/domain/corrective.probe.test.ts:20:92
+     18|     it(`asistente: «${text}» → 1000 con marca RUB (bloquea)`, () => {
+     19|       const e = one(text)
+     20|       expect([e.amountMinor, e.foreignCurrency ?? null, e.currencyConf…
+       |                                                                                            ^
+     21|     })
+     22|   }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  src/domain/corrective.probe.test.ts > P1 · moneda no admitida separada del importe por puntuación > asistente: «coffee RUB: 10» → 1000 con marca RUB (bloquea)
+AssertionError: coffee RUB: 10: expected [ 1000, null, null ] to deeply equal [ 1000, 'RUB', null ]
+
+- Expected
++ Received
+
+  [
+    1000,
+-   "RUB",
++   null,
+    null,
+  ]
+
+ ❯ src/domain/corrective.probe.test.ts:20:92
+     18|     it(`asistente: «${text}» → 1000 con marca RUB (bloquea)`, () => {
+     19|       const e = one(text)
+     20|       expect([e.amountMinor, e.foreignCurrency ?? null, e.currencyConf…
+       |                                                                                            ^
+     21|     })
+     22|   }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  src/domain/corrective.probe.test.ts > P1 · moneda no admitida separada del importe por puntuación > asistente: «coffee (RUB) $10» → 1000 con marca RUB (bloquea)
+AssertionError: coffee (RUB) $10: expected [ 1000, null, null ] to deeply equal [ 1000, 'RUB', null ]
+
+- Expected
++ Received
+
+  [
+    1000,
+-   "RUB",
++   null,
+    null,
+  ]
+
+ ❯ src/domain/corrective.probe.test.ts:20:92
+     18|     it(`asistente: «${text}» → 1000 con marca RUB (bloquea)`, () => {
+     19|       const e = one(text)
+     20|       expect([e.amountMinor, e.foreignCurrency ?? null, e.currencyConf…
+       |                                                                                            ^
+     21|     })
+     22|   }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  src/domain/corrective.probe.test.ts > P1 · moneda no admitida separada del importe por puntuación > recibo: «SHOP / TOTAL RUB: 10.00» → 1000 con marca RUB
+AssertionError: SHOP
+TOTAL RUB: 10.00: expected { totalMinor: 1000, date: null, …(4) } to match object { totalMinor: 1000, …(1) }
+(5 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "foreignCurrency": "RUB",
+    "totalMinor": 1000,
+  }
+
+ ❯ src/domain/corrective.probe.test.ts:25:35
+     23|   for (const text of ['SHOP\nTOTAL RUB: 10.00', 'SHOP\nTOTAL (RUB) 10.…
+     24|     it(`recibo: «${text.replace('\n', ' / ')}» → 1000 con marca RUB`, …
+     25|       expect(receipt(text), text).toMatchObject({ totalMinor: 1000, fo…
+       |                                   ^
+     26|     })
+     27|   }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  src/domain/corrective.probe.test.ts > P1 · moneda no admitida separada del importe por puntuación > recibo: «SHOP / TOTAL (RUB) 10.00» → 1000 con marca RUB
+AssertionError: SHOP
+TOTAL (RUB) 10.00: expected { totalMinor: 1000, date: null, …(4) } to match object { totalMinor: 1000, …(1) }
+(5 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "foreignCurrency": "RUB",
+    "totalMinor": 1000,
+  }
+
+ ❯ src/domain/corrective.probe.test.ts:25:35
+     23|   for (const text of ['SHOP\nTOTAL RUB: 10.00', 'SHOP\nTOTAL (RUB) 10.…
+     24|     it(`recibo: «${text.replace('\n', ' / ')}» → 1000 con marca RUB`, …
+     25|       expect(receipt(text), text).toMatchObject({ totalMinor: 1000, fo…
+       |                                   ^
+     26|     })
+     27|   }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ FAIL  src/domain/corrective.probe.test.ts > P2 · «PEN 2.99 TAX 0.10» es un artículo, no una moneda > SHOP / PEN 2.99 TAX 0.10 / TOTAL CAD 3.09 → 309 sin conflicto
+AssertionError: expected [ 309, null, [ 'PEN', 'CAD' ] ] to deeply equal [ 309, null, null ]
+
+- Expected
++ Received
+
+  [
+    309,
+    null,
+-   null,
++   [
++     "PEN",
++     "CAD",
++   ],
+  ]
+
+ ❯ src/domain/corrective.probe.test.ts:40:83
+     38|   it('SHOP / PEN 2.99 TAX 0.10 / TOTAL CAD 3.09 → 309 sin conflicto', …
+     39|     const r = receipt('SHOP\nPEN 2.99 TAX 0.10\nTOTAL CAD 3.09')
+     40|     expect([r.totalMinor, r.foreignCurrency ?? null, r.currencyConflic…
+       |                                                                                   ^
+     41|   })
+     42|   it('variante sin total escrito en CAD: SHOP / PEN 2.99 TAX 0.10 / TO…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯
+
+ FAIL  src/domain/corrective.probe.test.ts > P2 · «PEN 2.99 TAX 0.10» es un artículo, no una moneda > variante sin total escrito en CAD: SHOP / PEN 2.99 TAX 0.10 / TOTAL 3.09 → 309 sin moneda
+AssertionError: expected [ 309, 'PEN', null ] to deeply equal [ 309, null, null ]
+
+- Expected
++ Received
+
+  [
+    309,
+-   null,
++   "PEN",
+    null,
+  ]
+
+ ❯ src/domain/corrective.probe.test.ts:44:83
+     42|   it('variante sin total escrito en CAD: SHOP / PEN 2.99 TAX 0.10 / TO…
+     43|     const r = receipt('SHOP\nPEN 2.99 TAX 0.10\nTOTAL 3.09')
+     44|     expect([r.totalMinor, r.foreignCurrency ?? null, r.currencyConflic…
+       |                                                                                   ^
+     45|   })
+     46| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  7 failed | 1 passed (8)
+   Start at  05:49:00
+   Duration  745ms (transform 75%, tests 16%, import 9%, worker 1%)
+

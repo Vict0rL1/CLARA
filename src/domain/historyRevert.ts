@@ -1,0 +1,234 @@
+/**
+ * Revertir una entrada del historial (v8): conflictos (algo cambió después), dependientes (F-02: nada seguiría
+ * apuntando a un programado que desaparece), aplazamientos caducados (R5) y el estado anterior a una entrada para
+ * «¿Qué cambió?». Separado de `history.ts` porque solo lo usan pantallas que se cargan aparte (Historial, Plan ante
+ * faltante, ¿Qué cambió?): así no cuenta en el presupuesto de tamaño del JS inicial (`npm run size`).
+ */
+import { canChangeCurrency } from './currencyChange'
+import { currentValue, sameValue, setValue, setValues } from './history'
+import type { OpContext, OpResult } from './operations'
+import { occurrencesBetween } from './recurrence'
+import type { AppData, HistoryChange, HistoryCollection, HistoryEntry, LocalDate, Schedule, Transaction } from './types'
+
+const same = sameValue
+
+/**
+ * Valor actual comparable con lo que registró un cambio. En ajustes solo cuentan las claves que la
+ * entrada guardó: una entrada anterior a v13 no tiene `safeToSpend` y sigue pudiendo revertirse.
+ */
+function currentValueFor(data: AppData, c: HistoryChange): unknown {
+  const current = currentValue(data, c.collection, c.id)
+  if (c.collection !== 'settings' || !c.after || typeof c.after !== 'object') return current
+  const all = current as Record<string, unknown>
+  return Object.fromEntries(Object.keys(c.after).map((k) => [k, all[k] ?? null]))
+}
+
+/**
+ * Un aplazamiento que la entrada dejó y que ya caducó puede haberse retirado solo (posponer otro aviso limpia los
+ * caducados, `inbox.ts`): no es un cambio de la persona y no bloquea revertir (R5). Sin `today` no se aplica.
+ */
+function expiredSnoozeGone(data: AppData, c: HistoryChange, today: LocalDate | undefined): boolean {
+  if (c.collection !== 'inboxSnoozed' || !today || !c.after || typeof c.after !== 'object') return false
+  const until = (c.after as { until?: unknown }).until
+  return typeof until === 'string' && until <= today && currentValue(data, c.collection, c.id) === null
+}
+
+/** Registros de la entrada que cambiaron después (impiden revertir sin pisar otros cambios). */
+export function revertConflicts(data: AppData, entry: HistoryEntry, today?: LocalDate): HistoryChange[] {
+  return entry.changes.filter((c) => !same(currentValueFor(data, c), c.after) && !expiredSnoozeGone(data, c, today))
+}
+
+/**
+ * Estado candidato tras revertir la entrada (sin comprobar conflictos): cada registro vuelve a su valor anterior y,
+ * R5, un aplazamiento devuelto por ESTA entrada que ya caducó no se resucita (la bandeja lo ignoraría y otro
+ * aplazamiento lo limpiaría); los demás no se tocan. `today` solo hace falta para esa poda.
+ */
+function revertedState(data: AppData, entry: HistoryEntry, today?: LocalDate): AppData {
+  let next = data
+  for (const change of [...entry.changes].reverse()) next = setValue(next, change.collection, change.id, change.before)
+  const touched = new Set(entry.changes.filter((c) => c.collection === 'inboxSnoozed').map((c) => c.id))
+  if (touched.size > 0 && today) next = { ...next, inbox: { ...next.inbox, snoozed: next.inbox.snoozed.filter((s) => !touched.has(s.id) || s.until > today) } }
+  return next
+}
+
+/**
+ * Un registro que seguiría apuntando a un programado que la reversión eliminaría (F-02), a una ocurrencia que dejaría
+ * de existir bajo el mismo id (auditoría del 2026-11-02: vínculo de un gasto planificado o aplazamiento tras una
+ * reparación en el sitio, o tras cambiar fecha de siempre, regla, inicio o fin), o un pago o cobro realizado vinculado
+ * a una ocurrencia que dejaría de existir (QA27-01).
+ */
+export interface RevertDependent {
+  kind: 'template' | 'scenario' | 'goal' | 'snooze' | 'payment'
+  id: string
+  /** Nombre del registro (plantilla, escenario o meta); la fecha de la ocurrencia para un aplazamiento o un pago. */
+  name: string
+  scheduleId: string
+  /** Ocurrencia concreta a la que apunta el registro (vínculo de un gasto planificado, aplazamiento, pago). */
+  occurrenceDate?: LocalDate
+  /** Solo pagos: el importe registrado. */
+  amountMinor?: number
+}
+
+/** Una referencia de `data` a un programado, con una clave estable para compararla antes y después de revertir. */
+interface ScheduleReference extends RevertDependent {
+  key: string
+}
+
+/**
+ * Referencias de `data` a programados por id (las que la partición mueve y una reversión puede dejar colgadas), con la
+ * ocurrencia concreta cuando la hay (vínculo de un gasto planificado, aplazamiento). Un aplazamiento caducado
+ * (`until` ≤ hoy) no cuenta: la bandeja lo ignora y el siguiente aplazamiento lo retira (R5), y la persona no tiene
+ * forma de quitarlo a mano (revisión de seguridad y almacenamiento del 2026-10-27, S-R1). Sin `today` no se aplica la
+ * poda, como en `revertedState`.
+ */
+function scheduleReferences(data: AppData, today?: LocalDate): ScheduleReference[] {
+  const out: ScheduleReference[] = []
+  for (const tpl of data.templates) {
+    if (tpl.kind !== 'distribution') continue
+    tpl.lines.forEach((l, i) => {
+      if (l.target.kind === 'payment') out.push({ key: `template:${tpl.id}:${i}`, kind: 'template', id: tpl.id, name: tpl.name, scheduleId: l.target.scheduleId })
+    })
+  }
+  for (const sc of data.scenarios) {
+    sc.changes.forEach((c, i) => {
+      if (c.type === 'scheduleAmount') out.push({ key: `scenario:${sc.id}:${i}`, kind: 'scenario', id: sc.id, name: sc.name, scheduleId: c.scheduleId })
+    })
+  }
+  for (const g of data.goals) {
+    const link = g.plan?.link
+    if (link) out.push({ key: `goal:${g.id}`, kind: 'goal', id: g.id, name: g.name, scheduleId: link.scheduleId, occurrenceDate: link.occurrenceDate })
+  }
+  for (const s of data.inbox.snoozed) {
+    if (today && s.until <= today) continue
+    const m = /^due:schedule:(.+):(\d{4}-\d{2}-\d{2})$/.exec(s.id)
+    if (m) out.push({ key: `snooze:${s.id}`, kind: 'snooze', id: s.id, name: m[2]!, scheduleId: m[1]!, occurrenceDate: m[2]! })
+  }
+  return out
+}
+
+/** ¿`date` es una ocurrencia de la serie (sin mirar las omitidas: una omitida pagada tampoco se reserva dos veces)? */
+const hasOccurrence = (s: Schedule, date: LocalDate) => occurrencesBetween(s, date, date).length > 0
+
+/** ¿La referencia resuelve en estos programados: existe el programado y, si apunta a una ocurrencia, esa fecha es de la serie? */
+function resolves(r: Pick<RevertDependent, 'scheduleId' | 'occurrenceDate'>, schedules: Map<string, Schedule>): boolean {
+  const s = schedules.get(r.scheduleId)
+  return s !== undefined && (r.occurrenceDate === undefined || hasOccurrence(s, r.occurrenceDate))
+}
+
+/** ¿El movimiento liquida (del todo o en parte) una ocurrencia que existe en estos programados? */
+function settles(t: Transaction | undefined, schedules: Map<string, Schedule>): boolean {
+  if (!t || t.status !== 'realized' || !t.scheduleId || !t.occurrenceDate) return false
+  const s = schedules.get(t.scheduleId)
+  return s !== undefined && hasOccurrence(s, t.occurrenceDate)
+}
+
+/** Colecciones cuyo cambio puede dejar una referencia a un programado o a una ocurrencia sin destino tras revertir. */
+const REFERENCE_COLLECTIONS: ReadonlySet<HistoryCollection> = new Set(['schedules', 'transactions', 'goals', 'inboxSnoozed', 'templates', 'scenarios'])
+
+/**
+ * Auditoría de seguimiento (F-02): registros que, tras revertir, seguirían apuntando a un programado que la reversión
+ * elimina (plantillas de distribución, escenarios, gastos planificados vinculados y aplazamientos). Pasa con una
+ * entrada de partición grabada antes de v14 (solo instantáneas de programados) y con una plantilla o escenario creados
+ * DESPUÉS de una partición corregida: las instantáneas de la entrada no los cubren. Solo cuentan las referencias que
+ * hoy resuelven y dejarían de resolver (una línea que ya apuntaba a un programado borrado sigue siendo lo que era).
+ *
+ * Auditoría independiente del 2026-10-29 (QA27-01, P1): también cuentan los pagos y cobros realizados (finales,
+ * parciales, adelantados, del día o de la confirmación automática) vinculados a una ocurrencia que hoy existe y que
+ * tras revertir no existiría: porque el tramo desaparece (partición o reparación partida) o porque el mismo id
+ * cambiaría de fecha de siempre, regla, inicio o fin (reparación en el sitio). Si se revirtiera, el pago seguiría
+ * registrado pero ya no liquidaría nada y la ocurrencia restaurada volvería a reservarse: el mismo dinero dos veces.
+ * Un pago que la propia entrada registró no cuenta (la reversión lo retira), ni uno que ya no resolvía antes.
+ *
+ * Auditoría independiente del 2026-11-02 (P1): la misma regla para las referencias a una ocurrencia concreta bajo el
+ * MISMO id. Un gasto planificado vinculado al 31-mar corregido por una reparación en el sitio cubría esa factura (no
+ * se reservaba dos veces); revertir devolvía el 28-mar y el vínculo seguía diciendo 31-mar: la factura volvía a
+ * reservarse y el apartado también (980 → 560). Ahora cada referencia se compara tal como es hoy contra los
+ * programados de hoy y tal como quedaría contra los programados de después: la que resuelve hoy y no resolvería
+ * después es dependiente, se dice cuál y nada cambia. Una referencia solo por id (plantilla, escenario) sigue válida
+ * mientras el programado exista; la que la propia entrada movió vuelve con ella y se evalúa ya devuelta.
+ * Vacío si la entrada no toca ninguna colección con referencias (ni se calcula el estado candidato).
+ */
+export function revertDependents(data: AppData, entry: HistoryEntry, today?: LocalDate): RevertDependent[] {
+  if (!entry.changes.some((c) => REFERENCE_COLLECTIONS.has(c.collection))) return []
+  const next = revertedState(data, entry, today)
+  const before = new Map(data.schedules.map((s) => [s.id, s]))
+  const after = new Map(next.schedules.map((s) => [s.id, s]))
+  const out: RevertDependent[] = []
+  const now = new Map(scheduleReferences(data, today).map((r) => [r.key, r]))
+  const seen = new Set<string>()
+  for (const { key, ...r } of scheduleReferences(next, today)) {
+    const current = now.get(key)
+    if (!current || !resolves(current, before) || resolves(r, after)) continue
+    const record = `${r.kind}:${r.id}`
+    if (seen.has(record)) continue
+    seen.add(record)
+    out.push(r)
+  }
+  // Pagos: solo pueden cambiar de estado los movimientos que la propia entrada cambió y los vinculados a un programado
+  // que la entrada toca (un programado igual en los dos estados liquida igual): recorrer el resto es trabajo inútil con
+  // un libro grande (revisión de seguridad QA27, O-9: 10 000 movimientos y 30 entradas tardaban más de 700 ms).
+  const touched = new Set(entry.changes.filter((c) => c.collection === 'schedules').map((c) => c.id))
+  const own = new Set(entry.changes.filter((c) => c.collection === 'transactions').map((c) => c.id))
+  if (touched.size === 0 && own.size === 0) return out
+  const candidate = (t: Transaction) => own.has(t.id) || (t.scheduleId !== undefined && touched.has(t.scheduleId))
+  const current = new Map(data.transactions.filter(candidate).map((t) => [t.id, t]))
+  for (const t of next.transactions) {
+    if (!candidate(t)) continue
+    const now = current.get(t.id)
+    if (!settles(now, before) || settles(t, after)) continue
+    out.push({ kind: 'payment', id: t.id, name: now!.occurrenceDate!, scheduleId: now!.scheduleId!, occurrenceDate: now!.occurrenceDate!, amountMinor: now!.amountMinor })
+  }
+  return out
+}
+
+export function canRevert(data: AppData, entry: HistoryEntry, today?: LocalDate): 'ok' | 'notRevertible' | 'alreadyReverted' | 'conflict' | 'dependents' {
+  if (entry.source === 'replace' || entry.changes.length === 0) return 'notRevertible'
+  // Una entrada SOLO de aplazamientos (grabada antes de R5) no se revierte: su reversión no dejaría rastro (no es un
+  // cambio financiero) y la entrada volvería a ofrecerse como pendiente.
+  if (entry.changes.every((c) => c.collection === 'inboxSnoozed')) return 'notRevertible'
+  if (data.history.some((e) => e.revertOf === entry.id)) return 'alreadyReverted'
+  if (revertConflicts(data, entry, today).length) return 'conflict'
+  return revertDependents(data, entry, today).length ? 'dependents' : 'ok'
+}
+
+/**
+ * Devuelve cada registro de la entrada a su valor anterior. Solo si nada cambió después; la
+ * entrada que lo registra la añade quien guarda (`source: 'revert'`). Quien llama debe validar
+ * los datos completos antes de guardar (p. ej. que no queden pagos liquidados dos veces).
+ */
+export function revertEntry(data: AppData, entryId: string, ctx: OpContext): OpResult<HistoryEntry> {
+  const entry = data.history.find((e) => e.id === entryId)
+  if (!entry) return { ok: false, issues: [{ path: 'history', code: 'notFound' }] }
+  const status = canRevert(data, entry, ctx.today)
+  if (status === 'notRevertible') return { ok: false, issues: [{ path: 'history', code: 'notRevertible' }] }
+  if (status === 'alreadyReverted') return { ok: false, issues: [{ path: 'history', code: 'alreadyReverted' }] }
+  if (status === 'conflict') return { ok: false, issues: [{ path: 'history', code: 'revertConflict', params: { count: revertConflicts(data, entry, ctx.today).length } }] }
+  // F-02: nunca se elimina un programado al que otros registros seguirían apuntando; se dice cuántos y nada cambia.
+  if (status === 'dependents') return { ok: false, issues: [{ path: 'history', code: 'revertDependents', params: { count: revertDependents(data, entry, ctx.today).length } }] }
+  const next = revertedState(data, entry, ctx.today)
+  // QA-01: deshacer un cambio de moneda es otro cambio de moneda: solo si no hay importes guardados.
+  if (next.settings.currency !== data.settings.currency && !canChangeCurrency(data)) {
+    return { ok: false, issues: [{ path: 'history', code: 'currencyMismatch', params: { expected: data.settings.currency } }] }
+  }
+  return { ok: true, data: { ...next, updatedAt: ctx.now }, value: entry }
+}
+
+/**
+ * Estado ANTERIOR a una entrada, deshaciendo en orden inverso todas las posteriores (sin
+ * comprobar conflictos: las entradas son consecutivas). `null` si hay un corte por medio.
+ * Se usa para «¿Qué cambió?».
+ */
+export function stateBefore(data: AppData, entryIndex: number): AppData | null {
+  const values: { collection: HistoryCollection; id: string; value: unknown }[] = []
+  // En orden inverso: el último valor que queda para cada registro es el anterior a la
+  // primera entrada deshecha.
+  for (let i = data.history.length - 1; i >= entryIndex; i--) {
+    const e = data.history[i]!
+    if (e.source === 'replace') return null
+    for (let j = e.changes.length - 1; j >= 0; j--) {
+      const change = e.changes[j]!
+      values.push({ collection: change.collection, id: change.id, value: change.before })
+    }
+  }
+  return values.length ? setValues(data, values) : data
+}

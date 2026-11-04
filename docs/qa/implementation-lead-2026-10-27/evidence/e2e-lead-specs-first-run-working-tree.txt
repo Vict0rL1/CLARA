@@ -1,0 +1,177 @@
+lead specs on e38b07b9debdbcb98fa130f2aa86747a82d0d387 + working tree (2026-10-27T06:20:55Z); reviewers running concurrently (no performance assertions here)
+
+Running 66 tests using 2 workers
+
+  ✓   2 [celular] › tests/e2e/qa-corrective.spec.ts:63:3 › P1 · asistente: «coffee (RUB) 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD (4.0s)
+  ✓   1 [celular] › tests/e2e/qa-corrective.spec.ts:63:3 › P1 · asistente: «coffee RUB: 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD (4.0s)
+  ✓   3 [celular] › tests/e2e/qa-corrective.spec.ts:75:1 › P1 · asistente: «coffee (RUB) $10» tiene dos monedas que se contradicen: el campo conserva las dos y la línea se bloquea (2.3s)
+  ✓   4 [celular] › tests/e2e/qa-corrective.spec.ts:86:3 › P1 · foto (OCR sintético): «TOTAL RUB: 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD (2.3s)
+  ✓   5 [celular] › tests/e2e/qa-corrective.spec.ts:86:3 › P1 · foto (OCR sintético): «TOTAL (RUB) 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD (2.3s)
+  ✓   6 [celular] › tests/e2e/qa-corrective.spec.ts:102:3 › P2 · foto (OCR sintético): «PEN 2.99 TAX 0.10» con «TOTAL CAD 3.09» propone 3.09 en CAD sin conflicto y se registra (2.4s)
+  ✓   7 [celular] › tests/e2e/qa-corrective.spec.ts:102:3 › P2 · foto (OCR sintético): «PEN 2.99 TAX 0.10» con «TOTAL 3.09» propone 3.09 en CAD sin conflicto y se registra (2.1s)
+  ✓   8 [celular] › tests/e2e/qa-corrective.spec.ts:122:1 › P2 · control (OCR sintético): «TOTAL PEN 10.00» sigue bloqueado como moneda extranjera (2.2s)
+  ✓   9 [celular] › tests/e2e/qa-followup.spec.ts:46:3 › F-01 · factura CAD 400 con id de 64 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta (5.4s)
+  ✓  10 [celular] › tests/e2e/qa-followup.spec.ts:46:3 › F-01 · factura CAD 400 con id de 47 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta (5.3s)
+  ✓  11 [celular] › tests/e2e/qa-followup.spec.ts:108:1 › F-02 · una partición grabada por una versión anterior (solo instantáneas de programados): el historial explica qué seguiría apuntando a la serie que desaparecería, no ofrece «Revertir» y nada cambia (1.7s)
+  ✓  12 [celular] › tests/e2e/qa-followup.spec.ts:152:1 › F-03 · 1 gasto de MAX_AMOUNT_MINOR el 10-ago frente a 100 el 10-sep: Análisis muestra 9 900 % en vez de fallar (1.6s)
+  ✓  13 [celular] › tests/e2e/qa-followup.spec.ts:221:1 › F-04 · tema «Oscuro» explícito: «Sin comparación» (julio personalizado sin ingresos previos) cumple AA y axe no encuentra fallos de contraste (2.4s)
+  ✓  14 [celular] › tests/e2e/qa-followup.spec.ts:230:3 › F-04 · tema «Sistema» con el sistema en oscuro › «Sin comparación» cumple AA y axe no encuentra fallos de contraste (2.4s)
+  ✓  15 [celular] › tests/e2e/qa-followup.spec.ts:239:1 › F-04 · en claro sigue cumpliendo AA y las variaciones positiva y negativa conservan su color (2.4s)
+  ✓  16 [celular] › tests/e2e/qa-followup.spec.ts:252:1 › F-05 · periodo personalizado 1–31 de julio, seis puntos: las etiquetas del eje no se solapan ni se recortan en es/en/pt/fr; tooltip, nombre accesible y tabla conservan la fecha completa (4.5s)
+  ✓  17 [celular] › tests/e2e/qa-followup.spec.ts:321:1 › QA-01 histórico · datos v13 con el sueldo del 31 partido el 28-feb: tras migrar, Ajustes › Datos lo muestra (28-mar frente a 31-mar); restaurar deja 1 250 reservados y $550.00 disponibles tras recargar y en la copia (3.9s)
+  ✓  18 [celular] › tests/e2e/qa-followup.spec.ts:366:1 › QA-01 histórico · «Dejar como está» conserva el 28 a propósito: la revisión desaparece, sigue sin aparecer tras recargar y el disponible sigue siendo $1,800.00 (2.3s)
+  ✓  20 [celular] › tests/e2e/qa-lead.spec.ts:78:1 › QA-01 histórico · copia v13 genuina: «Dejar como está» conserva el 28 ($1,800.00) y la revisión no vuelve tras recargar (2.8s)
+  ✓  19 [celular] › tests/e2e/qa-lead.spec.ts:44:1 › QA-01 histórico · copia v13 genuina importada por la interfaz (21-mar): $1,800.00 antes; restaurar el 31 → $550.00 tras recargar y tras exportar e importar (3.9s)
+  ✓  21 [celular] › tests/e2e/qa-lead.spec.ts:105:1 › F-05 · teclado y toque: cada grupo de barras seleccionado muestra su fecha completa y sus cifras en el tooltip (es/en/pt/fr) (3.9s)
+  ✓  23 [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:63:3 › P1 · asistente: «coffee (RUB) 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD (1.9s)
+  ✘  22 [celular] › tests/e2e/qa-lead.spec.ts:133:1 › F-05 · las etiquetas de mes y de año no cambian: seis abreviaturas de mes y seis años (6.5s)
+  ✓  24 [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:63:3 › P1 · asistente: «coffee RUB: 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD (2.7s)
+  ✓  25 [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:75:1 › P1 · asistente: «coffee (RUB) $10» tiene dos monedas que se contradicen: el campo conserva las dos y la línea se bloquea (2.3s)
+  ✓  26 [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:86:3 › P1 · foto (OCR sintético): «TOTAL RUB: 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD (2.4s)
+  ✓  27 [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:86:3 › P1 · foto (OCR sintético): «TOTAL (RUB) 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD (2.2s)
+  ✓  28 [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:102:3 › P2 · foto (OCR sintético): «PEN 2.99 TAX 0.10» con «TOTAL CAD 3.09» propone 3.09 en CAD sin conflicto y se registra (2.0s)
+  ✓  29 [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:102:3 › P2 · foto (OCR sintético): «PEN 2.99 TAX 0.10» con «TOTAL 3.09» propone 3.09 en CAD sin conflicto y se registra (2.0s)
+  ✓  30 [celular-pequeno] › tests/e2e/qa-corrective.spec.ts:122:1 › P2 · control (OCR sintético): «TOTAL PEN 10.00» sigue bloqueado como moneda extranjera (1.6s)
+  ✓  31 [celular-pequeno] › tests/e2e/qa-followup.spec.ts:46:3 › F-01 · factura CAD 400 con id de 64 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta (6.7s)
+  ✓  32 [celular-pequeno] › tests/e2e/qa-followup.spec.ts:46:3 › F-01 · factura CAD 400 con id de 47 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta (7.9s)
+  ✓  33 [celular-pequeno] › tests/e2e/qa-followup.spec.ts:108:1 › F-02 · una partición grabada por una versión anterior (solo instantáneas de programados): el historial explica qué seguiría apuntando a la serie que desaparecería, no ofrece «Revertir» y nada cambia (3.1s)
+  ✓  34 [celular-pequeno] › tests/e2e/qa-followup.spec.ts:152:1 › F-03 · 1 gasto de MAX_AMOUNT_MINOR el 10-ago frente a 100 el 10-sep: Análisis muestra 9 900 % en vez de fallar (2.0s)
+  ✓  35 [celular-pequeno] › tests/e2e/qa-followup.spec.ts:221:1 › F-04 · tema «Oscuro» explícito: «Sin comparación» (julio personalizado sin ingresos previos) cumple AA y axe no encuentra fallos de contraste (3.4s)
+  ✓  36 [celular-pequeno] › tests/e2e/qa-followup.spec.ts:230:3 › F-04 · tema «Sistema» con el sistema en oscuro › «Sin comparación» cumple AA y axe no encuentra fallos de contraste (3.4s)
+  ✓  37 [celular-pequeno] › tests/e2e/qa-followup.spec.ts:239:1 › F-04 · en claro sigue cumpliendo AA y las variaciones positiva y negativa conservan su color (3.0s)
+  ✓  38 [celular-pequeno] › tests/e2e/qa-followup.spec.ts:252:1 › F-05 · periodo personalizado 1–31 de julio, seis puntos: las etiquetas del eje no se solapan ni se recortan en es/en/pt/fr; tooltip, nombre accesible y tabla conservan la fecha completa (5.1s)
+  ✓  39 [celular-pequeno] › tests/e2e/qa-followup.spec.ts:321:1 › QA-01 histórico · datos v13 con el sueldo del 31 partido el 28-feb: tras migrar, Ajustes › Datos lo muestra (28-mar frente a 31-mar); restaurar deja 1 250 reservados y $550.00 disponibles tras recargar y en la copia (4.2s)
+  ✓  40 [celular-pequeno] › tests/e2e/qa-followup.spec.ts:366:1 › QA-01 histórico · «Dejar como está» conserva el 28 a propósito: la revisión desaparece, sigue sin aparecer tras recargar y el disponible sigue siendo $1,800.00 (2.4s)
+  ✓  42 [celular-pequeno] › tests/e2e/qa-lead.spec.ts:78:1 › QA-01 histórico · copia v13 genuina: «Dejar como está» conserva el 28 ($1,800.00) y la revisión no vuelve tras recargar (8.2s)
+  ✓  41 [celular-pequeno] › tests/e2e/qa-lead.spec.ts:44:1 › QA-01 histórico · copia v13 genuina importada por la interfaz (21-mar): $1,800.00 antes; restaurar el 31 → $550.00 tras recargar y tras exportar e importar (11.4s)
+  ✓  43 [celular-pequeno] › tests/e2e/qa-lead.spec.ts:105:1 › F-05 · teclado y toque: cada grupo de barras seleccionado muestra su fecha completa y sus cifras en el tooltip (es/en/pt/fr) (5.7s)
+  ✘  44 [celular-pequeno] › tests/e2e/qa-lead.spec.ts:133:1 › F-05 · las etiquetas de mes y de año no cambian: seis abreviaturas de mes y seis años (6.8s)
+  ✓  45 [escritorio] › tests/e2e/qa-corrective.spec.ts:63:3 › P1 · asistente: «coffee (RUB) 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD (2.6s)
+  ✓  46 [escritorio] › tests/e2e/qa-corrective.spec.ts:75:1 › P1 · asistente: «coffee (RUB) $10» tiene dos monedas que se contradicen: el campo conserva las dos y la línea se bloquea (2.8s)
+  ✓  47 [escritorio] › tests/e2e/qa-corrective.spec.ts:63:3 › P1 · asistente: «coffee RUB: 10» se conserva como 10.00 RUB, bloquea el registro y solo corregido a mano se guarda en CAD (3.2s)
+  ✓  48 [escritorio] › tests/e2e/qa-corrective.spec.ts:86:3 › P1 · foto (OCR sintético): «TOTAL RUB: 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD (2.5s)
+  ✓  49 [escritorio] › tests/e2e/qa-corrective.spec.ts:86:3 › P1 · foto (OCR sintético): «TOTAL (RUB) 10.00» propone 10.00 RUB y bloquea; corregida, se registra en CAD (2.6s)
+  ✓  50 [escritorio] › tests/e2e/qa-corrective.spec.ts:102:3 › P2 · foto (OCR sintético): «PEN 2.99 TAX 0.10» con «TOTAL CAD 3.09» propone 3.09 en CAD sin conflicto y se registra (2.3s)
+  ✓  51 [escritorio] › tests/e2e/qa-corrective.spec.ts:102:3 › P2 · foto (OCR sintético): «PEN 2.99 TAX 0.10» con «TOTAL 3.09» propone 3.09 en CAD sin conflicto y se registra (2.3s)
+  ✓  52 [escritorio] › tests/e2e/qa-corrective.spec.ts:122:1 › P2 · control (OCR sintético): «TOTAL PEN 10.00» sigue bloqueado como moneda extranjera (1.8s)
+  ✓  53 [escritorio] › tests/e2e/qa-followup.spec.ts:46:3 › F-01 · factura CAD 400 con id de 64 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta (5.7s)
+  ✓  54 [escritorio] › tests/e2e/qa-followup.spec.ts:46:3 › F-01 · factura CAD 400 con id de 47 caracteres y aviso pospuesto del 1-oct: cambiar a 420 desde el 1-oct se guarda, recarga, se deshace, se exporta y se reimporta (5.7s)
+  ✓  55 [escritorio] › tests/e2e/qa-followup.spec.ts:108:1 › F-02 · una partición grabada por una versión anterior (solo instantáneas de programados): el historial explica qué seguiría apuntando a la serie que desaparecería, no ofrece «Revertir» y nada cambia (1.9s)
+  ✓  56 [escritorio] › tests/e2e/qa-followup.spec.ts:152:1 › F-03 · 1 gasto de MAX_AMOUNT_MINOR el 10-ago frente a 100 el 10-sep: Análisis muestra 9 900 % en vez de fallar (1.7s)
+  ✓  57 [escritorio] › tests/e2e/qa-followup.spec.ts:221:1 › F-04 · tema «Oscuro» explícito: «Sin comparación» (julio personalizado sin ingresos previos) cumple AA y axe no encuentra fallos de contraste (2.5s)
+  ✓  58 [escritorio] › tests/e2e/qa-followup.spec.ts:230:3 › F-04 · tema «Sistema» con el sistema en oscuro › «Sin comparación» cumple AA y axe no encuentra fallos de contraste (2.7s)
+  ✓  59 [escritorio] › tests/e2e/qa-followup.spec.ts:239:1 › F-04 · en claro sigue cumpliendo AA y las variaciones positiva y negativa conservan su color (2.5s)
+  ✓  61 [escritorio] › tests/e2e/qa-followup.spec.ts:321:1 › QA-01 histórico · datos v13 con el sueldo del 31 partido el 28-feb: tras migrar, Ajustes › Datos lo muestra (28-mar frente a 31-mar); restaurar deja 1 250 reservados y $550.00 disponibles tras recargar y en la copia (3.7s)
+  ✓  60 [escritorio] › tests/e2e/qa-followup.spec.ts:252:1 › F-05 · periodo personalizado 1–31 de julio, seis puntos: las etiquetas del eje no se solapan ni se recortan en es/en/pt/fr; tooltip, nombre accesible y tabla conservan la fecha completa (6.8s)
+  ✓  62 [escritorio] › tests/e2e/qa-followup.spec.ts:366:1 › QA-01 histórico · «Dejar como está» conserva el 28 a propósito: la revisión desaparece, sigue sin aparecer tras recargar y el disponible sigue siendo $1,800.00 (2.3s)
+  ✓  64 [escritorio] › tests/e2e/qa-lead.spec.ts:78:1 › QA-01 histórico · copia v13 genuina: «Dejar como está» conserva el 28 ($1,800.00) y la revisión no vuelve tras recargar (3.0s)
+  ✓  63 [escritorio] › tests/e2e/qa-lead.spec.ts:44:1 › QA-01 histórico · copia v13 genuina importada por la interfaz (21-mar): $1,800.00 antes; restaurar el 31 → $550.00 tras recargar y tras exportar e importar (4.3s)
+  ✓  65 [escritorio] › tests/e2e/qa-lead.spec.ts:105:1 › F-05 · teclado y toque: cada grupo de barras seleccionado muestra su fecha completa y sus cifras en el tooltip (es/en/pt/fr) (6.4s)
+  ✘  66 [escritorio] › tests/e2e/qa-lead.spec.ts:133:1 › F-05 · las etiquetas de mes y de año no cambian: seis abreviaturas de mes y seis años (6.6s)
+
+
+  1) [celular] › tests/e2e/qa-lead.spec.ts:133:1 › F-05 · las etiquetas de mes y de año no cambian: seis abreviaturas de mes y seis años 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.bars__svg')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.bars__svg') with timeout 5000ms
+      - waiting for locator('.bars__svg')
+
+
+      134 |   await seedStoredData(page, statsData())
+      135 |   await go(page, '/estadisticas?periodo=month&fecha=2026-09-28')
+    > 136 |   await expect(page.locator('.bars__svg')).toBeVisible()
+          |                                            ^
+      137 |   const months = await page.locator('text.stats-axis').allTextContents()
+      138 |   expect(months).toHaveLength(6)
+      139 |   expect(months.every((m) => m.length >= 3 && m.length <= 4 && !/\d/.test(m)), months.join(',')).toBe(true)
+        at /home/user/ALCANZA/tests/e2e/qa-lead.spec.ts:136:44
+
+    Error Context: test-results/lead/qa-lead-F-05-·-las-etiquet-67cc0-viaturas-de-mes-y-seis-años-celular/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/lead/qa-lead-F-05-·-las-etiquet-67cc0-viaturas-de-mes-y-seis-años-celular/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/lead/qa-lead-F-05-·-las-etiquet-67cc0-viaturas-de-mes-y-seis-años-celular/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [celular-pequeno] › tests/e2e/qa-lead.spec.ts:133:1 › F-05 · las etiquetas de mes y de año no cambian: seis abreviaturas de mes y seis años 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.bars__svg')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.bars__svg') with timeout 5000ms
+      - waiting for locator('.bars__svg')
+
+
+      134 |   await seedStoredData(page, statsData())
+      135 |   await go(page, '/estadisticas?periodo=month&fecha=2026-09-28')
+    > 136 |   await expect(page.locator('.bars__svg')).toBeVisible()
+          |                                            ^
+      137 |   const months = await page.locator('text.stats-axis').allTextContents()
+      138 |   expect(months).toHaveLength(6)
+      139 |   expect(months.every((m) => m.length >= 3 && m.length <= 4 && !/\d/.test(m)), months.join(',')).toBe(true)
+        at /home/user/ALCANZA/tests/e2e/qa-lead.spec.ts:136:44
+
+    Error Context: test-results/lead/qa-lead-F-05-·-las-etiquet-67cc0-viaturas-de-mes-y-seis-años-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/lead/qa-lead-F-05-·-las-etiquet-67cc0-viaturas-de-mes-y-seis-años-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/lead/qa-lead-F-05-·-las-etiquet-67cc0-viaturas-de-mes-y-seis-años-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [escritorio] › tests/e2e/qa-lead.spec.ts:133:1 › F-05 · las etiquetas de mes y de año no cambian: seis abreviaturas de mes y seis años 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.bars__svg')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.bars__svg') with timeout 5000ms
+      - waiting for locator('.bars__svg')
+
+
+      134 |   await seedStoredData(page, statsData())
+      135 |   await go(page, '/estadisticas?periodo=month&fecha=2026-09-28')
+    > 136 |   await expect(page.locator('.bars__svg')).toBeVisible()
+          |                                            ^
+      137 |   const months = await page.locator('text.stats-axis').allTextContents()
+      138 |   expect(months).toHaveLength(6)
+      139 |   expect(months.every((m) => m.length >= 3 && m.length <= 4 && !/\d/.test(m)), months.join(',')).toBe(true)
+        at /home/user/ALCANZA/tests/e2e/qa-lead.spec.ts:136:44
+
+    Error Context: test-results/lead/qa-lead-F-05-·-las-etiquet-67cc0-viaturas-de-mes-y-seis-años-escritorio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/lead/qa-lead-F-05-·-las-etiquet-67cc0-viaturas-de-mes-y-seis-años-escritorio/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/lead/qa-lead-F-05-·-las-etiquet-67cc0-viaturas-de-mes-y-seis-años-escritorio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3 failed
+    [celular] › tests/e2e/qa-lead.spec.ts:133:1 › F-05 · las etiquetas de mes y de año no cambian: seis abreviaturas de mes y seis años 
+    [celular-pequeno] › tests/e2e/qa-lead.spec.ts:133:1 › F-05 · las etiquetas de mes y de año no cambian: seis abreviaturas de mes y seis años 
+    [escritorio] › tests/e2e/qa-lead.spec.ts:133:1 › F-05 · las etiquetas de mes y de año no cambian: seis abreviaturas de mes y seis años 
+  63 passed (2.7m)
+exit 1

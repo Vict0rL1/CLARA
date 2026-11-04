@@ -1,0 +1,12 @@
+{
+  "text": "coffee 10€",
+  "field": "10.00",
+  "registerEnabled": true,
+  "savedAfterReload": [
+    {
+      "note": "coffee",
+      "amountMinor": 1000,
+      "currency": "CAD"
+    }
+  ]
+}

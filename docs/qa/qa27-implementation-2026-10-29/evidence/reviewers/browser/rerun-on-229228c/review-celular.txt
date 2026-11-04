@@ -1,0 +1,21 @@
+
+Running 15 tests using 1 worker
+
+  ✓   1 [celular] › tests/e2e/review.qa27.spec.ts:136:1 › 1A · reparación partida («Luz»), pago desde Pendientes: el historial lo explica en es/en/pt/fr sin «Revertir», y recarga, exportar e importar lo conservan (7.3s)
+  ✓   2 [celular] › tests/e2e/review.qa27.spec.ts:248:1 › 1B · partir «Desde una fecha» («Gimnasio» a 45 desde el 18-nov) y pagar el tramo nuevo desde el calendario: la partición no se revierte; el pago sí, y entonces la partición vuelve a poder revertirse (3.6s)
+  ✓   3 [celular] › tests/e2e/review.qa27.spec.ts:324:1 › 1C · reparación en el sitio («Agua») seguida de un gasto sin relación: la reparación sigue pudiendo revertirse y al revertirla el gasto se conserva (3.8s)
+  ✓   4 [celular] › tests/e2e/review.qa27.spec.ts:376:1 › 2A · aplazar 7 días el 28-feb-2027 vencido desde Pendientes; la reparación partida lo lleva al tramo nuevo con la misma fecha y sigue en «Pospuesto (1)» hasta el 9-mar (3.2s)
+  ✓   5 [celular] › tests/e2e/review.qa27.spec.ts:426:1 › 2B · aplazar el 28-mar movido; la reparación en el sitio lo lleva al 30-mar con el mismo «hasta» y sigue pospuesto (2.5s)
+  ✓   6 [celular] › tests/e2e/review.qa27.spec.ts:477:1 › 3A · diferencia que cabe: septiembre 1 130 gastos, octubre 1 130 + 2 260: Estadísticas +200 %, Análisis +200 % con fila «Diferencia», semana +100 % (3.5s)
+  ✓   7 [celular] › tests/e2e/review.qa27.spec.ts:497:1 › 3B · diferencia que no cabe con porcentaje exacto: septiembre 4 520 gastos, octubre 4 520 devoluciones: Estadísticas «-200 %», Análisis «200 % menos» sin fila «Diferencia» (5.4s)
+  ✓   8 [celular] › tests/e2e/review.qa27.spec.ts:513:1 › 3C · diferencia que no cabe y sin base positiva: septiembre 4 520 devoluciones, octubre 4 520 gastos: «Sin comparación» en gastos (es/en/pt/fr), neto «-200 %», nada se rompe (7.6s)
+  ✓   9 [celular] › tests/e2e/review.qa27.spec.ts:534:1 › 3D · semana: 4 520 gastos la semana pasada y 4 520 devoluciones esta: «la diferencia no cabe en una cifra exacta (200 %)» en es/en/pt/fr (6.1s)
+  ✓  10 [celular] › tests/e2e/review.qa27.spec.ts:558:1 › 3F · diagnóstico: con 4 520 devoluciones el 10-sep y 4 520 gastos el 10-oct, ninguna pantalla debe caer en «No se pudo abrir esta pantalla» (4.8s)
+  ✓  11 [celular] › tests/e2e/review.qa27.spec.ts:578:1 › 3E · semana: devoluciones la semana pasada y gastos esta: «la diferencia no cabe» sin porcentaje (base no positiva) (4.4s)
+  ✓  12 [celular] › tests/e2e/review.qa27.spec.ts:621:1 › 4A · sin IndexedDB: aviso en la tarjeta, rechazo exacto con localStorage idéntico, descarga desde la tarjeta y reparación; tras cambiar algo, hace falta otra descarga para la segunda serie (6.6s)
+  ✓  13 [celular] › tests/e2e/review.qa27.spec.ts:711:1 › 4B · sin IndexedDB, tema claro: solo teclado (Tab/Enter/Esc), el foco vuelve al botón al cerrar con Esc, y el aviso cumple AA (2.2s)
+  ✓  14 [celular] › tests/e2e/review.qa27.spec.ts:753:1 › 4C · sin IndexedDB, tema oscuro: el aviso «no guarda copias locales» cumple AA y axe no encuentra fallos (2.4s)
+  ✓  15 [celular] › tests/e2e/review.qa27.spec.ts:772:1 › 6 · 5 000 gastos idénticos el 12-sep y 5 000 devoluciones idénticas el 12-oct: Inicio muestra la cifra en < 5 s sin que la pestaña se caiga, y Pendientes se dibuja (3.1s)
+
+  15 passed (1.1m)
+exit 0

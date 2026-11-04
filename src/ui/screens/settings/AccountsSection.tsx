@@ -20,7 +20,7 @@ import { fieldError, issueMessage } from '../../labels'
 import { moneyErrorMessage, parseMoneyText } from '../../moneyText'
 import { href, withQuery } from '../../router'
 
-const KIND_ICON: Record<AccountKind, IconName> = { bank: 'bank', cash: 'coins', savings: 'piggy', credit: 'creditCard', other: 'wallet' }
+const KIND_ICON: Record<AccountKind, IconName> = { bank: 'bank', cash: 'coins', savings: 'piggy', credit: 'creditCard', wallet: 'phone', prepaid: 'tag', investment: 'trend', other: 'wallet' }
 
 /**
  * Ajustes › Cuentas (etapa 1 del programa): patrimonio neto explicado, lista ordenable con saldo,
@@ -86,7 +86,8 @@ export function AccountsSection() {
           <div className="item__main">
             <p className="item__title">{a.name}</p>
             <p className="item__meta">
-              {t(`accountKind.${a.kind}` as MessageKey)} · {t('settings.accounts.updated', { when: fmt.timestamp(a.anchor.setAt) })}
+              {t(`accountKind.${a.kind}` as MessageKey)}
+              {a.institution ? ` · ${a.institution}` : ''} · {t('settings.accounts.updated', { when: fmt.timestamp(a.anchor.setAt) })}
             </p>
             <p className="item__meta">{last ? t('settings.accounts.lastMovement', { when: fmt.date(last) }) : t('settings.accounts.noMovements')}</p>
             <p className="item__badges">
@@ -236,6 +237,7 @@ function AccountDialog({ account, onClose }: { account: Account | null; onClose:
   const [name, setName] = useState(account?.name ?? '')
   const [kind, setKind] = useState<AccountKind>(account?.kind ?? 'bank')
   const [include, setInclude] = useState(account?.includeInBudget ?? true)
+  const [institution, setInstitution] = useState(account?.institution ?? '')
   const [balanceText, setBalanceText] = useState('')
   const [issues, setIssues] = useState<Issue[]>([])
   const [amountError, setAmountError] = useState<string | null>(null)
@@ -258,7 +260,7 @@ function AccountDialog({ account, onClose }: { account: Account | null; onClose:
       // En una tarjeta se escribe lo que se debe; se guarda como saldo negativo.
       openingBalanceMinor = kind === 'credit' ? (parsed.minor === 0 ? 0 : -parsed.minor) : parsed.minor
     }
-    const draft: AccountDraft = { id, name, kind, includeInBudget: include, openingBalanceMinor, openingDate: today, card }
+    const draft: AccountDraft = { id, name, kind, includeInBudget: include, institution, openingBalanceMinor, openingDate: today, card }
     const { result, saved } = await run((d, c) => saveAccount(d, draft, c))
     if (!result.ok) {
       setIssues(result.issues)
@@ -303,7 +305,14 @@ function AccountDialog({ account, onClose }: { account: Account | null; onClose:
       }
     >
       <TextField label={t('fields.name')} value={name} maxLength={40} onChange={(e) => setName(e.target.value)} error={fieldError(t, fmt, issues, 'name')} required />
-      <SelectField label={t('settings.accounts.kind')} value={kind} onChange={(e) => setKind(e.target.value as AccountKind)} options={ACCOUNT_KINDS.map((k) => ({ value: k, label: t(`accountKind.${k}` as MessageKey) }))} hint={t('settings.accounts.kindHint')} />
+      <SelectField label={t('settings.accounts.kind')} value={kind}
+        onChange={(e) => {
+          const k = e.target.value as AccountKind
+          setKind(k)
+          // Una inversión nueva no cuenta para «Puedes gastar» salvo que se marque (no es dinero para el día a día).
+          if (!account && k === 'investment') setInclude(false)
+        }} options={ACCOUNT_KINDS.map((k) => ({ value: k, label: t(`accountKind.${k}` as MessageKey) }))} hint={t('settings.accounts.kindHint')} />
+      <TextField label={t('settings.accounts.institution')} name="institution" value={institution} maxLength={40} onChange={(e) => setInstitution(e.target.value)} hint={t('settings.accounts.institutionHint')} error={fieldError(t, fmt, issues, 'institution')} />
       <CheckboxField
         checked={include}
         onChange={setInclude}
