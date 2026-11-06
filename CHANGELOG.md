@@ -92,6 +92,24 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
 
 ### Correcciones
 
+Auditoría independiente del 4 de noviembre de 2026 sobre `f8d6da0`
+(`docs/qa/audit-nov04-implementation-2026-11-06/REPORT.md`):
+- **Proyección y Análisis con totales brutos fuera del rango exacto** (F1): cuando la suma de todos los ingresos (o de
+  todos los pagos) de los días exactos no cabe en un entero exacto aunque cada saldo diario sí, el comparador de
+  escenarios dice «Sin cifra exacta» en esa columna, el «¿Cómo se calculó?» de Análisis dice «sin cifra» en esas filas y
+  el plan ante faltante igual; los saldos, el mínimo, el saldo final y la fecha del faltante siguen siendo exactos. Antes
+  las dos pantallas caían en «No se pudo abrir esta pantalla».
+- **Cobertura por escenario** (F2): cada fila del comparador dice hasta qué día tiene cifra SU proyección (el mínimo puede
+  cubrir los 30 días y el esperado solo 22), elija el escenario que se elija, con una nota que resume los días exactos por
+  escenario; con cero días exactos ninguna pantalla afirma «hasta hoy» ni «hasta ayer».
+- **Texto de Legal y Galería que no termina de descargarse** (F3): al vencer el plazo, «Reintentar» pide el archivo de
+  nuevo y el texto llega sin recargar la app (antes la descarga pendiente se reutilizaba y nunca llegaba). Los paquetes
+  son ahora archivos JSON pedidos con `fetch`; el español de respaldo se marca con `lang="es"`.
+- **Pendientes con muchos movimientos iguales** (F4): los posibles duplicados se buscan por un índice de notas; 5 000
+  movimientos iguales el mismo día se revisan en milisegundos (antes ≈ 4 s) con las mismas parejas en el mismo orden.
+- **Duplicados ya revisados** (F5): una pareja descartada o pospuesta sigue en «Descartados»/«Pospuestos» aunque el
+  grupo tenga más parejas de las que caben, y se puede volver a mostrar sin revisar antes las ajenas.
+
 Auditoría independiente del 2 de noviembre de 2026 sobre `420c700`
 (`docs/qa/audit-nov02-implementation-2026-11-03/REPORT.md`):
 

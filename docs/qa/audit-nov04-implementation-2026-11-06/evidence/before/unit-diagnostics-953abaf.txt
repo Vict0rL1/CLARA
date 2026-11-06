@@ -1,0 +1,165 @@
+
+ RUN  v5.0.5 /home/user/ALCANZA
+
+stdout | src/domain/__diag/before-nov04.test.ts > F4 · el recorrido de duplicados está acotado > 5 000 movimientos iguales con 50 parejas de nota igual: 50 parejas, no truncado, y el trabajo no es cuadrático
+F4 antes: 4078 ms, examined=n/d
+
+ ❯ src/domain/__diag/before-nov04.test.ts (8 tests | 8 failed) 5127ms
+   ❯ F1 · totales brutos fuera del rango exacto con saldos diarios exactos (2)
+     × nov04-gross-income valida; la proyección es exacta (100 000 cada día) y compareScenarios no lanza 541ms
+     × nov04-analysis-gross: faltante de −1 el 27-nov y Análisis no lanza 376ms
+   ❯ F2 · cobertura exacta por escenario (1)
+     × nov04-scenario-dates: mínimo exacto hasta el 3-dic; esperado y extra hasta el 25-nov (sin cifra desde el 26-nov) 109ms
+   ❯ F3 · descarga que no responde (1)
+     × tras vencer el plazo, el reintento pide el archivo de nuevo (no reutiliza la carga pendiente) 6ms
+   ❯ F4 · el recorrido de duplicados está acotado (1)
+     × 5 000 movimientos iguales con 50 parejas de nota igual: 50 parejas, no truncado, y el trabajo no es cuadrático 4085ms
+   ❯ F5 · lo revisado se recupera aunque el tope esté lleno (3)
+     × descartada: sigue en «Descartados» con las 12 anteriores llenando el tope 4ms
+     × pospuesta: sigue en «Pospuestos» 2ms
+     × el predicado de revisión no basta: el recorrido nunca llega a la pareja 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/domain/__diag/before-nov04.test.ts > F1 · totales brutos fuera del rango exacto con saldos diarios exactos > nov04-gross-income valida; la proyección es exacta (100 000 cada día) y compareScenarios no lanza
+AssertionError: expected [Function] to not throw an error but 'Error: Desbordamiento al sumar import…' was thrown
+
+- Expected:
+undefined
+
++ Received:
+"Error: Desbordamiento al sumar importes"
+
+ ❯ src/domain/__diag/before-nov04.test.ts:51:50
+     49|     expect(p.outOfRangeFrom).toBeNull()
+     50|     expect(p.days.map((x) => x.endMinor).every((v) => v === 100000)).t…
+     51|     expect(() => compareScenarios(d, TODAY)).not.toThrow()
+       |                                                  ^
+     52|   })
+     53|   it('nov04-analysis-gross: faltante de −1 el 27-nov y Análisis no lan…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  src/domain/__diag/before-nov04.test.ts > F1 · totales brutos fuera del rango exacto con saldos diarios exactos > nov04-analysis-gross: faltante de −1 el 27-nov y Análisis no lanza
+AssertionError: expected [Function] to not throw an error but 'Error: Desbordamiento al sumar import…' was thrown
+
+- Expected:
+undefined
+
++ Received:
+"Error: Desbordamiento al sumar importes"
+
+ ❯ src/domain/__diag/before-nov04.test.ts:59:47
+     57|     expect(p.firstNegativeDate).toBe('2026-11-27')
+     58|     expect(p.days.find((x) => x.date === '2026-11-27')?.endMinor).toBe…
+     59|     expect(() => analysisItems(d, TODAY)).not.toThrow()
+       |                                               ^
+     60|     expect(analysisItems(d, TODAY).find((i) => i.id === 'shortfall')).…
+     61|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  src/domain/__diag/before-nov04.test.ts > F2 · cobertura exacta por escenario > nov04-scenario-dates: mínimo exacto hasta el 3-dic; esperado y extra hasta el 25-nov (sin cifra desde el 26-nov)
+AssertionError: expected undefined to be '2026-12-03' // Object.is equality
+
+- Expected:
+"2026-12-03"
+
++ Received:
+undefined
+
+ ❯ src/domain/__diag/before-nov04.test.ts:73:73
+     71|     expect(extra!.outOfRangeFrom).toBe('2026-11-26')
+     72|     // Deseado: cada fila dice su propio último día exacto.
+     73|     expect((min as unknown as { lastExactDate: string }).lastExactDate…
+       |                                                                         ^
+     74|     expect((expected as unknown as { lastExactDate: string }).lastExac…
+     75|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  src/domain/__diag/before-nov04.test.ts > F3 · descarga que no responde > tras vencer el plazo, el reintento pide el archivo de nuevo (no reutiliza la carga pendiente)
+AssertionError: expected 1 to be 2 // Object.is equality
+
+- Expected
++ Received
+
+- 2
++ 1
+
+ ❯ src/domain/__diag/before-nov04.test.ts:97:24
+     95|       const second = packs.load('legal', 'es').then(() => 'resolved', …
+     96|       await vi.advanceTimersByTimeAsync(10)
+     97|       expect(calls.es).toBe(2)
+       |                        ^
+     98|       void second
+     99|     } finally {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  src/domain/__diag/before-nov04.test.ts > F4 · el recorrido de duplicados está acotado > 5 000 movimientos iguales con 50 parejas de nota igual: 50 parejas, no truncado, y el trabajo no es cuadrático
+AssertionError: expected Infinity to be less than or equal to 10000
+ ❯ src/domain/__diag/before-nov04.test.ts:120:77
+    118|     expect(scan.truncated).toBe(false)
+    119|     console.log(`F4 antes: ${ms.toFixed(0)} ms, examined=${(scan as un…
+    120|     expect((scan as unknown as { examined?: number }).examined ?? Infi…
+       |                                                                             ^
+    121|   })
+    122| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+ FAIL  src/domain/__diag/before-nov04.test.ts > F5 · lo revisado se recupera aunque el tope esté lleno > descartada: sigue en «Descartados» con las 12 anteriores llenando el tope
+AssertionError: expected [] to include 'dup:p1:p2'
+ ❯ src/domain/__diag/before-nov04.test.ts:136:45
+    134|     const view = inboxView(fixture('dismissed'), TODAY)
+    135|     expect(view.moreDuplicates).toBe(true)
+    136|     expect(view.dismissed.map((i) => i.id)).toContain('dup:p1:p2')
+       |                                             ^
+    137|   })
+    138|   it('pospuesta: sigue en «Pospuestos»', () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/8]⎯
+
+ FAIL  src/domain/__diag/before-nov04.test.ts > F5 · lo revisado se recupera aunque el tope esté lleno > pospuesta: sigue en «Pospuestos»
+AssertionError: expected [] to include 'dup:p1:p2'
+ ❯ src/domain/__diag/before-nov04.test.ts:140:43
+    138|   it('pospuesta: sigue en «Pospuestos»', () => {
+    139|     const view = inboxView(fixture('snoozed'), TODAY)
+    140|     expect(view.snoozed.map((i) => i.id)).toContain('dup:p1:p2')
+       |                                           ^
+    141|   })
+    142|   it('el predicado de revisión no basta: el recorrido nunca llega a la…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/8]⎯
+
+ FAIL  src/domain/__diag/before-nov04.test.ts > F5 · lo revisado se recupera aunque el tope esté lleno > el predicado de revisión no basta: el recorrido nunca llega a la pareja
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/domain/__diag/before-nov04.test.ts:145:73
+    143|     const reviewed: ReviewedPredicate = (i) => i.id === 'dup:p1:p2'
+    144|     const scan = scanDuplicates(fixture('dismissed'), reviewed)
+    145|     expect(scan.pairs.some(([a, b]) => a.id === 'p1' && b.id === 'p2')…
+       |                                                                         ^
+    146|   })
+    147| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/8]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  8 failed (8)
+   Start at  00:26:01
+   Duration  6.07s (tests 90%, transform 8%, import 2%)
+
+npm notice
+npm notice New major version of npm available! 10.9.4 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice
