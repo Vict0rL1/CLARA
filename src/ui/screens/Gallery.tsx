@@ -5,13 +5,14 @@
  */
 import { useState } from 'react'
 import { useT } from '../../i18n'
-import { usePack } from '../../i18n/packs'
+import { usePack, type PackTranslate } from '../../i18n/packs'
 import { CATEGORY_COLOR_LIST, EXPENSE_CATEGORY_IDS, INCOME_CATEGORY_IDS, systemCategoryMeta } from '../../domain/categories'
 import { formatDate, formatMoney, formatRelativeDate } from '../../domain/formatters'
 import { useData } from '../../state/store'
 import { useToday } from '../../state/hooks'
 import { BottomSheet, CategoryChip, CoachMark, FAB, ListRow, MonthNavigator, PrimaryButton, ProgressBar, SearchBar, SecondaryButton, Skeleton, TextButton, TimePickerRow, Toggle } from '../components/base'
 import { Alert, Badge, Card, EmptyState, PageHeader, StatTile } from '../components/common'
+import { PackLangScope } from '../components/PackLangScope'
 import { PackNotice } from '../components/PackNotice'
 import { ConfirmDialog } from '../components/Dialog'
 import { CheckboxField, MoneyField, Segmented, SelectField, TextField } from '../components/fields'
@@ -25,10 +26,37 @@ import { useToast } from '../components/toastContext'
 const TOKENS = ['bg', 'bg-elevated', 'card', 'text-primary', 'text-secondary', 'text-muted', 'accent', 'accent-teal', 'income', 'expense', 'warning', 'info', 'pro'] as const
 
 export function Gallery() {
-  const { t, language } = useT()
+  const { t } = useT()
   // Sus textos son un paquete diferido: hasta que está listo solo se dibujan la cabecera y el estado de carga (ninguna
   // clave a la vista); si no carga, se dice y se puede reintentar.
   const pack = usePack('gallery')
+  if (pack.status !== 'ready') {
+    return (
+      <div className="stack gallery">
+        <PageHeader title={t('settings.toc.gallery')} back={{ href: href('/ajustes'), label: t('common.back') }} />
+        <Card>
+          <PackNotice state={pack} />
+        </Card>
+      </div>
+    )
+  }
+  // Con el español de respaldo, el contenido va en un ámbito en español marcado con `lang="es"` (`PackLangScope`); la
+  // cabecera, el aviso y la barra siguen en el idioma de la interfaz (auditoría del 2026-11-04, F3; revisión, B3).
+  return (
+    <div className="stack gallery">
+      <PageHeader title={pack.t('gallery.title')} back={{ href: href('/ajustes'), label: t('common.back') }} titleLang={pack.fallback ? 'es' : undefined} />
+      <PackNotice state={pack} />
+      <PackLangScope fallback={pack.fallback}>
+        <GalleryContent g={pack.t} />
+      </PackLangScope>
+      <FAB label={t('home.addMovement')} href={href('/movimientos/nuevo')} />
+    </div>
+  )
+}
+
+/** El contenido de la galería: lee el traductor del contexto (en español dentro del ámbito de respaldo). */
+function GalleryContent({ g }: { g: PackTranslate }) {
+  const { t, language } = useT()
   const data = useData()
   const today = useToday()
   const [theme, setTheme] = useThemePreference()
@@ -47,21 +75,8 @@ export function Gallery() {
   const currency = data.settings.currency
   const sample = 1234567
 
-  if (pack.status !== 'ready') {
-    return (
-      <div className="stack gallery">
-        <PageHeader title={t('settings.toc.gallery')} back={{ href: href('/ajustes'), label: t('common.back') }} />
-        <Card>
-          <PackNotice state={pack} />
-        </Card>
-      </div>
-    )
-  }
-  const g = pack.t
   return (
-    <div className="stack gallery">
-      <PageHeader title={g('gallery.title')} back={{ href: href('/ajustes'), label: t('common.back') }} />
-      <PackNotice state={pack} />
+    <>
       <p className="muted">{g('gallery.intro')}</p>
 
       <Card labelledBy="g-tokens">
@@ -274,7 +289,6 @@ export function Gallery() {
       <ConfirmDialog open={dialog} title={g('gallery.dialogTitle')} confirmLabel={g('gallery.confirm')} onConfirm={() => setDialog(false)} onCancel={() => setDialog(false)}>
         <p>{g('gallery.dialogText')}</p>
       </ConfirmDialog>
-      <FAB label={t('home.addMovement')} href={href('/movimientos/nuevo')} />
-    </div>
+    </>
   )
 }

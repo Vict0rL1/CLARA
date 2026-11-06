@@ -229,8 +229,12 @@ export async function openExplain(page: Page) {
 export async function expectNoHorizontalScroll(page: Page, label?: string) {
   await waitForFonts(page)
   const result = await page.evaluate(() => {
-    const limit = window.innerWidth + 1
-    const docOverflow = document.documentElement.scrollWidth - window.innerWidth
+    // El ancho del viewport de diseño (`clientWidth`), no `innerWidth`: en un celular emulado (`isMobile`) Chromium
+    // agranda el viewport visual hasta el contenido cuando algo se sale, y con `innerWidth` el desbordamiento no se veía
+    // (revisión de la auditoría del 2026-11-04, B2).
+    const width = document.documentElement.clientWidth
+    const limit = width + 1
+    const docOverflow = document.documentElement.scrollWidth - width
     const main = document.getElementById('main') ?? document.body
     const scrolls = (el: Element | null) => {
       for (let n = el; n && n !== main; n = n.parentElement) {

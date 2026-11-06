@@ -9,10 +9,15 @@ import { fr } from './fr'
 import { pt } from './pt'
 import { pseudoLocalize } from './pseudo'
 import { createTranslator, enablePseudoLocale, isLanguageLoaded, loadLanguage, translate } from './index'
+import bankImportPack from './packs/bankImport.es.json'
+import galleryPack from './packs/gallery.es.json'
+import legalPack from './packs/legal.es.json'
 
 const LANGS = { en, pt, fr } as const
 
 const keys = new Set(Object.keys(es))
+/** Las claves de los paquetes diferidos (`packs/*.json`, mismas en los cuatro idiomas por `packKeys.ts`). */
+const packKeys = new Set([...Object.keys(legalPack), ...Object.keys(galleryPack), ...Object.keys(bankImportPack)])
 const has = (k: string) => keys.has(k)
 
 function sourceFiles(dir: string): string[] {
@@ -65,9 +70,12 @@ describe('textos (i18n)', () => {
     const missing: string[] = []
     for (const file of sourceFiles(join(__dirname, '..'))) {
       const text = readFileSync(file, 'utf8')
-      for (const m of text.matchAll(/\bt\('([\w.-]+)'/g)) if (!has(m[1]!)) missing.push(`${file}: ${m[1]}`)
+      // Una clave de paquete solo vale en una pantalla que traduce con su paquete; en las demás saldría la clave tal cual.
+      const withPack = /\busePack\(|\bpackTranslator\(/.test(text)
+      const exists = (k: string) => has(k) || (withPack && packKeys.has(k))
+      for (const m of text.matchAll(/\bt\('([\w.-]+)'/g)) if (!exists(m[1]!)) missing.push(`${file}: ${m[1]}`)
       for (const m of text.matchAll(/\btn\('([\w.-]+)'/g)) {
-        for (const form of ['one', 'other']) if (!has(`${m[1]}_${form}`)) missing.push(`${file}: ${m[1]}_${form}`)
+        for (const form of ['one', 'other']) if (!exists(`${m[1]}_${form}`)) missing.push(`${file}: ${m[1]}_${form}`)
       }
     }
     expect(missing).toEqual([])

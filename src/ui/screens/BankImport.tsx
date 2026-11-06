@@ -7,12 +7,15 @@ import { newId } from '../../domain/ids'
 import { importTransactions, removeTransactions } from '../../domain/operations'
 import { matchCategoryRule, RULE_PATTERN_MAX } from '../../domain/rules'
 import { merchantLabel } from '../../domain/merchants'
-import type { CategoryRule } from '../../domain/types'
+import type { CategoryRule, Language } from '../../domain/types'
 import type { Issue } from '../../domain/validation'
-import { useT, type MessageKey } from '../../i18n'
+import { useT } from '../../i18n'
+import { packTranslator, usePack } from '../../i18n/packs'
 import { useRun, useToday } from '../../state/hooks'
 import { useData } from '../../state/store'
 import { Alert, Badge, Card, PageHeader } from '../components/common'
+import { PackLangScope } from '../components/PackLangScope'
+import { PackNotice } from '../components/PackNotice'
 import { CheckboxField, Segmented, SelectField } from '../components/fields'
 import { Icon } from '../components/Icon'
 import { useToast } from '../components/toastContext'
@@ -43,8 +46,35 @@ async function readText(file: File): Promise<string> {
 }
 
 export function BankImport() {
+  const { t } = useT()
+  // Sus textos son un paquete diferido (fuera del JS inicial; auditoría del 2026-11-04): hasta que está listo solo se
+  // dibujan la cabecera y el estado de carga, y ninguna clave. Con el español de respaldo, el contenido va en un ámbito
+  // en español marcado con `lang="es"`; la cabecera y el aviso siguen en el idioma de la interfaz (revisión, B3).
+  const pack = usePack('bankImport')
+  return (
+    <div className="stack">
+      <PageHeader title={t('bankImport.title')} back={{ href: href('/movimientos'), label: t('nav.movements') }} />
+      {pack.status !== 'ready' ? (
+        <Card>
+          <PackNotice state={pack} />
+        </Card>
+      ) : (
+        <>
+          <PackNotice state={pack} />
+          <PackLangScope fallback={pack.fallback}>
+            <BankImportBody texts={pack.texts} packLanguage={pack.language} />
+          </PackLangScope>
+        </>
+      )}
+    </div>
+  )
+}
+
+/** El flujo de importación: los textos del paquete y, para lo demás, el traductor del contexto (en español en el respaldo). */
+function BankImportBody({ texts, packLanguage }: { texts: Record<string, string>; packLanguage: Language }) {
   const leave = useNavigateIfStillHere()
-  const { t, tn } = useT()
+  const base = useT()
+  const { t, tn } = useMemo(() => packTranslator(texts, packLanguage, base), [texts, packLanguage, base])
   const fmt = useFormat()
   const data = useData()
   const today = useToday()
@@ -54,7 +84,7 @@ export function BankImport() {
 
   const [accountId, setAccountId] = useState(() => (activeAccounts(data.accounts).find(isBudgetAccount) ?? activeAccounts(data.accounts)[0] ?? data.accounts[0]!).id)
   const [file, setFile] = useState<LoadedFile | null>(null)
-  const [fileError, setFileError] = useState<MessageKey | null>(null)
+  const [fileError, setFileError] = useState<string | null>(null)
   const [hasHeader, setHasHeader] = useState(true)
   const [mapping, setMapping] = useState<ColumnMapping>({ date: 0, description: 1, amount: 2 })
   const [dateFormat, setDateFormat] = useState<BankDateFormat>('ymd')
@@ -199,7 +229,7 @@ export function BankImport() {
   const rowBadges = (row: ImportRow) => {
     switch (row.status) {
       case 'error':
-        return <Badge tone="critical" icon="alert">{t(`bankImport.error.row.${row.error}` as MessageKey, { found: row.currency ?? '?', other: row.otherCurrency ?? '?', expected: data.settings.currency })}</Badge>
+        return <Badge tone="critical" icon="alert">{t(`bankImport.error.row.${row.error}`, { found: row.currency ?? '?', other: row.otherCurrency ?? '?', expected: data.settings.currency })}</Badge>
       case 'duplicate':
         return <Badge tone="neutral" icon="check">{t('bankImport.status.duplicate')}</Badge>
       case 'possibleDuplicate':
@@ -242,9 +272,7 @@ export function BankImport() {
   }
 
   return (
-    <div className="stack">
-      <PageHeader title={t('bankImport.title')} back={{ href: href('/movimientos'), label: t('nav.movements') }} />
-
+    <>
       <Card labelledBy="import-file-title">
         <h2 id="import-file-title" className="card__title">
           {t('bankImport.step1')}
@@ -331,7 +359,7 @@ export function BankImport() {
                 label={t('bankImport.dateFormat')}
                 value={dateFormat}
                 onChange={(e) => setDateFormat(e.target.value as BankDateFormat)}
-                options={(['ymd', 'dmy', 'mdy'] as const).map((f) => ({ value: f, label: t(`bankImport.dateFormat.${f}` as MessageKey) }))}
+                options={(['ymd', 'dmy', 'mdy'] as const).map((f) => ({ value: f, label: t(`bankImport.dateFormat.${f}`) }))}
                 hint={validFormats.length > 1 ? t('bankImport.dateAmbiguous') : undefined}
                 error={validFormats.length > 0 && !validFormats.includes(dateFormat) ? t('bankImport.dateMismatch') : null}
               />
@@ -562,6 +590,6 @@ export function BankImport() {
           {ruleFor && <RuleDialog rule={null} initial={ruleFor} onClose={() => setRuleFor(null)} />}
         </>
       )}
-    </div>
+    </>
   )
 }

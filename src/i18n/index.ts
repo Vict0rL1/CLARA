@@ -80,28 +80,38 @@ export function translate(language: Language, key: MessageKey, params?: Params):
   return interpolate(message, params)
 }
 
+/** Clave del plural: `<clave>_one` o `<clave>_other` según la cantidad. */
+export function pluralKey(language: Language, base: string, count: number): string {
+  return `${base}_${new Intl.PluralRules(language).select(count) === 'one' ? 'one' : 'other'}`
+}
+
 /** Plurales: busca `<clave>_one` o `<clave>_other` según la cantidad. */
 export function translatePlural(language: Language, base: string, count: number, params?: Params): string {
-  const rule = new Intl.PluralRules(language).select(count) === 'one' ? 'one' : 'other'
-  const key = `${base}_${rule}` as MessageKey
-  return translate(language, key, { count, ...params })
+  return translate(language, pluralKey(language, base, count) as MessageKey, { count, ...params })
 }
 
 export interface Translator {
   language: Language
   t: (key: MessageKey, params?: Params) => string
   tn: (base: string, count: number, params?: Params) => string
+  /** El mismo traductor (mismos textos de los datos) en otro idioma: el respaldo en español de un paquete diferido. */
+  inLanguage: (language: Language) => Translator
 }
 
 /**
  * `extra` añade textos que vienen de los datos (nombres de categorías
- * personalizadas: `category.c_…`), así se muestran igual que las fijas.
+ * personalizadas: `category.c_…`) o de un paquete diferido (`packs.ts`, también sus plurales `_one`/`_other`), así se
+ * muestran igual que las fijas.
  */
 export function createTranslator(language: Language, extra: Record<string, string> = {}): Translator {
   return {
     language,
     t: (key, params) => (key in extra ? interpolate(extra[key]!, params) : translate(language, key, params)),
-    tn: (base, count, params) => translatePlural(language, base, count, params),
+    tn: (base, count, params) => {
+      const key = pluralKey(language, base, count)
+      return key in extra ? interpolate(extra[key]!, { count, ...params }) : translatePlural(language, base, count, params)
+    },
+    inLanguage: (other) => (other === language ? createTranslator(language, extra) : createTranslator(other, extra)),
   }
 }
 

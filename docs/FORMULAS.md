@@ -369,6 +369,32 @@ Suposiciones (se muestran en pantalla):
   ni «lo evita» (`LeverEffect.resolves` exige la proyección completa), Escenarios deja el saldo al final sin cifra y
   marca «no hasta el {día antes}», y «¿Me alcanza?» mantiene el veredicto del disponible de hoy (§6) y declara hasta qué
   día vale no haber visto un faltante. Nada se redondea, recorta ni inventa; con importes normales nada cambia.
+- **Cobertura por proyección (auditoría del 2026-11-04, F2):** el resultado lleva `lastExactDate` (último día con cifra
+  exacta) y `exactDays`; `lastExactDate` es `null` con cero días exactos (ni el cierre de hoy cabe: p. ej. 9 008
+  ingresos de 10¹² el mismo día), y entonces ninguna pantalla afirma «hasta hoy» ni «hasta ayer»: Proyección dice «Sin
+  cifra desde hoy», Análisis «no tiene ningún día con cifra exacta», el plan ante faltante «no se puede proyectar»,
+  Escenarios y «¿Me alcanza?» lo marcan sin fecha. En el comparador de escenarios cada fila lleva la cobertura de SU
+  proyección (`ScenarioComparison.lastExactDate`/`exactDays`): con 400 ingresos variables diarios (mínimo 1, esperado
+  y extra 10¹²) el mínimo es exacto los 30 días y el esperado y el extra solo 22 («No hasta el 25 nov; después sin
+  cifra»), elija la persona el escenario que elija (antes todas las filas tomaban el último día exacto de la proyección
+  elegida y decían «hasta el 3 dic»); una nota bajo la tabla (`aria-describedby`) resume los días exactos por escenario.
+- **Totales brutos (auditoría del 2026-11-04, F1):** que cada saldo diario quepa no garantiza que la suma de TODOS los
+  ingresos (o de todos los pagos) de los días exactos quepa: 400 ingresos y 400 gastos diarios de 10¹² dejan el saldo
+  en 100 000 exactos cada día y, aun así, 30 días de ingresos suman 1,2 × 10¹⁶ > 2⁵³ − 1. `grossInflows` y
+  `grossOutflows` (`domain/projection.ts`) suman con `checkedSumMinor` y devuelven `null`: `ScenarioComparison.incomeMinor`
+  sale «Sin cifra exacta» (con una nota que dice que no se redondea, recorta ni pone a cero), el «¿Cómo se calculó?»
+  de Análisis lleva filas `noFigure` para «Ingresos previstos» y «Pagos previstos» conservando el saldo real, el saldo
+  del día (−1 el 27-nov en la reproducción) y la fecha, y el plan ante faltante calcula en el dominio
+  `contributorsTotalMinor` e `incomesUntilFirstMinor` (antes la pantalla sumaba en coma flotante). Antes `sumMinor`
+  lanzaba y Proyección y Análisis caían en «No se pudo abrir esta pantalla». Simétrico para pagos; el gasto diario
+  estimado y las salidas simuladas cuentan como pagos. Revisión de la pasada: el total de pagos vencidos de Análisis
+  también se suma verificado (9 008 vencidos de 10¹² ya no impiden abrir la pantalla: el aviso dice el recuento y el
+  total sin cifra), el gasto diario × días del plan ante faltante es un producto exacto o `null`, cada palanca dice la
+  cobertura de su propia simulación (`LeverEffect.lastExactDate`), el calendario no dice «sin saldo negativo hasta
+  hoy» sin ningún día exacto, y con el saldo real de hoy ya negativo el faltante es ese saldo
+  (`shortfallAt: 'startOfDay'`), nunca «faltan −40» ni la cifra de un cierre que no se calculó. La línea de flujo del
+  calendario sale de `flowHeadline` (primer día negativo con su cifra, «sin saldo negativo» hasta el último día exacto,
+  o ningún día con cifra).
 
 ## 10. Devoluciones y tarjetas de crédito
 
@@ -903,6 +929,25 @@ pago>`, `dup:<a>:<b>`, `bal:<cuenta>:<motivo>`, `int:…`), así nunca aparecen 
   Cuando un grupo tiene más parejas sin revisar que el tope, la bandeja lo dice (`InboxView.moreDuplicates`) y nunca
   da la revisión por completa; el recorrido sigue acotado (tope de nuevas por grupo más lo revisado a mano) y las notas
   se normalizan una vez por movimiento. Ids, huellas y exclusiones no cambian.
+  Auditoría del 2026-11-04 (F4): el tope acota las parejas que COINCIDEN, no los candidatos examinados: 5 000 movimientos
+  iguales el mismo día con 50 parejas de nota igual entre los 100 primeros y notas únicas después examinaban 12 497 500
+  candidatos (≈ 4 s) sin llegar nunca al tope. Los candidatos salen ahora de un índice por nota dentro del grupo (misma
+  nota y nota vacía, mezclados por posición; sin nota, todos los siguientes), así que solo se examinan parejas que
+  coinciden y el trabajo queda acotado por lo revisado más el tope (`DuplicateScan.examined`: 50 en esa reproducción,
+  51 con 5 000 sin nota). Un tramo de cobros o pagos del MISMO programado (cuotas de una ocurrencia, que nunca son
+  pareja) se salta de una vez: 3 000 cuotas parciales el mismo día eran 4,5 millones de comparaciones y ahora ninguna
+  (revisión de la pasada, R6). Mismas parejas, mismo orden, mismos ids, misma ventana y mismas exclusiones que el
+  recorrido cuadrático (comprobado contra él con ledgers de semilla fija, huellas reales y el número exacto de parejas
+  consideradas).
+  Auditoría del 2026-11-04 (F5, anterior a P2): una pareja descartada o pospuesta a la que el recorrido no llega (12
+  movimientos iguales ocho días antes son 66 parejas, más que el tope) desaparecía de «Descartados»/«Pospuestos» y
+  recuperarla exigía revisar antes las 66 ajenas. `inboxView` reconstruye esas parejas desde la decisión guardada
+  (`duplicatePairFromDecision`: el id `dup:<a>:<b>` se parte en cada «:», los dos movimientos existen, siguen siendo
+  pareja —tipo, cuenta, importe, ventana, notas, no la misma ocurrencia— y, si fue un descarte, la huella sigue igual;
+  una posposición solo si no venció), las lista en orden fijo (fecha, id) junto a las demás parejas y nunca borra una
+  decisión: la que ya no apunta a nada (movimiento borrado o cambiado) simplemente no se enseña. Las decisiones se leen
+  de los mismos mapas con los que se clasifica la vista (si un id se repite, manda el último), así una pareja nunca
+  cae en «activos» por encima del tope.
 - **Saldos por verificar:** cuentas del presupuesto y tarjetas nunca verificadas, verificadas
   hace más de 30 días o con la verificación «por revisar». Muestra por separado el
   **último movimiento registrado** y la **última verificación con el banco**.
