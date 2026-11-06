@@ -7,13 +7,14 @@ import { newId } from '../../domain/ids'
 import { importTransactions, removeTransactions } from '../../domain/operations'
 import { matchCategoryRule, RULE_PATTERN_MAX } from '../../domain/rules'
 import { merchantLabel } from '../../domain/merchants'
-import type { CategoryRule } from '../../domain/types'
+import type { CategoryRule, Language } from '../../domain/types'
 import type { Issue } from '../../domain/validation'
-import { useT, type MessageKey } from '../../i18n'
-import { usePack, type PackTranslate, type PackTranslatePlural } from '../../i18n/packs'
+import { useT } from '../../i18n'
+import { packTranslator, usePack } from '../../i18n/packs'
 import { useRun, useToday } from '../../state/hooks'
 import { useData } from '../../state/store'
 import { Alert, Badge, Card, PageHeader } from '../components/common'
+import { PackLangScope } from '../components/PackLangScope'
 import { PackNotice } from '../components/PackNotice'
 import { CheckboxField, Segmented, SelectField } from '../components/fields'
 import { Icon } from '../components/Icon'
@@ -45,13 +46,35 @@ async function readText(file: File): Promise<string> {
 }
 
 export function BankImport() {
-  const leave = useNavigateIfStillHere()
-  const { t: baseT, tn: baseTn } = useT()
+  const { t } = useT()
   // Sus textos son un paquete diferido (fuera del JS inicial; auditoría del 2026-11-04): hasta que está listo solo se
-  // dibujan la cabecera y el estado de carga, y ninguna clave; `t`/`tn` caen al diccionario principal para lo demás.
+  // dibujan la cabecera y el estado de carga, y ninguna clave. Con el español de respaldo, el contenido va en un ámbito
+  // en español marcado con `lang="es"`; la cabecera y el aviso siguen en el idioma de la interfaz (revisión, B3).
   const pack = usePack('bankImport')
-  const t: PackTranslate = pack.status === 'ready' ? pack.t : (key, params) => baseT(key as MessageKey, params)
-  const tn: PackTranslatePlural = pack.status === 'ready' ? pack.tn : baseTn
+  return (
+    <div className="stack">
+      <PageHeader title={t('bankImport.title')} back={{ href: href('/movimientos'), label: t('nav.movements') }} />
+      {pack.status !== 'ready' ? (
+        <Card>
+          <PackNotice state={pack} />
+        </Card>
+      ) : (
+        <>
+          <PackNotice state={pack} />
+          <PackLangScope fallback={pack.fallback}>
+            <BankImportBody texts={pack.texts} packLanguage={pack.language} />
+          </PackLangScope>
+        </>
+      )}
+    </div>
+  )
+}
+
+/** El flujo de importación: los textos del paquete y, para lo demás, el traductor del contexto (en español en el respaldo). */
+function BankImportBody({ texts, packLanguage }: { texts: Record<string, string>; packLanguage: Language }) {
+  const leave = useNavigateIfStillHere()
+  const base = useT()
+  const { t, tn } = useMemo(() => packTranslator(texts, packLanguage, base), [texts, packLanguage, base])
   const fmt = useFormat()
   const data = useData()
   const today = useToday()
@@ -248,22 +271,8 @@ export function BankImport() {
     return t('bankImport.matchHint', { date: fmt.date(match.date, { compact: true, today }), note: match.note || categoryLabel(t, match.categoryId) })
   }
 
-  if (pack.status !== 'ready') {
-    return (
-      <div className="stack">
-        <PageHeader title={baseT('bankImport.title')} back={{ href: href('/movimientos'), label: baseT('nav.movements') }} />
-        <Card>
-          <PackNotice state={pack} />
-        </Card>
-      </div>
-    )
-  }
   return (
-    // Con el español de respaldo, los textos del paquete llevan `lang="es"` (la barra sigue en el idioma de la interfaz).
-    <div className="stack" lang={pack.fallback ? 'es' : undefined}>
-      <PageHeader title={t('bankImport.title')} back={{ href: href('/movimientos'), label: t('nav.movements') }} />
-      <PackNotice state={pack} />
-
+    <>
       <Card labelledBy="import-file-title">
         <h2 id="import-file-title" className="card__title">
           {t('bankImport.step1')}
@@ -581,6 +590,6 @@ export function BankImport() {
           {ruleFor && <RuleDialog rule={null} initial={ruleFor} onClose={() => setRuleFor(null)} />}
         </>
       )}
-    </div>
+    </>
   )
 }

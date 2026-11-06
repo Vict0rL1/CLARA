@@ -94,6 +94,8 @@ export interface Translator {
   language: Language
   t: (key: MessageKey, params?: Params) => string
   tn: (base: string, count: number, params?: Params) => string
+  /** El mismo traductor (mismos textos de los datos) en otro idioma: el respaldo en español de un paquete diferido. */
+  inLanguage: (language: Language) => Translator
 }
 
 /**
@@ -109,6 +111,7 @@ export function createTranslator(language: Language, extra: Record<string, strin
       const key = pluralKey(language, base, count)
       return key in extra ? interpolate(extra[key]!, { count, ...params }) : translatePlural(language, base, count, params)
     },
+    inLanguage: (other) => (other === language ? createTranslator(language, extra) : createTranslator(other, extra)),
   }
 }
 

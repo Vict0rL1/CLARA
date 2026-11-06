@@ -1,5 +1,5 @@
 /**
- * Paquetes de texto diferidos: textos que solo necesita una pantalla poco visitada (Legal, Galería) y que no van en el
+ * Paquetes de texto diferidos: textos que solo necesita una pantalla poco visitada (Legal, Galería, Importar CSV) y que no van en el
  * JS inicial (presupuesto de tamaño, `scripts/check-size.mjs`). Cada paquete es un archivo JSON por idioma en `packs/`
  * (con huella de contenido al compilar, precacheado por el service worker como cualquier otro archivo de la app), con el
  * mismo conjunto de claves en los cuatro idiomas (`packs/packKeys.ts` lo exige en `tsc`). Se piden con `fetch` al abrir
@@ -23,7 +23,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Language } from '../domain/types'
-import { createTranslator, useT, type MessageKey, type Params } from './index'
+import { createTranslator, pluralKey, useT, type MessageKey, type Params, type Translator } from './index'
 import bankImportEnUrl from './packs/bankImport.en.json?url'
 import bankImportEsUrl from './packs/bankImport.es.json?url'
 import bankImportFrUrl from './packs/bankImport.fr.json?url'
@@ -48,7 +48,7 @@ export const PACK_URLS: PackUrls = {
   bankImport: { es: bankImportEsUrl, en: bankImportEnUrl, pt: bankImportPtUrl, fr: bankImportFrUrl },
 }
 
-/** Una carga que no responde en este tiempo se cancela y se da por fallida (la pantalla ofrece reintentar). */
+/** Una carga que no responde en este tiempo se cancela y se da por fallida (la pantalla ofrece reintentar). `0` = sin plazo (solo pruebas). */
 export const PACK_LOAD_TIMEOUT_MS = 15_000
 
 export interface LoadedPack {
@@ -57,11 +57,20 @@ export interface LoadedPack {
   language: Language
 }
 
-/** Pide un archivo y devuelve su JSON; `signal` cancela la petición al vencer el plazo. Inyectable para las pruebas. */
-export type PackRequest = (url: string, signal: AbortSignal) => Promise<unknown>
+/**
+ * Pide un archivo y devuelve su JSON; `signal` cancela la petición al vencer el plazo; `retry` dice que es un reintento.
+ * Inyectable para las pruebas.
+ */
+export type PackRequest = (url: string, signal: AbortSignal, retry: boolean) => Promise<unknown>
 
-const requestJson: PackRequest = async (url, signal) => {
-  const response = await fetch(url, { signal, credentials: 'same-origin' })
+/**
+ * `fetch` del archivo. Un reintento no usa la caché HTTP (`no-store`): los archivos de `/assets/` se sirven como
+ * inmutables y una respuesta mala guardada bajo la dirección marcada se repetiría sin volver a la red (revisión de la
+ * auditoría del 2026-11-04, B11). Una respuesta que no es 2xx o que no es JSON (p. ej. la página principal servida en su
+ * lugar) es un fallo, nunca un paquete.
+ */
+export const requestJson: PackRequest = async (url, signal, retry) => {
+  const response = await fetch(url, { signal, credentials: 'same-origin', cache: retry ? 'no-store' : 'default' })
   if (!response.ok) throw new Error(`packHttp:${response.status}`)
   return response.json() as Promise<unknown>
 }
@@ -129,7 +138,14 @@ export function createPackLoader(table: PackUrls, timeoutMs = PACK_LOAD_TIMEOUT_
               controller.abort()
             }, timeoutMs)
           : null
-      request(url, controller.signal).then(
+      // Una petición que lanzara al llamarla cuenta como un fallo más, nunca deja el intento pendiente para siempre (B13).
+      let started: Promise<unknown>
+      try {
+        started = request(url, controller.signal, failed.has(id))
+      } catch (error) {
+        started = Promise.reject(error instanceof Error ? error : new Error(String(error)))
+      }
+      started.then(
         (json) => {
           if (timer !== null) clearTimeout(timer)
           // Un intento ya vencido no entra en memoria aunque llegue: el intento nuevo es el que manda.
@@ -173,16 +189,29 @@ export function createPackLoader(table: PackUrls, timeoutMs = PACK_LOAD_TIMEOUT_
 
 const packs = createPackLoader(PACK_URLS)
 
-/** El paquete (en el idioma pedido o en español). Rechaza si no carga ninguno. */
-export const loadPack = (name: PackName, language: Language): Promise<Pack> => packs.load(name, language).then((r) => r.pack)
-
 export type PackTranslate = (key: string, params?: Params) => string
 export type PackTranslatePlural = (base: string, count: number, params?: Params) => string
 
+/**
+ * Traductor de una pantalla con paquete: las claves del paquete salen del paquete (en su idioma, también los plurales);
+ * las demás, del traductor de la interfaz (`base`). Así un texto de la interfaz nunca sale en otro idioma por pasar por
+ * el paquete (revisión de la auditoría del 2026-11-04, B3).
+ */
+export function packTranslator(texts: Pack, packLanguage: Language, base: Pick<Translator, 't' | 'tn'>): { t: PackTranslate; tn: PackTranslatePlural } {
+  const own = createTranslator(packLanguage, texts)
+  return {
+    t: (key, params) => (key in texts ? own.t(key as MessageKey, params) : base.t(key as MessageKey, params)),
+    tn: (b, count, params) => (pluralKey(packLanguage, b, count) in texts ? own.tn(b, count, params) : base.tn(b, count, params)),
+  }
+}
+
 export type PackState =
   | { status: 'loading'; retry: () => void }
-  /** `fallback`: el texto está en español porque el idioma pedido no cargó; la pantalla lo marca con `lang="es"`. */
-  | { status: 'ready'; t: PackTranslate; tn: PackTranslatePlural; language: Language; fallback: boolean; retry: () => void }
+  /**
+   * `fallback`: el texto está en español porque el idioma pedido no cargó; la pantalla lo marca con `lang="es"`
+   * (`PackLangScope`). `texts` son los textos del paquete, para traducir con `packTranslator` dentro de ese ámbito.
+   */
+  | { status: 'ready'; t: PackTranslate; tn: PackTranslatePlural; texts: Pack; language: Language; fallback: boolean; retry: () => void }
   | { status: 'failed'; retry: () => void }
 
 /**
@@ -190,7 +219,8 @@ export type PackState =
  * paquete cae al diccionario principal. La pantalla no dibuja ninguna clave mientras no esté `ready`.
  */
 export function usePack(name: PackName): PackState {
-  const { language } = useT()
+  const ui = useT()
+  const { language } = ui
   const id = `${name}:${language}`
   const [attempt, setAttempt] = useState(0)
   const [result, setResult] = useState<{ id: string; attempt: number; loaded: LoadedPack | null } | null>(null)
@@ -212,18 +242,14 @@ export function usePack(name: PackName): PackState {
     }
   }, [id, name, language, attempt, cachedNow])
   const retry = useCallback(() => setAttempt((a) => a + 1), [])
-  const loaded: LoadedPack | null | undefined = hit ?? (result && result.id === id && result.attempt === attempt ? result.loaded : undefined)
+  // Mientras un reintento está en curso, un resultado ya listo de este paquete (p. ej. el respaldo en español) se sigue
+  // mostrando: reintentar nunca vacía la pantalla ni pierde lo que la persona tenía abierto (revisión, B4). Un fallo
+  // anterior sí pasa a «cargando».
+  const loaded: LoadedPack | null | undefined = hit ?? (result && result.id === id ? (result.attempt === attempt ? result.loaded : (result.loaded ?? undefined)) : undefined)
   return useMemo<PackState>(() => {
     if (loaded === undefined) return { status: 'loading', retry }
     if (loaded === null) return { status: 'failed', retry }
-    const translator = createTranslator(loaded.language, loaded.pack)
-    return {
-      status: 'ready',
-      t: (key, params) => translator.t(key as MessageKey, params),
-      tn: translator.tn,
-      language: loaded.language,
-      fallback: loaded.language !== language,
-      retry,
-    }
-  }, [loaded, language, retry])
+    const translator = packTranslator(loaded.pack, loaded.language, ui)
+    return { status: 'ready', t: translator.t, tn: translator.tn, texts: loaded.pack, language: loaded.language, fallback: loaded.language !== language, retry }
+  }, [loaded, language, retry, ui])
 }

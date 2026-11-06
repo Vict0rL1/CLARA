@@ -9,7 +9,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createPackLoader, PACK_URLS, retryUrl, type PackRequest } from './packs'
 import legalEs from './packs/legal.es.json'
 import legalEn from './packs/legal.en.json'
-import { fromDisk } from './packs.test'
+import { fromDisk } from '../test/packFiles'
 
 const pack = (prefix: string) => ({ 'legal.terms.1.title': `${prefix} title`, 'legal.terms.1.text': `${prefix} text` })
 const packOf = (url: string) => /(legal|gallery|bankImport)\.(es|en|pt|fr)\.json/.exec(url)!
