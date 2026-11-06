@@ -12,7 +12,7 @@ import { shot } from './shots'
  *   $560.00, la misma factura reservada dos veces).
  * - P2: 50 parejas históricas de café a 4,25 descartadas; dos cafés nuevos el mismo día se ofrecen como posible
  *   duplicado (antes: nunca) y «Son distintos» los cierra.
- * - P3: con el archivo `legal.es-*.js` bloqueado, Privacidad enseña un estado de fallo legible (nunca claves) y, al
+ * - P3: con el archivo `legal.es-*.json` bloqueado, Privacidad enseña un estado de fallo legible (nunca claves) y, al
  *   volver la red, «Reintentar» o volver a abrir la pantalla recupera el texto; inglés con respaldo en español; los dos
  *   fallidos; Galería; los cuatro idiomas con red.
  * - P4: 400 programados diarios de 10¹²: Proyección, Análisis, Plan ante faltante, Escenarios y «¿Me alcanza?» dicen
@@ -185,14 +185,14 @@ test('P2 · más parejas sin revisar que el tope: se dice que hay más y, al rev
 /* P3 · paquetes de texto diferidos                                     */
 /* ------------------------------------------------------------------ */
 
-test.describe('P3 · paquetes de texto diferidos (sin service worker: el archivo se pide a la red)', () => {
+test.describe('P3 · paquetes de texto diferidos (sin service worker: el archivo JSON se pide a la red)', () => {
   test.use({ serviceWorkers: 'block' })
   const KEYS = /legal\.(privacy|terms)\.\d|gallery\.[a-z]/
   const block = (page: Page, pattern: string) => page.route(pattern, (route) => route.abort('failed'))
 
   test('Privacidad en español con el archivo bloqueado: estado de fallo legible, ninguna clave; al volver la red basta con volver a abrir la pantalla', async ({ page }) => {
     await startDemo(page)
-    await block(page, '**/assets/legal.es-*.js')
+    await block(page, '**/assets/legal.es-*.json')
     await go(page, '/legal/privacidad')
     const failed = page.getByTestId('pack-failed')
     await expect(failed).toBeVisible()
@@ -204,7 +204,7 @@ test.describe('P3 · paquetes de texto diferidos (sin service worker: el archivo
     await shot(page, 'nov02-p3-privacy-failed', failed)
     await expectNoHorizontalScroll(page, 'privacidad sin el paquete')
     // Vuelve la red: navegar a otra pantalla y volver recupera el texto (el fallo no quedó en memoria).
-    await page.unroute('**/assets/legal.es-*.js')
+    await page.unroute('**/assets/legal.es-*.json')
     await go(page, '/ajustes')
     await go(page, '/legal/privacidad')
     await expect(page.getByText('Dónde están tus datos')).toBeVisible()
@@ -215,10 +215,10 @@ test.describe('P3 · paquetes de texto diferidos (sin service worker: el archivo
   test('Privacidad en español: «Reintentar» recupera el texto sin recargar ni borrar nada; los datos siguen', async ({ page }) => {
     await startDemo(page)
     const before = await available(page).then((l) => l.textContent())
-    await block(page, '**/assets/legal.es-*.js')
+    await block(page, '**/assets/legal.es-*.json')
     await go(page, '/legal/privacidad')
     await expect(page.getByTestId('pack-failed')).toBeVisible()
-    await page.unroute('**/assets/legal.es-*.js')
+    await page.unroute('**/assets/legal.es-*.json')
     await page.getByTestId('pack-failed').getByRole('button', { name: 'Reintentar' }).click()
     await expect(page.getByText('Dónde están tus datos')).toBeVisible()
     await expect(page.getByTestId('pack-failed')).toHaveCount(0)
@@ -229,14 +229,14 @@ test.describe('P3 · paquetes de texto diferidos (sin service worker: el archivo
   test('inglés con su archivo bloqueado: el texto sale en español y se dice; «Retry» con red devuelve el inglés', async ({ page }) => {
     await startDemo(page)
     await setLanguage(page, 'English')
-    await block(page, '**/assets/legal.en-*.js')
+    await block(page, '**/assets/legal.en-*.json')
     await go(page, '/legal/privacidad')
     const fallback = page.getByTestId('pack-fallback')
     await expect(fallback).toContainText('This text could not be loaded in your language; it is shown in Spanish.')
     await expect(page.getByText('Dónde están tus datos')).toBeVisible()
     expect(await page.locator('#main').innerText()).not.toMatch(KEYS)
     await shot(page, 'nov02-p3-privacy-fallback', fallback)
-    await page.unroute('**/assets/legal.en-*.js')
+    await page.unroute('**/assets/legal.en-*.json')
     await fallback.getByRole('button', { name: 'Retry' }).click()
     await expect(page.getByText('Where your data lives')).toBeVisible()
     await expect(page.getByTestId('pack-fallback')).toHaveCount(0)
@@ -245,14 +245,14 @@ test.describe('P3 · paquetes de texto diferidos (sin service worker: el archivo
   test('inglés con los dos archivos bloqueados: estado de fallo en inglés; «Reload the app» con red recupera el texto y los datos siguen', async ({ page }) => {
     await startDemo(page)
     await setLanguage(page, 'English')
-    await block(page, '**/assets/legal.en-*.js')
-    await block(page, '**/assets/legal.es-*.js')
+    await block(page, '**/assets/legal.en-*.json')
+    await block(page, '**/assets/legal.es-*.json')
     await go(page, '/legal/terminos')
     const failed = page.getByTestId('pack-failed')
     await expect(failed).toContainText('This text could not be loaded')
     expect(await page.locator('#main').innerText()).not.toMatch(KEYS)
-    await page.unroute('**/assets/legal.en-*.js')
-    await page.unroute('**/assets/legal.es-*.js')
+    await page.unroute('**/assets/legal.en-*.json')
+    await page.unroute('**/assets/legal.es-*.json')
     await failed.getByRole('button', { name: 'Reload the app' }).click()
     await expect(page.getByRole('heading', { name: 'Terms of use' })).toBeVisible()
     await expect(page.getByTestId('pack-failed')).toHaveCount(0)
@@ -262,14 +262,14 @@ test.describe('P3 · paquetes de texto diferidos (sin service worker: el archivo
 
   test('Galería con su archivo bloqueado: cabecera y estado de fallo, ninguna clave; «Reintentar» con red dibuja la galería', async ({ page }) => {
     await startDemo(page)
-    await block(page, '**/assets/gallery.es-*.js')
+    await block(page, '**/assets/gallery.es-*.json')
     await go(page, '/galeria')
     await expect(page.getByRole('heading', { name: 'Galería de componentes' })).toBeVisible()
     const failed = page.getByTestId('pack-failed')
     await expect(failed).toContainText('No se pudo cargar este texto')
     expect(await page.locator('#main').innerText()).not.toMatch(KEYS)
     await shot(page, 'nov02-p3-gallery-failed', failed)
-    await page.unroute('**/assets/gallery.es-*.js')
+    await page.unroute('**/assets/gallery.es-*.json')
     await failed.getByRole('button', { name: 'Reintentar' }).click()
     await expect(page.getByText(/Todos los componentes base de Clara/)).toBeVisible()
     await expect(page.getByTestId('pack-failed')).toHaveCount(0)

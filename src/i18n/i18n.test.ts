@@ -9,11 +9,16 @@ import { fr } from './fr'
 import { pt } from './pt'
 import { pseudoLocalize } from './pseudo'
 import { createTranslator, enablePseudoLocale, isLanguageLoaded, loadLanguage, translate } from './index'
+import bankImportPack from './packs/bankImport.es.json'
+import galleryPack from './packs/gallery.es.json'
+import legalPack from './packs/legal.es.json'
 
 const LANGS = { en, pt, fr } as const
 
 const keys = new Set(Object.keys(es))
-const has = (k: string) => keys.has(k)
+/** Las claves de los paquetes diferidos (`packs/*.json`, mismas en los cuatro idiomas por `packKeys.ts`) también existen. */
+const packKeys = new Set([...Object.keys(legalPack), ...Object.keys(galleryPack), ...Object.keys(bankImportPack)])
+const has = (k: string) => keys.has(k) || packKeys.has(k)
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
