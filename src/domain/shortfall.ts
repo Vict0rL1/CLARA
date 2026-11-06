@@ -17,7 +17,7 @@
  *     en una operación, y se puede deshacer desde el historial.
  */
 import { addDays, daysBetween } from './dates'
-import { ceilDiv } from './money'
+import { ceilDiv, checkedSumMinor } from './money'
 import { deleteTransaction, saveSchedule, saveTransaction, type OpContext, type OpResult } from './operations'
 import type { PlanItem } from './planItems'
 import { projectBalance, type ProjectionResult } from './projection'
@@ -74,6 +74,13 @@ export type ShortfallAnalysis =
       /** Lo que falta en el peor día. */
       worst: { date: LocalDate; shortfallMinor: number }
       contributors: Contributor[]
+      /**
+       * Suma bruta de los pagos que llevan al primer día negativo y de los ingresos previstos hasta ese día (auditoría
+       * del 2026-11-04, F1): `null` si no cabe en un entero exacto aunque cada saldo diario sí; la pantalla lo dice y
+       * no suma por su cuenta.
+       */
+      contributorsTotalMinor: number | null
+      incomesUntilFirstMinor: number | null
       /** Gasto variable estimado que se resta hasta el primer día negativo (incluido). */
       dailySpendTotalMinor: number
       incomes: PlanItem[]
@@ -202,6 +209,8 @@ export function analyzeShortfall(data: AppData, today: LocalDate, options: Short
     firstNegativeMinor,
     worst,
     contributors,
+    contributorsTotalMinor: checkedSumMinor(contributors.map((c) => c.amountMinor)),
+    incomesUntilFirstMinor: checkedSumMinor(incomes.filter((i) => i.date <= first).map((i) => i.budgetEffectMinor)),
     dailySpendTotalMinor: dailySpendMinor * (daysBetween(today, first) + 1),
     incomes,
     levers,

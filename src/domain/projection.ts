@@ -56,6 +56,13 @@ export interface ProjectionResult {
    * afirma nada sobre el horizonte completo (saldo al final, «sin faltante») cuando no es `null`.
    */
   outOfRangeFrom: LocalDate | null
+  /**
+   * Cobertura exacta de ESTA proyección (auditoría del 2026-11-04, F2): el último día con cifra exacta y cuántos días
+   * la tienen. `lastExactDate` es `null` si ni el cierre de hoy cabe en un entero exacto (cero días exactos): entonces
+   * no hay «hasta el …» que afirmar, y ninguna pantalla toma «hoy» como si fuera un día con cifra.
+   */
+  lastExactDate: LocalDate | null
+  exactDays: number
   startMinor: number
   goalsReservedMinor: number
   days: ProjectionDay[]
@@ -132,6 +139,8 @@ export function projectBalance(data: AppData, today: LocalDate, options: Project
     today,
     horizonDays: totalDays,
     outOfRangeFrom,
+    lastExactDate: days[days.length - 1]?.date ?? null,
+    exactDays: days.length,
     startMinor,
     goalsReservedMinor,
     days,
@@ -149,15 +158,35 @@ export function projectBalance(data: AppData, today: LocalDate, options: Project
   }
 }
 
+/**
+ * Totales BRUTOS de los días exactos (auditoría del 2026-11-04, F1): cada ingreso y cada pago por separado. Que cada
+ * saldo diario quepa en un entero exacto no garantiza que la suma de todos los ingresos (o de todos los pagos) quepa:
+ * +10¹² y −10¹² cada día dejan el saldo en 100 000 y, aun así, 30 días de ingresos suman más de 2⁵³ − 1. Un total que
+ * no cabe es `null` —sin cifra— y la pantalla lo dice; nunca se recorta, redondea, pone a cero ni se descarta la
+ * proyección (los saldos y las fechas de faltante siguen siendo exactos). Antes `sumMinor` lanzaba y Proyección y
+ * Análisis caían en «No se pudo abrir esta pantalla».
+ */
+export function grossInflows(days: readonly ProjectionDay[]): number | null {
+  return checkedSumMinor(days.flatMap((d) => d.events).filter((e) => e.budgetEffectMinor > 0).map((e) => e.budgetEffectMinor))
+}
+
+/** Pagos previstos, gasto diario estimado y salidas simuladas de los días exactos, en positivo; `null` si no cabe. */
+export function grossOutflows(days: readonly ProjectionDay[]): number | null {
+  return checkedSumMinor([...days.flatMap((d) => d.events).filter((e) => e.budgetEffectMinor < 0).map((e) => -e.budgetEffectMinor), ...days.map((d) => d.dailySpendMinor - d.extraMinor)])
+}
+
 export interface ScenarioComparison {
   scenario: IncomeScenario
-  /** Ingresos contados en los días exactos (parcial si `outOfRangeFrom` no es `null`). */
-  incomeMinor: number
+  /** Ingresos contados en los días exactos (parcial si `outOfRangeFrom` no es `null`); `null` si la suma bruta no cabe (F1). */
+  incomeMinor: number | null
   /** Saldo al cierre del último día exacto: el del horizonte solo si `outOfRangeFrom` es `null`. */
   endMinor: number
   lowest: { date: LocalDate; minor: number }
   firstNegativeDate: LocalDate | null
   outOfRangeFrom: LocalDate | null
+  /** Cobertura exacta de ESTE escenario (F2): el mínimo puede llegar al final del horizonte y el extra no; cada fila dice la suya. */
+  lastExactDate: LocalDate | null
+  exactDays: number
 }
 
 /**
@@ -167,8 +196,16 @@ export interface ScenarioComparison {
 export function compareScenarios(data: AppData, today: LocalDate, options: Omit<ProjectionOptions, 'scenario'> = {}): ScenarioComparison[] {
   return (['min', 'expected', 'extra'] as const).map((scenario) => {
     const p = projectBalance(data, today, { ...options, scenario })
-    const incomeMinor = sumMinor(p.days.flatMap((d) => d.events).filter((e) => e.budgetEffectMinor > 0).map((e) => e.budgetEffectMinor))
-    return { scenario, incomeMinor, endMinor: p.endMinor, lowest: p.lowest, firstNegativeDate: p.firstNegativeDate, outOfRangeFrom: p.outOfRangeFrom }
+    return {
+      scenario,
+      incomeMinor: grossInflows(p.days),
+      endMinor: p.endMinor,
+      lowest: p.lowest,
+      firstNegativeDate: p.firstNegativeDate,
+      outOfRangeFrom: p.outOfRangeFrom,
+      lastExactDate: p.lastExactDate,
+      exactDays: p.exactDays,
+    }
   })
 }
 

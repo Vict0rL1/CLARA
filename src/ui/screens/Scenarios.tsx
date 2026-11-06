@@ -18,7 +18,6 @@ import {
   similarPlanned,
   type ScenarioResult,
 } from '../../domain/scenarios'
-import { addDays } from '../../domain/dates'
 import type { IncomeScenario, SavedScenario, ScenarioChange } from '../../domain/types'
 import { LIMITS, MAX_SCENARIO_CHANGES, type Issue } from '../../domain/validation'
 import { useT } from '../../i18n'
@@ -238,7 +237,9 @@ export function Scenarios() {
                       r.firstNegativeDate
                         ? t('scenario.shortfallValue', { amount: fmt.money(r.shortfallMinor), date: fmt.date(r.firstNegativeDate, { compact: true, today }) })
                         : r.outOfRangeFrom
-                          ? t('projection.partialShortfall', { until: fmt.date(addDays(r.outOfRangeFrom, -1), { compact: true, today }) })
+                          ? r.lastExactDate
+                            ? t('projection.partialShortfall', { until: fmt.date(r.lastExactDate, { compact: true, today }) })
+                            : t('projection.partialShortfallNone')
                           : t('projection.noShortfallShort')
                     }
                   />

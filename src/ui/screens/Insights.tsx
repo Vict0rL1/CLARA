@@ -18,7 +18,9 @@ const TONE: Record<AnalysisItem['severity'], Tone> = { critical: 'critical', war
 const ICON: Record<AnalysisItem['severity'], IconName> = { critical: 'alert', warning: 'alert', info: 'info' }
 const SIGNED = new Set<Because['id']>(['delta', 'difference', 'remaining'])
 
-function becauseValue(b: Because, fmt: Formatter, today: string): string {
+function becauseValue(b: Because, fmt: Formatter, today: string, noFigure: string): string {
+  // Una suma bruta que no cabe en un entero exacto se dice; nunca se recorta ni sale «—» (auditoría del 2026-11-04, F1).
+  if (b.kind === 'noFigure') return noFigure
   if (b.kind === 'money') return fmt.money(b.value as number, { sign: SIGNED.has(b.id) })
   if (b.kind === 'count') return String(b.value)
   if (b.kind === 'percent') return fmt.percentPoints(b.value as number)
@@ -46,7 +48,8 @@ export function Insights() {
       case 'belowReserves':
         return t('insights.belowReserves.title', { date: date('date'), amount: money('amount'), reserved: money('reserved') })
       case 'projectionOutOfRange':
-        return t('insights.projectionOutOfRange.title', { until: date('until'), horizon: Number(p.horizon) })
+        // Cero días exactos: no hay «hasta el …» que afirmar (auditoría del 2026-11-04, F2).
+        return Number(p.days) === 0 ? t('insights.projectionOutOfRange.titleNone', { horizon: Number(p.horizon) }) : t('insights.projectionOutOfRange.title', { until: date('until'), horizon: Number(p.horizon) })
       case 'limitOver':
         return t('insights.limitOver.title', { name: String(p.name), remaining: money('remaining') })
       case 'limitNear':
@@ -94,7 +97,7 @@ export function Insights() {
                   </p>
                   <div className="composition">
                     {i.because.map((b, idx) => (
-                      <CalcRow key={`${b.id}-${idx}`} op={b.op} label={t(`insights.because.${b.id}`)} value={becauseValue(b, fmt, today)} strong={b.op === '='} />
+                      <CalcRow key={`${b.id}-${idx}`} op={b.op} label={t(`insights.because.${b.id}`)} value={becauseValue(b, fmt, today, t('insights.because.noFigure'))} strong={b.op === '='} />
                     ))}
                   </div>
                 </Explain>

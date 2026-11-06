@@ -11,7 +11,7 @@ import { periodSummary } from './insights'
 import { checkedPercentChange, checkedSubMinor, mulDivFloor, sumMinor } from './money'
 import { planItems } from './planItems'
 import { planProgress } from './plans'
-import { projectBalance } from './projection'
+import { grossInflows, grossOutflows, projectBalance } from './projection'
 import { trackedSince } from './weeklyReview'
 import type { AppData, LocalDate } from './types'
 
@@ -44,8 +44,12 @@ export type BecauseId =
 
 export interface Because {
   id: BecauseId
-  /** Importe en unidades menores, recuento o texto (fecha, nombre), según `kind`. */
-  kind: 'money' | 'count' | 'percent' | 'date' | 'text'
+  /**
+   * Importe en unidades menores, recuento o texto (fecha, nombre), según `kind`. `noFigure` (auditoría del 2026-11-04,
+   * F1): la cifra existe pero no cabe en un entero exacto (una suma bruta de ingresos o pagos); se dice, nunca se
+   * recorta ni se inventa, y `value` va vacío.
+   */
+  kind: 'money' | 'count' | 'percent' | 'date' | 'text' | 'noFigure'
   value: number | string
   op?: '+' | '−' | '='
 }
@@ -94,15 +98,16 @@ export function analysisItems(data: AppData, today: LocalDate): AnalysisItem[] {
   const flowBecause = (until: LocalDate): Because[] => {
     const days = projection.days.filter((d) => d.date <= until)
     // Bruto: cada ingreso y cada pago por separado. +100 y −150 el mismo día son «+100» y «−150», no
-    // «0» y «−50» (antes se neteaba por día y la explicación no coincidía con lo que ocurre).
-    const effects = days.flatMap((d) => d.events.map((e) => e.budgetEffectMinor))
-    const inflows = sumMinor(effects.filter((v) => v > 0))
-    const outflows = sumMinor([...effects.filter((v) => v < 0), ...days.map((d) => d.extraMinor - d.dailySpendMinor)])
+    // «0» y «−50» (antes se neteaba por día y la explicación no coincidía con lo que ocurre). Un total bruto que no
+    // cabe en un entero exacto aunque cada saldo diario sí (auditoría del 2026-11-04, F1) se dice como «sin cifra»; el
+    // saldo del día y la fecha del faltante siguen siendo exactos. Antes `sumMinor` lanzaba y Análisis no abría.
+    const inflows = grossInflows(days)
+    const outflows = grossOutflows(days)
     const end = days[days.length - 1]?.endMinor ?? projection.startMinor
     return [
       { id: 'startBalance', kind: 'money', value: projection.startMinor },
-      { id: 'inflowsUntil', kind: 'money', value: inflows, op: '+' },
-      { id: 'outflowsUntil', kind: 'money', value: -outflows, op: '−' },
+      inflows === null ? { id: 'inflowsUntil', kind: 'noFigure', value: '', op: '+' } : { id: 'inflowsUntil', kind: 'money', value: inflows, op: '+' },
+      outflows === null ? { id: 'outflowsUntil', kind: 'noFigure', value: '', op: '−' } : { id: 'outflowsUntil', kind: 'money', value: outflows, op: '−' },
       { id: 'balanceOn', kind: 'money', value: end, op: '=' },
     ]
   }
@@ -140,15 +145,17 @@ export function analysisItems(data: AppData, today: LocalDate): AnalysisItem[] {
   // 2b. Proyección incompleta (auditoría del 2026-11-02, P4): desde `outOfRangeFrom` el saldo proyectado deja de ser un
   // entero exacto y no hay cifra. Lo visto hasta el día antes es exacto (un faltante encontrado sigue siendo real); lo
   // que no se vio no se afirma: se dice hasta qué día llega la proyección en vez de romper la pantalla o callar.
+  // Con cero días exactos (ni el cierre de hoy cabe) no hay «hasta el …» que afirmar: `until` va vacío y la pantalla
+  // lo dice así (auditoría del 2026-11-04, F2: nunca «hoy» como si fuera un día con cifra).
   if (projection.outOfRangeFrom) {
-    const lastExact = projection.days[projection.days.length - 1]?.date ?? today
+    const lastExact = projection.lastExactDate
     out.push({
       key: 'projectionOutOfRange',
       id: 'projectionOutOfRange',
       severity: 'info',
-      params: { date: projection.outOfRangeFrom, until: lastExact, days: projection.days.length, horizon: ANALYSIS_HORIZON_DAYS },
+      params: { date: projection.outOfRangeFrom, until: lastExact ?? '', days: projection.exactDays, horizon: ANALYSIS_HORIZON_DAYS },
       because: [
-        { id: 'exactUntil', kind: 'date', value: lastExact },
+        ...(lastExact ? [{ id: 'exactUntil' as const, kind: 'date' as const, value: lastExact }] : []),
         { id: 'outOfRangeFrom', kind: 'date', value: projection.outOfRangeFrom },
       ],
       href: '/plan/calendario',

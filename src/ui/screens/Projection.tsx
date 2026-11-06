@@ -34,10 +34,16 @@ export function Projection() {
   const budget = useMemo(() => computeBudget(data, today), [data, today])
   const eventDays = projection.days.filter((d) => d.events.length > 0 || d.endMinor < 0)
   // Fuera del rango exacto (auditoría del 2026-11-02, P4): la curva y las cifras llegan hasta el último día exacto y se
-  // dice desde cuándo no hay cifra; «sin faltante» solo se afirma con la proyección completa.
+  // dice desde cuándo no hay cifra; «sin faltante» solo se afirma con la proyección completa. La cobertura es la de la
+  // proyección ELEGIDA; cada fila del comparador lleva la suya (auditoría del 2026-11-04, F2) y con cero días exactos
+  // no se afirma «hasta hoy».
   const outOfRangeFrom = projection.outOfRangeFrom
-  const lastExact = projection.days[projection.days.length - 1]?.date ?? today
-  const partial = (date: string | null) => (date ? { date: fmt.date(date, { compact: true, today }), until: fmt.date(lastExact, { compact: true, today }) } : null)
+  const lastExact = projection.lastExactDate
+  const compact = (date: string) => fmt.date(date, { compact: true, today })
+  const partial = (date: string) => ({ date: compact(date), until: lastExact ? compact(lastExact) : '' })
+  const scenarioLabel = (s: IncomeScenario) => t(`projection.scenario.${s}` as MessageKey)
+  const anyPartial = comparison.some((c) => c.outOfRangeFrom !== null)
+  const anyGrossMissing = comparison.some((c) => c.incomeMinor === null)
 
   return (
     <div className="stack">
@@ -55,8 +61,10 @@ export function Projection() {
           </Alert>
         )}
         {outOfRangeFrom && (
-          <Alert tone="warning" title={t('projection.partialTitle', partial(outOfRangeFrom)!)} role="status">
-            <span data-testid="projection-partial">{t(projection.firstNegativeDate ? 'projection.partialTextShortfall' : 'projection.partialText', partial(outOfRangeFrom)!)}</span>
+          <Alert tone="warning" title={lastExact ? t('projection.partialTitle', partial(outOfRangeFrom)) : t('projection.partialNoneTitle')} role="status">
+            <span data-testid="projection-partial">
+              {lastExact ? t(projection.firstNegativeDate ? 'projection.partialTextShortfall' : 'projection.partialText', partial(outOfRangeFrom)) : t('projection.partialNoneText')}
+            </span>
           </Alert>
         )}
         {projection.firstBelowGoalsDate && !projection.firstNegativeDate && (
@@ -75,7 +83,7 @@ export function Projection() {
           />
         )}
         <ProjectionChart projection={projection} fmt={fmt} today={today} />
-        {outOfRangeFrom && <p className="note note--icon">{t('projection.partialChartNote', partial(outOfRangeFrom)!)}</p>}
+        {outOfRangeFrom && <p className="note note--icon">{lastExact ? t('projection.partialChartNote', partial(outOfRangeFrom)) : t('projection.partialChartNoteNone')}</p>}
         <Why short={t('projection.chartShort')}>{t('projection.chartNote')}</Why>
       </Card>
 
@@ -86,7 +94,7 @@ export function Projection() {
           </h2>
           {/* Enfocable: en pantallas estrechas la tabla se desplaza y debe poder recorrerse con teclado. */}
           <div className="table-scroll" tabIndex={0} role="region" aria-labelledby="compare-title">
-            <table className="data-table" data-testid="scenario-table">
+            <table className="data-table" data-testid="scenario-table" aria-describedby={anyPartial ? 'scenario-coverage' : undefined}>
               <caption className="sr-only">{t('projection.compareCaption')}</caption>
               <thead>
                 <tr>
@@ -107,14 +115,16 @@ export function Projection() {
                 {comparison.map((c) => (
                   <tr key={c.scenario} className={c.firstNegativeDate ? 'is-negative' : undefined} aria-current={c.scenario === scenario ? 'true' : undefined}>
                     <th scope="row">{t(`projection.scenario.${c.scenario}` as MessageKey)}</th>
-                    <td className="num">{fmt.money(c.incomeMinor)}</td>
+                    <td className="num">{c.incomeMinor === null ? t('projection.noFigureCell') : fmt.money(c.incomeMinor)}</td>
                     <td className="num">{fmt.money(c.lowest.minor)}</td>
-                    <td className="num">{c.outOfRangeFrom ? t('projection.partialCell', { date: fmt.date(c.outOfRangeFrom, { compact: true, today }) }) : fmt.money(c.endMinor)}</td>
+                    <td className="num">{c.outOfRangeFrom ? t('projection.partialCell', { date: compact(c.outOfRangeFrom) }) : fmt.money(c.endMinor)}</td>
                     <td>
                       {c.firstNegativeDate
-                        ? `⚠ ${t('projection.shortfallFrom', { date: fmt.date(c.firstNegativeDate, { compact: true, today }) })}`
+                        ? `⚠ ${t('projection.shortfallFrom', { date: compact(c.firstNegativeDate) })}`
                         : c.outOfRangeFrom
-                          ? t('projection.partialShortfall', { until: fmt.date(lastExact, { compact: true, today }) })
+                          ? c.lastExactDate
+                            ? t('projection.partialShortfall', { until: compact(c.lastExactDate) })
+                            : t('projection.partialShortfallNone')
                           : t('projection.noShortfallShort')}
                     </td>
                   </tr>
@@ -122,6 +132,25 @@ export function Projection() {
               </tbody>
             </table>
           </div>
+          {anyPartial && (
+            <p className="note note--icon" id="scenario-coverage" data-testid="scenario-coverage">
+              {t('projection.coverageIntro')}{' '}
+              {comparison
+                .map((c) =>
+                  c.outOfRangeFrom === null
+                    ? t('projection.coverageFull', { scenario: scenarioLabel(c.scenario), days: c.exactDays })
+                    : c.lastExactDate
+                      ? t('projection.coverageUntil', { scenario: scenarioLabel(c.scenario), until: compact(c.lastExactDate), days: c.exactDays })
+                      : t('projection.coverageNone', { scenario: scenarioLabel(c.scenario) }),
+                )
+                .join(' · ')}
+            </p>
+          )}
+          {anyGrossMissing && (
+            <p className="note note--icon" data-testid="scenario-gross">
+              {t('projection.grossNote')}
+            </p>
+          )}
           <Why short={t('projection.scenarioShort')}>{t('projection.scenarioHint')}</Why>
         </Card>
       )}

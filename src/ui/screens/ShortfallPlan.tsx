@@ -4,7 +4,7 @@
  * planificación las palancas que lo permiten, mostrando cada cambio y con confirmación.
  */
 import { useMemo, useState } from 'react'
-import { addDays, isValidLocalDate } from '../../domain/dates'
+import { isValidLocalDate } from '../../domain/dates'
 import { revertEntry } from '../../domain/historyRevert'
 import { estimateDailySpend } from '../../domain/projection'
 import { analyzeShortfall, applyShortfallPlan, evaluateLevers, leverBasis, type ShortfallLever } from '../../domain/shortfall'
@@ -99,7 +99,9 @@ export function ShortfallPlan({ route }: { route: Route }) {
   const selectedLevers = selected.flatMap((s) => (s.lever ? [s.lever] : []))
   const combined = selectedLevers.length && !invalidEdit ? evaluateLevers(data, today, selectedLevers, options) : null
   // Fuera del rango exacto (auditoría del 2026-11-02, P4): desde esa fecha no hay cifra; «sin faltante» solo hasta el día antes.
-  const partialParams = (from: string) => ({ date: fmt.date(from, { compact: true, today }), until: fmt.date(addDays(from, -1), { compact: true, today }) })
+  // Cobertura exacta de la proyección: con cero días exactos no hay «hasta el …» (auditoría del 2026-11-04, F2).
+  const lastExact = analysis.projection.lastExactDate
+  const partialParams = (from: string) => ({ date: fmt.date(from, { compact: true, today }), until: lastExact ? fmt.date(lastExact, { compact: true, today }) : '' })
   const toApply = selected.filter((s) => s.applicable && s.lever).map((s) => ({ lever: s.lever!, basis: leverBasis(data, s.lever!) }))
   const simulationOnly = selected.filter((s) => !s.applicable)
 
@@ -166,15 +168,17 @@ export function ShortfallPlan({ route }: { route: Route }) {
         </Alert>
       )}
       {analysis.status === 'none' && analysis.projection.outOfRangeFrom && (
-        <Alert tone="warning" title={t('shortfall.partialTitle', partialParams(analysis.projection.outOfRangeFrom))} role="status">
+        <Alert tone="warning" title={lastExact ? t('shortfall.partialTitle', partialParams(analysis.projection.outOfRangeFrom)) : t('shortfall.partialNoneTitle')} role="status">
           <span data-testid="shortfall-partial">
-            {t('shortfall.partialText', { ...partialParams(analysis.projection.outOfRangeFrom), lowest: fmt.money(analysis.projection.lowest.minor), lowestDate: fmt.date(analysis.projection.lowest.date, { compact: true, today }), days })}
+            {lastExact
+              ? t('shortfall.partialText', { ...partialParams(analysis.projection.outOfRangeFrom), lowest: fmt.money(analysis.projection.lowest.minor), lowestDate: fmt.date(analysis.projection.lowest.date, { compact: true, today }), days })
+              : t('shortfall.partialNoneText', { days })}
           </span>
         </Alert>
       )}
       {analysis.status === 'shortfall' && analysis.projection.outOfRangeFrom && (
         <p className="note note--icon" data-testid="shortfall-partial">
-          {t('shortfall.partialNote', partialParams(analysis.projection.outOfRangeFrom))}
+          {lastExact ? t('shortfall.partialNote', partialParams(analysis.projection.outOfRangeFrom)) : t('shortfall.partialNoteNone')}
         </p>
       )}
 
@@ -190,12 +194,14 @@ export function ShortfallPlan({ route }: { route: Route }) {
             {analysis.worst.date !== analysis.firstNegativeDate && <p>{t('shortfall.worst', { date: fmt.date(analysis.worst.date), amount: fmt.money(analysis.worst.shortfallMinor) })}</p>}
             <div className="calc">
               <CalcRow label={t('shortfall.start')} value={fmt.money(analysis.projection.startMinor)} />
-              <CalcRow op="−" label={t('shortfall.outflows', { date: fmt.date(analysis.firstNegativeDate) })} value={fmt.money(analysis.contributors.reduce((s, c) => s + c.amountMinor, 0))} />
+              {/* Sumas brutas verificadas en el dominio: sin cifra si no caben en un entero exacto (auditoría del 2026-11-04, F1). */}
+              <CalcRow op="−" label={t('shortfall.outflows', { date: fmt.date(analysis.firstNegativeDate) })} value={analysis.contributorsTotalMinor === null ? t('shortfall.noFigure') : fmt.money(analysis.contributorsTotalMinor)} />
               {analysis.dailySpendTotalMinor > 0 && <CalcRow op="−" label={t('shortfall.dailyTotal')} value={fmt.money(analysis.dailySpendTotalMinor)} />}
-              {(() => {
-                const inflow = analysis.incomes.filter((i) => i.date <= analysis.firstNegativeDate).reduce((s, i) => s + i.budgetEffectMinor, 0)
-                return inflow > 0 ? <CalcRow op="+" label={t('shortfall.incomesUntil')} value={fmt.money(inflow)} /> : null
-              })()}
+              {analysis.incomesUntilFirstMinor === null ? (
+                <CalcRow op="+" label={t('shortfall.incomesUntil')} value={t('shortfall.noFigure')} />
+              ) : analysis.incomesUntilFirstMinor > 0 ? (
+                <CalcRow op="+" label={t('shortfall.incomesUntil')} value={fmt.money(analysis.incomesUntilFirstMinor)} />
+              ) : null}
               <CalcRow op="=" label={t('shortfall.endOfDay', { date: fmt.date(analysis.firstNegativeDate) })} value={fmt.money(-analysis.firstNegativeMinor)} strong />
             </div>
           </Card>
