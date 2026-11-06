@@ -5193,6 +5193,8 @@ li.is-selected > .item--select {
 .donut__amount {
   grid-area: amount;
   font-variant-numeric: tabular-nums;
+  /* Un importe que no cabe en la fila se parte en vez de salirse (solo entonces: si cabe, la columna toma su ancho). */
+  overflow-wrap: anywhere;
 }
 .donut__pct {
   grid-area: pct;
@@ -5363,6 +5365,8 @@ li.is-selected > .item--select {
   grid-area: amount;
   align-self: center;
   font-variant-numeric: tabular-nums;
+  /* Como en el donut: un importe que no cabe se parte en vez de salirse. */
+  overflow-wrap: anywhere;
 }
 
 /* Exportar como PDF = imprimir la vista (el navegador ofrece «Guardar como PDF»). */

@@ -188,7 +188,7 @@ test('F2 · cero días exactos: Proyección, Análisis, Plan ante faltante, Esce
   await page.getByLabel('Precio').fill('10')
   await expect(page.getByTestId('verdict')).toBeVisible()
   await expect(page.getByTestId('afford-partial')).toContainText('sobre los días siguientes no se afirma nada')
-  await expect(page.getByText('solo hoy; después sin cifra').first()).toBeVisible()
+  await expect(page.getByText('sin cifra exacta: es el saldo real de hoy').first()).toBeVisible()
   expect(await page.locator('#main').innerText()).not.toMatch(/hasta el 3 nov|hasta el 4 nov/i)
   await shot(page, 'nov04-f2-zero-days-afford')
 })
