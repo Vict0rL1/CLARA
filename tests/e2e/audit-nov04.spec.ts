@@ -93,7 +93,8 @@ test('F1 · Análisis con el faltante de −1 el 27-nov abre: la señal es exact
   await card.getByText('¿Cómo se calculó?').click()
   const rows = card.locator('.composition .calc-row, .composition > *')
   await expect(card.locator('.composition')).toContainText('Ingresos previstos hasta ese día')
-  await expect(card.locator('.composition')).toContainText('Sin cifra exacta: la suma no cabe en un entero exacto')
+  await expect(card.locator('.composition')).toContainText('Sin cifra exacta')
+  await expect(card.getByText('Donde dice «Sin cifra exacta», la suma no cabe en un entero exacto')).toBeVisible()
   await expect(card.locator('.composition')).toContainText('Saldo proyectado ese día')
   await expect(card.locator('.composition')).toContainText('-$0.01')
   expect(await rows.count()).toBeGreaterThan(0)
@@ -169,6 +170,9 @@ test('F2 · cero días exactos: Proyección, Análisis, Plan ante faltante, Esce
   expect(await page.locator('#main').innerText()).not.toMatch(/hasta el 3 nov|Hasta el 4 nov|hasta hoy/i)
   await shot(page, 'nov04-f2-zero-days-projection')
   await expectNoHorizontalScroll(page, 'proyección sin ningún día exacto')
+  // El calendario no se abre aquí: con 9 008 programados el mismo día su agenda dibuja cada uno y la pestaña del
+  // celular pequeño se queda sin memoria (límite anterior, anotado en el informe); lo que dice su línea de flujo sin
+  // días exactos se prueba en el dominio (`flowHeadline`, auditNov04Review R3).
   await go(page, '/analisis')
   await expect(page.getByTestId('insight-title').filter({ hasText: 'no tiene ningún día con cifra exacta' })).toBeVisible()
   expect(await page.locator('#main').innerText()).not.toMatch(/hasta el 3 nov|hasta el 4 nov/i)
@@ -232,7 +236,8 @@ test.describe('F3 · paquetes de texto diferidos (sin service worker: el archivo
     const { urls } = await holdFirst(page, '**/assets/legal.es-*.json*')
     await go(page, '/legal/privacidad')
     await expect(page.getByTestId('pack-loading')).toBeVisible()
-    expect(urls).toHaveLength(1)
+    // La petición ya salió (y quedó detenida) antes de adelantar el reloj: el plazo corre desde ella (revisión, B9).
+    await expect.poll(() => urls.length).toBe(1)
     await page.clock.runFor(15_500)
     const failed = page.getByTestId('pack-failed')
     await expect(failed).toBeVisible()
@@ -258,6 +263,8 @@ test.describe('F3 · paquetes de texto diferidos (sin service worker: el archivo
     await setLanguage(page, 'English')
     const { urls } = await holdFirst(page, '**/assets/legal.en-*.json*')
     await go(page, '/legal/privacidad')
+    await expect(page.getByTestId('pack-loading')).toBeVisible()
+    await expect.poll(() => urls.length).toBe(1)
     await page.clock.runFor(15_500)
     const fallback = page.getByTestId('pack-fallback')
     await expect(fallback).toContainText('This text could not be loaded in your language; it is shown in Spanish.')
@@ -273,6 +280,49 @@ test.describe('F3 · paquetes de texto diferidos (sin service worker: el archivo
     await expect(page.getByTestId('pack-content')).not.toHaveAttribute('lang', /.+/)
     expect(urls).toHaveLength(2)
     expect(urls[1]).toMatch(/legal\.en-[^/]*\.json\?retry=\d+$/)
+  })
+
+  test('Importar CSV con su archivo en inglés bloqueado: cabecera y aviso en inglés, contenido en español marcado con lang="es"; «Retry» trae el inglés sin perder la pantalla', async ({ page }) => {
+    await startDemo(page)
+    await setLanguage(page, 'English')
+    await page.route('**/assets/bankImport.en-*.json*', (route) => route.abort('failed'))
+    await go(page, '/movimientos/importar')
+    const fallback = page.getByTestId('pack-fallback')
+    await expect(fallback).toContainText('This text could not be loaded in your language; it is shown in Spanish.')
+    await expect(page.getByRole('heading', { name: 'Import bank transactions', level: 1 })).toBeVisible()
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+    const content = page.getByTestId('pack-content')
+    await expect(content).toHaveAttribute('lang', 'es')
+    await expect(content.getByText('1. Elige la cuenta y el archivo')).toBeVisible()
+    // El aviso y la cabecera quedan fuera del contenido en español (revisión, B3).
+    await expect(content.getByTestId('pack-fallback')).toHaveCount(0)
+    await expect(content.getByRole('heading', { level: 1 })).toHaveCount(0)
+    expect(await page.locator('#main').innerText()).not.toMatch(/\bbankImport\./)
+    await shot(page, 'nov04-f3-import-fallback', page.locator('#main'))
+    await expectNoHorizontalScroll(page, 'importar con el respaldo en español')
+    await page.unroute('**/assets/bankImport.en-*.json*')
+    await fallback.getByRole('button', { name: 'Retry' }).click()
+    await expect(page.getByText('1. Choose the account and file')).toBeVisible()
+    await expect(page.getByTestId('pack-fallback')).toHaveCount(0)
+    await expect(page.getByTestId('pack-content')).not.toHaveAttribute('lang', /.+/)
+  })
+
+  test('Importar CSV con red sale en los cuatro idiomas y sin claves', async ({ page }) => {
+    await startDemo(page)
+    const cases: [UiLanguage, string, string][] = [
+      ['Español', 'Importar movimientos del banco', '1. Elige la cuenta y el archivo'],
+      ['English', 'Import bank transactions', '1. Choose the account and file'],
+      ['Português', 'Importar movimentos do banco', '1. Escolha a conta e o arquivo'],
+      ['Français', 'Importer les opérations bancaires', '1. Choisissez le compte et le fichier'],
+    ]
+    for (const [language, title, step] of cases) {
+      await setLanguage(page, language)
+      await go(page, '/movimientos/importar')
+      await expect(page.getByRole('heading', { name: title, level: 1 })).toBeVisible()
+      await expect(page.getByText(step)).toBeVisible()
+      for (const id of ['pack-failed', 'pack-fallback', 'pack-loading']) await expect(page.getByTestId(id)).toHaveCount(0)
+      expect(await page.locator('#main').innerText(), language).not.toMatch(/\bbankImport\./)
+    }
   })
 
   test('una petición rechazada (no detenida) se recupera igual: «Reintentar» pide el archivo con otra marca y Galería también', async ({ page }) => {
