@@ -31,9 +31,9 @@ pass's own browser runs are reported in §6 with initial failures and reruns kep
 
 - Checkout found: `/home/user/ALCANZA` on `main` at `953abaf`, clean. The designated branch was restarted from `main`
   (its previous history is the merged PR #15), as the branch instructions require after a merge.
-- Commits of this pass, in order, each one self-contained (typecheck, lint and the unit suite pass on each one alone,
-  §6): {{COMMITS_LIST}}.
-- **Tested SHA: `{{TESTED_SHA}}`** (the chain of §6 ran on it; `git status` at that moment is in `evidence/final/status.txt`).
+- Commits of this pass, in order (typecheck, lint and the unit suite pass on each one alone except `220a67c` and
+  `b743748`, R11 in §2b; §6): `220a67c`, `b743748`, `fa1b41c`, `485dc80`, `ebeda5a`, `1102e65`, `5618970`, `d4e2532`, `f58f5a9`, `bf11e0f`.
+- **Tested SHA: `bf11e0f`** (the chain of §6 ran on it; `git status` at that moment is in `evidence/final/status.txt`).
 - **Final SHA: the documentation-only commit that follows the tested SHA** (this report, its evidence, the changelog and
   the documentation files). `git log -1` on the branch shows it; the tested SHA is its parent.
 
@@ -49,7 +49,7 @@ pass's own browser runs are reported in §6 with initial failures and reruns kep
 
 Adjacent change forced by the size gate: the initial JS grew to 847.7 KB with the new texts and code (limit 844.6 KB).
 Following `AGENTS.md`, the CSV import screen's texts (103 keys, ≈ 8.7 KB in the Spanish dictionary alone) moved to a
-third lazy pack (`bankImport`), with pack-aware plurals in `createTranslator`; the initial JS is now {{SIZE_KB}} KB. No budget
+third lazy pack (`bankImport`), with pack-aware plurals in `createTranslator`; the initial JS is now 841.0 KB. No budget
 was raised.
 
 ## 2b. Independent review of the pass and what changed because of it
@@ -85,6 +85,19 @@ verified first. Ids are the reviewers' own.
 | B11 | browser | P3 | A `?retry=` request could replay an immutable cached bad response, and skipped the precache offline. | **Fixed**: retries use `cache: 'no-store'`; the service worker answers `/assets/*.json` with `ignoreSearch` and never stores a marked URL (SW unit test). |
 | B13 | browser | P3 | Header comment, unused `loadPack`, `timeoutMs = 0` undocumented, a synchronously throwing request left the attempt pending. | **Fixed**. |
 | B14 | browser | P3 | Comparison cells wrapped word by word (≈ 140 px rows at 412 px). | **Fixed**: the comparison table keeps cells on one line inside its scroll region. |
+
+The first final chain (§6, on `f58f5a9`) then failed on two more points, both handled in `bf11e0f` before the chain
+was run again from the start:
+
+- **C1 · stale test expectation.** The zero-exact-days browser case still looked for the old «¿Me alcanza?» wording
+  («solo hoy; después sin cifra») that B5 had replaced with «sin cifra exacta: es el saldo real de hoy». The screen
+  was right; the test now expects the new text.
+- **C2 · Statistics with extreme amounts on phones** (pre-existing, made visible by the corrected guard of B2). With
+  the exact-range and QA27 fixtures (totals up to 2⁵³ − 1 ≈ 9.007 × 10¹⁵ minor units) Statistics scrolled sideways by 114 px at
+  320 px and 22 px at 412 px: the amount in the donut rows and in the top-expenses list sat in an `auto` grid column
+  with no break opportunity, and the donut's centre total was clipped by the SVG, so its visible part read as a
+  different figure. Now those amounts wrap (`overflow-wrap: anywhere`, which changes nothing when they fit) and the
+  centre total is measured and scaled down to fit the hole only when it is too wide (`DonutTotal`).
 
 ## 3. Root causes and changed files
 
@@ -134,6 +147,11 @@ verified first. Ids are the reviewers' own.
   (`isDuplicatePair`) and the decision's fingerprint/expiry, lists them in (date, id) order, and never touches the saved
   decisions.
 
+- **C2 (first final chain).** `src/styles.css` (`.donut__amount`, `.top-list__amount`: `overflow-wrap: anywhere`) and
+  `src/ui/components/statsCharts.tsx` (`DonutTotal`: `getComputedTextLength` after the fonts load; a `transform`
+  scale around the centre only when the text is wider than the hole; jsdom has no SVG text metrics and keeps the
+  unscaled text).
+
 ## 4. Before/after evidence (implementation evidence, synthetic data)
 
 Before (on `main` = `953abaf`, `evidence/before/`):
@@ -159,6 +177,12 @@ pass on the three profiles; screenshots at 320 px, 412 px (Pixel 7) and 1 280 px
 `nov04-f3-stalled-timeout`, `nov04-f3-stalled-recovered`, `nov04-f3-fallback-lang`, `nov04-f4-inbox-5000`,
 `nov04-f5-dismissed-recoverable`, `nov04-f5-snoozed-recoverable`).
 
+C2 before (`f58f5a9`) and after (`bf11e0f`), each build served on its own, with the exact-range fixture (9 007
+expenses of 10¹² plus the rest up to 2⁵³ − 1) on Statistics: horizontal overflow 22 px → 0 at 412 px, 114 px → 0 at
+320 px, 0 → 0 at 1 280 px; the donut's centre total ($90,071,992,547,409.91) is drawn whole after (scale ≈ 0.49) and
+clipped before. Screenshots `evidence/c2-statistics/{before,after}-<profile>-{donut,top}.png`, figures in
+`c2-measures.txt`.
+
 ## 5. Regression tests added or changed
 
 - `src/domain/auditNov04Projection.test.ts` (9): the three rebuilt fixtures validate; F1 gross totals `null` with exact
@@ -176,21 +200,25 @@ pass on the three profiles; screenshots at 320 px, 412 px (Pixel 7) and 1 280 px
   late old attempt never caches nor retires the new one and a third wait shares the new attempt; fallback after a
   stalled requested language and recovery of that language; HTTP error and invalid JSON recovery with fresh URLs; pack
   and language isolation.
+- `src/domain/auditNov04Review.test.ts` (10): the reviewers' reproductions R1–R8 (exact daily-spend product, per-lever
+  coverage, the Calendar flow headline with zero exact days and with a negative real balance, the start-of-day
+  shortfall ×3, the overdue total without a figure, same-occurrence runs skipped, repeated decision ids, the order of
+  rebuilt pairs).
 - `src/i18n/packAssets.test.ts`: the packs are never inlined.
-- `tests/e2e/audit-nov04.spec.ts` (11 cases × 3 profiles): F1 Projection and Analysis; F2 rows under each selected
+- `tests/e2e/audit-nov04.spec.ts` (13 cases × 3 profiles): F1 Projection and Analysis; F2 rows under each selected
   scenario, zero exact days on five screens, the coverage note in en/pt/fr; F3 stalled Spanish download (timeout via the
   fake clock, retry with `?retry=`, content without reload, stored data byte-identical), stalled English download with the
   Spanish fallback marked `lang="es"` under `html[lang=en]` and recovery of English, rejected-request recovery for Legal
-  and Gallery; F4 Pendientes with 5 000 movements; F5 dismissed and snoozed recovery with restore / show-now.
+  and Gallery; the CSV import under the Spanish fallback (B3) and in the four languages; F4 Pendientes with 5 000 movements; F5 dismissed and snoozed recovery with restore / show-now.
 - Changed on purpose, each one documented: `src/i18n/auditNov02Packs.test.ts` and `src/i18n/packs.test.ts` are
   re-expressed against the fetch-based loader (same behaviours; the `failedModuleUrl` unit became a `retryUrl` unit; the
   late arrival of a timed-out attempt is now **ignored** instead of cached, because that pending import was exactly what
-  hung the retry); `src/domain/auditNov02Duplicates.test.ts` compares the scan result with `toMatchObject` because
-  `DuplicateScan` gained `examined`; `src/i18n/i18n.test.ts` also accepts pack keys when checking that every key used in
+  hung the retry); `src/domain/auditNov02Duplicates.test.ts` compares the whole scan result with `toEqual`, now including
+  `examined: 0`, because `DuplicateScan` gained `examined` (T3); `src/i18n/i18n.test.ts` also accepts pack keys when checking that every key used in
   the code exists; `tests/e2e/audit-nov02.spec.ts` blocks `legal.*.json`/`gallery.*.json` instead of `.js`. No test was
   removed and no assertion was weakened.
 
-## 6. Verification commands and results (tested SHA `{{TESTED_SHA}}`)
+## 6. Verification commands and results (tested SHA `bf11e0f`)
 
 Development runs before the chain (kept apart from the final figures), phone profile:
 
@@ -207,16 +235,64 @@ Development runs before the chain (kept apart from the final figures), phone pro
   overflow on Home, invisible to the old guard). Both were handled as described in §2b (R3, B2); the overflow probe
   that followed (18 screens × 4 languages × 100 %/200 % × 3 profiles) found none.
 
-{{CHAIN_TABLE}}
+### First final chain — `f58f5a9` (initial result, kept as it ran)
+
+2026-11-06 19:50–20:31 UTC, same script, same settings; outputs in `evidence/final-chain1-f58f5a9/`. Per commit: 7 of
+9 exit 0 (`220a67c` and `b743748` fail `tsc` alone, R11). `npm run check` exit 0; unit suite 1 236 passed, 1 skipped,
+0 failed; focused regressions 163 passed; build exit 0; initial JS 841.0 KB (budget 844.6 KB, unchanged);
+`npm audit` 0 vulnerabilities; performance budgets inside the suite passed.
+
+| Project | Passed | Failed (initial) | Flaky | Skipped | Exit |
+|---|---|---|---|---|---|
+| celular | 402 | **3** | 0 | 1 | 1 |
+| celular-pequeno | 403 | **3** | 0 | 0 | 1 |
+| escritorio | 402 | **1** | 0 | 3 | 1 |
+
+The failures were `audit-nov04.spec.ts:163` on all three profiles (C1) and `exact-range.spec.ts:40` and
+`qa27.spec.ts:266` on both phone profiles (C2), described in §2b. None was rerun into a pass: both were fixed in a new
+commit (`bf11e0f`, pushed as a fast-forward). Before the second chain, a targeted run of the three failing specs with
+`exact-range`, `statistics`, `layout-guards` and `layout-a11y` on the three profiles gave 135 passed, 0 failed. That
+first targeted run also caught a third overflow on the 320 px profile (the top-expenses list with the exact-range
+fixture, 33 px). It was fixed in the same commit before the 135-pass run.
+
+### Final chain — `bf11e0f` (tested SHA)
+
+| Step | Result |
+|---|---|
+| Each commit of the pass alone (`tsc -b`, `oxlint`, `vitest run` in a temporary worktree; the first nine in the first chain, `bf11e0f` in this one) | `220a67c` **FAIL** · `b743748` **FAIL** · `fa1b41c` ok · `485dc80` ok · `ebeda5a` ok · `1102e65` ok · `5618970` ok · `d4e2532` ok · `f58f5a9` ok · `bf11e0f` ok — 8 / 10 exit 0; the failing ones are R11 (§2b): `tsc` cannot find the deleted pack modules (`worktree-<sha>.txt`) |
+| `npm run check` (typecheck + oxlint + i18n literal check + Vitest) | exit 0 |
+| `vitest run --reporter=json` (`vitest.json`) | 131 test files · **1236 passed**, 1 skipped, 0 failed of 1237 |
+| Focused regressions (the four new unit files, `packAssets`, the pack suites, the 2026-11-02 suites, `qa27Duplicates`, `inbox`, `duplicates`, `qaV2`, `projection`, `analysis`, `scenarios`, `shortfall`, `affordability`, `qa27FutureBalance`, `exactRange`) | 163 passed · exit 0 |
+| `npm run build` | exit 0 · dist identified by the sha256 of its file list (`dist-sha256.txt`), id `969672e145b1694e…` |
+| `npm run size` (budget unchanged: baseline × 1.1 = 844.6 KB) | 841.0 KB en 13 archivos (gzip 252.4 KB) · 767.8 KB · límite 844.6 KB · cambio +9.5 % · exit 0 |
+| `npm audit --audit-level=high` | found 0 vulnerabilities · exit 0 |
 
 Browser matrix (`--workers=2 --fail-on-flaky-tests`, one project at a time, the same preview):
 
-{{E2E_TABLE}}
+| Project | Passed | Failed (initial) | Flaky (passed on retry) | Skipped | Duration | Exit |
+|---|---|---|---|---|---|---|
+| celular | 405 | 0 | 0 | 1 | 9.7 min | 0 |
+| celular-pequeno | 406 | 0 | 0 | 0 | 9.2 min | 0 |
+| escritorio | 403 | 0 | 0 | 3 | 9.9 min | 0 |
 
-{{PERF}}
+Screenshot runs of `audit-nov04.spec.ts` (`--workers=1`, same preview): celular exit 0 · celular-pequeno exit 0 · escritorio exit 0.
 
-Chain started {{STARTED}}, finished {{FINISHED}}; `dist` identified by the sha256 of its file list (`dist-sha256.txt`),
-id `{{DIST_ID}}…`.
+Performance budgets inside the suite (from the list reporter):
+
+```
+Inicio con 10k: cifra principal a los 294 / 278 ms
+Historial con libro grande: primera entrada a los 307 / 47 ms desde Inicio; 15 entradas con dependientes a la vista
+  ✓  179 [celular-pequeno] › tests/e2e/performance-history.spec.ts:57:1 › Historial con 10 000 movimientos, 100 programados, 1 000 pagos vinculados y 30 cambios de programados: desde Inicio, la primera entrada en < 300 ms (2.3s)
+Inicio con 10k: cifra principal a los 269 / 195 ms
+Historial con libro grande: primera entrada a los 304 / 38 ms desde Inicio; 15 entradas con dependientes a la vista
+  ✓  179 [celular] › tests/e2e/performance-history.spec.ts:57:1 › Historial con 10 000 movimientos, 100 programados, 1 000 pagos vinculados y 30 cambios de programados: desde Inicio, la primera entrada en < 300 ms (2.7s)
+Inicio con 10k: cifra principal a los 431 / 382 ms
+Historial con libro grande: primera entrada a los 312 / 53 ms desde Inicio; 15 entradas con dependientes a la vista
+  ✓  179 [escritorio] › tests/e2e/performance-history.spec.ts:57:1 › Historial con 10 000 movimientos, 100 programados, 1 000 pagos vinculados y 30 cambios de programados: desde Inicio, la primera entrada en < 300 ms (3.0s)
+```
+
+Chain started 2026-11-06T20:47:18Z, finished 2026-11-06T21:20:56Z; `dist` identified by the sha256 of its file list (`dist-sha256.txt`),
+id `969672e145b1694e…`.
 
 ## 7. Migration, backup, recovery and undo analysis
 
@@ -250,11 +326,13 @@ language-pack recovery (`auditNov02Packs`, P3 browser cases, now with JSON files
   Home falls to its error boundary. The Analysis instance is fixed in this pass; the others change the main available
   figure and two other screens, outside this audit's findings, and are left for a dedicated pass. The zero-exact-days
   reproduction therefore uses incomes.
-- **200 % text on two screens outside the repo's 200 % list.** Statistics (the donut legend rows: amount + percent
-  columns) and «¿Me alcanza?» after typing a price (the before/after comparison table) still scroll sideways at 200 %
-  on phones (≈ 100–230 px). They were already like this before this pass and were invisible to the old guard; fixing
-  them means a layout change of two components, left for a dedicated pass. Every screen in `layout-a11y`'s 200 % list
-  and 18 screens probed in four languages are clean.
+- **200 % text on two screens outside the repo's 200 % list** (demo data, probed on `f58f5a9` and on `bf11e0f`;
+  `evidence/c2-statistics/200-measures.txt`). «¿Me alcanza?» after typing a price (the before/after comparison table)
+  scrolls sideways at 200 % on phones: 133 px at 412 px and 226 px at 320 px, unchanged by this pass. Statistics no
+  longer does at 412 px after C2 (96 px → 0) and does less at 320 px (187 px → 75 px): what remains are the donut rows
+  (percentage column and bar), which need a different row layout at that size. Both were already like this before this
+  pass and were invisible to the old guard; a layout change of two components is left for a dedicated pass. Every screen
+  in `layout-a11y`'s 200 % list and 18 screens probed in four languages are clean.
 - **Calendar with thousands of schedules on one day.** Opening the Calendar with 9 008 schedules due the same day (the
   zero-exact-days fixture) renders every item in the day agenda and crashed the 320 px tab in the browser run; the 412 px
   tab rendered it slowly. Pre-existing, outside the findings; the flow headline's logic is unit-tested instead (R3).
@@ -275,6 +353,31 @@ language-pack recovery (`auditNov02Packs`, P3 browser cases, now with JSON files
 
 ## 10. Agents and release recommendation
 
-{{AGENTS}}
+Which agents actually worked, and on what:
 
-Release recommendation: {{RECOMMENDATION}}
+| Agent | Responsibility | What it did | Result |
+|---|---|---|---|
+| Implementation lead (this session) | Implementation, reproductions, verification, report | Rebuilt the five reproductions on `main`, implemented F1–F5, wrote the regressions, ran both final chains, fixed the confirmed review findings and the two failures of the first chain (C1, C2), wrote this report. | — |
+| Domain / financial reviewer (subagent, first launch) | Independent review of the F1/F2 and F4/F5 commits | Stopped by a usage limit before reading anything. | No output; relaunched. |
+| Browser / packs reviewer (subagent, first launch) | Independent review of F3 and the browser tests | Stopped by a usage limit before reading anything. | No output; relaunched. |
+| Domain / financial reviewer (subagent, relaunched) | Same scope, frozen commits, read-only, probes deleted afterwards | 76 tool calls in ≈ 19 min: diffs, consumers, adversarial probes (600 seeds × 4 predicates against the old scan, zero-day and lever fixtures). | 1 P1, 4 P2, 6 P3 and 4 test-quality findings (R1–R11, T1–T4); F4 equivalence found exact. All confirmed findings fixed (§2b) except R10 (conservative, documented) and R11 (a clean history needs a force push, not authorised in this session). |
+| Browser / packs reviewer (subagent, relaunched) | Same scope, read-only, one scratch build, no Playwright | 116 tool calls in ≈ 21 min: loader lifecycle, scratch build and `sw.js`, text-width measurements with the repo's fonts, test brittleness. | 3 P2 and 11 P3 findings (B1–B14); all fixed (§2b) except B12, which is R11. Its B2 finding exposed pre-existing 200 % overflows, fixed in the same pass, and the Statistics overflow with extreme amounts that the first final chain caught (C2). |
+
+No agent wrote to the repository: the reviewers worked on the frozen commits and reported; every change was made, tested
+and committed by the implementation lead.
+
+
+Release recommendation: **ready for the next audit; merge only with the two caveats below.** All five findings
+are fixed and verified on the tested SHA `bf11e0f`. The unit suite has 1 236 passed and 0 failed. The browser matrix on
+the three profiles had 1 214 passed, 0 failed and 0 flaky, in the single, unrerun run of the second final chain; the
+first chain's failures are kept in §6. The initial JS is 841.0 KB, under the unchanged 844.6 KB budget.
+
+Caveats:
+
+1. **R11.** Two commits of the history (`220a67c`, `b743748`) do not build alone. A squash merge keeps them out of
+   `main`; a merge commit keeps them, and `git bisect` must then skip them.
+2. **Pre-existing limits (§9).** These stay outside the five findings and belong in a follow-up pass:
+   - pending-payment sums in `computeBudget`, the weekly review and plans with extreme scheduled amounts;
+   - 200 % text on «¿Me alcanza?», and on Statistics at 320 px;
+   - the Calendar with thousands of schedules on one day;
+   - the shortfall levers' cost with hundreds of incomes.

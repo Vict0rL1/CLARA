@@ -1,0 +1,12 @@
+before celular /estadisticas: overflow 96px span.donut__amount → x=426; span.donut__pct → x=503; span.donut__bar → x=503; span.donut__amount → x=442
+before celular /alcanza: overflow 133px th. → x=545; td. → x=545; td. → x=545; td. → x=545
+before celular-pequeno /estadisticas: overflow 187px circle. → x=347; circle. → x=347; circle. → x=347; circle. → x=347
+before celular-pequeno /alcanza: overflow 226px th. → x=379; th. → x=545; td. → x=379; td. → x=545
+before escritorio /estadisticas: overflow 0px 
+before escritorio /alcanza: overflow 0px 
+after celular /estadisticas: overflow 0px 
+after celular /alcanza: overflow 133px th. → x=545; td. → x=545; td. → x=545; td. → x=545
+after celular-pequeno /estadisticas: overflow 75px svg. → x=324; span.donut__pct → x=391; span.donut__bar → x=391; span.donut__amount → x=330
+after celular-pequeno /alcanza: overflow 226px th. → x=379; th. → x=545; td. → x=379; td. → x=545
+after escritorio /estadisticas: overflow 0px 
+after escritorio /alcanza: overflow 0px 

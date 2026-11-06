@@ -1,0 +1,42 @@
+
+ RUN  v5.0.5 /home/user/ALCANZA
+
+ ✓ src/domain/auditNov04Projection.test.ts (9 tests) 2359ms
+   ✓ Auditoría 2026-11-04 · F1: totales brutos fuera del rango exacto con saldos diarios exactos (5)
+     ✓ la reproducción: los datos validan, cada día cierra en 100 000 exactos y compareScenarios no lanza; los ingresos brutos salen sin cifra (null) y lo demás exacto 501ms
+   ✓ Auditoría 2026-11-04 · F2: cobertura exacta por escenario (4)
+     ✓ con 22 días exactos la cobertura dice el 25-nov en todas las pantallas que proyectan 966ms
+ ✓ src/domain/auditNov04Review.test.ts (10 tests) 2441ms
+   ✓ Revisión · plan ante faltante (5)
+     ✓ R1: gasto diario estimado × días que no cabe en un entero exacto → sin cifra (null), nunca un producto redondeado 1737ms
+     ✓ R2: cada palanca lleva la cobertura de SU simulación (hasta el 4-nov), no la de la base (hasta el 3-dic) 432ms
+ ✓ src/domain/auditNov04Duplicates.test.ts (10 tests) 320ms
+ ✓ src/domain/auditNov02Projection.test.ts (7 tests) 3132ms
+   ✓ Auditoría 2026-11-02 · P4: proyección fuera del rango exacto en todas las pantallas que proyectan (7)
+     ✓ Escenarios no lanzan: la situación actual y cada alternativa llevan la fecha desde la que no hay cifra; el saldo al final es el del último día exacto 1333ms
+     ✓ «¿Me alcanza?» no lanza: el veredicto sale del disponible de hoy y la proyección declara desde cuándo no hay cifra 1427ms
+ ✓ src/domain/exactRange.test.ts (8 tests) 585ms
+ ✓ src/domain/qa27FutureBalance.test.ts (2 tests) 92ms
+ ✓ src/domain/qaV2.test.ts (29 tests) 242ms
+ ✓ src/domain/auditNov02Duplicates.test.ts (7 tests) 153ms
+ ✓ pwa/sw.template.test.ts (3 tests) 52ms
+ ✓ src/domain/qa27Duplicates.test.ts (2 tests) 73ms
+ ✓ src/i18n/packs.test.ts (7 tests) 105ms
+ ✓ src/domain/inbox.test.ts (14 tests) 54ms
+ ✓ src/domain/auditNov02GoalUndo.test.ts (8 tests) 43ms
+ ✓ src/domain/scenarios.test.ts (12 tests) 37ms
+ ✓ src/domain/projection.test.ts (13 tests) 30ms
+ ✓ src/i18n/auditNov04Packs.test.ts (5 tests) 16ms
+ ✓ src/domain/shortfall.test.ts (5 tests) 23ms
+ ✓ src/i18n/auditNov02Packs.test.ts (8 tests) 15ms
+ ✓ src/domain/duplicates.test.ts (4 tests) 5ms
+
+ Test Files  19 passed (19)
+      Tests  163 passed (163)
+   Start at  19:58:48
+   Duration  4.59s (tests 88%, import 8%, transform 3%, worker 1%)
+
+    Isolate  19 workers spawned · ~114ms startup each (spawn + environment, per file)
+             at least ~609ms faster with isolate: false — reuses workers across files instead of one per file
+
+exit 0

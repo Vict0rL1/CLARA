@@ -114,7 +114,9 @@ Auditoría independiente del 4 de noviembre de 2026 sobre `f8d6da0`
   el saldo de hoy ya negativo, dice ese saldo; el calendario no afirma «sin saldo negativo» sin ningún día calculado;
   «Sin cifra exacta» ya no se sale de la pantalla en celulares; Importar CSV y Galería con el español de respaldo
   muestran todo su contenido en español (marcado) y la cabecera y el aviso en tu idioma; reintentar ya no vacía la
-  pantalla; cuotas parciales de un mismo pago ya no ralentizan Pendientes.
+  pantalla; cuotas parciales de un mismo pago ya no ralentizan Pendientes. Estadísticas con importes enormes ya no se
+  sale de la pantalla en celulares (el importe se parte) y el total del centro del donut ya no se recorta: si no cabe,
+  se reduce.
 
 Auditoría independiente del 2 de noviembre de 2026 sobre `420c700`
 (`docs/qa/audit-nov02-implementation-2026-11-03/REPORT.md`):

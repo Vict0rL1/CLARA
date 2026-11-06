@@ -1,0 +1,19 @@
+
+Running 13 tests using 1 worker
+
+  ✓   1 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:65:1 › F1 · Proyección con ingresos brutos fuera del rango exacto abre: «Sin cifra exacta» en la columna de ingresos, saldos y faltantes exactos (3.7s)
+  ✓   2 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:86:1 › F1 · Análisis con el faltante de −1 el 27-nov abre: la señal es exacta y el «¿Cómo se calculó?» dice ingresos y pagos sin cifra (2.7s)
+  ✓   3 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:129:1 › F2 · cada fila del comparador dice su propia cobertura: el mínimo los 30 días, el esperado y el extra hasta el 25 nov, elija el escenario que se elija (3.3s)
+  ✓   4 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:163:1 › F2 · cero días exactos: Proyección, Análisis, Plan ante faltante, Escenarios y «¿Me alcanza?» lo dicen sin afirmar «hasta hoy» (8.9s)
+  ✓   5 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:196:1 › F2 · la cobertura por escenario y la ausencia de días exactos se dicen en inglés, portugués y francés (4.2s)
+  ✓   6 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:232:3 › F3 · paquetes de texto diferidos (sin service worker: el archivo JSON se pide a la red) › Privacidad en español con la descarga detenida: al vencer el plazo, estado de fallo; «Reintentar» pide el archivo de nuevo (otra marca) y el texto llega sin recargar; los datos siguen (1.4s)
+  ✓   7 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:261:3 › F3 · paquetes de texto diferidos (sin service worker: el archivo JSON se pide a la red) › inglés con su descarga detenida: respaldo en español marcado con lang="es" bajo una interfaz en inglés; «Retry» pide el inglés de nuevo y llega (2.2s)
+  ✓   8 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:285:3 › F3 · paquetes de texto diferidos (sin service worker: el archivo JSON se pide a la red) › Importar CSV con su archivo en inglés bloqueado: cabecera y aviso en inglés, contenido en español marcado con lang="es"; «Retry» trae el inglés sin perder la pantalla (2.2s)
+  ✓   9 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:310:3 › F3 · paquetes de texto diferidos (sin service worker: el archivo JSON se pide a la red) › Importar CSV con red sale en los cuatro idiomas y sin claves (2.7s)
+  ✓  10 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:328:3 › F3 · paquetes de texto diferidos (sin service worker: el archivo JSON se pide a la red) › una petición rechazada (no detenida) se recupera igual: «Reintentar» pide el archivo con otra marca y Galería también (1.7s)
+  ✓  11 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:369:1 › F4 · 5 000 movimientos iguales con 50 parejas de nota igual: Pendientes abre con las 50 parejas y sin «hay más» (2.1s)
+  ✓  12 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:392:1 › F5 · la pareja descartada sigue en «Descartados» con las 12 anteriores llenando el tope, y «Volver a mostrar» quita la decisión sin revisar las 66 ajenas (1.5s)
+  ✓  13 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:413:1 › F5 · la pareja pospuesta sigue en «Pospuestos» con su fecha y «Mostrar ahora» quita la decisión; tras recargar, igual (2.0s)
+
+  13 passed (39.9s)
+exit 0
