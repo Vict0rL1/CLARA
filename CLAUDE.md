@@ -37,8 +37,11 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   `PackNotice` muestra el estado con «Reintentar» y «Recargar la app» (auditoría 2026-11-02, P3). Cada intento tiene
   identidad propia y señal de cancelación (auditoría 2026-11-04, F3): al vencer el plazo (`PACK_LOAD_TIMEOUT_MS`) se
   cancela la petición y se retira el intento, el reintento pide la dirección con otra marca (`retryUrl`: petición nueva
-  de verdad; antes el `import()` pendiente se reutilizaba y el navegador no pedía nada) y un intento viejo que termine
-  tarde ni entra en memoria ni retira al nuevo.
+  de verdad, sin la caché HTTP; antes el `import()` pendiente se reutilizaba y el navegador no pedía nada) y un intento
+  viejo que termine tarde ni entra en memoria ni retira al nuevo. Con el español de respaldo, el contenido va en
+  `PackLangScope` (`lang="es"` y el traductor del contexto en español, así ningún texto de la interfaz queda con la
+  marca de otro idioma); la cabecera y `PackNotice` van fuera. Un texto de la interfaz nunca se traduce con el paquete
+  (`packTranslator`: claves del paquete del paquete, el resto del traductor de la interfaz).
 
 ## Reglas financieras (ver `docs/FORMULAS.md`)
 
@@ -53,7 +56,12 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   «hasta hoy» ni «hasta ayer». Los totales BRUTOS (todos los ingresos o todos los pagos de los días exactos) pueden no
   caber aunque cada saldo diario sí (F1): `grossInflows`/`grossOutflows` devuelven `null` y `ScenarioComparison.incomeMinor`,
   el «porqué» de Análisis (`Because.kind: 'noFigure'`) y `contributorsTotalMinor`/`incomesUntilFirstMinor` del plan ante
-  faltante lo dicen como «sin cifra exacta»; nunca se recorta, redondea ni pone a cero. Cota de exactitud (`domain/exactRange.ts`):
+  faltante lo dicen como «sin cifra exacta»; nunca se recorta, redondea ni pone a cero. Lo mismo el total de pagos
+  vencidos de Análisis y el gasto diario × días del plan ante faltante (`dailySpendTotalMinor: number | null`); cada
+  palanca dice la cobertura de SU simulación (`LeverEffect.lastExactDate`) y, si el saldo real de hoy ya es negativo,
+  el faltante es el de hoy al empezar (`shortfallAt: 'startOfDay'`), nunca la cifra de un cierre no calculado.
+  `computeBudget`, la revisión semanal y los pagos pendientes de un plan aún suman sin verificar (límite anotado en el
+  informe de la auditoría 2026-11-04). Cota de exactitud (`domain/exactRange.ts`):
   Σ|saldos de referencia| + Σ|importes| (movimientos y papelera) ≤ 2⁵³ − 1; guardar, marcar pagado, importar, mover
   un saldo de referencia o crear una cuenta con saldo que la pasarían se rechazan (`amountsBeyondExactRange`) y una
   copia que la pasa no se acepta: así toda suma parcial de la app es exacta (revisiones QA27).
@@ -179,7 +187,8 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   ocupa sitio, y si quedan más de las que caben la bandeja lo dice (`moreDuplicates`); nunca se da por completa
   (auditoría 2026-11-02, P2). Los candidatos salen de un índice por nota (auditoría 2026-11-04, F4): solo se examinan
   parejas que coinciden, el trabajo queda acotado por lo revisado más el tope (`DuplicateScan.examined`, afirmado con
-  cifras exactas en las pruebas) y las parejas, el orden y los ids son los de siempre. Una pareja descartada o pospuesta
+  cifras exactas en las pruebas: el número de parejas consideradas del recorrido de siempre) y las parejas, el orden y
+  los ids son los de siempre; los tramos de cuotas del mismo programado se saltan de una vez. Una pareja descartada o pospuesta
   a la que el recorrido no llega se reconstruye desde la decisión guardada (`duplicatePairFromDecision`: existen los
   dos, siguen siendo pareja, misma huella o posposición vigente) para que siga en «Descartados»/«Pospuestos» sin
   revisar antes las ajenas (F5); una decisión que ya no apunta a nada se ignora y nunca se borra.

@@ -387,7 +387,14 @@ Suposiciones (se muestran en pantalla):
   del día (−1 el 27-nov en la reproducción) y la fecha, y el plan ante faltante calcula en el dominio
   `contributorsTotalMinor` e `incomesUntilFirstMinor` (antes la pantalla sumaba en coma flotante). Antes `sumMinor`
   lanzaba y Proyección y Análisis caían en «No se pudo abrir esta pantalla». Simétrico para pagos; el gasto diario
-  estimado y las salidas simuladas cuentan como pagos.
+  estimado y las salidas simuladas cuentan como pagos. Revisión de la pasada: el total de pagos vencidos de Análisis
+  también se suma verificado (9 008 vencidos de 10¹² ya no impiden abrir la pantalla: el aviso dice el recuento y el
+  total sin cifra), el gasto diario × días del plan ante faltante es un producto exacto o `null`, cada palanca dice la
+  cobertura de su propia simulación (`LeverEffect.lastExactDate`), el calendario no dice «sin saldo negativo hasta
+  hoy» sin ningún día exacto, y con el saldo real de hoy ya negativo el faltante es ese saldo
+  (`shortfallAt: 'startOfDay'`), nunca «faltan −40» ni la cifra de un cierre que no se calculó. La línea de flujo del
+  calendario sale de `flowHeadline` (primer día negativo con su cifra, «sin saldo negativo» hasta el último día exacto,
+  o ningún día con cifra).
 
 ## 10. Devoluciones y tarjetas de crédito
 
@@ -927,15 +934,20 @@ pago>`, `dup:<a>:<b>`, `bal:<cuenta>:<motivo>`, `int:…`), así nunca aparecen 
   candidatos (≈ 4 s) sin llegar nunca al tope. Los candidatos salen ahora de un índice por nota dentro del grupo (misma
   nota y nota vacía, mezclados por posición; sin nota, todos los siguientes), así que solo se examinan parejas que
   coinciden y el trabajo queda acotado por lo revisado más el tope (`DuplicateScan.examined`: 50 en esa reproducción,
-  51 con 5 000 sin nota). Mismas parejas, mismo orden, mismos ids, misma ventana y mismas exclusiones que el recorrido
-  cuadrático (comprobado contra él con ledgers de semilla fija).
+  51 con 5 000 sin nota). Un tramo de cobros o pagos del MISMO programado (cuotas de una ocurrencia, que nunca son
+  pareja) se salta de una vez: 3 000 cuotas parciales el mismo día eran 4,5 millones de comparaciones y ahora ninguna
+  (revisión de la pasada, R6). Mismas parejas, mismo orden, mismos ids, misma ventana y mismas exclusiones que el
+  recorrido cuadrático (comprobado contra él con ledgers de semilla fija, huellas reales y el número exacto de parejas
+  consideradas).
   Auditoría del 2026-11-04 (F5, anterior a P2): una pareja descartada o pospuesta a la que el recorrido no llega (12
   movimientos iguales ocho días antes son 66 parejas, más que el tope) desaparecía de «Descartados»/«Pospuestos» y
   recuperarla exigía revisar antes las 66 ajenas. `inboxView` reconstruye esas parejas desde la decisión guardada
   (`duplicatePairFromDecision`: el id `dup:<a>:<b>` se parte en cada «:», los dos movimientos existen, siguen siendo
   pareja —tipo, cuenta, importe, ventana, notas, no la misma ocurrencia— y, si fue un descarte, la huella sigue igual;
-  una posposición solo si no venció), las lista en orden fijo (fecha, id) y nunca borra una decisión: la que ya no
-  apunta a nada (movimiento borrado o cambiado) simplemente no se enseña.
+  una posposición solo si no venció), las lista en orden fijo (fecha, id) junto a las demás parejas y nunca borra una
+  decisión: la que ya no apunta a nada (movimiento borrado o cambiado) simplemente no se enseña. Las decisiones se leen
+  de los mismos mapas con los que se clasifica la vista (si un id se repite, manda el último), así una pareja nunca
+  cae en «activos» por encima del tope.
 - **Saldos por verificar:** cuentas del presupuesto y tarjetas nunca verificadas, verificadas
   hace más de 30 días o con la verificación «por revisar». Muestra por separado el
   **último movimiento registrado** y la **última verificación con el banco**.

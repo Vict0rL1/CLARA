@@ -109,6 +109,12 @@ Auditoría independiente del 4 de noviembre de 2026 sobre `f8d6da0`
   movimientos iguales el mismo día se revisan en milisegundos (antes ≈ 4 s) con las mismas parejas en el mismo orden.
 - **Duplicados ya revisados** (F5): una pareja descartada o pospuesta sigue en «Descartados»/«Pospuestos» aunque el
   grupo tenga más parejas de las que caben, y se puede volver a mostrar sin revisar antes las ajenas.
+- **Revisión independiente de la pasada**: Análisis abre con miles de pagos vencidos grandes (total sin cifra); el plan
+  ante faltante no redondea el gasto diario acumulado, cada palanca dice hasta qué día tiene cifra su simulación y, con
+  el saldo de hoy ya negativo, dice ese saldo; el calendario no afirma «sin saldo negativo» sin ningún día calculado;
+  «Sin cifra exacta» ya no se sale de la pantalla en celulares; Importar CSV y Galería con el español de respaldo
+  muestran todo su contenido en español (marcado) y la cabecera y el aviso en tu idioma; reintentar ya no vacía la
+  pantalla; cuotas parciales de un mismo pago ya no ralentizan Pendientes.
 
 Auditoría independiente del 2 de noviembre de 2026 sobre `420c700`
 (`docs/qa/audit-nov02-implementation-2026-11-03/REPORT.md`):

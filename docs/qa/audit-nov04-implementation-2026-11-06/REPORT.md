@@ -52,6 +52,40 @@ Following `AGENTS.md`, the CSV import screen's texts (103 keys, ≈ 8.7 KB in th
 third lazy pack (`bankImport`), with pack-aware plurals in `createTranslator`; the initial JS is now {{SIZE_KB}} KB. No budget
 was raised.
 
+## 2b. Independent review of the pass and what changed because of it
+
+Two independent reviewer agents read the frozen implementation commits (§10) and reported findings with reproductions.
+Every confirmed finding was fixed in follow-up commits on the branch (no finding was dismissed); the plausible ones were
+verified first. Ids are the reviewers' own.
+
+| Id | Reviewer | Severity | Finding | Disposition |
+|---|---|---|---|---|
+| R1 | domain | P1 | Shortfall plan: `dailySpendTotalMinor = daily × days` was an unchecked product (9 078 000 000 000 089 shown as …088 with valid data). | **Fixed**: exact BigInt product → `number \| null`, «Sin cifra exacta» on screen. Test `auditNov04Review` R1. |
+| R2 | domain | P2 (regression of this pass) | Each lever row and the combined simulation used the base projection's last exact day («hasta el 3 dic» for a lever exact only through 4 Nov). | **Fixed**: `LeverEffect.lastExactDate`; rows use their own coverage, «Sin cifra exacta desde hoy» with none. Test R2. |
+| R3 | domain | P2 | Calendar with zero exact days: «Sin saldo negativo hasta el {hoy}»; with a negative real balance it reassured instead of warning. | **Fixed**: `flowHeadline` in `domain/projection.ts` (none → `calendar.flow.noneExact`; a negative real balance is the shortfall figure), unit-tested (R3). The browser zero-days case does not open the Calendar: with 9 008 same-day schedules its agenda crashed the small-phone tab (pre-existing load limit, §9). |
+| R4 | domain | P2 | Shortfall summary with a negative real balance: figure of an end of day never computed, or «faltan −40» when today's income lifts the close. | **Fixed**: `shortfallAt: 'startOfDay'` with the real balance and a one-row equation (`shortfall.firstStart`). Tests R4 ×3. |
+| R5 | domain | P2 | Analysis overdue-bills total still `sumMinor`: 9 008 overdue bills of 10¹² (valid) kept the screen from opening. | **Fixed** in Analysis (`noFigure`, `titleNoFigure`). The same unchecked pattern in `computeBudget`, the weekly review and a plan's pending payments is outside this audit's screens and is listed in §9. |
+| R6 | domain | P3 | Runs of movements of the same scheduled occurrence were compared one by one (3 000 partial payments: 4.5 M comparisons, 2 s per inbox view). | **Fixed**: runs skipped in one step (`nextOtherSchedule`); `examined` 0 for that ledger. Test R6. |
+| R7 | domain | P3 | Repeated decision ids: rebuilt pairs read the raw arrays while classification used maps (last wins) → 51 active pairs in a group of cap 50. | **Fixed**: decisions read from the same maps. Test R7. |
+| R8 | domain | P3 | Rebuilt pairs were appended after every other kind in «Descartados». | **Fixed**: inserted right after the scanned pairs. Test R8. |
+| R9 | domain | P3 | Scenarios showed the partial note only when the base column was partial. | **Fixed**: any partial column; zero-day variant `scenario.partialNoteNone`. |
+| R10 | domain | P3, pre-existing | A day is declared out of range when its events' sum does not fit even if balance + events would. | **Not changed**: conservative (never a wrong figure); changing the day arithmetic is outside this pass. §9. |
+| R11 / B12 | both | P3 | The F1/F2 and F4/F5 commits (`220a67c`, `b743748`) deleted the old pack modules (staged early) and do not build alone. | **Not fixed in the published history**: a rebuilt history (same final tree, the old pack files kept until the F3 commit) was prepared, but publishing it needs a force push, which was not authorised in this session. The two commits stay as pushed and fail `tsc` alone (§6 shows it); `git bisect` must skip them. Every later commit builds and tests alone. |
+| T1–T4 | domain | test quality | Dead code; a work assertion that only bounded `examined`; a loosened `toMatchObject`; a tautological scenario loop. | **Fixed**: `examined` must equal the exact number of pairs the old walk considers (real fingerprints, stale fingerprints included); `toEqual` with `examined: 0`; each row compared with its own projection. |
+| B1 | browser | P2 | «Sin cifra exacta: la suma no cabe…» as a non-wrapping value pushed the Analysis explanation off-screen on phones. | **Fixed**: short value («Sin cifra exacta») and the reason as a note below. |
+| B2 | browser | P2 | `expectNoHorizontalScroll` (and `layout-a11y`) measured `window.innerWidth`, which grows with the overflow under `isMobile`: overflow was invisible on both phone profiles. | **Fixed**: measure against `documentElement.clientWidth`. The corrected guard immediately failed the repo's own 200 % text test on both phones (40 px on Home). Those were real, pre-existing overflows, fixed with CSS that keeps the normal look: the upcoming-payments strip, the day totals in Movimientos, the hero action row («¿Cómo?» 16 px out at 412 px; a first fix of mine, `flex: none`, broke the French button and was corrected), the hero legend and the «Más herramientas» links («escenarios» could not break in a half column). A probe of 18 screens × 4 languages × 100 %/200 % × 3 profiles then found no overflow. Statistics and «¿Me alcanza?» with a price still overflow at 200 % (not in the repo's 200 % list; §9). |
+| B3 | browser | P2 (a11y) | Importar CSV under the Spanish fallback put interface text (notice, child components) inside `lang="es"` and turned interface keys Spanish; Gallery similar. | **Fixed**: `PackLangScope` — under the fallback everything inside is Spanish (the context translator is Spanish too) and marked `lang="es"`; header and notice outside in the interface language; `packTranslator` never routes interface keys through the pack. Browser test. |
+| B4 | browser | P3 | «Reintentar» on the fallback note emptied the screen (and an open dialog) for up to 15 s. | **Fixed**: a ready result stays visible while a retry runs. |
+| B5 | browser | P3 | Zero exact days still showed «Ingresos estimados $0.00», a «hasta el día antes» note, «solo hoy» in Afford. | **Fixed**: «Sin cifra exacta», `scenario.partialNoteNone`, reworded `afford.partialLowestNone`. |
+| B6 | browser | P3 | «(1 días)» in the coverage note. | **Fixed**: plural keys `projection.coverageFull/Until_one/_other`. |
+| B7 | browser | P3 | «Sin cifra exacta» cells not linked to their note. | **Fixed**: `aria-describedby` joins the coverage and gross notes. |
+| B8 | browser | P3 | The 2026-11-02 spec blocked `legal.*.json` but not `?retry=` URLs, so recovery steps did not prove anything. | **Fixed**: `.json*` patterns and a still-blocked → still-failed step. |
+| B9 | browser | P3 | Races: request count asserted without retry; fake clock advanced before the request was in flight. | **Fixed**: `expect.poll` on the request count before advancing the clock. |
+| B10 | browser | P3 | Duplicate test runs through a cross-file import; pack `{x}`/plural parity no longer checked; pack keys accepted everywhere by the key test; no test of the real `fetch` path. | **Fixed**: helper in `src/test/packFiles.ts`; parity test for all packs; pack keys only accepted in files that translate with a pack; `requestJson` tests (404, HTML, no-store on retry, sync throw). |
+| B11 | browser | P3 | A `?retry=` request could replay an immutable cached bad response, and skipped the precache offline. | **Fixed**: retries use `cache: 'no-store'`; the service worker answers `/assets/*.json` with `ignoreSearch` and never stores a marked URL (SW unit test). |
+| B13 | browser | P3 | Header comment, unused `loadPack`, `timeoutMs = 0` undocumented, a synchronously throwing request left the attempt pending. | **Fixed**. |
+| B14 | browser | P3 | Comparison cells wrapped word by word (≈ 140 px rows at 412 px). | **Fixed**: the comparison table keeps cells on one line inside its scroll region. |
+
 ## 3. Root causes and changed files
 
 - **F1.** `compareScenarios` summed every positive event of the exact days with `sumMinor`, which throws past 2⁵³ − 1, and
@@ -158,11 +192,20 @@ pass on the three profiles; screenshots at 320 px, 412 px (Pixel 7) and 1 280 px
 
 ## 6. Verification commands and results (tested SHA `{{TESTED_SHA}}`)
 
-Development runs before the chain (kept apart from the final figures): the first browser run of the new spec on the
-phone profile (`evidence/final/../..`, scratch log `e2e1`) had **5 failures** — one wrong expected value in the test
-(`$1,120.00`, not `$7,600.00`), one assertion aimed at a table that Scenarios does not draw without a saved scenario, and
-three F3 cases plus the six P3 cases of the previous spec failing for a real defect introduced by this pass (Vite inlined
-the JSON packs as `data:` URIs; fixed, §3). The second run passed {{DEV_RUN2}}.
+Development runs before the chain (kept apart from the final figures), phone profile:
+
+- Run 1 (`e2e1`): **5 failures** in the new spec — one wrong expected value written in the test (`$1,120.00`, not
+  `$7,600.00`), one assertion aimed at a table Scenarios does not draw without a saved scenario, and three F3 cases —
+  plus the six P3 cases of the 2026-11-02 spec, all caused by a real defect introduced by this pass (Vite inlined the
+  JSON packs as `data:` URIs; fixed, §3).
+- Run 2 (`e2e2`): 21 passed, **1 failed** (the zero-exact-days case: the first render of 9 008 schedules exceeded the
+  5 s wait while another spec ran in parallel); passed alone in 9.3 s (`e2e3`); the wait for that heavy fixture's first
+  render is now 20 s. The import-screen specs: 28/28.
+- Run 3 (`e2e4`, after the review fixes, both phone profiles, audit + layout + import specs, with the corrected scroll
+  guard): 64 passed and **2 failed per profile** — the zero-exact-days case (opening the Calendar with 9 008 same-day
+  schedules: the 320 px tab crashed, the 412 px one timed out) and `layout-a11y`'s 200 % text test (40 px of real
+  overflow on Home, invisible to the old guard). Both were handled as described in §2b (R3, B2); the overflow probe
+  that followed (18 screens × 4 languages × 100 %/200 % × 3 profiles) found none.
 
 {{CHAIN_TABLE}}
 
@@ -201,13 +244,27 @@ language-pack recovery (`auditNov02Packs`, P3 browser cases, now with JSON files
   worker's memory. The unit test uses a 24-day horizon (no income after the shortfall) and the browser spec does not open
   `/alcanza/faltante` with that fixture. Not a correctness issue and outside the five findings; changing which levers
   are proposed is product behaviour, so it is left as documented.
-- **Pending payments beyond the exact range in the budget.** `computeBudget` still sums pending payments with
-  `sumMinor`: 9 008 payments of 10¹² due today (which validate, since schedules are outside the exact-range bound) throw
-  and Home falls to the error boundary. The zero-exact-days reproduction therefore uses incomes. Outside this audit's
-  findings; noted for a future pass.
-- **`lang` granularity in Gallery and CSV import.** The fallback marking wraps the pack-driven content; a handful of
-  UI-language strings inside it (the sample search placeholder, a back/close label) are pronounced as Spanish by a
-  screen reader under the fallback. Legal, the user-facing page, is marked precisely.
+- **Pending payments beyond the exact range elsewhere (R5, partly).** `computeBudget` (Home's available money), the
+  weekly review's upcoming-payments total and a plan's pending payments still sum scheduled amounts with `sumMinor`:
+  9 008 payments of 10¹² due today (which validate, since schedules are outside the exact-range bound) throw there, and
+  Home falls to its error boundary. The Analysis instance is fixed in this pass; the others change the main available
+  figure and two other screens, outside this audit's findings, and are left for a dedicated pass. The zero-exact-days
+  reproduction therefore uses incomes.
+- **200 % text on two screens outside the repo's 200 % list.** Statistics (the donut legend rows: amount + percent
+  columns) and «¿Me alcanza?» after typing a price (the before/after comparison table) still scroll sideways at 200 %
+  on phones (≈ 100–230 px). They were already like this before this pass and were invisible to the old guard; fixing
+  them means a layout change of two components, left for a dedicated pass. Every screen in `layout-a11y`'s 200 % list
+  and 18 screens probed in four languages are clean.
+- **Calendar with thousands of schedules on one day.** Opening the Calendar with 9 008 schedules due the same day (the
+  zero-exact-days fixture) renders every item in the day agenda and crashed the 320 px tab in the browser run; the 412 px
+  tab rendered it slowly. Pre-existing, outside the findings; the flow headline's logic is unit-tested instead (R3).
+- **Out-of-range granularity (R10). A day is declared without a figure when the sum of that day's events does not fit,
+  even if balance + events would (e.g. 9 007 × 10¹² balance and 9 008 bills of 10¹²). Conservative — never a wrong
+  figure — and unchanged.
+- **Spanish fallback details.** Under the fallback, dates inside the Spanish content keep the interface language's
+  format (Ajustes › Formato), toasts raised from the import flow are in Spanish without a `lang` mark (the toast area is
+  shared), and the Gallery's sheet and dialog render in a portal outside the marked container. Legal, the user-facing
+  page, contains only pack text and is marked precisely.
 - **Service worker and stalls.** With the service worker active the packs are served from the precache, so a stalled
   network cannot stall a pack; the stalled-download cases block the service worker on purpose.
 - **CSV import texts** are now a lazy pack: the first visit per session fetches ≈ 3 KB before the form appears (served
