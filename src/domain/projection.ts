@@ -209,6 +209,22 @@ export function compareScenarios(data: AppData, today: LocalDate, options: Omit<
   })
 }
 
+/**
+ * Lo que dice la línea de flujo del calendario (revisión de la auditoría del 2026-11-04, R3): el primer día negativo
+ * con su cifra —el cierre de ese día si tiene cifra y es negativo; si no, el saldo real de hoy, que ya lo es—, «sin
+ * saldo negativo» hasta el último día exacto, o que no hay ningún día con cifra. Antes, sin días exactos, se afirmaba
+ * «sin saldo negativo hasta hoy» aunque el saldo real de hoy fuera negativo.
+ */
+export type FlowHeadline = { kind: 'shortfall'; date: LocalDate; amountMinor: number } | { kind: 'noShortfall'; until: LocalDate } | { kind: 'noExactDay' }
+
+export function flowHeadline(p: Pick<ProjectionResult, 'days' | 'firstNegativeDate' | 'startMinor' | 'lastExactDate'>): FlowHeadline {
+  if (p.firstNegativeDate) {
+    const day = p.days.find((d) => d.date === p.firstNegativeDate)
+    return { kind: 'shortfall', date: p.firstNegativeDate, amountMinor: day && day.endMinor < 0 ? day.endMinor : p.startMinor }
+  }
+  return p.lastExactDate ? { kind: 'noShortfall', until: p.lastExactDate } : { kind: 'noExactDay' }
+}
+
 export interface DailySpendEstimate {
   dailyMinor: number
   totalMinor: number

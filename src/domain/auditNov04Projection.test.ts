@@ -148,11 +148,11 @@ describe('Auditoría 2026-11-04 · F2: cobertura exacta por escenario', () => {
     expect(expected).toMatchObject({ outOfRangeFrom: '2026-11-26', lastExactDate: '2026-11-25', exactDays: 22, firstNegativeDate: null, incomeMinor: 22 * 400 * X })
     expect(extra).toMatchObject({ outOfRangeFrom: '2026-11-26', lastExactDate: '2026-11-25', exactDays: 22 })
     expect(expected!.endMinor).toBe(100000 + 22 * 400 * X)
-    // La proyección elegida no cambia la cobertura de las demás: compareScenarios no depende del escenario de la pantalla.
-    for (const scenario of ['min', 'expected', 'extra'] as const) {
-      const own = projectBalance(d, TODAY, { scenario })
-      expect(own.lastExactDate).toBe(scenario === 'min' ? '2026-12-03' : '2026-11-25')
-      expect(compareScenarios(d, TODAY).map((c) => c.lastExactDate)).toEqual(['2026-12-03', '2026-11-25', '2026-11-25'])
+    // Cada fila es la proyección de SU escenario, calculada por separado (la independencia de lo que elige la pantalla
+    // se comprueba en el navegador, audit-nov04.spec.ts).
+    for (const row of [min!, expected!, extra!]) {
+      const own = projectBalance(d, TODAY, { scenario: row.scenario })
+      expect([row.lastExactDate, row.exactDays, row.outOfRangeFrom, row.endMinor]).toEqual([own.lastExactDate, own.exactDays, own.outOfRangeFrom, own.endMinor])
     }
   })
 

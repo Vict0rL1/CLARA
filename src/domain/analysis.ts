@@ -8,7 +8,7 @@ import { backupStatus } from './backupReminder'
 import { addDays, addMonthsClamped, daysBetween, startOfMonth } from './dates'
 import { goalPace } from './goalChart'
 import { periodSummary } from './insights'
-import { checkedPercentChange, checkedSubMinor, mulDivFloor, sumMinor } from './money'
+import { checkedPercentChange, checkedSubMinor, checkedSumMinor, mulDivFloor, sumMinor } from './money'
 import { planItems } from './planItems'
 import { planProgress } from './plans'
 import { grossInflows, grossOutflows, projectBalance } from './projection'
@@ -79,15 +79,17 @@ export function analysisItems(data: AppData, today: LocalDate): AnalysisItem[] {
   // 1. Pagos vencidos sin marcar (los mismos que el calendario).
   const overdue = planItems(data, { today, from: today, to: today, includeOverdueBefore: true }).filter((i) => i.state === 'overdue' && i.direction === 'expense')
   if (overdue.length > 0) {
-    const total = sumMinor(overdue.map((i) => i.amountMinor))
+    // Suma verificada (revisión de la auditoría del 2026-11-04, R5): los programados no entran en la cota de exactitud y
+    // miles de vencidos grandes pueden sumar más de 2⁵³ − 1; entonces el aviso sale sin total (se dice), nunca lanza.
+    const total = checkedSumMinor(overdue.map((i) => i.amountMinor))
     out.push({
       key: 'overdueBills',
       id: 'overdueBills',
       severity: 'warning',
-      params: { count: overdue.length, total },
+      params: { count: overdue.length, ...(total === null ? {} : { total }) },
       because: [
         { id: 'overdueCount', kind: 'count', value: overdue.length },
-        { id: 'overdueTotal', kind: 'money', value: total, op: '=' },
+        total === null ? { id: 'overdueTotal', kind: 'noFigure', value: '', op: '=' } : { id: 'overdueTotal', kind: 'money', value: total, op: '=' },
       ],
       href: '/plan/calendario',
     })

@@ -2448,11 +2448,27 @@ fieldset.bill-row {
 }
 
 .calc-row {
-  display: grid;
-  grid-template-columns: 1.2em 1fr auto;
-  gap: 8px;
+  /* Signo, texto y cifra en una fila; si la cifra no cabe junto al texto (texto al 200 %, «Sin cifra exacta»), baja a
+     otra línea alineada a la derecha en vez de salirse de la pantalla (revisión de la auditoría del 2026-11-04, B1). */
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 8px;
   align-items: baseline;
   padding: 2px 0;
+}
+
+.calc-row__op {
+  flex: 0 0 1.2em;
+}
+
+.calc-row__label {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.calc-row__value {
+  flex: none;
+  margin-left: auto;
 }
 
 .calc-row__op {
@@ -2556,6 +2572,11 @@ fieldset.bill-row {
 
 .data-table .num {
   text-align: right;
+  white-space: nowrap;
+}
+
+/* Celdas cortas que no deben partirse palabra a palabra (comparador de escenarios): la tabla se desplaza en su región. */
+.data-table--keep-cells td {
   white-space: nowrap;
 }
 

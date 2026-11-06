@@ -114,9 +114,11 @@ export function Scenarios() {
         />
       )}
 
-      {result.base.outOfRangeFrom && (
+      {/* Cualquier columna parcial lleva la nota, no solo la situación actual (revisión de la auditoría del 2026-11-04, R9). */}
+      {(result.base.outOfRangeFrom || result.alternatives.some((a) => a.result.outOfRangeFrom)) && (
         <p className="note note--icon" data-testid="scenario-partial">
-          {t('projection.partialCell', { date: fmt.date(result.base.outOfRangeFrom, { compact: true, today }) })}. {t('scenario.partialNote')}
+          {result.base.outOfRangeFrom ? `${t('projection.partialCell', { date: fmt.date(result.base.outOfRangeFrom, { compact: true, today }) })}. ` : ''}
+          {[result.base, ...result.alternatives.map((a) => a.result)].some((r) => r.outOfRangeFrom && !r.lastExactDate) ? t('scenario.partialNoteNone') : t('scenario.partialNote')}
         </p>
       )}
 

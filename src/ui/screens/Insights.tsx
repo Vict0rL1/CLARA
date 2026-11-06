@@ -42,7 +42,8 @@ export function Insights() {
     const date = (k: string) => fmt.date(String(p[k] ?? today), { compact: true, today })
     switch (i.id) {
       case 'overdueBills':
-        return tn('insights.overdueBills.title', Number(p.count), { total: money('total') })
+        // Sin `total`, la suma no cabe en un entero exacto (revisión, R5): se dice el recuento sin cifra.
+        return p.total === undefined ? tn('insights.overdueBills.titleNoFigure', Number(p.count)) : tn('insights.overdueBills.title', Number(p.count), { total: money('total') })
       case 'shortfall':
         return t('insights.shortfall.title', { date: date('date'), amount: money('amount') })
       case 'belowReserves':
@@ -100,6 +101,8 @@ export function Insights() {
                       <CalcRow key={`${b.id}-${idx}`} op={b.op} label={t(`insights.because.${b.id}`)} value={becauseValue(b, fmt, today, t('insights.because.noFigure'))} strong={b.op === '='} />
                     ))}
                   </div>
+                  {/* El valor corto cabe en la fila; el porqué va aparte (revisión de la auditoría del 2026-11-04, B1). */}
+                  {i.because.some((b) => b.kind === 'noFigure') && <p className="note">{t('insights.because.noFigureNote')}</p>}
                 </Explain>
                 <div className="button-row">
                   <a className="btn btn--secondary btn--small" href={href(i.href)}>

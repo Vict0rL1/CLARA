@@ -111,7 +111,8 @@ describe('Auditoría 2026-11-02 · P2: la revisión de duplicados no se agota co
       ],
     })
     expect(possibleDuplicates(d)).toEqual([])
-    expect(scanDuplicates(d, () => false)).toMatchObject({ pairs: [], truncated: false })
+    // Ni una pareja considerada: las dos cuotas de la misma ocurrencia se saltan sin compararlas (`examined` 0).
+    expect(scanDuplicates(d, () => false)).toEqual({ pairs: [], truncated: false, examined: 0 })
   })
 
   it('5 000 gastos y 5 000 devoluciones iguales el mismo día siguen acotados: 50 parejas por grupo, las mismas de siempre, se declara que hay más y tarda menos de un segundo', () => {

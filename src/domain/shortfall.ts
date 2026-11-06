@@ -17,7 +17,7 @@
  *     en una operación, y se puede deshacer desde el historial.
  */
 import { addDays, daysBetween } from './dates'
-import { ceilDiv, checkedSumMinor } from './money'
+import { ceilDiv, checkedSumMinor, toSafeMinor } from './money'
 import { deleteTransaction, saveSchedule, saveTransaction, type OpContext, type OpResult } from './operations'
 import type { PlanItem } from './planItems'
 import { projectBalance, type ProjectionResult } from './projection'
@@ -50,6 +50,11 @@ export interface LeverEffect {
   resolves: boolean
   /** Desde ese día la proyección simulada no tiene cifra (fuera del rango exacto). */
   outOfRangeFrom: LocalDate | null
+  /**
+   * Último día con cifra exacta de ESTA simulación (revisión de la auditoría del 2026-11-04, R2): cada palanca y la
+   * combinación tienen su propia cobertura, que puede ser más corta que la de la proyección base. `null` = ninguno.
+   */
+  lastExactDate: LocalDate | null
   /** Si sigue faltando: pagos programados (obligaciones) hasta el primer día negativo. */
   obligations: PlanItem[]
 }
@@ -69,8 +74,14 @@ export type ShortfallAnalysis =
       status: 'shortfall'
       projection: ProjectionResult
       firstNegativeDate: LocalDate
-      /** Lo que falta al final del primer día negativo. */
+      /**
+       * Lo que falta el primer día negativo: al terminar ese día (`shortfallAt: 'endOfDay'`) o, si el saldo real de hoy ya
+       * está por debajo de cero y el cierre de hoy no lo está o no tiene cifra, al empezar hoy (`'startOfDay'`: el saldo
+       * real, como el aviso de Análisis). Nunca una cifra de un cierre que no se calculó (revisión de la auditoría del
+       * 2026-11-04, R4).
+       */
       firstNegativeMinor: number
+      shortfallAt: 'endOfDay' | 'startOfDay'
       /** Lo que falta en el peor día. */
       worst: { date: LocalDate; shortfallMinor: number }
       contributors: Contributor[]
@@ -81,8 +92,8 @@ export type ShortfallAnalysis =
        */
       contributorsTotalMinor: number | null
       incomesUntilFirstMinor: number | null
-      /** Gasto variable estimado que se resta hasta el primer día negativo (incluido). */
-      dailySpendTotalMinor: number
+      /** Gasto variable estimado que se resta hasta el primer día negativo (incluido); `null` si el producto no cabe (R1). */
+      dailySpendTotalMinor: number | null
       incomes: PlanItem[]
       levers: { lever: ShortfallLever; applicable: boolean; effect: LeverEffect }[]
     }
@@ -148,7 +159,7 @@ export function evaluateLevers(data: AppData, today: LocalDate, levers: Shortfal
   const p = projectBalance(sim.data, today, { days: options.days ?? 30, dailySpendMinor: sim.dailySpendMinor ?? options.dailySpendMinor ?? 0, scenario: options.scenario ?? 'min' })
   const first = p.firstNegativeDate
   const obligations = first ? p.days.filter((d) => d.date <= first).flatMap((d) => d.events.filter((e) => e.budgetEffectMinor < 0 && e.source === 'schedule')) : []
-  return { firstNegativeDate: first, shortfallMinor: Math.max(0, -p.lowest.minor), lowest: p.lowest, resolves: first === null && p.outOfRangeFrom === null, outOfRangeFrom: p.outOfRangeFrom, obligations }
+  return { firstNegativeDate: first, shortfallMinor: Math.max(0, -p.lowest.minor), lowest: p.lowest, resolves: first === null && p.outOfRangeFrom === null, outOfRangeFrom: p.outOfRangeFrom, lastExactDate: p.lastExactDate, obligations }
 }
 
 export function analyzeShortfall(data: AppData, today: LocalDate, options: ShortfallOptions = {}): ShortfallAnalysis {
@@ -158,7 +169,11 @@ export function analyzeShortfall(data: AppData, today: LocalDate, options: Short
   const first = projection.firstNegativeDate
   if (!first) return { status: 'none', projection }
   const firstDay = projection.days.find((d) => d.date === first)
-  const firstNegativeMinor = firstDay ? -firstDay.endMinor : -projection.startMinor
+  // El faltante al cerrar el primer día negativo, si ese cierre tiene cifra y está por debajo de cero. Si no (el saldo
+  // real de hoy ya es negativo y hoy entra más de lo que sale, o ni el cierre de hoy cabe), el faltante es el del saldo
+  // real al empezar hoy: nunca «faltan −40» ni la cifra de un cierre que no se calculó (revisión, R4).
+  const atEnd = !!firstDay && firstDay.endMinor < 0
+  const firstNegativeMinor = atEnd ? -firstDay.endMinor : -projection.startMinor
   const events = projection.days.filter((d) => d.date <= first).flatMap((d) => d.events)
   const contributors: Contributor[] = events
     .filter((i) => i.budgetEffectMinor < 0)
@@ -211,7 +226,9 @@ export function analyzeShortfall(data: AppData, today: LocalDate, options: Short
     contributors,
     contributorsTotalMinor: checkedSumMinor(contributors.map((c) => c.amountMinor)),
     incomesUntilFirstMinor: checkedSumMinor(incomes.filter((i) => i.date <= first).map((i) => i.budgetEffectMinor)),
-    dailySpendTotalMinor: dailySpendMinor * (daysBetween(today, first) + 1),
+    shortfallAt: atEnd ? 'endOfDay' : 'startOfDay',
+    // Producto exacto (revisión, R1): un gasto diario grande por muchos días puede pasar de 2⁵³ − 1; entonces sin cifra.
+    dailySpendTotalMinor: toSafeMinor(BigInt(dailySpendMinor) * BigInt(daysBetween(today, first) + 1)),
     incomes,
     levers,
   }

@@ -43,7 +43,10 @@ export function Projection() {
   const partial = (date: string) => ({ date: compact(date), until: lastExact ? compact(lastExact) : '' })
   const scenarioLabel = (s: IncomeScenario) => t(`projection.scenario.${s}` as MessageKey)
   const anyPartial = comparison.some((c) => c.outOfRangeFrom !== null)
-  const anyGrossMissing = comparison.some((c) => c.incomeMinor === null)
+  // Sin días exactos no hay ingresos contados que enseñar: «sin cifra», no 0,00 (revisión, B5).
+  const incomeOf = (c: (typeof comparison)[number]) => (c.exactDays === 0 ? null : c.incomeMinor)
+  const anyGrossMissing = comparison.some((c) => c.exactDays > 0 && c.incomeMinor === null)
+  const describedBy = [anyPartial ? 'scenario-coverage' : '', anyGrossMissing ? 'scenario-gross' : ''].filter(Boolean).join(' ') || undefined
 
   return (
     <div className="stack">
@@ -94,7 +97,7 @@ export function Projection() {
           </h2>
           {/* Enfocable: en pantallas estrechas la tabla se desplaza y debe poder recorrerse con teclado. */}
           <div className="table-scroll" tabIndex={0} role="region" aria-labelledby="compare-title">
-            <table className="data-table" data-testid="scenario-table" aria-describedby={anyPartial ? 'scenario-coverage' : undefined}>
+            <table className="data-table data-table--keep-cells" data-testid="scenario-table" aria-describedby={describedBy}>
               <caption className="sr-only">{t('projection.compareCaption')}</caption>
               <thead>
                 <tr>
@@ -115,7 +118,7 @@ export function Projection() {
                 {comparison.map((c) => (
                   <tr key={c.scenario} className={c.firstNegativeDate ? 'is-negative' : undefined} aria-current={c.scenario === scenario ? 'true' : undefined}>
                     <th scope="row">{t(`projection.scenario.${c.scenario}` as MessageKey)}</th>
-                    <td className="num">{c.incomeMinor === null ? t('projection.noFigureCell') : fmt.money(c.incomeMinor)}</td>
+                    <td className="num">{incomeOf(c) === null ? t('projection.noFigureCell') : fmt.money(incomeOf(c)!)}</td>
                     <td className="num">{fmt.money(c.lowest.minor)}</td>
                     <td className="num">{c.outOfRangeFrom ? t('projection.partialCell', { date: compact(c.outOfRangeFrom) }) : fmt.money(c.endMinor)}</td>
                     <td>
@@ -138,16 +141,16 @@ export function Projection() {
               {comparison
                 .map((c) =>
                   c.outOfRangeFrom === null
-                    ? t('projection.coverageFull', { scenario: scenarioLabel(c.scenario), days: c.exactDays })
+                    ? tn('projection.coverageFull', c.exactDays, { scenario: scenarioLabel(c.scenario) })
                     : c.lastExactDate
-                      ? t('projection.coverageUntil', { scenario: scenarioLabel(c.scenario), until: compact(c.lastExactDate), days: c.exactDays })
+                      ? tn('projection.coverageUntil', c.exactDays, { scenario: scenarioLabel(c.scenario), until: compact(c.lastExactDate) })
                       : t('projection.coverageNone', { scenario: scenarioLabel(c.scenario) }),
                 )
                 .join(' · ')}
             </p>
           )}
           {anyGrossMissing && (
-            <p className="note note--icon" data-testid="scenario-gross">
+            <p className="note note--icon" id="scenario-gross" data-testid="scenario-gross">
               {t('projection.grossNote')}
             </p>
           )}

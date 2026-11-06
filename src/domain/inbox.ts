@@ -146,11 +146,27 @@ export interface DuplicateScan {
   /** Algún grupo tiene más parejas sin revisar de las que caben en el tope: la revisión no está completa. */
   truncated: boolean
   /**
-   * Trabajo hecho: parejas candidatas examinadas (con notas compatibles y dentro de la ventana). Acotado por las
-   * parejas ya revisadas más el tope por grupo, nunca por el cuadrado del grupo (auditoría del 2026-11-04, F4); las
-   * pruebas lo afirman con cifras exactas en vez de con un cronómetro.
+   * Trabajo hecho: parejas consideradas (notas compatibles, dentro de la ventana y no de la misma ocurrencia del
+   * calendario), revisadas o no, incluida la que declara el tope. Acotado por las parejas ya revisadas más el tope por
+   * grupo, nunca por el cuadrado del grupo (auditoría del 2026-11-04, F4); las pruebas lo afirman con cifras exactas en
+   * vez de con un cronómetro. Los tramos de movimientos del mismo programado se saltan de una vez (revisión, R6).
    */
   examined: number
+}
+
+/**
+ * Para una lista de posiciones, el índice del siguiente elemento cuyo programado (`scheduleId`) es distinto: un tramo
+ * de cobros o pagos del mismo programado se salta en un solo paso en vez de uno a uno (revisión de la auditoría del
+ * 2026-11-04, R6: 3 000 cuotas parciales de una misma factura el mismo día eran 4,5 millones de comparaciones).
+ */
+function nextOtherSchedule(positions: readonly number[], list: readonly Transaction[]): number[] {
+  const next = new Array<number>(positions.length)
+  for (let k = positions.length - 1; k >= 0; k--) {
+    const here = list[positions[k]!]!.scheduleId
+    const after = k + 1 < positions.length ? list[positions[k + 1]!]!.scheduleId : undefined
+    next[k] = k + 1 < positions.length && after === here ? next[k + 1]! : k + 1
+  }
+  return next
 }
 
 /** Primer índice de `sorted` (ascendente) con valor mayor que `x`: búsqueda binaria. */
@@ -217,6 +233,11 @@ export function scanDuplicates(data: Pick<AppData, 'transactions'>, reviewed?: R
         else byNote.set(n, [i])
       }
     })
+    // Saltos sobre tramos del mismo programado, por lista de candidatos (todas las posiciones, cada nota, la vacía).
+    const all = list.map((_, i) => i)
+    const skipAll = nextOtherSchedule(all, list)
+    const skipBlank = nextOtherSchedule(blank, list)
+    const skipByNote = new Map<string, number[]>()
     let unreviewed = 0
     outer: for (let i = 0; i < list.length; i++) {
       const a = list[i]!
@@ -224,10 +245,28 @@ export function scanDuplicates(data: Pick<AppData, 'transactions'>, reviewed?: R
       // Candidatos j > i, en orden de posición: misma nota y nota vacía (dos listas ordenadas que se mezclan), o todos
       // los siguientes si `a` no tiene nota (cualquiera coincide).
       const same = na ? byNote.get(na)! : null
+      let skipSame: number[] | undefined
+      if (same) {
+        skipSame = skipByNote.get(na)
+        if (!skipSame) {
+          skipSame = nextOtherSchedule(same, list)
+          skipByNote.set(na, skipSame)
+        }
+      }
       let p = same ? firstAfter(same, i) : i + 1
       let q = same ? firstAfter(blank, i) : blank.length
       for (;;) {
         let j: number
+        // De la misma ocurrencia del calendario (mismo programado): nunca pareja. El tramo entero se salta de una vez;
+        // las posiciones son crecientes, así que saltar no adelanta a ningún candidato que tocara antes.
+        if (a.scheduleId) {
+          if (same === null) {
+            if (p < list.length && list[p]!.scheduleId === a.scheduleId) p = skipAll[p]!
+          } else {
+            if (p < same.length && list[same[p]!]!.scheduleId === a.scheduleId) p = skipSame![p]!
+            if (q < blank.length && list[blank[q]!]!.scheduleId === a.scheduleId) q = skipBlank[q]!
+          }
+        }
         if (same === null) {
           if (p >= list.length) break
           j = p++
@@ -245,8 +284,8 @@ export function scanDuplicates(data: Pick<AppData, 'transactions'>, reviewed?: R
         }
         const b = list[j]!
         if (daysBetween(a.date, b.date) > DUPLICATE_WINDOW_DAYS) break
+        // Tras los saltos, `b` nunca es del mismo programado que `a` (cada lista salta su tramo antes de elegir).
         examined++
-        if (a.scheduleId && a.scheduleId === b.scheduleId) continue
         const pair: [Transaction, Transaction] = a.id < b.id ? [a, b] : [b, a]
         if (reviewed?.(duplicateIdentity(pair[0], pair[1]))) {
           pairs.push(pair)
@@ -530,8 +569,17 @@ export function computeInbox(data: AppData, today: LocalDate, reviewed?: Reviewe
  * antes llenaban el tope del grupo, y recuperarla exigía revisar antes 66 parejas ajenas). Orden fijo (fecha, id);
  * una decisión que ya no apunta a nada se ignora aquí y nunca se borra.
  */
-function reviewedDuplicatesBeyondScan(data: AppData, today: LocalDate, seen: ReadonlySet<string>): InboxItem[] {
-  const decisions = [...data.inbox.dismissed.map((d) => ({ id: d.id, fingerprint: d.fingerprint })), ...data.inbox.snoozed.filter((s) => s.until > today).map((s) => ({ id: s.id, fingerprint: null }))]
+function reviewedDuplicatesBeyondScan(
+  data: AppData,
+  today: LocalDate,
+  seen: ReadonlySet<string>,
+  dismissedAt: ReadonlyMap<string, string>,
+  snoozedUntil: ReadonlyMap<string, LocalDate>,
+): InboxItem[] {
+  // Desde los mismos mapas con los que la vista clasifica (el último registro de un id manda), así una pareja
+  // reconstruida cae siempre en la lista que le corresponde (revisión, R7: con ids repetidos caía en «activos» y el
+  // grupo pasaba del tope).
+  const decisions = [...[...dismissedAt].map(([id, fingerprint]) => ({ id, fingerprint: fingerprint as string | null })), ...[...snoozedUntil].filter(([, until]) => until > today).map(([id]) => ({ id, fingerprint: null }))]
   const pending = decisions.filter((d) => d.id.startsWith('dup:') && !seen.has(d.id))
   if (pending.length === 0) return []
   const byId = new Map(data.transactions.map((t) => [t.id, t]))
@@ -553,7 +601,11 @@ export function inboxView(data: AppData, today: LocalDate): InboxView {
   const reviewed: ReviewedPredicate = (item) => dismissedAt.get(item.id) === item.fingerprint || (snoozedUntil.get(item.id) ?? '') > today
   const computed = computeInboxDetailed(data, today, reviewed)
   const moreDuplicates = computed.moreDuplicates
-  const items = [...computed.items, ...reviewedDuplicatesBeyondScan(data, today, new Set(computed.items.map((i) => i.id)))]
+  // Las reconstruidas van justo después de las parejas del recorrido, en el orden de siempre de los tipos (R8).
+  const rebuilt = reviewedDuplicatesBeyondScan(data, today, new Set(computed.items.map((i) => i.id)), dismissedAt, snoozedUntil)
+  const after = computed.items.findIndex((i) => i.kind === 'uncategorized' || i.kind === 'integrity' || i.kind === 'suggestion')
+  const cut = after === -1 ? computed.items.length : after
+  const items = [...computed.items.slice(0, cut), ...rebuilt, ...computed.items.slice(cut)]
   const view: InboxView = { active: [], snoozed: [], dismissed: [], moreDuplicates }
   for (const item of items) {
     if (item.canDismiss && dismissedAt.get(item.id) === item.fingerprint) view.dismissed.push(item)

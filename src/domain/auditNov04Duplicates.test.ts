@@ -43,8 +43,14 @@ const fiveThousand = (): AppData =>
     transactions: Array.from({ length: 5000 }, (_, i) => tx({ id: `t${String(i).padStart(4, '0')}`, date: TODAY, amountMinor: 1000, note: i < 100 ? `nota ${Math.floor(i / 2)}` : `única ${i}` })),
   })
 
-/** El recorrido de siempre (cuadrático), tal cual estaba, como referencia de parejas, orden y tope. */
-function reference(data: Pick<AppData, 'transactions'>, reviewed?: ReviewedPredicate): { ids: string[]; truncated: boolean } {
+const txKey = (t: Transaction) => [t.kind, t.accountId, t.amountMinor, t.date, normalizeText(t.note ?? '')].join('|')
+
+/**
+ * El recorrido de siempre (cuadrático), tal cual estaba, como referencia de parejas, orden y tope; con la huella real de
+ * cada pareja y la cuenta de parejas consideradas (dentro de la ventana, notas compatibles, no de la misma ocurrencia),
+ * que es exactamente el trabajo que el recorrido indexado debe hacer.
+ */
+function reference(data: Pick<AppData, 'transactions'>, reviewed?: ReviewedPredicate): { ids: string[]; truncated: boolean; considered: number } {
   const groups = new Map<string, Transaction[]>()
   for (const t of data.transactions) {
     if (t.status !== 'realized' || (t.kind !== 'expense' && t.kind !== 'income' && t.kind !== 'refund')) continue
@@ -55,6 +61,7 @@ function reference(data: Pick<AppData, 'transactions'>, reviewed?: ReviewedPredi
   }
   const out: string[] = []
   let truncated = false
+  let considered = 0
   for (const list of groups.values()) {
     if (list.length < 2) continue
     list.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.id < b.id ? -1 : 1))
@@ -70,7 +77,8 @@ function reference(data: Pick<AppData, 'transactions'>, reviewed?: ReviewedPredi
         if (na && nb && na !== nb) continue
         const pair = a.id < b.id ? [a, b] : [b, a]
         const id = `dup:${pair[0]!.id}:${pair[1]!.id}`
-        if (reviewed?.({ id, fingerprint: '' })) {
+        considered++
+        if (reviewed?.({ id, fingerprint: `${txKey(pair[0]!)}~${txKey(pair[1]!)}` })) {
           out.push(`${pair[0]!.id}:${pair[1]!.id}`)
           continue
         }
@@ -83,7 +91,7 @@ function reference(data: Pick<AppData, 'transactions'>, reviewed?: ReviewedPredi
       }
     }
   }
-  return { ids: out, truncated }
+  return { ids: out, truncated, considered }
 }
 
 /** Generador determinista (mulberry32). */
@@ -114,8 +122,6 @@ describe('Auditoría 2026-11-04 · F4: el recorrido de duplicados está acotado'
     expect(scan.truncated).toBe(true)
     expect(scan.examined).toBe(DUPLICATE_PAIRS_PER_GROUP + 1)
     // 300 parejas ya revisadas (las primeras del recorrido): se listan sin ocupar sitio y el trabajo es 300 + 51.
-    const first300 = new Set(ids(reference(blank, () => false).ids.map((s) => s.split(':').map((id) => blank.transactions.find((t) => t.id === id)!) as [Transaction, Transaction])).slice(0, 0))
-    void first300
     const reviewedIds = new Set<string>()
     const probe = scanDuplicates(blank, (item) => {
       if (reviewedIds.size < 300) reviewedIds.add(item.id)
@@ -146,15 +152,21 @@ describe('Auditoría 2026-11-04 · F4: el recorrido de duplicados está acotado'
         })
       })
       const d = baseData({ accounts: [main(), account({ id: 'other', name: 'Otra' })], transactions })
-      const reviewedSet = new Set(reference(d).ids.filter(() => r() < 0.4).map((s) => `dup:${s}`))
-      const reviewed: ReviewedPredicate = (item) => reviewedSet.has(item.id)
+      // Revisadas con su huella real, y algunas con una huella que ya no coincide (no cuentan como revisadas).
+      const byTx = new Map(d.transactions.map((t) => [t.id, t]))
+      const decided = reference(d).ids.filter(() => r() < 0.4).map((s) => {
+        const [a, b] = s.split(':').map((id) => byTx.get(id)!) as [Transaction, Transaction]
+        return `dup:${s}|${r() < 0.25 ? 'huella vieja' : `${txKey(a)}~${txKey(b)}`}`
+      })
+      const reviewedSet = new Set(decided)
+      const reviewed: ReviewedPredicate = (item) => reviewedSet.has(`${item.id}|${item.fingerprint}`)
       for (const pred of [undefined, reviewed]) {
         const scan = scanDuplicates(d, pred)
         const ref = reference(d, pred)
         expect(ids(scan.pairs), `semilla ${seed}`).toEqual(ref.ids)
         expect(scan.truncated, `semilla ${seed}`).toBe(ref.truncated)
-        // Nunca más trabajo que el recorrido cuadrático, y nunca un candidato que no coincida.
-        expect(scan.examined).toBeLessThanOrEqual((n * (n - 1)) / 2)
+        // El trabajo es exactamente el de las parejas que coinciden: nunca un candidato de otra nota ni de la misma ocurrencia.
+        expect(scan.examined, `semilla ${seed}`).toBe(ref.considered)
       }
       expect(ids(possibleDuplicates(d))).toEqual(reference(d).ids)
     }
