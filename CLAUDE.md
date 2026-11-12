@@ -43,7 +43,8 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
 - `src/domain/` — **lógica financiera pura**. Sin React, sin `localStorage`, sin `Date.now()`
   implícito: "hoy" y "ahora" llegan como parámetros (`OpContext`). Aquí viven todas las
   fórmulas y validaciones. Toda regla nueva lleva prueba en `*.test.ts`.
-- `src/storage/` — persistencia detrás de `DataRepository` (IndexedDB; `localStorage` si no hay),
+- `src/storage/` — persistencia detrás de `DataRepository` (IndexedDB; `localStorage` si no hay; en la app de iPhone,
+  `NativeRepository`: un archivo propio de la app con la revisión en su primera línea, ver `docs/STORAGE.md`),
   copias de seguridad (`backup.ts`), migraciones (`migrations.ts`) y borradores (`drafts.ts`).
 - `src/state/` — estado en memoria (`AppStore`) y hooks. Aplica resultados de
   `domain/operations.ts`; no calcula dinero.

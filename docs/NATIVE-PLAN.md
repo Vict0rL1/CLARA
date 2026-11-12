@@ -46,10 +46,13 @@ fusiona cuando Victor la haya probado.
 1. **Arquitectura de la cáscara.** `src/platform/` con `isNativeIOS()` y carga diferida de lo nativo; ningún import
    de Capacitor fuera de esa carpeta; `capacitor.config.ts`; iOS 18.0; guiones `ios:sync` e `ios:open`; el
    *service worker* no se registra en nativo.
-2. **Datos duraderos.** Plugin local `ClaraStorage` (Swift, en el target de la app): archivo JSON en Application
-   Support con escritura atómica, copia previa y detección de conflicto por revisión. `NativeRepository` implementa
-   `DataRepository`. Primer arranque: migra lo que hubiera en IndexedDB del WebView, relee y compara, y no borra
-   nada. Pruebas TS con el plugin simulado y pruebas Swift de la escritura.
+2. **Datos duraderos. Hecho (escrito).** Plugin local `ClaraStorage` (Swift, en el target de la app): archivo en
+   Application Support con escritura atómica, versión anterior y detección de conflicto por revisión.
+   `NativeRepository` implementa `DataRepository`. Primer arranque: migra lo que hubiera en IndexedDB del WebView,
+   relee y compara, y no borra nada. 30 pruebas TS con el plugin simulado. Las pruebas Swift (XCTest) llegan con el
+   target de pruebas al empezar la Fase 2, cuando la primera compilación haya confirmado la base. Medido aquí:
+   serializar 10 000 movimientos (3,14 MB) cuesta 9,6 ms y 50 000 (15,8 MB) 43 ms; puente y disco, pendientes de
+   medir en el iPhone.
 3. **Textos de la app nativa.** «Instalar Clara», la persistencia del navegador y los textos sobre Safari se
    sustituyen por explicaciones de la app (cómo se actualiza, la caducidad de 7 días, dónde están los datos). Van en
    un paquete de texto diferido para no subir el JS inicial.
@@ -122,3 +125,4 @@ fusiona cuando Victor la haya probado.
 |---|---|
 | Proyecto `ios/`, icono, pantalla de arranque, permisos | Escrito, sin compilar |
 | Detección de la app (`src/platform/`) | Probado en pruebas unitarias; sin probar en iPhone |
+| Almacenamiento duradero (`ClaraFileStore.swift`, `ClaraStoragePlugin.swift`, `NativeRepository`) | Swift escrito, sin compilar; TS con 30 pruebas |

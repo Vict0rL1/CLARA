@@ -90,6 +90,8 @@ Con los datos de demostración (pantalla de bienvenida › «Explorar con datos 
 | 11 | Tema | Cambia el iPhone a modo oscuro/claro: la app y la pantalla de arranque lo siguen | |
 | 12 | Textos de Legal | Ajustes › Legal › Privacidad: el texto aparece (se pide como archivo aparte) | |
 | 13 | No ofrece instalarse | Ajustes › Instalar Clara dice que ya está instalada; en Inicio no sale la tarjeta de instalar | |
+| 14 | Guarda en su archivo propio | Ajustes › Datos y recuperación: la primera fila dice «Guardado en este iPhone, en un archivo propio de la app». Si habla de IndexedDB o avisa de que no pudo usar su archivo, dilo | |
+| 15 | Aguanta un reinicio | Registra 3 movimientos, cierra la app del todo, **reinicia el iPhone** y abre: siguen ahí | |
 
 ### Si la pantalla se queda en blanco
 
@@ -110,6 +112,11 @@ sirve desde `capacitor://localhost`, cosa que no se ha podido probar sin un iPho
 - Ajustes › Atajos › «Atajos de iPhone» sigue mostrando los enlaces de la versión web; se reemplaza por la guía nueva.
 - El bloqueo con Face ID de la versión web (WebAuthn) puede no estar disponible dentro de la app; el PIN sí debería.
 
+### Si Xcode no compila
+
+Copia el error completo (pulsa el icono rojo de la barra superior de Xcode para ver la lista) y envíalo. El código Swift
+propio son tres archivos de `ios/App/App/`: `SceneDelegate.swift`, `ClaraFileStore.swift` y `ClaraStoragePlugin.swift`.
+
 ## Cómo está hecho
 
 - `capacitor.config.ts`: identificador de la app, nombre y carpeta web (`dist`).
@@ -119,6 +126,8 @@ sirve desde `capacitor://localhost`, cosa que no se ha podido probar sin un iPho
   a partir de `public/icon.svg`.
 - `ios/App/App/Info.plist`: idiomas (es, en, pt, fr) y los textos de permiso de cámara y micrófono. Sin ellos iOS
   cierra la app al abrir la cámara.
+- `ios/App/App/ClaraFileStore.swift` y `ClaraStoragePlugin.swift`: los datos se guardan en un archivo propio de la app
+  (`Application Support/Clara/data.clara`), no en el WebView, que iOS puede vaciar. Detalle en `docs/STORAGE.md`.
 - `src/platform/` (`isNativeIOS`): la única capa de la web que sabe si corre dentro de la app (lo ve por el puente
   nativo, `window.Capacitor`). Ningún import de Capacitor fuera de ella; lo nativo se carga con `import()` solo dentro
   de la app, así el JS inicial de la web no crece. Decide cómo se hace algo y qué se explica; nunca cambia cifras.

@@ -28,7 +28,7 @@ export function StorageCard() {
       {state.phase === 'ready' && state.storage === 'memory' && <Alert tone="critical" title={t('shell.memoryTitle')}>{t('shell.memoryText')}</Alert>}
       <ul className="bullets">
         <li>{t('settings.storage.local')}</li>
-        {getStore().backend !== 'memory' && <li data-testid="storage-backend">{t(getStore().backend === 'indexeddb' ? 'settings.storage.backend.indexeddb' : 'settings.storage.backend.localStorage')}</li>}
+        {getStore().backend !== 'memory' && <li data-testid="storage-backend">{t(`settings.storage.backend.${getStore().backend as 'indexeddb' | 'localStorage' | 'native'}`)}</li>}
         <li>{t('settings.storage.lost')}</li>
         <li>{t('settings.storage.noSync')}</li>
         <li>{t('settings.storage.eviction')}</li>

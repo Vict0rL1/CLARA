@@ -2,11 +2,13 @@ import UIKit
 import WebKit
 import Capacitor
 
-/// La vista web de Clara. Activa el gesto de «atrás» deslizando desde el borde, como en Safari y en la Clara de la
-/// pantalla de inicio (Capacitor lo deja apagado). Aquí se registrarán también las piezas nativas de pasos posteriores.
+/// La vista web de Clara. Registra los plugins propios (código nativo dentro del target de la app, decisión 155) y
+/// activa el gesto de «atrás» deslizando desde el borde, como en Safari y en la Clara de la pantalla de inicio
+/// (Capacitor lo deja apagado).
 class ClaraViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
+        bridge?.registerPluginInstance(ClaraStoragePlugin())
         webView?.allowsBackForwardNavigationGestures = true
     }
 }
