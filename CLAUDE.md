@@ -162,8 +162,8 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
   asistente), no solo por `parseEntry`; una coma entre dígitos es parte del importe. El asistente
   escribe en un `<textarea>` (una línea por movimiento). Moneda escrita (RT-01): un solo lector en
   `money.ts` (`currencyMarksAround`, `currencyMarksIn`, `stripCurrencyMark`) para códigos delante o
-  detrás (también pegados), símbolos, nombres, signos locales con letras («kr», «Ft») e importes en
-  palabras; si no es la del presupuesto o
+  detrás (también pegados), símbolos, nombres, signos locales con letras («kr», «Ft»), prefijos de región («US$»,
+  «JP¥», «CN¥»; el «¥» suelto es yen o yuan y nunca se elige) e importes en palabras; si no es la del presupuesto o
   queda sin resolver, el campo la conserva (`withCurrencyMark`) y la línea no se registra. Nunca se convierte.
   Se leen TODAS las marcas (hasta dos a cada lado del importe y las del resto de la frase) y se unen con
   `reconcileMarks`: un código concreto acota a un símbolo genérico («USD $10» = USD, «$10 CAD» = CAD) y dos que se
