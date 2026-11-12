@@ -23,6 +23,10 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
   conserve los datos; los enlaces de «Atajos de iPhone» no se muestran; y los textos que hablaban del navegador, de
   Safari o de pestañas se sustituyen por los de la app, en los cuatro idiomas. Todo va en un paquete de texto que la
   versión web nunca pide. **Probado en navegador con el puente nativo simulado; sin probar en un iPhone.**
+- **App de iPhone: Face ID o Touch ID en el bloqueo** (Fase 1 nativa, bloque 4; decisión 165): dentro de la app,
+  Ajustes › Bloqueo ofrece «Usar Face ID o Touch ID» y la pantalla de bloqueo lo pide al abrir; el PIN sigue siendo la
+  alternativa. Solo un «sí» del sistema desbloquea. En el navegador nada cambia (WebAuthn). **Escrito, sin compilar
+  ni probar en un iPhone.**
 - **Análisis** (etapa 4 del programa): nuevo destino en la barra (Inicio · Movimientos · + · Plan · Análisis · Ajustes) con
   señales calculadas con reglas fijas (pagos vencidos, saldo proyectado en negativo o bajo los apartados, límites, metas por
   detrás, gasto a fecha equivalente, categoría dominante, copia pendiente), cada una con «¿Cómo se calculó?» (regla y cifras), y

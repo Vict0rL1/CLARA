@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { expectNoHorizontalScroll, go, reloadWhenSaved, setLanguage, setupFirstUse, startDemo, storedData, waitForSaved } from './helpers'
-import { asNativeApp, nativeFile } from './nativeShell'
+import { asNativeApp, fakeBiometricCalls, nativeFile, setFakeBiometric } from './nativeShell'
 
 /**
  * Clara dentro de la app de iPhone (Fase 1), con el puente nativo simulado (`nativeShell.ts`). Comprueba el lado web:
@@ -179,5 +179,71 @@ test.describe('la web no cambia', () => {
     await go(page, '/ajustes/instalar')
     await expect(page.getByTestId('native-app-guide')).toContainText('Deja de abrirse a los 7 días')
     expect(requests.filter((url) => /nativeApp\.es/.test(url))).toHaveLength(1)
+  })
+})
+
+test.describe('Face ID o Touch ID en el bloqueo (decisión 165)', () => {
+  /** Ajustes › Bloqueo: activa el PIN 2468. */
+  async function enablePin(page: Page) {
+    await go(page, '/ajustes/bloqueo')
+    await page.getByRole('switch', { name: 'Pedir PIN al abrir' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Elige un PIN' })
+    await dialog.getByLabel('PIN', { exact: true }).fill('2468')
+    await dialog.getByLabel('Repite el PIN').fill('2468')
+    await dialog.getByRole('button', { name: 'Guardar', exact: true }).click()
+    await expect(page.getByText('PIN guardado; se pedirá al abrir')).toBeVisible()
+  }
+
+  test('activar Face ID lo pide una vez; al abrir se pide y, si el sistema confirma, entra sin PIN', async ({ page }) => {
+    await asNativeApp(page, { biometric: { available: true, answer: true } })
+    await startDemo(page)
+    await enablePin(page)
+    const card = page.locator('.card', { has: page.locator('#bloqueo') })
+    await expect(card).toContainText('Si este iPhone lo tiene configurado, también Face ID o Touch ID.')
+    await card.getByRole('button', { name: 'Usar Face ID o Touch ID' }).click()
+    await expect(page.getByText('Face ID o Touch ID activado', { exact: true })).toBeVisible()
+    await expect(card).toContainText('Face ID o Touch ID activado en este iPhone.')
+    expect(await fakeBiometricCalls(page)).toEqual(['Desbloquear'])
+
+    await reloadWhenSaved(page)
+    // Al abrir se pide Face ID sola; el sistema confirma y la app entra.
+    await expect(page.getByTestId('lock-screen')).toHaveCount(0)
+    await go(page, '/')
+    await expect(page.getByTestId('available')).toBeVisible()
+    expect(await fakeBiometricCalls(page)).toEqual(['Desbloquear', 'Desbloquear'])
+  })
+
+  test('si se cancela Face ID, la app sigue bloqueada y entra con el PIN', async ({ page }) => {
+    await asNativeApp(page, { biometric: { available: true, answer: true } })
+    await startDemo(page)
+    await enablePin(page)
+    await page.locator('.card', { has: page.locator('#bloqueo') }).getByRole('button', { name: 'Usar Face ID o Touch ID' }).click()
+    await expect(page.getByText('Face ID o Touch ID activado', { exact: true })).toBeVisible()
+
+    await setFakeBiometric(page, { available: true, answer: false })
+    await reloadWhenSaved(page)
+    const lock = page.getByTestId('lock-screen')
+    await expect(lock).toBeVisible()
+    await expect(lock).toContainText('No se pudo verificar. Usa el PIN.')
+    await expect(page.getByTestId('available')).toHaveCount(0)
+    await expect(lock.getByRole('button', { name: 'Usar Face ID o Touch ID' })).toBeVisible()
+    await page.getByLabel('PIN').fill('2468')
+    await page.getByRole('button', { name: 'Desbloquear' }).click()
+    await expect(lock).toHaveCount(0)
+    await expectNoHorizontalScroll(page, 'tras desbloquear con PIN')
+  })
+
+  test('sin Face ID configurado: se dice y no se ofrece el botón; el PIN funciona igual', async ({ page }) => {
+    await asNativeApp(page, { biometric: { available: false, answer: false } })
+    await startDemo(page)
+    await enablePin(page)
+    const card = page.locator('.card', { has: page.locator('#bloqueo') })
+    await expect(card).toContainText('Face ID o Touch ID no está disponible ahora')
+    await expect(card.getByRole('button', { name: 'Usar Face ID o Touch ID' })).toHaveCount(0)
+    await expect(card).not.toContainText('WebAuthn')
+    await reloadWhenSaved(page)
+    await expect(page.getByTestId('lock-screen')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Usar Face ID o Touch ID' })).toHaveCount(0)
+    expect(await fakeBiometricCalls(page)).toEqual([])
   })
 })

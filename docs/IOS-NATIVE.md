@@ -93,6 +93,7 @@ Con los datos de demostración (pantalla de bienvenida › «Explorar con datos 
 | 14 | Guarda en su archivo propio | Ajustes › Datos y recuperación: la primera fila dice «Guardado en este iPhone, en un archivo propio de la app». Si habla de IndexedDB o avisa de que no pudo usar su archivo, dilo | |
 | 15 | Aguanta un reinicio | Registra 3 movimientos, cierra la app del todo, **reinicia el iPhone** y abre: siguen ahí | |
 | 16 | Aguanta una reinstalación | Con esos movimientos guardados, pulsa ▶ en Xcode otra vez (instala encima, **sin** eliminar la app del iPhone) y abre: siguen ahí. La app lo afirma en «Clara en este iPhone»; si no fuera así, dilo antes de guardar datos reales | |
+| 17 | Face ID | Ajustes › Bloqueo: activa «Pedir PIN al abrir», elige un PIN y toca «Usar Face ID o Touch ID». iOS pregunta si Clara puede usar Face ID: acepta. Cierra la app del todo y ábrela: pide Face ID y entra; si cancelas, se puede entrar con el PIN | |
 
 ### Si la pantalla se queda en blanco
 
@@ -114,15 +115,15 @@ sirve desde `capacitor://localhost`, cosa que no se ha podido probar sin un iPho
 - Estadísticas › «Exportar PDF» usa la impresión del navegador; dentro de la app puede no hacer nada (pendiente).
 - Los avisos (pagos por vencer, planes) usan las notificaciones del navegador, que dentro de una app no existen: en
   la app no llegan todavía. Se sustituyen por notificaciones nativas en el paso de la acción «Registrar gasto».
-- Los textos con los que iOS pide permiso de cámara y micrófono están solo en español.
+- Los textos con los que iOS pide permiso (cámara, micrófono, Face ID) están solo en español.
 - Ajustes › Atajos ya no muestra «Atajos de iPhone» dentro de la app (sus enlaces abren la Clara de la web). La guía
   de captura automática llega con la Fase 2.
-- El bloqueo con Face ID de la versión web (WebAuthn) puede no estar disponible dentro de la app; el PIN sí debería.
 
 ### Si Xcode no compila
 
 Copia el error completo (pulsa el icono rojo de la barra superior de Xcode para ver la lista) y envíalo. El código Swift
-propio son tres archivos de `ios/App/App/`: `SceneDelegate.swift`, `ClaraFileStore.swift` y `ClaraStoragePlugin.swift`.
+propio son cuatro archivos de `ios/App/App/`: `SceneDelegate.swift`, `ClaraFileStore.swift`, `ClaraStoragePlugin.swift`
+y `ClaraBiometricPlugin.swift`.
 
 ## Cómo está hecho
 
@@ -131,8 +132,10 @@ propio son tres archivos de `ios/App/App/`: `SceneDelegate.swift`, `ClaraFileSto
   `ios/App/App/public/` y `ios/App/App/capacitor.config.json` los escribe `cap sync` y no se versionan.
 - `ios/App/App/Assets.xcassets`: icono (1024 px, sin transparencia) y pantalla de arranque en claro y oscuro, hechos
   a partir de `public/icon.svg`.
-- `ios/App/App/Info.plist`: idiomas (es, en, pt, fr) y los textos de permiso de cámara y micrófono. Sin ellos iOS
+- `ios/App/App/Info.plist`: idiomas (es, en, pt, fr) y los textos de permiso de cámara, micrófono y Face ID. Sin ellos iOS
   cierra la app al abrir la cámara.
+- `ios/App/App/ClaraBiometricPlugin.swift`: Face ID o Touch ID para el bloqueo (LocalAuthentication). Solo responde
+  sí o no; no guarda nada.
 - `ios/App/App/ClaraFileStore.swift` y `ClaraStoragePlugin.swift`: los datos se guardan en un archivo propio de la app
   (`Application Support/Clara/data.clara`), no en el WebView, que iOS puede vaciar. Detalle en `docs/STORAGE.md`.
 - `src/platform/` (`isNativeIOS`): la única capa de la web que sabe si corre dentro de la app (lo ve por el puente

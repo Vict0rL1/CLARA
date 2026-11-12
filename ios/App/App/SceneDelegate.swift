@@ -9,6 +9,7 @@ class ClaraViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
         bridge?.registerPluginInstance(ClaraStoragePlugin())
+        bridge?.registerPluginInstance(ClaraBiometricPlugin())
         webView?.allowsBackForwardNavigationGestures = true
     }
 }

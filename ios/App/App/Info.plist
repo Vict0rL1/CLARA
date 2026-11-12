@@ -73,6 +73,8 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Clara usa Face ID para desbloquear la app si activaste el bloqueo en Ajustes.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Clara usa la cámara para tomar la foto de un recibo cuando tú lo pides.</string>
 	<key>NSMicrophoneUsageDescription</key>

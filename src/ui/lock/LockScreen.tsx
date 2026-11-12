@@ -4,7 +4,7 @@ import { useT } from '../../i18n'
 import { Alert } from '../components/common'
 import { Icon } from '../components/Icon'
 import { verifyPin, PIN_MAX, type LockConfig } from './pin'
-import { verifyBiometric, webAuthnAvailable } from './webauthn'
+import { lockBiometrics } from './biometric'
 
 export function LockScreen({ config, onUnlock }: { config: LockConfig; onUnlock: () => void }) {
   const { t } = useT()
@@ -12,7 +12,9 @@ export function LockScreen({ config, onUnlock }: { config: LockConfig; onUnlock:
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [help, setHelp] = useState(false)
-  const biometric = !!config.credentialId && webAuthnAvailable()
+  // En el navegador, WebAuthn; en la app de iPhone, Face ID o Touch ID del sistema (decisión 165).
+  const [biometrics] = useState(lockBiometrics)
+  const biometric = biometrics.canVerify(config.credentialId)
 
   const submit = async () => {
     if (busy) return
@@ -28,7 +30,7 @@ export function LockScreen({ config, onUnlock }: { config: LockConfig; onUnlock:
   const tryBiometric = async () => {
     if (!config.credentialId || busy) return
     setBusy(true)
-    const ok = await verifyBiometric(config.credentialId)
+    const ok = await biometrics.verify(config.credentialId, t('lock.unlock'))
     setBusy(false)
     if (ok) onUnlock()
     else setError(t('lock.biometricFailed'))

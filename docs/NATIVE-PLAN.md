@@ -60,7 +60,10 @@ fusiona cuando Victor la haya probado.
    diferido `nativeApp`, que la web nunca pide. Prueba de navegador nueva (`tests/e2e/native-shell.spec.ts`) que
    arranca Clara con un doble del puente de Capacitor y del plugin `ClaraStorage`: es la primera vez que el
    repositorio nativo corre entero en un navegador (guardar, reabrir, migrar desde el WebView, aviso sin plugin).
-4. **Face ID.** LocalAuthentication detrás del ajuste `biometricLock` que ya existe.
+4. **Face ID. Hecho (escrito).** Plugin local `ClaraBiometric` (LocalAuthentication, APIs comprobadas en la
+   documentación de Apple) detrás del ajuste `biometricLock` que ya existe: Ajustes › Bloqueo ofrece «Usar Face ID o
+   Touch ID» y la pantalla de bloqueo lo pide al abrir; el PIN sigue siendo la alternativa (decisión 165). 10 pruebas
+   TS con el plugin simulado y prueba de navegador con el puente simulado.
 5. **Tacto del sistema.** Vibración háptica al guardar, deshacer y en errores (respeta «reducir movimiento»), barra
    de estado según el tema y teclado que no tapa los campos.
 6. **Copias.** «Exportar copia» abre la hoja Compartir nativa; «Restaurar una copia» con un archivo de la app
@@ -145,4 +148,5 @@ fusiona cuando Victor la haya probado.
 | Proyecto `ios/`, icono, pantalla de arranque, permisos | Escrito, sin compilar |
 | Detección de la app (`src/platform/`) | Probado en pruebas unitarias; sin probar en iPhone |
 | Almacenamiento duradero (`ClaraFileStore.swift`, `ClaraStoragePlugin.swift`, `NativeRepository`) | Swift escrito, sin compilar; TS con 30 pruebas y prueba de navegador con el plugin simulado |
+| Face ID / Touch ID (`ClaraBiometricPlugin.swift`, `ui/lock/biometric.ts`) | Swift escrito, sin compilar; TS con 10 pruebas y prueba de navegador con el plugin simulado |
 | Textos y pantallas de la app (`nativeApp`, «Clara en este iPhone») | Solo web: probado en navegador con el puente simulado (3 tamaños, es y en); sin probar en iPhone |
