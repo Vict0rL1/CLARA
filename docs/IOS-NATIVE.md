@@ -84,8 +84,8 @@ Con los datos de demostración (pantalla de bienvenida › «Explorar con datos 
 | 5 | Se conserva | Cierra la app del todo (deslízala fuera) y ábrela: el gasto sigue | |
 | 6 | Sin conexión | Modo avión, cierra y abre: la app abre igual | |
 | 7 | Teclado | «+» › Gasto: al escribir el importe y la nota, el campo y el botón Guardar no quedan tapados por el teclado | |
-| 8 | Exportar copia | Ajustes › Copia de seguridad › «Exportar copia»: sale la hoja de compartir y se puede guardar en Archivos | |
-| 9 | Importar copia | Ajustes › Copia de seguridad › «Importar copia»: se abre el selector de archivos y la copia entra | |
+| 8 | Exportar copia | Ajustes › Copias de seguridad › «Exportar copia»: sale la hoja Compartir; «Guardar en Archivos» › elige una carpeta › Guardar. Abre la app Archivos: el archivo `clara-…-copia-….json` está ahí. Si cierras la hoja sin elegir, Clara no la cuenta como exportada | |
+| 9 | Importar copia | Ajustes › Copias de seguridad › «Importar copia»: se abre Archivos; elige ese archivo (o uno exportado desde la Clara de Safari) y confirma: los datos entran. Cierra la app del todo y ábrela: siguen ahí | |
 | 10 | Cámara | «+» › Asistente › foto de un recibo: pide permiso de cámara y no se cierra la app | |
 | 11 | Tema y barra de estado | Con Clara en «Oscuro» (lo predeterminado) y el iPhone en claro, la hora y la batería de arriba se leen (texto claro). Ajustes › Formato › «Claro»: pasan a texto oscuro. Con «Sistema», siguen al iPhone | |
 | 12 | Textos de Legal | Ajustes › Legal › Privacidad: el texto aparece (se pide como archivo aparte) | |
@@ -95,6 +95,7 @@ Con los datos de demostración (pantalla de bienvenida › «Explorar con datos 
 | 16 | Aguanta una reinstalación | Con esos movimientos guardados, pulsa ▶ en Xcode otra vez (instala encima, **sin** eliminar la app del iPhone) y abre: siguen ahí. La app lo afirma en «Clara en este iPhone»; si no fuera así, dilo antes de guardar datos reales | |
 | 17 | Face ID | Ajustes › Bloqueo: activa «Pedir PIN al abrir», elige un PIN y toca «Usar Face ID o Touch ID». iOS pregunta si Clara puede usar Face ID: acepta. Cierra la app del todo y ábrela: pide Face ID y entra; si cancelas, se puede entrar con el PIN | |
 | 18 | Vibración | Guarda un gasto: el iPhone da un toque suave. Con Ajustes del iPhone › Accesibilidad › Movimiento › «Reducir movimiento» activado, no vibra | |
+| 19 | Otros archivos | Movimientos › exportar CSV y Ajustes › Exportar: sale la hoja Compartir con el `.csv`. Estadísticas › «Exportar PDF»: apunta qué pasa (puede que nada) | |
 
 ### Si la pantalla se queda en blanco
 
@@ -108,9 +109,9 @@ sirve desde `capacitor://localhost`, cosa que no se ha podido probar sin un iPho
 
 ## Lo que se sabe que aún no está adaptado
 
-- Los textos que hablaban del navegador, de Safari o de pestañas ya se sustituyen dentro de la app (decisión 164).
-  Quedan los de descargar y exportar («Descarga solicitada. Revisa tu carpeta de descargas…»), que cambian cuando
-  exportar abra la hoja Compartir, y puede quedar alguno suelto: si ves «navegador» en la app, apunta dónde.
+- Los textos que hablaban del navegador, de Safari, de pestañas o de descargas ya se sustituyen dentro de la app
+  (decisiones 164 y 167), pero puede quedar alguno suelto: si ves «navegador» o «descarga» en la app, apunta dónde.
+  Los botones siguen diciendo «Descargar…» aunque en la app abran la hoja Compartir.
 - Los textos de la app llegan un instante después de abrir: si al arrancar ves un texto con «navegador» que cambia
   solo, también apúntalo.
 - Estadísticas › «Exportar PDF» usa la impresión del navegador; dentro de la app puede no hacer nada (pendiente).
@@ -137,6 +138,9 @@ y `ClaraBiometricPlugin.swift`.
   cierra la app al abrir la cámara.
 - `ios/App/App/ClaraBiometricPlugin.swift`: Face ID o Touch ID para el bloqueo (LocalAuthentication). Solo responde
   sí o no; no guarda nada.
+- Plugins oficiales de Capacitor (`@capacitor/haptics`, `status-bar`, `keyboard`, `filesystem` y `share`): vibración,
+  barra de estado, teclado y la hoja Compartir. `cap sync` los añade a `ios/App/CapApp-SPM/Package.swift` apuntando a
+  `node_modules/`, por eso hay que hacer `npm ci` antes de abrir Xcode.
 - `ios/App/App/ClaraFileStore.swift` y `ClaraStoragePlugin.swift`: los datos se guardan en un archivo propio de la app
   (`Application Support/Clara/data.clara`), no en el WebView, que iOS puede vaciar. Detalle en `docs/STORAGE.md`.
 - `src/platform/` (`isNativeIOS`): la única capa de la web que sabe si corre dentro de la app (lo ve por el puente

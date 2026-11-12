@@ -67,8 +67,9 @@ fusiona cuando Victor la haya probado.
 5. **Tacto del sistema. Hecho (escrito).** Vibración háptica nativa al guardar, deshacer y en errores (respeta
    «reducir movimiento»), barra de estado según el tema de Clara y teclado que redimensiona la vista para no tapar
    los campos, con los plugins oficiales `@capacitor/haptics`, `status-bar` y `keyboard` (decisión 166).
-6. **Copias.** «Exportar copia» abre la hoja Compartir nativa; «Restaurar una copia» con un archivo de la app
-   Archivos.
+6. **Copias. Hecho (escrito).** En la app no hay descargas: todo archivo (copia, CSV, copia cifrada, datos dañados…)
+   se escribe en la caché de la app y abre la hoja Compartir, con `@capacitor/filesystem` y `@capacitor/share`
+   (decisión 167). «Restaurar una copia» usa el selector de Archivos del sistema, sin código nativo.
 7. **Guía y cierre.** `docs/IOS-NATIVE.md` para alguien que nunca usó Xcode; informe de la fase.
 
 ### Ajustes al plan del encargo tras leer el repositorio
@@ -127,8 +128,10 @@ fusiona cuando Victor la haya probado.
 - **Imprimir a PDF dentro de la app.** Estadísticas ofrece «Exportar PDF» con la impresión del navegador
   (`window.print()`). Dentro de un WebView de iOS eso puede no hacer nada. Se comprueba en el bloque 6 con la
   documentación de WebKit: o se hace con la hoja de impresión nativa, o el botón no se muestra en la app.
-- **Textos de descargar y exportar** («Descarga solicitada. Revisa tu carpeta de descargas…»): se sustituyen en el
-  bloque 6, cuando exportar abra la hoja Compartir.
+- **Textos de descargar y exportar:** sustituidos en el bloque 6. Los botones siguen diciendo «Descargar…» aunque
+  en la app abran Compartir; si en el iPhone confunde, se cambian.
+- **Un fallo al compartir fuera de «Exportar copia»** (CSV, copia cifrada…) no se avisa todavía: esas pantallas
+  dicen «generado» al pedirlo, como en la web. Se revisa con lo que diga la prueba en el iPhone.
 - **Copia previa a una migración de esquema.** `NativeRepository` la guarda en el archivo nativo (`before-v<N>`), pero
   la fila de Ajustes › Datos y recuperación todavía mira la del WebView. Se conecta antes de subir al esquema 15
   (Fase 2).

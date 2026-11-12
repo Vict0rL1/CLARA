@@ -67,5 +67,8 @@
   "assistantSettings.voiceOff": "Dictation: not available in the iPhone app yet.",
   "assistantSettings.ocrOff": "Receipt photos: the iPhone app cannot read text in photos yet; they can still be attached.",
   "settings.notifications.permission": "Notification permission",
-  "settings.notifications.permission.unsupported": "The iPhone app does not send system notifications yet: notices appear inside the app."
+  "settings.notifications.permission.unsupported": "The iPhone app does not send system notifications yet: notices appear inside the app.",
+  "settings.backup.exportedNotRecorded": "The backup went out through “Share”, but it could not be noted in the backup log (out of space?). Check that it was saved (for example, in Files).",
+  "backup.lastExportNote": "The app created the file and opened the Share sheet. It cannot check where it was saved or whether you keep it.",
+  "backup.lightExported": "Backup without photos: the Share sheet opened. It is not recorded as a backup."
 }

@@ -67,5 +67,8 @@
   "assistantSettings.voiceOff": "Ditado: ainda não disponível no app de iPhone.",
   "assistantSettings.ocrOff": "Fotos de recibos: o app de iPhone ainda não lê texto em fotos; ainda assim podem ser anexadas.",
   "settings.notifications.permission": "Permissão de notificações",
-  "settings.notifications.permission.unsupported": "O app de iPhone ainda não envia notificações do sistema: os avisos aparecem dentro do app."
+  "settings.notifications.permission.unsupported": "O app de iPhone ainda não envia notificações do sistema: os avisos aparecem dentro do app.",
+  "settings.backup.exportedNotRecorded": "A cópia saiu por “Compartilhar”, mas não foi possível anotá-la no registro de cópias (sem espaço?). Verifique se ficou salva (por exemplo, em Arquivos).",
+  "backup.lastExportNote": "O app gerou o arquivo e abriu a folha Compartilhar. Não consegue verificar onde foi salvo nem se você o mantém.",
+  "backup.lightExported": "Cópia sem fotos: a folha Compartilhar foi aberta. Não é registrada como cópia de segurança."
 }

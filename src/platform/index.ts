@@ -29,6 +29,8 @@ export function isNativeIOS(win: WithCapacitor | undefined = typeof window === '
 export interface NativeServices {
   /** Vibración del motor háptico de iOS (`system.ts`). */
   haptic?: (kind: 'tick' | 'success' | 'warning' | 'error') => void
+  /** Escribe el archivo y abre la hoja Compartir (`files.ts`). `cancelled`: se cerró sin elegir; otro fallo, se lanza. */
+  shareTextFile?: (filename: string, text: string) => Promise<'shared' | 'cancelled'>
 }
 
 const services: NativeServices = {}

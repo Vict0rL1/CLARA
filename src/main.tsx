@@ -24,14 +24,18 @@ installErrorLog({
 registerServiceWorker()
 captureInstallPrompt()
 watchThemeChanges()
-// En la app de iPhone, la barra de estado sigue el tema de Clara y la vibración usa el motor del iPhone. En el navegador
-// no se carga nada.
+// En la app de iPhone, la barra de estado sigue el tema de Clara, la vibración usa el motor del iPhone y los archivos
+// salen por la hoja Compartir. En el navegador no se carga nada.
 if (isNativeIOS()) {
   void Promise.all([import('./platform/system'), import('./platform/native/system')])
     .then(([system, native]) => {
       system.followThemeInStatusBar(native.nativeSystem)
       provideNativeServices({ haptic: (kind) => system.nativeHaptic(native.nativeSystem, kind) })
     })
+    .catch(() => {})
+  // Dentro de la app no hay descargas: los archivos salen por la hoja Compartir (decisión 167).
+  void Promise.all([import('./platform/files'), import('./platform/native/files')])
+    .then(([files, native]) => provideNativeServices({ shareTextFile: (filename, text) => files.shareTextFile(native.fileSharer, filename, text) }))
     .catch(() => {})
 }
 // Pseudo-locale solo en desarrollo: `?pseudo=1` marca todo texto que pasa por i18n.

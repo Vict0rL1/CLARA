@@ -67,5 +67,8 @@
   "assistantSettings.voiceOff": "Dictée : pas encore disponible dans l’app iPhone.",
   "assistantSettings.ocrOff": "Photos de reçus : l’app iPhone ne lit pas encore le texte des photos ; elles peuvent tout de même être jointes.",
   "settings.notifications.permission": "Autorisation des notifications",
-  "settings.notifications.permission.unsupported": "L’app iPhone n’envoie pas encore de notifications système : les avis apparaissent dans l’application."
+  "settings.notifications.permission.unsupported": "L’app iPhone n’envoie pas encore de notifications système : les avis apparaissent dans l’application.",
+  "settings.backup.exportedNotRecorded": "La copie est partie par « Partager », mais elle n’a pas pu être notée dans le registre des copies (plus d’espace ?). Vérifiez qu’elle a bien été enregistrée (par exemple, dans Fichiers).",
+  "backup.lastExportNote": "L’app a créé le fichier et ouvert la feuille Partager. Elle ne peut pas vérifier où il a été enregistré ni si vous le conservez.",
+  "backup.lightExported": "Copie sans photos : la feuille Partager s’est ouverte. Elle n’est pas enregistrée comme sauvegarde."
 }

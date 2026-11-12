@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { expectNoHorizontalScroll, go, reloadWhenSaved, setLanguage, setupFirstUse, startDemo, storedData, waitForSaved } from './helpers'
-import { asNativeApp, fakeBiometricCalls, nativeCalls, nativeFile, setFakeBiometric } from './nativeShell'
+import { asNativeApp, fakeBiometricCalls, nativeCalls, nativeFile, setFakeBiometric, setFakeShare } from './nativeShell'
 
 /**
  * Clara dentro de la app de iPhone (Fase 1), con el puente nativo simulado (`nativeShell.ts`). Comprueba el lado web:
@@ -278,5 +278,82 @@ test.describe('tacto del sistema (decisión 166)', () => {
     await page.emulateMedia({ colorScheme: 'dark' })
     await page.getByRole('radio', { name: 'Sistema' }).check()
     await expect.poll(async () => (await nativeCalls(page, 'StatusBar.setStyle')).map((c) => c.options.style)).toEqual(['DARK', 'LIGHT', 'DARK'])
+  })
+})
+
+test.describe('archivos: la hoja Compartir en vez de descargas (decisión 167)', () => {
+  test('«Exportar copia» escribe la copia en la caché de la app y abre Compartir; queda registrada; no hay descarga', async ({ page }) => {
+    let downloads = 0
+    page.on('download', () => downloads++)
+    await asNativeApp(page)
+    await startDemo(page)
+    await go(page, '/ajustes/copia')
+    await page.getByRole('button', { name: 'Exportar copia' }).click()
+    await expect(page.getByText('Copia enviada con «Compartir»')).toBeVisible()
+    const calls = await nativeCalls(page)
+    const write = calls.find((c) => c.call === 'Filesystem.writeFile')!
+    expect(write.options).toMatchObject({ directory: 'CACHE', encoding: 'utf8', recursive: true })
+    expect(String(write.options.path)).toMatch(/^exports\/clara-demo-copia-.*\.json$/)
+    const backup = JSON.parse(String(write.options.data)) as { format: string; data: { transactions: unknown[] } }
+    expect(backup.format).toBe('margen-backup')
+    expect(backup.data.transactions.length).toBeGreaterThan(20)
+    const share = calls.find((c) => c.call === 'Share.share')!
+    expect(share.options.files).toEqual([`file:///var/mobile/Containers/Data/Application/X/Library/Caches/${String(write.options.path)}`])
+    // La carpeta de exportación se vacía antes de escribir: como mucho queda un archivo.
+    expect(calls.findIndex((c) => c.call === 'Filesystem.rmdir')).toBeLessThan(calls.findIndex((c) => c.call === 'Filesystem.writeFile'))
+    expect(downloads).toBe(0)
+  })
+
+  test('cerrar la hoja sin elegir no es exportar; un fallo se dice y tampoco se registra', async ({ page }) => {
+    await asNativeApp(page)
+    await setupFirstUse(page)
+    await go(page, '/ajustes/datos')
+    await expect(page.getByTestId('data-row-export')).toContainText('Nunca se exportó una copia')
+    await go(page, '/ajustes/copia')
+    await setFakeShare(page, 'cancel')
+    await page.getByRole('button', { name: 'Exportar copia' }).click()
+    await expect.poll(async () => (await nativeCalls(page, 'Share.share')).length).toBe(1)
+    await expect(page.getByText('Copia enviada con «Compartir»')).toHaveCount(0)
+    await setFakeShare(page, 'error')
+    await page.getByRole('button', { name: 'Exportar copia' }).click()
+    await expect(page.getByText('No se pudo generar la copia. No se registró ninguna exportación.')).toBeVisible()
+    await go(page, '/ajustes/datos')
+    await expect(page.getByTestId('data-row-export')).toContainText('Nunca se exportó una copia')
+    // Al fin, guardar: ahora sí queda registrada.
+    await go(page, '/ajustes/copia')
+    await setFakeShare(page, 'save')
+    await page.getByRole('button', { name: 'Exportar copia' }).click()
+    await expect(page.getByText('Copia enviada con «Compartir»')).toBeVisible()
+    await go(page, '/ajustes/datos')
+    await expect(page.getByTestId('data-row-export')).not.toContainText('Nunca se exportó una copia')
+  })
+
+  test('el CSV de movimientos también sale por Compartir', async ({ page }) => {
+    let downloads = 0
+    page.on('download', () => downloads++)
+    await asNativeApp(page)
+    await startDemo(page)
+    await go(page, '/ajustes/exportar')
+    await page.getByTestId('export-csv').click()
+    await expect.poll(async () => (await nativeCalls(page, 'Share.share')).length).toBe(1)
+    const write = (await nativeCalls(page, 'Filesystem.writeFile'))[0]!
+    expect(String(write.options.path)).toMatch(/^exports\/clara-.*\.csv$/)
+    expect(downloads).toBe(0)
+  })
+
+  test('restaurar una copia (elegida en Archivos) la guarda en el archivo propio de la app', async ({ page }) => {
+    await asNativeApp(page)
+    await startDemo(page)
+    await go(page, '/ajustes/copia')
+    await page.getByRole('button', { name: 'Exportar copia' }).click()
+    await expect(page.getByText('Copia enviada con «Compartir»')).toBeVisible()
+    const backup = JSON.parse(String((await nativeCalls(page, 'Filesystem.writeFile'))[0]!.options.data)) as { data: { accounts: { name: string }[] } }
+    backup.data.accounts[0]!.name = 'Cuenta desde Archivos'
+    await page.getByTestId('import-file').setInputFiles({ name: 'clara-copia.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(backup)) })
+    await page.getByRole('dialog', { name: '¿Reemplazar tus datos con esta copia?' }).getByRole('button', { name: 'Reemplazar datos' }).click()
+    await expect(page.getByText('Copia importada')).toBeVisible()
+    await waitForSaved(page)
+    expect((await nativeFile(page, 'data'))!.text).toContain('Cuenta desde Archivos')
+    expect(await storedData(page)).toBeNull()
   })
 })
