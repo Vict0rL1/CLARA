@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { expectNoHorizontalScroll, go, reloadWhenSaved, setLanguage, setupFirstUse, startDemo, storedData, waitForSaved } from './helpers'
-import { asNativeApp, fakeBiometricCalls, nativeFile, setFakeBiometric } from './nativeShell'
+import { asNativeApp, fakeBiometricCalls, nativeCalls, nativeFile, setFakeBiometric } from './nativeShell'
 
 /**
  * Clara dentro de la app de iPhone (Fase 1), con el puente nativo simulado (`nativeShell.ts`). Comprueba el lado web:
@@ -182,17 +182,18 @@ test.describe('la web no cambia', () => {
   })
 })
 
+/** Ajustes › Bloqueo: activa el PIN 2468 (el aviso «PIN guardado» es también una confirmación que vibra). */
+async function enablePin(page: Page) {
+  await go(page, '/ajustes/bloqueo')
+  await page.getByRole('switch', { name: 'Pedir PIN al abrir' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Elige un PIN' })
+  await dialog.getByLabel('PIN', { exact: true }).fill('2468')
+  await dialog.getByLabel('Repite el PIN').fill('2468')
+  await dialog.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect(page.getByText('PIN guardado; se pedirá al abrir')).toBeVisible()
+}
+
 test.describe('Face ID o Touch ID en el bloqueo (decisión 165)', () => {
-  /** Ajustes › Bloqueo: activa el PIN 2468. */
-  async function enablePin(page: Page) {
-    await go(page, '/ajustes/bloqueo')
-    await page.getByRole('switch', { name: 'Pedir PIN al abrir' }).click()
-    const dialog = page.getByRole('dialog', { name: 'Elige un PIN' })
-    await dialog.getByLabel('PIN', { exact: true }).fill('2468')
-    await dialog.getByLabel('Repite el PIN').fill('2468')
-    await dialog.getByRole('button', { name: 'Guardar', exact: true }).click()
-    await expect(page.getByText('PIN guardado; se pedirá al abrir')).toBeVisible()
-  }
 
   test('activar Face ID lo pide una vez; al abrir se pide y, si el sistema confirma, entra sin PIN', async ({ page }) => {
     await asNativeApp(page, { biometric: { available: true, answer: true } })
@@ -245,5 +246,37 @@ test.describe('Face ID o Touch ID en el bloqueo (decisión 165)', () => {
     await expect(page.getByTestId('lock-screen')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Usar Face ID o Touch ID' })).toHaveCount(0)
     expect(await fakeBiometricCalls(page)).toEqual([])
+  })
+})
+
+test.describe('tacto del sistema (decisión 166)', () => {
+  test('vibra con el motor del iPhone al confirmar algo, y nada con «reducir movimiento»', async ({ page }) => {
+    await asNativeApp(page)
+    await startDemo(page)
+    await enablePin(page)
+    const haptics = await nativeCalls(page, 'Haptics.')
+    expect(haptics.map((c) => c.call)).toContain('Haptics.notification')
+    expect(haptics.find((c) => c.call === 'Haptics.notification')!.options).toEqual({ type: 'SUCCESS' })
+  })
+
+  test('con «reducir movimiento» no vibra', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await asNativeApp(page)
+    await startDemo(page)
+    await enablePin(page)
+    expect(await nativeCalls(page, 'Haptics.')).toEqual([])
+  })
+
+  test('la barra de estado sigue el tema de Clara: oscuro por defecto, claro al elegir «Claro»', async ({ page }) => {
+    await asNativeApp(page)
+    await startDemo(page)
+    await expect.poll(async () => (await nativeCalls(page, 'StatusBar.setStyle')).map((c) => c.options.style)).toEqual(['DARK'])
+    await go(page, '/ajustes/formato')
+    await page.getByRole('radio', { name: 'Claro' }).check()
+    await expect.poll(async () => (await nativeCalls(page, 'StatusBar.setStyle')).map((c) => c.options.style)).toEqual(['DARK', 'LIGHT'])
+    // «Sistema» con el iPhone en oscuro vuelve a oscuro.
+    await page.emulateMedia({ colorScheme: 'dark' })
+    await page.getByRole('radio', { name: 'Sistema' }).check()
+    await expect.poll(async () => (await nativeCalls(page, 'StatusBar.setStyle')).map((c) => c.options.style)).toEqual(['DARK', 'LIGHT', 'DARK'])
   })
 })

@@ -64,8 +64,9 @@ fusiona cuando Victor la haya probado.
    documentación de Apple) detrás del ajuste `biometricLock` que ya existe: Ajustes › Bloqueo ofrece «Usar Face ID o
    Touch ID» y la pantalla de bloqueo lo pide al abrir; el PIN sigue siendo la alternativa (decisión 165). 10 pruebas
    TS con el plugin simulado y prueba de navegador con el puente simulado.
-5. **Tacto del sistema.** Vibración háptica al guardar, deshacer y en errores (respeta «reducir movimiento»), barra
-   de estado según el tema y teclado que no tapa los campos.
+5. **Tacto del sistema. Hecho (escrito).** Vibración háptica nativa al guardar, deshacer y en errores (respeta
+   «reducir movimiento»), barra de estado según el tema de Clara y teclado que redimensiona la vista para no tapar
+   los campos, con los plugins oficiales `@capacitor/haptics`, `status-bar` y `keyboard` (decisión 166).
 6. **Copias.** «Exportar copia» abre la hoja Compartir nativa; «Restaurar una copia» con un archivo de la app
    Archivos.
 7. **Guía y cierre.** `docs/IOS-NATIVE.md` para alguien que nunca usó Xcode; informe de la fase.

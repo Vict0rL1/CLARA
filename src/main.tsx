@@ -7,6 +7,7 @@ import { collectUserStrings, installErrorLog } from './ui/errorLog'
 import { APP_VERSION } from './ui/version'
 import { enablePseudoLocale } from './i18n'
 import { AppStore, getStore, setStore } from './state/store'
+import { isNativeIOS, provideNativeServices } from './platform'
 import { createPlatformRepository } from './platform/repository'
 import './styles.css'
 import { watchThemeChanges } from './ui/theme'
@@ -23,6 +24,16 @@ installErrorLog({
 registerServiceWorker()
 captureInstallPrompt()
 watchThemeChanges()
+// En la app de iPhone, la barra de estado sigue el tema de Clara y la vibración usa el motor del iPhone. En el navegador
+// no se carga nada.
+if (isNativeIOS()) {
+  void Promise.all([import('./platform/system'), import('./platform/native/system')])
+    .then(([system, native]) => {
+      system.followThemeInStatusBar(native.nativeSystem)
+      provideNativeServices({ haptic: (kind) => system.nativeHaptic(native.nativeSystem, kind) })
+    })
+    .catch(() => {})
+}
 // Pseudo-locale solo en desarrollo: `?pseudo=1` marca todo texto que pasa por i18n.
 if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('pseudo') === '1') enablePseudoLocale(true)
 

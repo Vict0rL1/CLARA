@@ -27,6 +27,9 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
   Ajustes › Bloqueo ofrece «Usar Face ID o Touch ID» y la pantalla de bloqueo lo pide al abrir; el PIN sigue siendo la
   alternativa. Solo un «sí» del sistema desbloquea. En el navegador nada cambia (WebAuthn). **Escrito, sin compilar
   ni probar en un iPhone.**
+- **App de iPhone: tacto del sistema** (Fase 1 nativa, bloque 5; decisión 166): vibración del iPhone al guardar,
+  deshacer y en errores (nunca con «reducir movimiento»), barra de estado que sigue el tema de Clara y teclado que no
+  tapa los campos. Plugins oficiales de Capacitor, cargados solo dentro de la app. **Sin compilar ni probar en un iPhone.**
 - **Análisis** (etapa 4 del programa): nuevo destino en la barra (Inicio · Movimientos · + · Plan · Análisis · Ajustes) con
   señales calculadas con reglas fijas (pagos vencidos, saldo proyectado en negativo o bajo los apartados, límites, metas por
   detrás, gasto a fecha equivalente, categoría dominante, copia pendiente), cada una con «¿Cómo se calculó?» (regla y cifras), y

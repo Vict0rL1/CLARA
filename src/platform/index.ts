@@ -20,3 +20,23 @@ export function isNativeIOS(win: WithCapacitor | undefined = typeof window === '
     return false
   }
 }
+
+/**
+ * Servicios nativos que `main.tsx` carga con `import()` una sola vez dentro de la app y deja registrados aquí. Así las
+ * pantallas los usan sin hacer su propio `import()` (cada uno añadiría al JS inicial el ayudante de precarga de
+ * Vite). Mientras no han llegado, o en el navegador, no hay ninguno y cada pantalla hace lo de siempre.
+ */
+export interface NativeServices {
+  /** Vibración del motor háptico de iOS (`system.ts`). */
+  haptic?: (kind: 'tick' | 'success' | 'warning' | 'error') => void
+}
+
+const services: NativeServices = {}
+
+export function provideNativeServices(provided: NativeServices): void {
+  Object.assign(services, provided)
+}
+
+export function nativeServices(): Readonly<NativeServices> {
+  return services
+}

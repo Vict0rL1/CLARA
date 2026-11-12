@@ -24,9 +24,9 @@ export interface FakeBiometric {
  */
 export async function asNativeApp(page: Page, options: { storage?: boolean; biometric?: FakeBiometric } = {}) {
   await page.addInitScript(
-    ({ prefix, storage, biometric }) => {
+    ({ prefix, storage, biometric, system }) => {
       type Entry = { text: string; revision: number }
-      type Options = { name?: string; text?: string; revision?: number; expectedRevision?: number | null; reason?: string }
+      type Options = { name?: string; text?: string; revision?: number; expectedRevision?: number | null; reason?: string; path?: string }
       const read = (name: string): Entry | null => {
         const raw = localStorage.getItem(prefix + name)
         return raw === null ? null : (JSON.parse(raw) as Entry)
@@ -64,6 +64,31 @@ export async function asNativeApp(page: Page, options: { storage?: boolean; biom
           },
         }
       }
+      // Plugins oficiales del sistema (`@capacitor/haptics`, `status-bar`, `filesystem`, `share`): cada llamada se anota
+      // en `sessionStorage` (`fake-native-calls`) como «Plugin.método» con sus opciones, para que la prueba la lea.
+      const record = (call: string, o: Options) => {
+        const calls = JSON.parse(sessionStorage.getItem('fake-native-calls') ?? '[]') as { call: string; options: Options }[]
+        sessionStorage.setItem('fake-native-calls', JSON.stringify([...calls, { call, options: o }]))
+      }
+      for (const [plugin, methods] of Object.entries(system)) {
+        plugins[plugin] = Object.fromEntries(
+          methods.map((method) => [
+            method,
+            (o: Options) => {
+              record(`${plugin}.${method}`, o)
+              if (plugin === 'Filesystem' && method === 'writeFile') return { uri: `file:///var/mobile/Containers/Data/Application/X/Library/Caches/${o.path}` }
+              if (plugin === 'Share' && method === 'share') {
+                // Lo que «elija» la persona en la hoja: guardar (por defecto), cerrar sin elegir o un fallo.
+                const answer = sessionStorage.getItem('fake-share') ?? 'save'
+                if (answer === 'cancel') return fail('Share canceled', '')
+                if (answer === 'error') return fail('Error sharing item', '')
+                return { activityType: 'com.apple.DocumentManagerUICore.SaveToFiles' }
+              }
+              return {}
+            },
+          ]),
+        )
+      }
       const w = window as unknown as Record<string, unknown>
       w.webkit = { messageHandlers: { bridge: { postMessage() {} } } }
       w.Capacitor = {
@@ -73,7 +98,17 @@ export async function asNativeApp(page: Page, options: { storage?: boolean; biom
         nativePromise: (plugin: string, method: string, o?: Options) => Promise.resolve().then(() => plugins[plugin]![method]!(o ?? {})),
       }
     },
-    { prefix: FAKE_NATIVE_PREFIX, storage: options.storage ?? true, biometric: options.biometric ?? null },
+    {
+      prefix: FAKE_NATIVE_PREFIX,
+      storage: options.storage ?? true,
+      biometric: options.biometric ?? null,
+      system: {
+        Haptics: ['impact', 'notification', 'vibrate', 'selectionStart', 'selectionChanged', 'selectionEnd'],
+        StatusBar: ['setStyle', 'setBackgroundColor', 'show', 'hide', 'getInfo', 'setOverlaysWebView'],
+        Filesystem: ['writeFile', 'rmdir', 'deleteFile', 'getUri', 'readFile', 'mkdir', 'stat'],
+        Share: ['share', 'canShare'],
+      },
+    },
   )
 }
 
@@ -96,4 +131,17 @@ export function nativeFile(page: Page, name: string): Promise<{ text: string; re
     },
     { prefix: FAKE_NATIVE_PREFIX, key: name },
   )
+}
+
+/** Las llamadas a los plugins oficiales del sistema (`Haptics`, `StatusBar`, `Filesystem`, `Share`), en orden. */
+export function nativeCalls(page: Page, prefix = ''): Promise<{ call: string; options: Record<string, unknown> }[]> {
+  return page.evaluate(
+    (p) => (JSON.parse(sessionStorage.getItem('fake-native-calls') ?? '[]') as { call: string; options: Record<string, unknown> }[]).filter((c) => c.call.startsWith(p)),
+    prefix,
+  )
+}
+
+/** Lo que hará la hoja Compartir la próxima vez: guardar, cerrarse sin elegir o fallar. */
+export function setFakeShare(page: Page, answer: 'save' | 'cancel' | 'error'): Promise<void> {
+  return page.evaluate((a) => sessionStorage.setItem('fake-share', a), answer)
 }

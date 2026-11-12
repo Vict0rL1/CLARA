@@ -83,17 +83,18 @@ Con los datos de demostración (pantalla de bienvenida › «Explorar con datos 
 | 4 | Registrar | «+» › Gasto › importe › Guardar; aparece en Movimientos y cambia la cifra de Inicio | |
 | 5 | Se conserva | Cierra la app del todo (deslízala fuera) y ábrela: el gasto sigue | |
 | 6 | Sin conexión | Modo avión, cierra y abre: la app abre igual | |
-| 7 | Teclado | Al escribir un importe, el campo no queda tapado por el teclado | |
+| 7 | Teclado | «+» › Gasto: al escribir el importe y la nota, el campo y el botón Guardar no quedan tapados por el teclado | |
 | 8 | Exportar copia | Ajustes › Copia de seguridad › «Exportar copia»: sale la hoja de compartir y se puede guardar en Archivos | |
 | 9 | Importar copia | Ajustes › Copia de seguridad › «Importar copia»: se abre el selector de archivos y la copia entra | |
 | 10 | Cámara | «+» › Asistente › foto de un recibo: pide permiso de cámara y no se cierra la app | |
-| 11 | Tema | Cambia el iPhone a modo oscuro/claro: la app y la pantalla de arranque lo siguen | |
+| 11 | Tema y barra de estado | Con Clara en «Oscuro» (lo predeterminado) y el iPhone en claro, la hora y la batería de arriba se leen (texto claro). Ajustes › Formato › «Claro»: pasan a texto oscuro. Con «Sistema», siguen al iPhone | |
 | 12 | Textos de Legal | Ajustes › Legal › Privacidad: el texto aparece (se pide como archivo aparte) | |
 | 13 | Habla de la app, no del navegador | En Ajustes no existe «Instalar Clara»: en su lugar está «Clara en este iPhone» (dónde están los datos, cómo traerlos de la web, cómo se actualiza, los 7 días). En Inicio no sale la tarjeta de instalar. Ajustes › Datos y recuperación › «Almacenamiento y privacidad» dice «solo en este iPhone, dentro de la app Clara» y no ofrece «Pedir al navegador que conserve los datos» | |
 | 14 | Guarda en su archivo propio | Ajustes › Datos y recuperación: la primera fila dice «Guardado en este iPhone, en un archivo propio de la app». Si habla de IndexedDB o avisa de que no pudo usar su archivo, dilo | |
 | 15 | Aguanta un reinicio | Registra 3 movimientos, cierra la app del todo, **reinicia el iPhone** y abre: siguen ahí | |
 | 16 | Aguanta una reinstalación | Con esos movimientos guardados, pulsa ▶ en Xcode otra vez (instala encima, **sin** eliminar la app del iPhone) y abre: siguen ahí. La app lo afirma en «Clara en este iPhone»; si no fuera así, dilo antes de guardar datos reales | |
 | 17 | Face ID | Ajustes › Bloqueo: activa «Pedir PIN al abrir», elige un PIN y toca «Usar Face ID o Touch ID». iOS pregunta si Clara puede usar Face ID: acepta. Cierra la app del todo y ábrela: pide Face ID y entra; si cancelas, se puede entrar con el PIN | |
+| 18 | Vibración | Guarda un gasto: el iPhone da un toque suave. Con Ajustes del iPhone › Accesibilidad › Movimiento › «Reducir movimiento» activado, no vibra | |
 
 ### Si la pantalla se queda en blanco
 
