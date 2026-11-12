@@ -1,4 +1,4 @@
-/** Ajustes › Bloqueo (§7.7): PIN del dispositivo y, si existe, biometría por WebAuthn. No cifra los datos. */
+/** Ajustes › Bloqueo (§7.7): PIN del dispositivo y, si existe, biometría (WebAuthn en el navegador; Face ID o Touch ID en la app de iPhone). No cifra los datos. */
 import { useEffect, useState } from 'react'
 import { updateSettings } from '../../../domain/operations'
 import { useT } from '../../../i18n'
@@ -10,7 +10,7 @@ import { TextField } from '../../components/fields'
 import { Icon } from '../../components/Icon'
 import { useToast } from '../../components/toastContext'
 import { createLockConfig, isValidPin, PIN_MAX, PIN_MIN, type LockConfig } from '../../lock/pin'
-import { platformAuthenticatorAvailable, registerBiometric } from '../../lock/webauthn'
+import { lockBiometrics } from '../../lock/biometric'
 import type { LockState } from '../../lock/useLock'
 
 export function LockSection({ lock }: { lock: LockState }) {
@@ -19,9 +19,11 @@ export function LockSection({ lock }: { lock: LockState }) {
   const toast = useToast()
   const [dialog, setDialog] = useState(false)
   const [biometricOk, setBiometricOk] = useState(false)
+  // En el navegador, WebAuthn; en la app de iPhone, Face ID o Touch ID del sistema (decisión 165).
+  const [biometrics] = useState(lockBiometrics)
   useEffect(() => {
-    void platformAuthenticatorAvailable().then(setBiometricOk)
-  }, [])
+    void biometrics.available().then(setBiometricOk)
+  }, [biometrics])
 
   const apply = async (config: LockConfig | null) => {
     if (!lock.setConfig(config)) {
@@ -34,7 +36,7 @@ export function LockSection({ lock }: { lock: LockState }) {
 
   const addBiometric = async () => {
     if (!lock.config) return
-    const id = await registerBiometric('Clara')
+    const id = await biometrics.register(t('lock.unlock'))
     if (!id) {
       toast({ message: t('lock.biometricNotRegistered'), tone: 'critical' })
       return
@@ -66,7 +68,7 @@ export function LockSection({ lock }: { lock: LockState }) {
             {t('lock.changePin')}
           </button>
           {biometricOk ? (
-            lock.config.credentialId ? (
+            biometrics.canVerify(lock.config.credentialId) ? (
               <p className="note note--icon">
                 <Icon name="checkCircle" size={16} /> {t('lock.biometricOn')}
               </p>

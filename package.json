@@ -20,14 +20,24 @@
     "shots": "node scripts/shots.mjs",
     "check": "npm run typecheck && npm run lint && npm run lint:i18n && npm run test",
     "lint:i18n": "node scripts/find-literals.mjs",
-    "size": "node scripts/check-size.mjs"
+    "size": "node scripts/check-size.mjs",
+    "ios:sync": "npm run build && cap sync ios",
+    "ios:open": "cap open ios"
   },
   "dependencies": {
+    "@capacitor/core": "8.6.0",
+    "@capacitor/filesystem": "8.1.5",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/ios": "8.6.0",
+    "@capacitor/keyboard": "8.0.6",
+    "@capacitor/share": "8.0.3",
+    "@capacitor/status-bar": "8.0.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
+    "@capacitor/cli": "8.6.0",
     "@playwright/test": "^1.63.0",
     "@types/node": "^24.19.0",
     "@types/react": "^19.3.0",

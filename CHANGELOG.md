@@ -8,6 +8,32 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
 
 ### Novedades
 
+- **Clara como app de iPhone, primer paso** (`docs/IOS-NATIVE.md`, plan en `docs/NATIVE-PLAN.md`): una cáscara nativa (Capacitor 8, carpeta `ios/`) abre
+  las mismas pantallas dentro de una app, con su icono y su pantalla de arranque en claro y oscuro. Sin servidor ni
+  cuenta; los datos de la app están separados de los de Safari. Dentro de la app no se ofrece «instalar Clara» y el uso
+  sin conexión figura como activo. **Aún sin compilar ni probar en un iPhone**: la guía dice cómo hacerlo y qué mirar.
+  Es la base para la acción «Registrar gasto» de Atajos (Apple Pay), Siri y un widget, que llegan después.
+- **App de iPhone: datos en un archivo propio** (Fase 1 nativa, bloque 2; `docs/STORAGE.md`): dentro de la app Clara
+  guarda en `Application Support`, fuera del navegador interno que iOS puede vaciar, con escritura atómica, versión
+  anterior y detección de conflicto. Lo que hubiera en el WebView se trae una sola vez, verificando. Si la app no
+  pudiera usar su archivo, Ajustes › Datos y recuperación lo avisa. **Escrito, sin compilar ni probar en un iPhone.**
+- **App de iPhone: habla de la app, no del navegador** (Fase 1 nativa, bloque 3; decisión 164): dentro de la app,
+  «Instalar Clara» pasa a ser «Clara en este iPhone» (dónde están los datos, cómo traer los de la versión web, cómo se
+  actualiza y que con una cuenta gratuita de Apple deja de abrirse a los 7 días); no se ofrece pedir al navegador que
+  conserve los datos; los enlaces de «Atajos de iPhone» no se muestran; y los textos que hablaban del navegador, de
+  Safari o de pestañas se sustituyen por los de la app, en los cuatro idiomas. Todo va en un paquete de texto que la
+  versión web nunca pide. **Probado en navegador con el puente nativo simulado; sin probar en un iPhone.**
+- **App de iPhone: Face ID o Touch ID en el bloqueo** (Fase 1 nativa, bloque 4; decisión 165): dentro de la app,
+  Ajustes › Bloqueo ofrece «Usar Face ID o Touch ID» y la pantalla de bloqueo lo pide al abrir; el PIN sigue siendo la
+  alternativa. Solo un «sí» del sistema desbloquea. En el navegador nada cambia (WebAuthn). **Escrito, sin compilar
+  ni probar en un iPhone.**
+- **App de iPhone: tacto del sistema** (Fase 1 nativa, bloque 5; decisión 166): vibración del iPhone al guardar,
+  deshacer y en errores (nunca con «reducir movimiento»), barra de estado que sigue el tema de Clara y teclado que no
+  tapa los campos. Plugins oficiales de Capacitor, cargados solo dentro de la app. **Sin compilar ni probar en un iPhone.**
+- **App de iPhone: copias por la hoja Compartir** (Fase 1 nativa, bloque 6; decisión 167): dentro de la app no hay
+  descargas, así que «Exportar copia», el CSV y el resto de archivos abren la hoja Compartir de iOS (guardar en
+  Archivos o iCloud Drive, enviar). La copia solo cuenta como exportada si se eligió un destino. «Importar copia» abre
+  Archivos. **Sin compilar ni probar en un iPhone.**
 - **Análisis** (etapa 4 del programa): nuevo destino en la barra (Inicio · Movimientos · + · Plan · Análisis · Ajustes) con
   señales calculadas con reglas fijas (pagos vencidos, saldo proyectado en negativo o bajo los apartados, límites, metas por
   detrás, gasto a fecha equivalente, categoría dominante, copia pendiente), cada una con «¿Cómo se calculó?» (regla y cifras), y
@@ -91,6 +117,32 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
   rápidas (`docs/RELEASE.md`). Volver atrás solo si el esquema de datos es el mismo (`docs/ROLLBACK.md`).
 
 ### Correcciones
+
+Auditoría independiente del 4 de noviembre de 2026 sobre `f8d6da0`
+(`docs/qa/audit-nov04-implementation-2026-11-06/REPORT.md`):
+- **Proyección y Análisis con totales brutos fuera del rango exacto** (F1): cuando la suma de todos los ingresos (o de
+  todos los pagos) de los días exactos no cabe en un entero exacto aunque cada saldo diario sí, el comparador de
+  escenarios dice «Sin cifra exacta» en esa columna, el «¿Cómo se calculó?» de Análisis dice «sin cifra» en esas filas y
+  el plan ante faltante igual; los saldos, el mínimo, el saldo final y la fecha del faltante siguen siendo exactos. Antes
+  las dos pantallas caían en «No se pudo abrir esta pantalla».
+- **Cobertura por escenario** (F2): cada fila del comparador dice hasta qué día tiene cifra SU proyección (el mínimo puede
+  cubrir los 30 días y el esperado solo 22), elija el escenario que se elija, con una nota que resume los días exactos por
+  escenario; con cero días exactos ninguna pantalla afirma «hasta hoy» ni «hasta ayer».
+- **Texto de Legal y Galería que no termina de descargarse** (F3): al vencer el plazo, «Reintentar» pide el archivo de
+  nuevo y el texto llega sin recargar la app (antes la descarga pendiente se reutilizaba y nunca llegaba). Los paquetes
+  son ahora archivos JSON pedidos con `fetch`; el español de respaldo se marca con `lang="es"`.
+- **Pendientes con muchos movimientos iguales** (F4): los posibles duplicados se buscan por un índice de notas; 5 000
+  movimientos iguales el mismo día se revisan en milisegundos (antes ≈ 4 s) con las mismas parejas en el mismo orden.
+- **Duplicados ya revisados** (F5): una pareja descartada o pospuesta sigue en «Descartados»/«Pospuestos» aunque el
+  grupo tenga más parejas de las que caben, y se puede volver a mostrar sin revisar antes las ajenas.
+- **Revisión independiente de la pasada**: Análisis abre con miles de pagos vencidos grandes (total sin cifra); el plan
+  ante faltante no redondea el gasto diario acumulado, cada palanca dice hasta qué día tiene cifra su simulación y, con
+  el saldo de hoy ya negativo, dice ese saldo; el calendario no afirma «sin saldo negativo» sin ningún día calculado;
+  «Sin cifra exacta» ya no se sale de la pantalla en celulares; Importar CSV y Galería con el español de respaldo
+  muestran todo su contenido en español (marcado) y la cabecera y el aviso en tu idioma; reintentar ya no vacía la
+  pantalla; cuotas parciales de un mismo pago ya no ralentizan Pendientes. Estadísticas con importes enormes ya no se
+  sale de la pantalla en celulares (el importe se parte) y el total del centro del donut ya no se recorta: si no cabe,
+  se reduce.
 
 Auditoría independiente del 2 de noviembre de 2026 sobre `420c700`
 (`docs/qa/audit-nov02-implementation-2026-11-03/REPORT.md`):

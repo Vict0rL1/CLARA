@@ -1067,6 +1067,8 @@ html {
 /* Encabezado de grupo del historial: fecha y neto del día. */
 .tx-group__date {
   display: flex;
+  /* Con texto al 200 % el neto del día baja a otra línea en vez de salirse de la pantalla. */
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: baseline;
   gap: 8px;
@@ -1159,6 +1161,8 @@ html {
 /* Cabecera en una fila: título a la izquierda y «N más en el calendario» a la derecha. */
 .upcoming-strip__head {
   display: flex;
+  /* Con texto al 200 % el enlace baja a otra línea (y se parte) en vez de salirse de la pantalla. */
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
@@ -1177,7 +1181,8 @@ html {
 }
 
 .upcoming-strip__head .link-more {
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
   min-height: 40px;
   font-size: var(--font-body-sm);
 }
@@ -1192,14 +1197,23 @@ html {
 }
 
 .upcoming-strip__item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  /* Nombre que se acorta, cuándo e importe; con texto al 200 % el importe baja a otra línea en vez de salirse. */
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  column-gap: 8px;
+  row-gap: 2px;
   min-height: 26px;
 }
 
+.upcoming-strip__when,
+.upcoming-strip__amount {
+  flex: none;
+}
+
 .upcoming-strip__name {
+  flex: 1 1 0;
+  min-width: 0;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1477,23 +1491,28 @@ html {
 }
 
 .hero__actions {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
+  /* Botón y «¿Cómo se calculó?» en una fila; si no caben (texto al 200 %), la explicación baja a otra fila en vez de
+     salirse de la pantalla (revisión de la auditoría del 2026-11-04: el resumen «¿Cómo?» se salía 16 px a 412 px). */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
   gap: 8px;
 }
 
 .hero__actions > .btn {
+  /* Puede encogerse y partir su texto («Puis-je me le permettre ?» al 200 %), como hacía la columna `auto` de antes. */
+  flex: 0 1 auto;
+  min-width: 0;
   padding-inline: 12px;
 }
 
-.explain--inline[open] {
-  grid-column: 1 / -1;
+.hero__actions > .explain--inline:not([open]) {
+  min-width: min-content;
 }
 
 @media (max-width: 359px) {
-  .hero__actions {
-    grid-template-columns: 1fr;
+  .hero__actions > * {
+    flex-basis: 100%;
   }
 }
 
@@ -2448,11 +2467,27 @@ fieldset.bill-row {
 }
 
 .calc-row {
-  display: grid;
-  grid-template-columns: 1.2em 1fr auto;
-  gap: 8px;
+  /* Signo, texto y cifra en una fila; si la cifra no cabe junto al texto (texto al 200 %, «Sin cifra exacta»), baja a
+     otra línea alineada a la derecha en vez de salirse de la pantalla (revisión de la auditoría del 2026-11-04, B1). */
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 8px;
   align-items: baseline;
   padding: 2px 0;
+}
+
+.calc-row__op {
+  flex: 0 0 1.2em;
+}
+
+.calc-row__label {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.calc-row__value {
+  flex: none;
+  margin-left: auto;
 }
 
 .calc-row__op {
@@ -2559,6 +2594,11 @@ fieldset.bill-row {
   white-space: nowrap;
 }
 
+/* Celdas cortas que no deben partirse palabra a palabra (comparador de escenarios): la tabla se desplaza en su región. */
+.data-table--keep-cells td {
+  white-space: nowrap;
+}
+
 .data-table tr.is-negative td {
   background: var(--critical-bg);
 }
@@ -2656,7 +2696,8 @@ fieldset.bill-row {
 
 .legend li {
   display: grid;
-  grid-template-columns: 14px 1fr auto;
+  /* `minmax(0, 1fr)`: con texto al 200 % el nombre se parte en vez de empujar la cifra fuera de la pantalla. */
+  grid-template-columns: 14px minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
   font-size: 0.92rem;
@@ -3900,7 +3941,9 @@ kbd {
   display: flex;
   align-items: center;
   min-height: 44px;
-  overflow-wrap: break-word;
+  /* `anywhere` (no `break-word`): en un enlace flex el texto es un elemento anónimo cuyo ancho mínimo es la palabra más
+     larga; con texto al 200 % «escenarios» no cabía en media columna y se salía 12 px. Solo se parte lo que no cabe. */
+  overflow-wrap: anywhere;
 }
 
 .settings-toc {
@@ -5150,6 +5193,8 @@ li.is-selected > .item--select {
 .donut__amount {
   grid-area: amount;
   font-variant-numeric: tabular-nums;
+  /* Un importe que no cabe en la fila se parte en vez de salirse (solo entonces: si cabe, la columna toma su ancho). */
+  overflow-wrap: anywhere;
 }
 .donut__pct {
   grid-area: pct;
@@ -5320,6 +5365,8 @@ li.is-selected > .item--select {
   grid-area: amount;
   align-self: center;
   font-variant-numeric: tabular-nums;
+  /* Como en el donut: un importe que no cabe se parte en vez de salirse. */
+  overflow-wrap: anywhere;
 }
 
 /* Exportar como PDF = imprimir la vista (el navegador ofrece «Guardar como PDF»). */

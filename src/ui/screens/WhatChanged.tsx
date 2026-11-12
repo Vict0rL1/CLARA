@@ -6,14 +6,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { addDays, isValidLocalDate, localDateInTimeZone } from '../../domain/dates'
 import type { PlanItem } from '../../domain/planItems'
+import type { Language } from '../../domain/types'
 import { whatChangedSteps, type ChangeStep, type ComparePoint, type WhatChangedResult } from '../../domain/whatChanged'
-import { useT, type MessageKey } from '../../i18n'
+import { useT } from '../../i18n'
+import { packTranslator, usePack } from '../../i18n/packs'
 import { useToday } from '../../state/hooks'
 import { useData } from '../../state/store'
 import { Alert, Badge, CalcRow, Card, PageHeader } from '../components/common'
 import { InsightsTabs } from '../components/InsightsTabs'
 import { SelectField, TextField } from '../components/fields'
 import { Icon } from '../components/Icon'
+import { PackLangScope } from '../components/PackLangScope'
+import { PackNotice } from '../components/PackNotice'
 import { useFormat } from '../format'
 import { planItemName } from '../labels'
 import { href, type Route } from '../router'
@@ -22,7 +26,28 @@ import { describeChange, type Line } from '../historyText'
 type Choice = 'today' | 'yesterday' | 'week' | 'month' | 'historyStart' | 'lastCut' | 'custom'
 
 export function WhatChanged({ route }: { route: Route }) {
-  const { t, tn } = useT()
+  const { t } = useT()
+  // Los textos de esta pantalla van en un paquete diferido (fuera del JS inicial); la cabecera y las pestañas no. Hasta
+  // que el paquete está listo no se dibuja ningún texto suyo (nunca una clave); si no carga, se dice y se puede reintentar.
+  const pack = usePack('whatChanged')
+  return (
+    <div className="stack">
+      <PageHeader title={t('changes.title')} back={{ href: href('/'), label: t('nav.home') }} />
+      <InsightsTabs active="cambios" />
+      <PackNotice state={pack} />
+      {pack.status === 'ready' && (
+        <PackLangScope fallback={pack.fallback}>
+          <WhatChangedBody route={route} texts={pack.texts} packLanguage={pack.language} />
+        </PackLangScope>
+      )}
+    </div>
+  )
+}
+
+/** El desglose: textos del paquete y, para lo demás, el traductor del contexto (en español en el respaldo). */
+function WhatChangedBody({ route, texts, packLanguage }: { route: Route; texts: Record<string, string>; packLanguage: Language }) {
+  const base = useT()
+  const { t, tn } = useMemo(() => packTranslator(texts, packLanguage, base), [texts, packLanguage, base])
   const fmt = useFormat()
   const data = useData()
   const today = useToday()
@@ -95,13 +120,11 @@ export function WhatChanged({ route }: { route: Route }) {
   ]
 
   const stepLines = (step: ChangeStep): Line[] =>
-    step.entries.flatMap((e) => e.changes.map((c) => describeChange(c, e, data, t, fmt)).filter((l): l is Line => l !== null))
-  const itemLine = (i: PlanItem, amountMinor: number) => `${planItemName(i, t)} · ${fmt.date(i.date, { compact: true, today })} · ${fmt.money(amountMinor)}`
+    step.entries.flatMap((e) => e.changes.map((c) => describeChange(c, e, data, base.t, fmt)).filter((l): l is Line => l !== null))
+  const itemLine = (i: PlanItem, amountMinor: number) => `${planItemName(i, base.t)} · ${fmt.date(i.date, { compact: true, today })} · ${fmt.money(amountMinor)}`
 
   return (
-    <div className="stack">
-      <PageHeader title={t('changes.title')} back={{ href: href('/'), label: t('nav.home') }} />
-      <InsightsTabs active="cambios" />
+    <>
       <Card labelledBy="changes-point">
         <h2 id="changes-point" className="card__title">
           {t('changes.compareTitle')}
@@ -159,7 +182,7 @@ export function WhatChanged({ route }: { route: Route }) {
               {r.byCategory
                 .filter((c) => c.deltaMinor !== 0)
                 .map((c) => (
-                  <CalcRow key={c.category} op={c.deltaMinor < 0 ? '−' : '+'} label={`${t(`changes.cat.${c.category}` as MessageKey)} (${c.entries})`} value={fmt.money(Math.abs(c.deltaMinor))} />
+                  <CalcRow key={c.category} op={c.deltaMinor < 0 ? '−' : '+'} label={`${t(`changes.cat.${c.category}`)} (${c.entries})`} value={fmt.money(Math.abs(c.deltaMinor))} />
                 ))}
               {r.time.deltaMinor !== 0 && <CalcRow op={r.time.deltaMinor < 0 ? '−' : '+'} label={t('changes.time')} value={fmt.money(Math.abs(r.time.deltaMinor))} />}
               {r.unexplainedMinor !== 0 && <CalcRow op={r.unexplainedMinor < 0 ? '−' : '+'} label={t('changes.unexplained')} value={fmt.money(Math.abs(r.unexplainedMinor))} />}
@@ -233,7 +256,7 @@ export function WhatChanged({ route }: { route: Route }) {
                         <Badge icon={step.deltaMinor < 0 ? 'arrowDown' : step.deltaMinor > 0 ? 'arrowUp' : 'check'} tone={step.deltaMinor < 0 ? 'warning' : step.deltaMinor > 0 ? 'good' : 'neutral'}>
                           {step.deltaMinor === 0 ? t('changes.noEffect') : fmt.money(step.deltaMinor, { sign: true })}
                         </Badge>
-                        {t(`changes.cat.${step.category}` as MessageKey)} · {fmt.timestamp(step.entries[0]!.at)}
+                        {t(`changes.cat.${step.category}`)} · {fmt.timestamp(step.entries[0]!.at)}
                         {step.entries.length > 1 && ` · ${tn('changes.grouped', step.entries.length)}`}
                       </p>
                       <ul className="bullets">
@@ -271,6 +294,6 @@ export function WhatChanged({ route }: { route: Route }) {
           </Card>
         </>
       )}
-    </div>
+    </>
   )
 }

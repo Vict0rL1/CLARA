@@ -19,6 +19,34 @@ No es una preferencia tecnológica. Se midieron dos límites (`docs/PERFORMANCE.
 - `localStorage` solo permite escrituras síncronas de texto. IndexedDB, en cambio, escribe datos y revisión
   en **una transacción atómica**.
 
+### En la app de iPhone: un archivo propio de la app (Fase 1 nativa; escrito, sin probar en iPhone)
+
+Dentro de la app nativa (`docs/NATIVE-PLAN.md`) Clara no guarda en el WebView. La documentación de Capacitor avisa de
+que iOS puede vaciar `localStorage` e IndexedDB del WebView cuando falta espacio, así que los datos van a
+`Application Support/Clara/data.clara` (decisión 156):
+
+- **Quién escribe.** `NativeRepository` (`src/storage/nativeRepository.ts`) habla con un almacén de textos nativo, el
+  plugin `ClaraStorage` (`ios/App/App/ClaraStoragePlugin.swift` sobre `ClaraFileStore.swift`). El Swift no interpreta
+  nada: transporta el texto.
+- **Formato del archivo.** Primera línea, la revisión (entero); después, el JSON tal cual. Dato y revisión van en el
+  mismo archivo y cada guardado lo sustituye entero de forma atómica (archivo temporal + renombrar), así que no
+  pueden quedar desparejados ni a medias. La versión anterior queda en `data.clara.prev`.
+- **Sin sobrescrituras silenciosas.** Se escribe con la revisión que se leyó; si el archivo tiene otra, `conflict`.
+- **Archivo ilegible.** Se enseña como dañado, tal cual, con la pantalla de siempre; nunca se reemplaza por vacío.
+- **Primer arranque.** Si el WebView tenía datos de Clara (una compilación anterior), se copian al archivo, se
+  releen y se comparan; solo entonces se deja la marca `migration.clara`. El origen no se borra. Si se corta antes
+  de la marca, el siguiente arranque repite desde el principio. Con datos nativos ya guardados nunca se vuelve a mirar
+  el WebView.
+- **«Borrar todos los datos».** Quita el archivo, borra también lo que quedara en el WebView y deja la marca, para que
+  nada vuelva solo por una migración.
+- **Si el plugin no está.** La app sigue con el almacenamiento del WebView y Ajustes › Datos y recuperación lo avisa
+  (`webViewFallback`): nunca en silencio.
+- **Copia previa a una migración de esquema:** `before-v<N>.clara`, una sola vez por versión.
+- **Lo que sigue en el WebView por ahora:** las copias locales automáticas (`clara-backups`), el PIN y las
+  preferencias del dispositivo. Pasan a nativo en la Fase 2.
+- **Medido aquí (Node, mediana de 5):** 10 000 movimientos = 3,14 MB, serializar 9,6 ms; 50 000 = 15,8 MB, 43 ms.
+  El coste del puente y del disco en el iPhone está **pendiente de medir**; de esa medida depende pasar o no a SQLite.
+
 ## Garantías al guardar
 
 1. **Todo o nada.** Los datos y su número de revisión se escriben en una transacción. Si

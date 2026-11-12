@@ -7,7 +7,8 @@ import { collectUserStrings, installErrorLog } from './ui/errorLog'
 import { APP_VERSION } from './ui/version'
 import { enablePseudoLocale } from './i18n'
 import { AppStore, getStore, setStore } from './state/store'
-import { createRepository } from './storage/indexedDbRepository'
+import { isNativeIOS, provideNativeServices } from './platform'
+import { createPlatformRepository } from './platform/repository'
 import './styles.css'
 import { watchThemeChanges } from './ui/theme'
 
@@ -23,11 +24,25 @@ installErrorLog({
 registerServiceWorker()
 captureInstallPrompt()
 watchThemeChanges()
+// En la app de iPhone, la barra de estado sigue el tema de Clara, la vibración usa el motor del iPhone y los archivos
+// salen por la hoja Compartir. En el navegador no se carga nada.
+if (isNativeIOS()) {
+  void Promise.all([import('./platform/system'), import('./platform/native/system')])
+    .then(([system, native]) => {
+      system.followThemeInStatusBar(native.nativeSystem)
+      provideNativeServices({ haptic: (kind) => system.nativeHaptic(native.nativeSystem, kind) })
+    })
+    .catch(() => {})
+  // Dentro de la app no hay descargas: los archivos salen por la hoja Compartir (decisión 167).
+  void Promise.all([import('./platform/files'), import('./platform/native/files')])
+    .then(([files, native]) => provideNativeServices({ shareTextFile: (filename, text) => files.shareTextFile(native.fileSharer, filename, text) }))
+    .catch(() => {})
+}
 // Pseudo-locale solo en desarrollo: `?pseudo=1` marca todo texto que pasa por i18n.
 if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('pseudo') === '1') enablePseudoLocale(true)
 
-// IndexedDB si el navegador lo permite; si no, localStorage (ver docs/STORAGE.md).
-void createRepository().then((repo) => {
+// En el navegador: IndexedDB si se puede; si no, localStorage (docs/STORAGE.md). En la app de iPhone: un archivo propio.
+void createPlatformRepository().then((repo) => {
   const store = new AppStore(repo)
   setStore(store)
   void store.init()

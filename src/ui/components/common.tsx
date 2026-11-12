@@ -177,7 +177,8 @@ export function CalcRow({ label, value, op, strong }: { label: ReactNode; value:
   )
 }
 
-export function PageHeader({ title, children, back }: { title: string; children?: ReactNode; back?: { href: string; label: string } }) {
+/** `titleLang`: idioma del título cuando no es el de la interfaz (p. ej. un paquete de texto con el español de respaldo). */
+export function PageHeader({ title, children, back, titleLang }: { title: string; children?: ReactNode; back?: { href: string; label: string }; titleLang?: string }) {
   return (
     <div className="page-header">
       {back && (
@@ -187,7 +188,7 @@ export function PageHeader({ title, children, back }: { title: string; children?
         </a>
       )}
       <div className="page-header__row">
-        <h1 id="page-title" tabIndex={-1}>
+        <h1 id="page-title" tabIndex={-1} lang={titleLang}>
           {title}
         </h1>
         {children && <div className="page-header__actions">{children}</div>}

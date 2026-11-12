@@ -5,6 +5,23 @@ Sin backend, sin cuentas de usuario, sin conexión bancaria y sin IA dentro del 
 Interfaz en español, inglés, portugués y francés (`src/i18n/es.ts`, `en.ts`, `pt.ts`, `fr.ts`). Antes se llamaba «Margen»: las
 claves internas (`margen.data.v1`, `margen-backup`, cachés `margen-`) NO se renombran.
 
+## App nativa de iOS (en curso: `docs/NATIVE-PLAN.md`, decisiones 152–163)
+
+Clara se está convirtiendo también en app de iPhone con Capacitor, reutilizando toda la web. La PWA no cambia. Cuatro
+reglas de este documento cambian, **cada una solo desde la fase que la implementa** (hasta entonces rige lo de siempre):
+
+- «Sin IA dentro del producto» → se permitirá IA **en el dispositivo** (Fase 5), opcional, que nunca envía datos ni
+  guarda sola.
+- «Nada se guarda sin confirmar» → excepción para las capturas automáticas (Fase 2): con «Guardar automáticamente»
+  entran como movimiento real marcado «Por revisar»; apagado, solo como propuestas.
+- «Una moneda por presupuesto» → sigue para los totales; cada movimiento podrá guardar su moneda original y la tasa
+  usada (Fase 3). Nunca se inventa una tasa.
+- «Sin conexiones a otros sitios» → excepción opcional para las tasas del Banco de Canadá (Fase 3), sin datos de la
+  persona.
+
+Lo nativo tiene tres estados y no se salta ninguno: **escrito**, **compila** (en el Mac de Victor) y **probado en
+iPhone**. Nunca se dice que algo funciona en el iPhone si Victor no lo probó.
+
 ## Comandos (ejecutar antes de cada commit)
 
 ```bash
@@ -17,24 +34,49 @@ npm run build
 
 En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/chrome npm run test:e2e`.
 
+App de iPhone (solo en un Mac con Xcode; ver `docs/IOS-NATIVE.md`): `npm run ios:sync` compila la web y la copia al
+proyecto de `ios/`; `npm run ios:open` abre Xcode. Nada de `ios/` se compila ni se prueba en CI ni en Linux: lo que
+no se haya compilado y abierto en un iPhone se dice como «sin probar».
+
 ## Arquitectura (no mezclar capas)
 
 - `src/domain/` — **lógica financiera pura**. Sin React, sin `localStorage`, sin `Date.now()`
   implícito: "hoy" y "ahora" llegan como parámetros (`OpContext`). Aquí viven todas las
   fórmulas y validaciones. Toda regla nueva lleva prueba en `*.test.ts`.
-- `src/storage/` — persistencia detrás de `DataRepository` (IndexedDB; `localStorage` si no hay),
+- `src/storage/` — persistencia detrás de `DataRepository` (IndexedDB; `localStorage` si no hay; en la app de iPhone,
+  `NativeRepository`: un archivo propio de la app con la revisión en su primera línea, ver `docs/STORAGE.md`),
   copias de seguridad (`backup.ts`), migraciones (`migrations.ts`) y borradores (`drafts.ts`).
 - `src/state/` — estado en memoria (`AppStore`) y hooks. Aplica resultados de
   `domain/operations.ts`; no calcula dinero.
 - `src/ui/` — pantallas y componentes. Solo muestran y llaman operaciones.
+- `ios/` — **cáscara nativa** de iPhone (Capacitor 8, Swift Package Manager): abre la misma web dentro de una app.
+  No contiene lógica financiera ni textos de la interfaz: el Swift transporta, no calcula.
+- `src/platform/` — **capa de plataforma** (decisión 152): lo único de `src/` que sabe si corre en el navegador o en la
+  app (`isNativeIOS()`, lee `window.Capacitor`). **Ningún import de Capacitor fuera de `src/platform/`**; dentro, solo
+  en `src/platform/native/`, que se carga con `import()` dentro de la app (una prueba lo exige), así el JS inicial de
+  la web no crece. Cada función tiene una implementación web que hace exactamente lo de siempre. Decide cómo se hace
+  algo y qué se EXPLICA, nunca cifras ni datos. `ios/App/App/public/` lo
+  escribe `cap sync` y no se versiona.
 - `src/i18n/` — todos los textos visibles. **Nunca** escribir texto de interfaz
   directamente en componentes: añadir cada clave a `es.ts`, `en.ts`, `pt.ts` **y** `fr.ts`
   (el tipo compartido obliga a tener todas las claves en los cuatro). Los textos de pantallas poco visitadas (Legal,
-  Galería) son paquetes diferidos fuera del JS inicial: `src/i18n/packs/<paquete>.<idioma>.ts` (mismas claves en los
-  cuatro, el tipo lo exige) cargados con `usePack` (`src/i18n/packs.ts`): estados `loading`, `ready` (con `fallback`
-  si el texto salió en español porque el idioma pedido no cargó) y `failed`; un fallo nunca se guarda como paquete ni
-  se enseña una clave; `PackNotice` muestra el estado con «Reintentar» (pide el archivo con otra marca en la dirección,
-  porque el navegador recuerda el fallo del módulo) y «Recargar la app» (auditoría 2026-11-02, P3).
+  Galería, Importar CSV, «¿Qué cambió?») son paquetes diferidos fuera del JS inicial: archivos `src/i18n/packs/<paquete>.<idioma>.json` (mismas
+  claves en los cuatro: `packs/packKeys.ts` lo exige en `tsc`) pedidos con `fetch` por `usePack` (`src/i18n/packs.ts`):
+  estados `loading`, `ready` (con `fallback` si el texto salió en español porque el idioma pedido no cargó; la pantalla
+  marca ese contenido con `lang="es"`) y `failed`; un fallo nunca se guarda como paquete ni se enseña una clave;
+  `PackNotice` muestra el estado con «Reintentar» y «Recargar la app» (auditoría 2026-11-02, P3). Cada intento tiene
+  identidad propia y señal de cancelación (auditoría 2026-11-04, F3): al vencer el plazo (`PACK_LOAD_TIMEOUT_MS`) se
+  cancela la petición y se retira el intento, el reintento pide la dirección con otra marca (`retryUrl`: petición nueva
+  de verdad, sin la caché HTTP; antes el `import()` pendiente se reutilizaba y el navegador no pedía nada) y un intento
+  viejo que termine tarde ni entra en memoria ni retira al nuevo. Con el español de respaldo, el contenido va en
+  `PackLangScope` (`lang="es"` y el traductor del contexto en español, así ningún texto de la interfaz queda con la
+  marca de otro idioma); la cabecera y `PackNotice` van fuera. Un texto de la interfaz nunca se traduce con el paquete
+  (`packTranslator`: claves del paquete del paquete, el resto del traductor de la interfaz). Textos de la app de iPhone
+  (decisión 164): el paquete `nativeApp` solo se pide dentro de la app (`platform/texts.ts` → `import()` de
+  `i18n/nativeTexts.ts`); sus claves que YA existen en el diccionario principal sustituyen al texto de la web (el que
+  habla del navegador, de Safari o de pestañas) y las `nativeApp.*` son de la sección «Clara en este iPhone». Solo se
+  sustituye con el paquete del mismo idioma; mismos parámetros que el texto sustituido (pruebas). Un texto nuevo que
+  hable del navegador lleva su sustitución en `nativeApp.<idioma>.json`; nunca se ramifica el texto en el componente.
 
 ## Reglas financieras (ver `docs/FORMULAS.md`)
 
@@ -43,7 +85,18 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   que no cabe en un entero exacto (> 2⁵³ − 1) no se redondea ni se recorta: `checkedSumMinor`/`checkedMulDivFloor`
   devuelven `null` y la pantalla dice que no hay cifra (QA V2, FIN-01: `recurringCosts` → `ok: false`;
   `projectBalance` nunca lanza: se detiene en el último día exacto → `outOfRangeFrom`, y cada pantalla que proyecta dice
-  hasta qué día hay cifra y no afirma nada del resto, auditoría 2026-11-02 P4). Cota de exactitud (`domain/exactRange.ts`):
+  hasta qué día hay cifra y no afirma nada del resto, auditoría 2026-11-02 P4). La cobertura es de CADA proyección
+  (`lastExactDate`/`exactDays`; auditoría 2026-11-04, F2): en el comparador de escenarios cada fila dice la suya (el
+  mínimo puede cubrir los 30 días y el esperado solo 22) y con cero días exactos (`lastExactDate: null`) nadie afirma
+  «hasta hoy» ni «hasta ayer». Los totales BRUTOS (todos los ingresos o todos los pagos de los días exactos) pueden no
+  caber aunque cada saldo diario sí (F1): `grossInflows`/`grossOutflows` devuelven `null` y `ScenarioComparison.incomeMinor`,
+  el «porqué» de Análisis (`Because.kind: 'noFigure'`) y `contributorsTotalMinor`/`incomesUntilFirstMinor` del plan ante
+  faltante lo dicen como «sin cifra exacta»; nunca se recorta, redondea ni pone a cero. Lo mismo el total de pagos
+  vencidos de Análisis y el gasto diario × días del plan ante faltante (`dailySpendTotalMinor: number | null`); cada
+  palanca dice la cobertura de SU simulación (`LeverEffect.lastExactDate`) y, si el saldo real de hoy ya es negativo,
+  el faltante es el de hoy al empezar (`shortfallAt: 'startOfDay'`), nunca la cifra de un cierre no calculado.
+  `computeBudget`, la revisión semanal y los pagos pendientes de un plan aún suman sin verificar (límite anotado en el
+  informe de la auditoría 2026-11-04). Cota de exactitud (`domain/exactRange.ts`):
   Σ|saldos de referencia| + Σ|importes| (movimientos y papelera) ≤ 2⁵³ − 1; guardar, marcar pagado, importar, mover
   un saldo de referencia o crear una cuenta con saldo que la pasarían se rechazan (`amountsBeyondExactRange`) y una
   copia que la pasa no se acepta: así toda suma parcial de la app es exacta (revisiones QA27).
@@ -167,7 +220,13 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   abren el formulario relleno; nunca se programa nada solo y no cuentan como pendientes. El tope de duplicados cuenta
   solo parejas SIN revisar (`scanDuplicates` con el predicado de la vista): lo descartado o pospuesto se lista pero no
   ocupa sitio, y si quedan más de las que caben la bandeja lo dice (`moreDuplicates`); nunca se da por completa
-  (auditoría 2026-11-02, P2).
+  (auditoría 2026-11-02, P2). Los candidatos salen de un índice por nota (auditoría 2026-11-04, F4): solo se examinan
+  parejas que coinciden, el trabajo queda acotado por lo revisado más el tope (`DuplicateScan.examined`, afirmado con
+  cifras exactas en las pruebas: el número de parejas consideradas del recorrido de siempre) y las parejas, el orden y
+  los ids son los de siempre; los tramos de cuotas del mismo programado se saltan de una vez. Una pareja descartada o pospuesta
+  a la que el recorrido no llega se reconstruye desde la decisión guardada (`duplicatePairFromDecision`: existen los
+  dos, siguen siendo pareja, misma huella o posposición vigente) para que siga en «Descartados»/«Pospuestos» sin
+  revisar antes las ajenas (F5); una decisión que ya no apunta a nada se ignora y nunca se borra.
 - Distribuir un ingreso (`domain/incomeDistribution.ts`): solo ingresos realizados; crea
   apartados virtuales (metas), nunca dinero ni movimientos; pagos ya reservados no se
   restan dos veces; todo o nada; deshacer solo si es coherente.

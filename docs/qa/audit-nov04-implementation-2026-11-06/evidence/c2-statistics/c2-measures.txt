@@ -1,0 +1,12 @@
+before celular: clientWidth 412, scrollWidth 434, overflow 22px
+  donut total {"text":"$90,071,992,547,409.91","transform":null}
+before celular-pequeno: clientWidth 320, scrollWidth 434, overflow 114px
+  donut total {"text":"$90,071,992,547,409.91","transform":null}
+before escritorio: clientWidth 1280, scrollWidth 1280, overflow 0px
+  donut total {"text":"$90,071,992,547,409.91","transform":null}
+after celular: clientWidth 412, scrollWidth 412, overflow 0px
+  donut total {"text":"$90,071,992,547,409.91","transform":"translate(60 57) scale(0.4872767144269343) translate(-60 -57)"}
+after celular-pequeno: clientWidth 320, scrollWidth 320, overflow 0px
+  donut total {"text":"$90,071,992,547,409.91","transform":"translate(60 57) scale(0.4872767144269343) translate(-60 -57)"}
+after escritorio: clientWidth 1280, scrollWidth 1280, overflow 0px
+  donut total {"text":"$90,071,992,547,409.91","transform":"translate(60 57) scale(0.4870564887676819) translate(-60 -57)"}

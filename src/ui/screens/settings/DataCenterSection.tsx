@@ -6,6 +6,7 @@
 import { recoveryStatus, type RecoveryRow, type RecoveryState, type RecoveryStep } from '../../../domain/recovery'
 import { SCHEMA_VERSION } from '../../../domain/types'
 import { useT, type MessageKey } from '../../../i18n'
+import { nativeStorageFellBack } from '../../../platform/repository'
 import { PRE_MIGRATION_KEY_PREFIX } from '../../../storage/localStorageRepository'
 import { usePwaState } from '../../../pwa/register'
 import { useToday } from '../../../state/hooks'
@@ -44,7 +45,7 @@ export function DataCenterSection() {
   const { list, available } = useLocalBackupList()
   const localCopies = !available ? null : { count: list?.length ?? 0, lastCreatedAt: list?.[0]?.createdAt ?? null }
   const preMigration = readPreMigrationCopy()
-  const status = recoveryStatus({ data, today, backend: getStore().backend, localCopies, preMigrationCopy: preMigration !== null, errorCount: readErrors().length, offlineReady: pwa.offlineReady })
+  const status = recoveryStatus({ data, today, backend: getStore().backend, localCopies, preMigrationCopy: preMigration !== null, errorCount: readErrors().length, offlineReady: pwa.offlineReady, webViewFallback: nativeStorageFellBack() })
   // Descarga el texto exacto anterior a la migración (ROLLBACK.md); no modifica nada.
   const downloadPreMigration = () => {
     if (preMigration !== null) downloadText(`clara-datos-antes-de-v${SCHEMA_VERSION}.json`, preMigration)
@@ -55,7 +56,10 @@ export function DataCenterSection() {
     const when = (iso: unknown) => (iso ? fmt.timestamp(String(iso)) : '—')
     switch (r.id) {
       case 'saving':
-        return r.state === 'critical' ? t('data.row.saving.critical') : t('data.row.saving.ok', { backend: t(`data.backend.${String(p.backend)}` as MessageKey) })
+        if (r.state === 'critical') return t('data.row.saving.critical')
+        if (p.webViewFallback) return t('data.row.saving.webViewFallback')
+        // En la app de iPhone no es «este navegador»: es un archivo propio de la app (decisión 156).
+        return p.backend === 'native' ? t('data.row.saving.native') : t('data.row.saving.ok', { backend: t(`data.backend.${String(p.backend)}` as MessageKey) })
       case 'export':
         return p.demo ? t('data.row.export.demo') : r.state === 'critical' ? t('data.row.export.critical') : t(r.state === 'warn' ? 'data.row.export.warn' : 'data.row.export.ok', { when: when(p.lastExport) })
       case 'verified':

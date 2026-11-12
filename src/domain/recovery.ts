@@ -8,7 +8,7 @@ import { backupStatus, type BackupStatus } from './backupReminder'
 import { daysBetween, localDateInTimeZone } from './dates'
 import type { AppData, LocalDate } from './types'
 
-export type StorageBackend = 'indexeddb' | 'localStorage' | 'memory'
+export type StorageBackend = 'indexeddb' | 'localStorage' | 'memory' | 'native'
 export type RecoveryState = 'ok' | 'info' | 'warn' | 'critical'
 export type RecoveryRowId = 'saving' | 'export' | 'verified' | 'localCopies' | 'preMigration' | 'schema' | 'records' | 'trash' | 'history' | 'errors' | 'offline'
 export type RecoveryStepId = 'export' | 'localCopies' | 'preMigration' | 'trash' | 'history'
@@ -28,6 +28,11 @@ export interface RecoveryInputs {
   preMigrationCopy: boolean
   errorCount: number
   offlineReady: boolean
+  /**
+   * App de iPhone que no pudo usar su archivo propio y guarda en el almacenamiento del WebView, que iOS puede vaciar
+   * (decisión 156). Es un aviso: los datos se guardan, pero sin la protección que la app promete.
+   */
+  webViewFallback?: boolean
 }
 
 export interface RecoveryRow {
@@ -65,8 +70,8 @@ export function recoveryStatus(input: RecoveryInputs): RecoveryStatus {
 
   rows.push({
     id: 'saving',
-    state: input.backend === 'memory' ? 'critical' : 'ok',
-    params: { backend: input.backend },
+    state: input.backend === 'memory' ? 'critical' : input.webViewFallback ? 'warn' : 'ok',
+    params: { backend: input.backend, webViewFallback: input.webViewFallback ? 1 : 0 },
     href: '',
   })
 

@@ -70,38 +70,85 @@ export function enablePseudoLocale(on: boolean): void {
   pseudo = on ? pseudoDictionary(es) : null
 }
 
+/**
+ * Textos de la app de iPhone (decisión 164): dentro de la app sustituyen, clave a clave, a los de la web que hablan
+ * del navegador, de Safari o de pestañas. Llegan de un paquete diferido (`nativeTexts.ts`); cada idioma por separado,
+ * y mientras no haya llegado el del idioma activo se ve el texto de la web (nunca el de otro idioma ni una clave).
+ * En el navegador este mapa queda vacío para siempre.
+ */
+const nativeTexts: Partial<Record<Language, Readonly<Record<string, string>>>> = {}
+
+/** Carga los textos de la app para un idioma, o `null` si no hay (fuera de la app, o si el paquete no llegó). */
+export type NativeTextsLoader = (language: Language) => Promise<Readonly<Record<string, string>> | null>
+
+export function setNativeTexts(language: Language, texts: Readonly<Record<string, string>> | null): void {
+  if (texts) nativeTexts[language] = texts
+  else delete nativeTexts[language]
+}
+
+/** Pide los textos de la app para el idioma activo. Devuelve lo que haya ya (cambia de identidad al llegar). */
+export function useNativeTexts(language: Language, load: NativeTextsLoader | null): Readonly<Record<string, string>> | undefined {
+  const [, arrived] = useState(0)
+  useEffect(() => {
+    if (!load || nativeTexts[language]) return
+    let alive = true
+    load(language).then(
+      (texts) => {
+        if (!texts) return
+        setNativeTexts(language, texts)
+        if (alive) arrived((n) => n + 1)
+      },
+      () => {},
+    )
+    return () => {
+      alive = false
+    }
+  }, [language, load])
+  return nativeTexts[language]
+}
+
 function interpolate(message: string, params?: Params): string {
   if (!params) return message
   return message.replace(/\{(\w+)\}/g, (match, name: string) => (name in params ? String(params[name]) : match))
 }
 
 export function translate(language: Language, key: MessageKey, params?: Params): string {
-  const message = pseudo?.[key] ?? dictionaries[language]?.[key] ?? es[key] ?? key
+  const message = pseudo?.[key] ?? nativeTexts[language]?.[key] ?? dictionaries[language]?.[key] ?? es[key] ?? key
   return interpolate(message, params)
+}
+
+/** Clave del plural: `<clave>_one` o `<clave>_other` según la cantidad. */
+export function pluralKey(language: Language, base: string, count: number): string {
+  return `${base}_${new Intl.PluralRules(language).select(count) === 'one' ? 'one' : 'other'}`
 }
 
 /** Plurales: busca `<clave>_one` o `<clave>_other` según la cantidad. */
 export function translatePlural(language: Language, base: string, count: number, params?: Params): string {
-  const rule = new Intl.PluralRules(language).select(count) === 'one' ? 'one' : 'other'
-  const key = `${base}_${rule}` as MessageKey
-  return translate(language, key, { count, ...params })
+  return translate(language, pluralKey(language, base, count) as MessageKey, { count, ...params })
 }
 
 export interface Translator {
   language: Language
   t: (key: MessageKey, params?: Params) => string
   tn: (base: string, count: number, params?: Params) => string
+  /** El mismo traductor (mismos textos de los datos) en otro idioma: el respaldo en español de un paquete diferido. */
+  inLanguage: (language: Language) => Translator
 }
 
 /**
  * `extra` añade textos que vienen de los datos (nombres de categorías
- * personalizadas: `category.c_…`), así se muestran igual que las fijas.
+ * personalizadas: `category.c_…`) o de un paquete diferido (`packs.ts`, también sus plurales `_one`/`_other`), así se
+ * muestran igual que las fijas.
  */
 export function createTranslator(language: Language, extra: Record<string, string> = {}): Translator {
   return {
     language,
     t: (key, params) => (key in extra ? interpolate(extra[key]!, params) : translate(language, key, params)),
-    tn: (base, count, params) => translatePlural(language, base, count, params),
+    tn: (base, count, params) => {
+      const key = pluralKey(language, base, count)
+      return key in extra ? interpolate(extra[key]!, { count, ...params }) : translatePlural(language, base, count, params)
+    },
+    inLanguage: (other) => (other === language ? createTranslator(language, extra) : createTranslator(other, extra)),
   }
 }
 

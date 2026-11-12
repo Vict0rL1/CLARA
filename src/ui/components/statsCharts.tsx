@@ -3,7 +3,7 @@
  * varios periodos con tooltip, tendencia acumulada (dos series) y saldo futuro con banda.
  * Cada uno tiene texto accesible y una tabla alternativa; en modo privado no se dibujan.
  */
-import { useId, useState, type ReactNode } from 'react'
+import { useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { CategoryIcon } from './CategoryIcon'
 import type { CategoryShare, FutureBalance, SeriesPoint, TrendPoint } from '../../domain/statistics'
 import { idealAt, type GoalTrajectory } from '../../domain/goalChart'
@@ -41,6 +41,40 @@ function TableToggle({ children }: { children: ReactNode }) {
 /* Donut por categoría                                                 */
 /* ------------------------------------------------------------------ */
 
+/** Ancho útil del hueco del donut (diámetro interior 70 menos margen), en unidades del `viewBox`. */
+const DONUT_HOLE = 64
+
+/**
+ * El total en el centro del donut. Si no cabe en el hueco se reduce en proporción (se mide, no se adivina por el
+ * número de caracteres): un SVG recorta lo que se sale y un importe recortado se leería como otra cifra. Con
+ * importes normales no cambia nada.
+ */
+function DonutTotal({ text }: { text: string }) {
+  const ref = useRef<SVGTextElement>(null)
+  const [scale, setScale] = useState(1)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el || typeof el.getComputedTextLength !== 'function') return
+    let alive = true
+    const fit = () => {
+      if (!alive) return
+      const width = el.getComputedTextLength()
+      setScale(width > DONUT_HOLE ? DONUT_HOLE / width : 1)
+    }
+    fit()
+    // La medida cambia cuando llega la tipografía de la app.
+    void document.fonts?.ready.then(fit)
+    return () => {
+      alive = false
+    }
+  }, [text])
+  return (
+    <text ref={ref} x="60" y="57" textAnchor="middle" className="donut__total" transform={scale < 1 ? `translate(60 57) scale(${scale}) translate(-60 -57)` : undefined}>
+      {text}
+    </text>
+  )
+}
+
 export function CategoryDonut({ categories, total, fmt, label, color, icon, onSelect }: { icon?: (id: string) => string; categories: CategoryShare[]; total: number; fmt: Formatter; label: (id: string) => string; color: (id: string) => CategoryColor; onSelect?: (id: string) => void }) {
   const { t } = useT()
   if (fmt.privacy) return <HiddenChart />
@@ -60,9 +94,7 @@ export function CategoryDonut({ categories, total, fmt, label, color, icon, onSe
           offset += len
           return el
         })}
-        <text x="60" y="57" textAnchor="middle" className="donut__total">
-          {fmt.money(total)}
-        </text>
+        <DonutTotal text={fmt.money(total)} />
         <text x="60" y="72" textAnchor="middle" className="donut__sub">
           {t('stats.expensesShort')}
         </text>
