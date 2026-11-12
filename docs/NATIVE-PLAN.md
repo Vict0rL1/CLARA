@@ -53,9 +53,13 @@ fusiona cuando Victor la haya probado.
    target de pruebas al empezar la Fase 2, cuando la primera compilación haya confirmado la base. Medido aquí:
    serializar 10 000 movimientos (3,14 MB) cuesta 9,6 ms y 50 000 (15,8 MB) 43 ms; puente y disco, pendientes de
    medir en el iPhone.
-3. **Textos de la app nativa.** «Instalar Clara», la persistencia del navegador y los textos sobre Safari se
-   sustituyen por explicaciones de la app (cómo se actualiza, la caducidad de 7 días, dónde están los datos). Van en
-   un paquete de texto diferido para no subir el JS inicial.
+3. **Textos de la app nativa. Hecho (probado con el puente simulado).** «Instalar Clara» pasa a ser «Clara en este
+   iPhone» (dónde están los datos, cómo traer los de la web, cómo se actualiza, la caducidad de 7 días); no se ofrece
+   pedir al navegador que conserve los datos; los enlaces de «Atajos de iPhone» no se muestran; y 50 textos que
+   hablaban del navegador, de Safari o de pestañas se sustituyen dentro de la app (decisión 164). Todo en el paquete
+   diferido `nativeApp`, que la web nunca pide. Prueba de navegador nueva (`tests/e2e/native-shell.spec.ts`) que
+   arranca Clara con un doble del puente de Capacitor y del plugin `ClaraStorage`: es la primera vez que el
+   repositorio nativo corre entero en un navegador (guardar, reabrir, migrar desde el WebView, aviso sin plugin).
 4. **Face ID.** LocalAuthentication detrás del ajuste `biometricLock` que ya existe.
 5. **Tacto del sistema.** Vibración háptica al guardar, deshacer y en errores (respeta «reducir movimiento»), barra
    de estado según el tema y teclado que no tapa los campos.
@@ -65,9 +69,11 @@ fusiona cuando Victor la haya probado.
 
 ### Ajustes al plan del encargo tras leer el repositorio
 
-- **Tamaño del JS inicial.** Quedan 3,4 KB hasta el límite (841,2 de 844,6 KB). Todo lo nativo (plugins de
-  Capacitor, repositorio nativo, textos) se carga con `import()` solo dentro de la app, y los textos nuevos van en
-  paquetes diferidos (`src/i18n/packs/`). El límite no se sube.
+- **Tamaño del JS inicial.** Quedan 1,5 KB hasta el límite (843,1 de 844,6 KB tras el bloque 3). Todo lo nativo
+  (plugins de Capacitor, repositorio nativo, textos) se carga con `import()` solo dentro de la app, y los textos
+  nuevos van en paquetes diferidos (`src/i18n/packs/`). El límite no se sube. Las Fases 2 y 3 añaden validación de
+  campos nuevos al arranque (esquema 15): antes hará falta sacar del JS inicial textos de pantallas poco visitadas,
+  como ya se hizo con Legal, Galería e Importar CSV.
 - **JSON o SQLite.** Se empieza con un archivo JSON completo por guardado, que es como ya guardan los dos
   repositorios actuales. La parte medible aquí (serializar 10 000 y 50 000 movimientos) se mide en la Fase 1; el
   coste del puente y del disco solo se puede medir en el iPhone y queda como dato pendiente. SQLite solo si esa
@@ -112,6 +118,19 @@ fusiona cuando Victor la haya probado.
    gasta minutos de macOS de GitHub Actions (cuestan más que los de Linux si el repositorio es privado).
 6. Más adelante (Fase 4): ejemplos reales de SMS o alertas del banco, con los números tapados.
 
+## 4 bis. Pendiente anotado durante la Fase 1
+
+- **Imprimir a PDF dentro de la app.** Estadísticas ofrece «Exportar PDF» con la impresión del navegador
+  (`window.print()`). Dentro de un WebView de iOS eso puede no hacer nada. Se comprueba en el bloque 6 con la
+  documentación de WebKit: o se hace con la hoja de impresión nativa, o el botón no se muestra en la app.
+- **Textos de descargar y exportar** («Descarga solicitada. Revisa tu carpeta de descargas…»): se sustituyen en el
+  bloque 6, cuando exportar abra la hoja Compartir.
+- **Copia previa a una migración de esquema.** `NativeRepository` la guarda en el archivo nativo (`before-v<N>`), pero
+  la fila de Ajustes › Datos y recuperación todavía mira la del WebView. Se conecta antes de subir al esquema 15
+  (Fase 2).
+- **Las sustituciones llegan un instante después del primer pintado** (se piden al arrancar). En Inicio solo afecta
+  al aviso de copia pendiente. Si en el iPhone se nota, se espera al paquete antes de pintar.
+
 ## 5. Notas del historial de la rama
 
 - El commit `1e80e3c` (documentación del Paso 0) se llevó por error los renombrados de `src/platform/` y de la guía,
@@ -125,4 +144,5 @@ fusiona cuando Victor la haya probado.
 |---|---|
 | Proyecto `ios/`, icono, pantalla de arranque, permisos | Escrito, sin compilar |
 | Detección de la app (`src/platform/`) | Probado en pruebas unitarias; sin probar en iPhone |
-| Almacenamiento duradero (`ClaraFileStore.swift`, `ClaraStoragePlugin.swift`, `NativeRepository`) | Swift escrito, sin compilar; TS con 30 pruebas |
+| Almacenamiento duradero (`ClaraFileStore.swift`, `ClaraStoragePlugin.swift`, `NativeRepository`) | Swift escrito, sin compilar; TS con 30 pruebas y prueba de navegador con el plugin simulado |
+| Textos y pantallas de la app (`nativeApp`, «Clara en este iPhone») | Solo web: probado en navegador con el puente simulado (3 tamaños, es y en); sin probar en iPhone |

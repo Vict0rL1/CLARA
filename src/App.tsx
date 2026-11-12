@@ -3,7 +3,8 @@ import { AddSheet } from './ui/components/AddSheet'
 import { settingsSection } from './ui/screens/settings/sections'
 import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Language } from './domain/types'
-import { I18nContext, createTranslator, useLoadedLanguage, useT } from './i18n'
+import { I18nContext, createTranslator, useLoadedLanguage, useNativeTexts, useT } from './i18n'
+import { nativeTextsLoader } from './platform/texts'
 import { usePwaState } from './pwa/register'
 import { getStore, useAppState, type SaveStatus } from './state/store'
 import { createBackup, backupFileName } from './storage/backup'
@@ -84,6 +85,9 @@ export function App() {
   const requested = state.phase === 'ready' && state.data ? state.data.settings.language : setupLanguage
   // Los diccionarios que no son el español se cargan bajo demanda: mientras llega el pedido se muestra el anterior.
   const { language, ready: languageReady } = useLoadedLanguage(requested)
+  // Dentro de la app de iPhone, los textos que hablan del navegador se sustituyen por los de la app (decisión 164).
+  const [loadNativeTexts] = useState(() => nativeTextsLoader())
+  const nativeTexts = useNativeTexts(language, loadNativeTexts)
   // Primera apertura en otro idioma: se espera al diccionario para no mostrar la app en español un instante.
   const waitingLanguage = state.phase === 'ready' && !!state.data && !languageReady && language === 'es' && requested !== 'es'
   const categories = state.phase === 'ready' && state.data ? state.data.categories : undefined
@@ -95,7 +99,9 @@ export function App() {
         ...Object.fromEntries(Object.entries(categoryPrefs ?? {}).filter(([, p]) => p.name).map(([id, p]) => [`category.${id}`, p.name!])),
         ...Object.fromEntries((categories ?? []).map((c) => [`category.${c.id}`, c.name])),
       }),
-    [language, categories, categoryPrefs],
+    // `nativeTexts` no se lee aquí: al llegar cambia de identidad y el traductor nuevo hace que todo se vuelva a pintar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [language, categories, categoryPrefs, nativeTexts],
   )
 
   useEffect(() => {

@@ -89,9 +89,10 @@ Con los datos de demostración (pantalla de bienvenida › «Explorar con datos 
 | 10 | Cámara | «+» › Asistente › foto de un recibo: pide permiso de cámara y no se cierra la app | |
 | 11 | Tema | Cambia el iPhone a modo oscuro/claro: la app y la pantalla de arranque lo siguen | |
 | 12 | Textos de Legal | Ajustes › Legal › Privacidad: el texto aparece (se pide como archivo aparte) | |
-| 13 | No ofrece instalarse | Ajustes › Instalar Clara dice que ya está instalada; en Inicio no sale la tarjeta de instalar | |
+| 13 | Habla de la app, no del navegador | En Ajustes no existe «Instalar Clara»: en su lugar está «Clara en este iPhone» (dónde están los datos, cómo traerlos de la web, cómo se actualiza, los 7 días). En Inicio no sale la tarjeta de instalar. Ajustes › Datos y recuperación › «Almacenamiento y privacidad» dice «solo en este iPhone, dentro de la app Clara» y no ofrece «Pedir al navegador que conserve los datos» | |
 | 14 | Guarda en su archivo propio | Ajustes › Datos y recuperación: la primera fila dice «Guardado en este iPhone, en un archivo propio de la app». Si habla de IndexedDB o avisa de que no pudo usar su archivo, dilo | |
 | 15 | Aguanta un reinicio | Registra 3 movimientos, cierra la app del todo, **reinicia el iPhone** y abre: siguen ahí | |
+| 16 | Aguanta una reinstalación | Con esos movimientos guardados, pulsa ▶ en Xcode otra vez (instala encima, **sin** eliminar la app del iPhone) y abre: siguen ahí. La app lo afirma en «Clara en este iPhone»; si no fuera así, dilo antes de guardar datos reales | |
 
 ### Si la pantalla se queda en blanco
 
@@ -105,11 +106,17 @@ sirve desde `capacitor://localhost`, cosa que no se ha podido probar sin un iPho
 
 ## Lo que se sabe que aún no está adaptado
 
-- Algunos textos dicen «este navegador» donde en la app sería «este iPhone».
+- Los textos que hablaban del navegador, de Safari o de pestañas ya se sustituyen dentro de la app (decisión 164).
+  Quedan los de descargar y exportar («Descarga solicitada. Revisa tu carpeta de descargas…»), que cambian cuando
+  exportar abra la hoja Compartir, y puede quedar alguno suelto: si ves «navegador» en la app, apunta dónde.
+- Los textos de la app llegan un instante después de abrir: si al arrancar ves un texto con «navegador» que cambia
+  solo, también apúntalo.
+- Estadísticas › «Exportar PDF» usa la impresión del navegador; dentro de la app puede no hacer nada (pendiente).
 - Los avisos (pagos por vencer, planes) usan las notificaciones del navegador, que dentro de una app no existen: en
   la app no llegan todavía. Se sustituyen por notificaciones nativas en el paso de la acción «Registrar gasto».
 - Los textos con los que iOS pide permiso de cámara y micrófono están solo en español.
-- Ajustes › Atajos › «Atajos de iPhone» sigue mostrando los enlaces de la versión web; se reemplaza por la guía nueva.
+- Ajustes › Atajos ya no muestra «Atajos de iPhone» dentro de la app (sus enlaces abren la Clara de la web). La guía
+  de captura automática llega con la Fase 2.
 - El bloqueo con Face ID de la versión web (WebAuthn) puede no estar disponible dentro de la app; el PIN sí debería.
 
 ### Si Xcode no compila

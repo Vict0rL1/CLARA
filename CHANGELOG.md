@@ -17,6 +17,12 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
   guarda en `Application Support`, fuera del navegador interno que iOS puede vaciar, con escritura atómica, versión
   anterior y detección de conflicto. Lo que hubiera en el WebView se trae una sola vez, verificando. Si la app no
   pudiera usar su archivo, Ajustes › Datos y recuperación lo avisa. **Escrito, sin compilar ni probar en un iPhone.**
+- **App de iPhone: habla de la app, no del navegador** (Fase 1 nativa, bloque 3; decisión 164): dentro de la app,
+  «Instalar Clara» pasa a ser «Clara en este iPhone» (dónde están los datos, cómo traer los de la versión web, cómo se
+  actualiza y que con una cuenta gratuita de Apple deja de abrirse a los 7 días); no se ofrece pedir al navegador que
+  conserve los datos; los enlaces de «Atajos de iPhone» no se muestran; y los textos que hablaban del navegador, de
+  Safari o de pestañas se sustituyen por los de la app, en los cuatro idiomas. Todo va en un paquete de texto que la
+  versión web nunca pide. **Probado en navegador con el puente nativo simulado; sin probar en un iPhone.**
 - **Análisis** (etapa 4 del programa): nuevo destino en la barra (Inicio · Movimientos · + · Plan · Análisis · Ajustes) con
   señales calculadas con reglas fijas (pagos vencidos, saldo proyectado en negativo o bajo los apartados, límites, metas por
   detrás, gasto a fecha equivalente, categoría dominante, copia pendiente), cada una con «¿Cómo se calculó?» (regla y cifras), y

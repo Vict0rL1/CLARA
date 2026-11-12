@@ -5,6 +5,7 @@
  */
 import { useState } from 'react'
 import { useT } from '../../../i18n'
+import { isNativeIOS } from '../../../platform'
 import { usePwaState } from '../../../pwa/register'
 import { getStore, useAppState } from '../../../state/store'
 import { IndexedDbRepository } from '../../../storage/indexedDbRepository'
@@ -38,7 +39,8 @@ export function StorageCard() {
         <li>{t('settings.storage.noBank')}</li>
         <li>{t('settings.storage.noAi')}</li>
       </ul>
-      <PersistentStorage />
+      {/* Pedir al navegador que conserve los datos no aplica dentro de la app de iPhone: ahí van en un archivo propio. */}
+      {!isNativeIOS() && <PersistentStorage />}
       <OriginCopy />
       <p className="note">{t('history.openHint')}</p>
       <a className="btn btn--secondary" href={href('/ajustes/historial')}>

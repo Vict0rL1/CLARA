@@ -12,12 +12,13 @@ import { createTranslator, enablePseudoLocale, isLanguageLoaded, loadLanguage, t
 import bankImportPack from './packs/bankImport.es.json'
 import galleryPack from './packs/gallery.es.json'
 import legalPack from './packs/legal.es.json'
+import nativeAppPack from './packs/nativeApp.es.json'
 
 const LANGS = { en, pt, fr } as const
 
 const keys = new Set(Object.keys(es))
 /** Las claves de los paquetes diferidos (`packs/*.json`, mismas en los cuatro idiomas por `packKeys.ts`). */
-const packKeys = new Set([...Object.keys(legalPack), ...Object.keys(galleryPack), ...Object.keys(bankImportPack)])
+const packKeys = new Set([...Object.keys(legalPack), ...Object.keys(galleryPack), ...Object.keys(bankImportPack), ...Object.keys(nativeAppPack)])
 const has = (k: string) => keys.has(k)
 
 function sourceFiles(dir: string): string[] {

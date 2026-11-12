@@ -71,7 +71,12 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
   viejo que termine tarde ni entra en memoria ni retira al nuevo. Con el español de respaldo, el contenido va en
   `PackLangScope` (`lang="es"` y el traductor del contexto en español, así ningún texto de la interfaz queda con la
   marca de otro idioma); la cabecera y `PackNotice` van fuera. Un texto de la interfaz nunca se traduce con el paquete
-  (`packTranslator`: claves del paquete del paquete, el resto del traductor de la interfaz).
+  (`packTranslator`: claves del paquete del paquete, el resto del traductor de la interfaz). Textos de la app de iPhone
+  (decisión 164): el paquete `nativeApp` solo se pide dentro de la app (`platform/texts.ts` → `import()` de
+  `i18n/nativeTexts.ts`); sus claves que YA existen en el diccionario principal sustituyen al texto de la web (el que
+  habla del navegador, de Safari o de pestañas) y las `nativeApp.*` son de la sección «Clara en este iPhone». Solo se
+  sustituye con el paquete del mismo idioma; mismos parámetros que el texto sustituido (pruebas). Un texto nuevo que
+  hable del navegador lleva su sustitución en `nativeApp.<idioma>.json`; nunca se ramifica el texto en el componente.
 
 ## Reglas financieras (ver `docs/FORMULAS.md`)
 
