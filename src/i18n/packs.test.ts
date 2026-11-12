@@ -17,6 +17,10 @@ import nativeAppEn from './packs/nativeApp.en.json'
 import nativeAppEs from './packs/nativeApp.es.json'
 import nativeAppFr from './packs/nativeApp.fr.json'
 import nativeAppPt from './packs/nativeApp.pt.json'
+import whatChangedEn from './packs/whatChanged.en.json'
+import whatChangedEs from './packs/whatChanged.es.json'
+import whatChangedFr from './packs/whatChanged.fr.json'
+import whatChangedPt from './packs/whatChanged.pt.json'
 import { es } from './es'
 import { fromDisk } from '../test/packFiles'
 
@@ -25,15 +29,16 @@ const ALL: Record<string, Record<string, Record<string, string>>> = {
   gallery: { es: galleryEs, en: galleryEn, pt: galleryPt, fr: galleryFr },
   bankImport: { es: bankImportEs, en: bankImportEn, pt: bankImportPt, fr: bankImportFr },
   nativeApp: { es: nativeAppEs, en: nativeAppEn, pt: nativeAppPt, fr: nativeAppFr },
+  whatChanged: { es: whatChangedEs, en: whatChangedEn, pt: whatChangedPt, fr: whatChangedFr },
 }
 const vars = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort()
 
 describe('paquetes de texto diferidos', () => {
   it('cada paquete tiene las mismas claves en los cuatro idiomas, sin textos vacíos, y ninguna de esas claves sigue en el diccionario principal', async () => {
     const packs = createPackLoader(PACK_URLS, 0, fromDisk)
-    for (const [name, reference] of [['legal', legalEs], ['gallery', galleryEs], ['bankImport', bankImportEs], ['nativeApp', nativeAppEs]] as const) {
+    for (const [name, reference] of [['legal', legalEs], ['gallery', galleryEs], ['bankImport', bankImportEs], ['nativeApp', nativeAppEs], ['whatChanged', whatChangedEs]] as const) {
       const keys = Object.keys(reference).sort()
-      expect(keys.length).toBe({ legal: 22, gallery: 54, bankImport: 103, nativeApp: 69 }[name])
+      expect(keys.length).toBe({ legal: 22, gallery: 54, bankImport: 103, nativeApp: 69, whatChanged: 69 }[name])
       for (const lang of ['es', 'en', 'pt', 'fr'] as const) {
         const { pack, language } = await packs.load(name, lang)
         expect(language).toBe(lang)
@@ -45,13 +50,13 @@ describe('paquetes de texto diferidos', () => {
       for (const k of keys) if (name !== 'nativeApp' || k.startsWith('nativeApp.')) expect(k in es, k).toBe(false)
     }
     // Lo que las pantallas siguen pidiendo al diccionario principal no se movió.
-    for (const k of ['gallery.coachStep', 'gallery.clear', 'legal.title', 'legal.updated', 'legal.terms.title', 'legal.privacy.title', 'bankImport.title']) expect(k in es, k).toBe(true)
+    for (const k of ['gallery.coachStep', 'gallery.clear', 'legal.title', 'legal.updated', 'legal.terms.title', 'legal.privacy.title', 'bankImport.title', 'changes.title', 'changes.link', 'changes.kind.estimate', 'changes.kind.assumption']) expect(k in es, k).toBe(true)
   })
 
   it('cada paquete e idioma es un archivo JSON propio, fuera del JS inicial', () => {
     const urls = Object.values(PACK_URLS).flatMap((byLang) => Object.values(byLang))
-    expect(new Set(urls).size).toBe(16)
-    for (const name of ['legal', 'gallery', 'bankImport', 'nativeApp'] as const) {
+    expect(new Set(urls).size).toBe(20)
+    for (const name of ['legal', 'gallery', 'bankImport', 'nativeApp', 'whatChanged'] as const) {
       for (const lang of ['es', 'en', 'pt', 'fr'] as const) expect(PACK_URLS[name][lang]).toMatch(new RegExp(`${name}\\.${lang}[^/]*\\.json$`))
     }
   })

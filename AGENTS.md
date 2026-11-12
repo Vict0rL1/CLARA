@@ -53,7 +53,7 @@ the browser gets its replacement in that pack, in all four languages; do not bra
 ```bash
 npm run check        # typecheck + oxlint + i18n literal check + Vitest (≈1 220 unit tests, incl. qa/, the QA V2, the PR #15 audit, the self-review contracts, the follow-up audit, the lead pass, the QA27 pass and the 2026-11-02 and 2026-11-04 audit passes)
 npm run build        # production build
-npm run size         # initial JS budget: must stay ≤ 844.6 KB (843.1 KB after native Phase 1 block 3: about 1.5 KB of margin; before adding visible text, move rarely visited screen texts to the lazy packs in `src/i18n/packs/` to free bytes) — do not raise it
+npm run size         # initial JS budget: must stay ≤ 844.6 KB (about 840 KB after moving the «¿Qué cambió?» texts to a lazy pack during native Phase 1; before adding visible text, move rarely visited screen texts to the lazy packs in `src/i18n/packs/` to free bytes) — do not raise it
 npm audit --audit-level=high   # dependency audit (CI fails on a high/critical vulnerability)
 npm run test:e2e     # Playwright: 3 projects (celular 412 px, celular-pequeno 320 px, escritorio) + axe
                      # budgets inside the suite: Home interactive < 500 ms with 10 000 movements (performance-10k.spec.ts); History's first entry < 300 ms after navigating from Home with 10 000 movements, 100 schedules, 1 000 linked payments and 30 schedule-touching entries (performance-history.spec.ts; measured 39–43 ms on the second navigation, ~310 ms on the first, which includes the lazy chunk)

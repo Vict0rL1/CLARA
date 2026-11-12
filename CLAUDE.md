@@ -60,7 +60,7 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
 - `src/i18n/` — todos los textos visibles. **Nunca** escribir texto de interfaz
   directamente en componentes: añadir cada clave a `es.ts`, `en.ts`, `pt.ts` **y** `fr.ts`
   (el tipo compartido obliga a tener todas las claves en los cuatro). Los textos de pantallas poco visitadas (Legal,
-  Galería, Importar CSV) son paquetes diferidos fuera del JS inicial: archivos `src/i18n/packs/<paquete>.<idioma>.json` (mismas
+  Galería, Importar CSV, «¿Qué cambió?») son paquetes diferidos fuera del JS inicial: archivos `src/i18n/packs/<paquete>.<idioma>.json` (mismas
   claves en los cuatro: `packs/packKeys.ts` lo exige en `tsc`) pedidos con `fetch` por `usePack` (`src/i18n/packs.ts`):
   estados `loading`, `ready` (con `fallback` si el texto salió en español porque el idioma pedido no cargó; la pantalla
   marca ese contenido con `lang="es"`) y `failed`; un fallo nunca se guarda como paquete ni se enseña una clave;
