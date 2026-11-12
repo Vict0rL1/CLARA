@@ -109,7 +109,14 @@ fusiona cuando Victor la haya probado.
    gasta minutos de macOS de GitHub Actions (cuestan más que los de Linux si el repositorio es privado).
 6. Más adelante (Fase 4): ejemplos reales de SMS o alertas del banco, con los números tapados.
 
-## 5. Estado de lo nativo
+## 5. Notas del historial de la rama
+
+- El commit `1e80e3c` (documentación del Paso 0) se llevó por error los renombrados de `src/platform/` y de la guía,
+  que estaban preparados para el commit siguiente: **por sí solo no pasa `tsc`** (el siguiente lo arregla). Corregirlo
+  exigiría reescribir un historial ya publicado, y eso no se hace sin que Victor lo pida. Con «Squash and merge» en el
+  PR de la fase no llega a `main`; `git bisect` debe saltarlo.
+
+## 6. Estado de lo nativo
 
 | Pieza | Estado |
 |---|---|

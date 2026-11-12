@@ -5,6 +5,23 @@ Sin backend, sin cuentas de usuario, sin conexión bancaria y sin IA dentro del 
 Interfaz en español, inglés, portugués y francés (`src/i18n/es.ts`, `en.ts`, `pt.ts`, `fr.ts`). Antes se llamaba «Margen»: las
 claves internas (`margen.data.v1`, `margen-backup`, cachés `margen-`) NO se renombran.
 
+## App nativa de iOS (en curso: `docs/NATIVE-PLAN.md`, decisiones 152–163)
+
+Clara se está convirtiendo también en app de iPhone con Capacitor, reutilizando toda la web. La PWA no cambia. Cuatro
+reglas de este documento cambian, **cada una solo desde la fase que la implementa** (hasta entonces rige lo de siempre):
+
+- «Sin IA dentro del producto» → se permitirá IA **en el dispositivo** (Fase 5), opcional, que nunca envía datos ni
+  guarda sola.
+- «Nada se guarda sin confirmar» → excepción para las capturas automáticas (Fase 2): con «Guardar automáticamente»
+  entran como movimiento real marcado «Por revisar»; apagado, solo como propuestas.
+- «Una moneda por presupuesto» → sigue para los totales; cada movimiento podrá guardar su moneda original y la tasa
+  usada (Fase 3). Nunca se inventa una tasa.
+- «Sin conexiones a otros sitios» → excepción opcional para las tasas del Banco de Canadá (Fase 3), sin datos de la
+  persona.
+
+Lo nativo tiene tres estados y no se salta ninguno: **escrito**, **compila** (en el Mac de Victor) y **probado en
+iPhone**. Nunca se dice que algo funciona en el iPhone si Victor no lo probó.
+
 ## Comandos (ejecutar antes de cada commit)
 
 ```bash
@@ -17,8 +34,8 @@ npm run build
 
 En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/chrome npm run test:e2e`.
 
-App de iPhone (solo en un Mac con Xcode; ver `docs/IOS-APP.md`): `npm run ios:sync` compila la web y la copia al
-proyecto de `ios/`; `npm run ios` además abre Xcode. Nada de `ios/` se compila ni se prueba en CI ni en Linux: lo que
+App de iPhone (solo en un Mac con Xcode; ver `docs/IOS-NATIVE.md`): `npm run ios:sync` compila la web y la copia al
+proyecto de `ios/`; `npm run ios:open` abre Xcode. Nada de `ios/` se compila ni se prueba en CI ni en Linux: lo que
 no se haya compilado y abierto en un iPhone se dice como «sin probar».
 
 ## Arquitectura (no mezclar capas)
@@ -32,9 +49,12 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
   `domain/operations.ts`; no calcula dinero.
 - `src/ui/` — pantallas y componentes. Solo muestran y llaman operaciones.
 - `ios/` — **cáscara nativa** de iPhone (Capacitor 8, Swift Package Manager): abre la misma web dentro de una app.
-  No contiene lógica financiera ni textos de la interfaz. La web sabe que corre ahí por `isNativeApp()`
-  (`src/pwa/nativeApp.ts`, lee `window.Capacitor`; no se importa `@capacitor/core`, para no sumar al JS inicial) y solo
-  lo usa para decidir qué se EXPLICA (instalar, uso sin conexión), nunca cifras ni datos. `ios/App/App/public/` lo
+  No contiene lógica financiera ni textos de la interfaz: el Swift transporta, no calcula.
+- `src/platform/` — **capa de plataforma** (decisión 152): lo único de `src/` que sabe si corre en el navegador o en la
+  app (`isNativeIOS()`, lee `window.Capacitor`). **Ningún import de Capacitor fuera de `src/platform/`**; dentro, solo
+  en `src/platform/native/`, que se carga con `import()` dentro de la app (una prueba lo exige), así el JS inicial de
+  la web no crece. Cada función tiene una implementación web que hace exactamente lo de siempre. Decide cómo se hace
+  algo y qué se EXPLICA, nunca cifras ni datos. `ios/App/App/public/` lo
   escribe `cap sync` y no se versiona.
 - `src/i18n/` — todos los textos visibles. **Nunca** escribir texto de interfaz
   directamente en componentes: añadir cada clave a `es.ts`, `en.ts`, `pt.ts` **y** `fr.ts`

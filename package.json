@@ -22,7 +22,7 @@
     "lint:i18n": "node scripts/find-literals.mjs",
     "size": "node scripts/check-size.mjs",
     "ios:sync": "npm run build && cap sync ios",
-    "ios": "npm run ios:sync && cap open ios"
+    "ios:open": "cap open ios"
   },
   "dependencies": {
     "@capacitor/core": "8.6.0",

@@ -1,10 +1,10 @@
-# Clara como app de iPhone
+# Clara como app nativa de iPhone: guía para compilarla e instalarla
 
 Clara sigue siendo la misma aplicación web (React + TypeScript + Vite). La carpeta `ios/` es una **cáscara nativa**
 hecha con [Capacitor](https://capacitorjs.com) 8: un proyecto de Xcode que abre las mismas pantallas dentro de una app.
-Existe para lo que una web no puede hacer en el iPhone: una acción «Registrar gasto» que Atajos, Siri y el botón de
-acción puedan llamar, y un widget. Eso llega en pasos posteriores; **este primer paso solo comprueba que Clara abre y
-funciona como app**.
+Existe para lo que una web no puede hacer en el iPhone: guardar sola los pagos con Apple Pay, widgets, Siri y avisos
+con la app cerrada. El plan completo está en `docs/NATIVE-PLAN.md`; **esta guía cubre la Fase 1: que Clara abra y
+funcione como app**. Se completa al cerrar la fase.
 
 > **Estado: sin compilar todavía en un Mac.** El proyecto se generó y se revisó en un entorno sin Xcode, así que nadie
 > lo ha compilado ni abierto en un iPhone. Lo que sigue son los pasos para hacerlo y lo que hay que mirar. Nada aquí
@@ -35,20 +35,22 @@ funciona como app**.
 
    ```bash
    git fetch origin
-   git checkout claude/clara-ios-app
+   git checkout feat/ios-nativo
    npm ci
-   npm run ios
+   npm run ios:sync
+   npm run ios:open
    ```
 
-   `npm run ios` compila la web, la copia dentro del proyecto de iOS y abre Xcode. La primera vez Xcode descarga el
-   paquete de Capacitor (necesita internet).
+   `npm run ios:sync` compila la web y la copia dentro del proyecto de iOS; `npm run ios:open` abre Xcode. La primera
+   vez Xcode descarga el paquete de Capacitor (necesita internet).
 
 2. En Xcode, añade tu Apple ID si no está: **Xcode › Settings › Accounts › +**.
 3. En la barra lateral, pulsa el proyecto **App** › destino **App** › pestaña **Signing & Capabilities**:
    - marca **Automatically manage signing**;
    - en **Team**, elige tu nombre (**Personal Team**).
-   - Si Xcode dice que el identificador `io.github.vict0rl1.clara` no está disponible, cámbialo en **Bundle
-     Identifier** por otro propio (por ejemplo añadiendo `.dev` al final) y avisa para dejarlo así en el repositorio.
+   - El identificador es `com.victorli.clara` (**confírmalo antes de esta primera compilación**: los datos de la app
+     cuelgan de él y con una cuenta gratuita cada identificador nuevo gasta uno de los 10 de cada 7 días). Si Xcode
+     dice que no está disponible, no pruebes otros: avisa y lo decidimos.
 4. Conecta el iPhone con el cable y acepta **Confiar en este ordenador**.
 5. En el iPhone, activa el modo de desarrollador: **Ajustes › Privacidad y seguridad › Modo de desarrollador**
    (aparece después de conectar el teléfono a Xcode; pide reiniciar).
@@ -67,7 +69,7 @@ npm ci          # solo si cambió package-lock.json
 npm run ios:sync
 ```
 
-y ▶ en Xcode. (`npm run ios:sync` = compilar la web + `cap sync ios`; `npm run ios` además abre Xcode.)
+y ▶ en Xcode. (`npm run ios:sync` = compilar la web + `cap sync ios`; `npm run ios:open` abre Xcode.)
 
 ## Qué mirar en este paso
 
@@ -110,13 +112,15 @@ sirve desde `capacitor://localhost`, cosa que no se ha podido probar sin un iPho
 
 ## Cómo está hecho
 
-- `capacitor.config.json`: identificador de la app, nombre y carpeta web (`dist`).
+- `capacitor.config.ts`: identificador de la app, nombre y carpeta web (`dist`).
 - `ios/App/App.xcodeproj`: proyecto de Xcode generado con `npx cap add ios` (Swift Package Manager, sin CocoaPods).
   `ios/App/App/public/` y `ios/App/App/capacitor.config.json` los escribe `cap sync` y no se versionan.
 - `ios/App/App/Assets.xcassets`: icono (1024 px, sin transparencia) y pantalla de arranque en claro y oscuro, hechos
   a partir de `public/icon.svg`.
 - `ios/App/App/Info.plist`: idiomas (es, en, pt, fr) y los textos de permiso de cámara y micrófono. Sin ellos iOS
   cierra la app al abrir la cámara.
-- `src/pwa/nativeApp.ts` (`isNativeApp`): la web sabe que corre dentro de la app por el puente nativo
-  (`window.Capacitor`), sin importar `@capacitor/core`, así el JS inicial no crece. Solo decide qué se explica
-  (instalar, uso sin conexión); nunca cambia cifras ni datos.
+- `src/platform/` (`isNativeIOS`): la única capa de la web que sabe si corre dentro de la app (lo ve por el puente
+  nativo, `window.Capacitor`). Ningún import de Capacitor fuera de ella; lo nativo se carga con `import()` solo dentro
+  de la app, así el JS inicial de la web no crece. Decide cómo se hace algo y qué se explica; nunca cambia cifras.
+- El target de la app exige **iOS 18.0**. El paquete que genera Capacitor (`ios/App/CapApp-SPM/Package.swift`) declara
+  iOS 17 porque su manifiesto usa Swift tools 5.9, que no conoce `.v18`; es el mínimo del paquete, no el de la app.

@@ -340,7 +340,7 @@ ios/           App de iPhone: cáscara nativa (Capacitor) que abre la misma web;
 ```
 
 Clara también puede abrirse como **app de iPhone** (primer paso, aún sin probar en un teléfono): los pasos para
-compilarla en un Mac y lo que hay que comprobar están en [`docs/IOS-APP.md`](docs/IOS-APP.md).
+compilarla en un Mac y lo que hay que comprobar están en [`docs/IOS-NATIVE.md`](docs/IOS-NATIVE.md) (plan completo: [`docs/NATIVE-PLAN.md`](docs/NATIVE-PLAN.md)).
 
 La interfaz, la lógica financiera y el almacenamiento están separados: para añadir un
 servidor más adelante basta con otra implementación de `DataRepository`

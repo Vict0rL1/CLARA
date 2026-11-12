@@ -33,11 +33,13 @@ relative to today, everything is marked as demo). «Ajustes › Demostración y 
 
 ### iPhone app (native shell)
 
-`ios/` is a Capacitor 8 Xcode project that opens the same web build inside a native app (`docs/IOS-APP.md`). It can
-only be built on a Mac with Xcode: `npm run ios:sync` (web build + `cap sync ios`), then Run in Xcode; `npm run ios`
-also opens Xcode. Nothing under `ios/` is compiled or tested in CI or on Linux, so never report an iOS change as
-working unless someone built it and ran it on a device. The web code detects the shell with `isNativeApp()`
-(`src/pwa/nativeApp.ts`) and does not import `@capacitor/core` (the initial-JS budget has almost no headroom).
+`ios/` is a Capacitor 8 Xcode project that opens the same web build inside a native app (`docs/IOS-NATIVE.md`; full plan in `docs/NATIVE-PLAN.md`). It can
+only be built on a Mac with Xcode: `npm run ios:sync` (web build + `cap sync ios`), then Run in Xcode; `npm run ios:open`
+opens Xcode. Nothing under `ios/` is compiled or tested in CI or on Linux, so never report an iOS change as
+working unless someone built it and ran it on a device. The web code detects the shell with `isNativeIOS()`
+(`src/platform/`). No Capacitor import is allowed outside `src/platform/`, and inside it only under
+`src/platform/native/`, which is loaded with `import()` in the app (a unit test enforces it; the initial-JS budget
+has almost no headroom).
 
 ## 3. Automated checks (run all of these before declaring a change done)
 

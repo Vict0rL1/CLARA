@@ -44,7 +44,7 @@ describe('estado «Uso sin conexión»', () => {
   })
 
   it('dentro de la app de iPhone (puente nativo) ya abre sin conexión, sin service worker', async () => {
-    vi.stubGlobal('window', { Capacitor: { isNativePlatform: () => true } })
+    vi.stubGlobal('window', { Capacitor: { isNativePlatform: () => true, getPlatform: () => 'ios' } })
     try {
       const { getPwaState } = await load()
       expect(getPwaState().offlineReady).toBe(true)

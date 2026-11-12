@@ -7,7 +7,7 @@ Una página. Qué existe hoy, antes de la paridad con Lukas.
 | Pieza | Hoy | Nota |
 |---|---|---|
 | Plataforma | **Web / PWA** (React 19, TypeScript 6, Vite 8) | Sin React Native ni Flutter. *Service worker* propio generado al compilar (`pwa/sw.template.js`), CSP estricta, uso sin conexión. |
-| App de iPhone | **Cáscara nativa** (Capacitor 8, `ios/`) sobre la misma web | Sin reescribir pantallas ni lógica. Solo para lo que exige código nativo (acción de Atajos, notificación, widget). Se compila en un Mac; aún sin probar en un teléfono (`docs/IOS-APP.md`, decisión 151). |
+| App de iPhone | **Cáscara nativa** (Capacitor 8, `ios/`) sobre la misma web | Sin reescribir pantallas ni lógica. Solo para lo que exige código nativo (acción de Atajos, notificación, widget). Se compila en un Mac; aún sin probar en un teléfono (`docs/IOS-NATIVE.md`, `docs/NATIVE-PLAN.md`, decisiones 151–163). |
 | Dependencias de producto | Solo `react` y `react-dom` | Sin librerías de gráficos, i18n, estado ni persistencia: todo es propio. |
 | Estado | `AppStore` (`src/state/store.ts`) con `useSyncExternalStore` | Datos inmutables; `commit()` aplica resultados de `domain/operations.ts`, registra historial y guarda. |
 | Persistencia | **IndexedDB** (`src/storage/indexedDbRepository.ts`), `localStorage` de respaldo | Transacción atómica datos+revisión, conflicto entre pestañas, migración verificada desde `localStorage`. Equivale a Dexie sin dependencia. |

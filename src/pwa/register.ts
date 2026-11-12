@@ -7,7 +7,7 @@
  * formulario a medias) y se pide recargar cuando convenga.
  */
 import { useSyncExternalStore } from 'react'
-import { isNativeApp } from './nativeApp'
+import { isNativeIOS } from '../platform'
 
 type PwaState = {
   offlineReady: boolean
@@ -17,7 +17,7 @@ type PwaState = {
 }
 
 // En la app de iPhone los archivos van dentro de la app: abre sin conexión sin service worker (WKWebView no lo ofrece).
-let state: PwaState = { offlineReady: isNativeApp(), update: null, reloadNeeded: false }
+let state: PwaState = { offlineReady: isNativeIOS(), update: null, reloadNeeded: false }
 const listeners = new Set<() => void>()
 
 function set(next: Partial<PwaState>) {
@@ -41,6 +41,9 @@ export function getPwaState(): PwaState {
 }
 
 export function registerServiceWorker() {
+  // En la app de iPhone no hay service worker ni aviso «Actualizar ahora»: los archivos van dentro de la app y una
+  // versión nueva llega al reinstalarla desde Xcode.
+  if (isNativeIOS()) return
   if (!import.meta.env.PROD || !('serviceWorker' in navigator) || !window.isSecureContext) return
   const start = () => void connect(navigator.serviceWorker, () => window.location.reload())
   // Si la página terminó de cargar antes de llegar aquí, «load» ya no llegará.

@@ -8,7 +8,7 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
 
 ### Novedades
 
-- **Clara como app de iPhone, primer paso** (`docs/IOS-APP.md`): una cáscara nativa (Capacitor 8, carpeta `ios/`) abre
+- **Clara como app de iPhone, primer paso** (`docs/IOS-NATIVE.md`, plan en `docs/NATIVE-PLAN.md`): una cáscara nativa (Capacitor 8, carpeta `ios/`) abre
   las mismas pantallas dentro de una app, con su icono y su pantalla de arranque en claro y oscuro. Sin servidor ni
   cuenta; los datos de la app están separados de los de Safari. Dentro de la app no se ofrece «instalar Clara» y el uso
   sin conexión figura como activo. **Aún sin compilar ni probar en un iPhone**: la guía dice cómo hacerlo y qué mirar.
