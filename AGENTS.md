@@ -31,6 +31,14 @@ npm run build && npm run preview    # production build at http://localhost:4173
 On the welcome screen, **«Explorar con datos de demostración»** loads a synthetic budget in CAD (dates are
 relative to today, everything is marked as demo). «Ajustes › Demostración y borrado» clears it.
 
+### iPhone app (native shell)
+
+`ios/` is a Capacitor 8 Xcode project that opens the same web build inside a native app (`docs/IOS-APP.md`). It can
+only be built on a Mac with Xcode: `npm run ios:sync` (web build + `cap sync ios`), then Run in Xcode; `npm run ios`
+also opens Xcode. Nothing under `ios/` is compiled or tested in CI or on Linux, so never report an iOS change as
+working unless someone built it and ran it on a device. The web code detects the shell with `isNativeApp()`
+(`src/pwa/nativeApp.ts`) and does not import `@capacitor/core` (the initial-JS budget has almost no headroom).
+
 ## 3. Automated checks (run all of these before declaring a change done)
 
 ```bash

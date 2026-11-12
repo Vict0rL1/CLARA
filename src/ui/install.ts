@@ -9,6 +9,7 @@
 import { useSyncExternalStore } from 'react'
 import { daysBetween, localDateInTimeZone } from '../domain/dates'
 import type { LocalDate } from '../domain/types'
+import { isNativeApp } from '../pwa/nativeApp'
 
 export type InstallMode = 'installed' | 'ios' | 'prompt' | 'manual'
 
@@ -49,6 +50,8 @@ export function showSafetyCard(input: { isDemo: boolean; asked: boolean; daysOfU
 
 export function isStandalone(): boolean {
   if (typeof window === 'undefined') return false
+  // La app de iPhone (cáscara nativa) ya está instalada: nunca se enseñan los pasos de Safari ahí dentro.
+  if (isNativeApp()) return true
   const iosStandalone = (navigator as Navigator & { standalone?: boolean }).standalone === true
   return iosStandalone || (typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches)
 }

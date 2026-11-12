@@ -1,0 +1,9 @@
+{
+  "appId": "io.github.vict0rl1.clara",
+  "appName": "Clara",
+  "webDir": "dist",
+  "ios": {
+    "contentInset": "never",
+    "preferredContentMode": "mobile"
+  }
+}

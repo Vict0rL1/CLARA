@@ -7,6 +7,7 @@
  * formulario a medias) y se pide recargar cuando convenga.
  */
 import { useSyncExternalStore } from 'react'
+import { isNativeApp } from './nativeApp'
 
 type PwaState = {
   offlineReady: boolean
@@ -15,7 +16,8 @@ type PwaState = {
   reloadNeeded: boolean
 }
 
-let state: PwaState = { offlineReady: false, update: null, reloadNeeded: false }
+// En la app de iPhone los archivos van dentro de la app: abre sin conexión sin service worker (WKWebView no lo ofrece).
+let state: PwaState = { offlineReady: isNativeApp(), update: null, reloadNeeded: false }
 const listeners = new Set<() => void>()
 
 function set(next: Partial<PwaState>) {

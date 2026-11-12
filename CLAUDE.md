@@ -17,6 +17,10 @@ npm run build
 
 En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/chrome npm run test:e2e`.
 
+App de iPhone (solo en un Mac con Xcode; ver `docs/IOS-APP.md`): `npm run ios:sync` compila la web y la copia al
+proyecto de `ios/`; `npm run ios` además abre Xcode. Nada de `ios/` se compila ni se prueba en CI ni en Linux: lo que
+no se haya compilado y abierto en un iPhone se dice como «sin probar».
+
 ## Arquitectura (no mezclar capas)
 
 - `src/domain/` — **lógica financiera pura**. Sin React, sin `localStorage`, sin `Date.now()`
@@ -27,6 +31,11 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
 - `src/state/` — estado en memoria (`AppStore`) y hooks. Aplica resultados de
   `domain/operations.ts`; no calcula dinero.
 - `src/ui/` — pantallas y componentes. Solo muestran y llaman operaciones.
+- `ios/` — **cáscara nativa** de iPhone (Capacitor 8, Swift Package Manager): abre la misma web dentro de una app.
+  No contiene lógica financiera ni textos de la interfaz. La web sabe que corre ahí por `isNativeApp()`
+  (`src/pwa/nativeApp.ts`, lee `window.Capacitor`; no se importa `@capacitor/core`, para no sumar al JS inicial) y solo
+  lo usa para decidir qué se EXPLICA (instalar, uso sin conexión), nunca cifras ni datos. `ios/App/App/public/` lo
+  escribe `cap sync` y no se versiona.
 - `src/i18n/` — todos los textos visibles. **Nunca** escribir texto de interfaz
   directamente en componentes: añadir cada clave a `es.ts`, `en.ts`, `pt.ts` **y** `fr.ts`
   (el tipo compartido obliga a tener todas las claves en los cuatro). Los textos de pantallas poco visitadas (Legal,
