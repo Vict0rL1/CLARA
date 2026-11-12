@@ -4,7 +4,8 @@ Clara sigue siendo la misma aplicación web (React + TypeScript + Vite). La carp
 hecha con [Capacitor](https://capacitorjs.com) 8: un proyecto de Xcode que abre las mismas pantallas dentro de una app.
 Existe para lo que una web no puede hacer en el iPhone: guardar sola los pagos con Apple Pay, widgets, Siri y avisos
 con la app cerrada. El plan completo está en `docs/NATIVE-PLAN.md`; **esta guía cubre la Fase 1: que Clara abra y
-funcione como app**. Se completa al cerrar la fase.
+funcione como app**: guarda los datos en un archivo propio, habla de la app y no del navegador, Face ID, vibración,
+barra de estado, teclado y copias por la hoja Compartir. Está pensada para alguien que nunca ha usado Xcode.
 
 > **Estado: sin compilar todavía en un Mac.** El proyecto se generó y se revisó en un entorno sin Xcode, así que nadie
 > lo ha compilado ni abierto en un iPhone. Lo que sigue son los pasos para hacerlo y lo que hay que mirar. Nada aquí
@@ -18,7 +19,8 @@ funcione como app**. Se completa al cerrar la fase.
   (exportar en la Clara de siempre, importar en la app).
 - **La versión web sigue igual** en su dirección de siempre. La app no la reemplaza.
 - Dentro de la app no hay *service worker* (no hace falta: los archivos van dentro de la app) ni avisos de
-  «instalar Clara».
+  «instalar Clara». Las copias y los CSV no se descargan: salen por la **hoja Compartir** de iOS (guardar en
+  Archivos o iCloud Drive, enviar).
 
 ## Requisitos
 
@@ -28,6 +30,33 @@ funcione como app**. Se completa al cerrar la fase.
 - Un Apple ID. Con una cuenta **gratuita** la app deja de abrir a los **7 días** de instalarla; se arregla
   volviendo a pulsar ▶ en Xcode (los datos se conservan si no borras la app). Para uso diario conviene el programa de
   desarrolladores de pago.
+
+## Antes de empezar: preparar el Mac (una sola vez)
+
+Si ya tienes Xcode, Node y el repositorio en el Mac, salta a «La primera vez».
+
+1. **Xcode.** Ábrelo desde el App Store del Mac e instálalo (ocupa más de 10 GB y tarda). Ábrelo una vez: pide
+   instalar «componentes adicionales» y aceptar la licencia; acepta. Para ver la versión: **Xcode › About Xcode**.
+2. **Terminal.** Es la app «Terminal» (búscala con ⌘ + espacio). Los comandos de esta guía se pegan ahí y se ejecutan
+   con ↩. Si un comando pide la contraseña, es la del Mac (no se ve al escribirla).
+3. **Node 22 o posterior.** Descarga el instalador «LTS» de nodejs.org y ábrelo. Comprueba en Terminal:
+
+   ```bash
+   node -v
+   ```
+
+   Tiene que decir `v22` o un número mayor.
+4. **El repositorio.** Si no lo tienes en el Mac:
+
+   ```bash
+   cd ~/Documents
+   git clone https://github.com/Vict0rL1/CLARA.git
+   cd CLARA
+   ```
+
+   Si `git` pide usuario y contraseña de GitHub, la contraseña no sirve: hace falta un *token* (GitHub › Settings ›
+   Developer settings › Personal access tokens) o la app GitHub Desktop («Clone repository»). Si ya lo tenías,
+   entra en su carpeta con `cd` (por ejemplo `cd ~/Documents/CLARA`).
 
 ## La primera vez (unos 15 minutos)
 
@@ -107,6 +136,15 @@ sirve desde `capacitor://localhost`, cosa que no se ha podido probar sin un iPho
    menú Desarrollo: Safari › Ajustes › Avanzado › «Mostrar funciones para desarrolladores web».)
 3. Copia lo que salga en rojo en la pestaña **Consola**.
 
+## Tus datos reales
+
+Prueba primero con los datos de demostración y la lista de comprobación. Cuando todo esté bien:
+
+1. En la Clara de siempre (Safari o la de la pantalla de inicio): **Ajustes › Copias de seguridad › Exportar copia**
+   y guárdala en Archivos.
+2. En la app: **Ajustes › Copias de seguridad › Importar copia** y elige ese archivo.
+3. Desde entonces son dos Clara separadas: lo que registres en una no aparece en la otra. Usa una sola.
+
 ## Lo que se sabe que aún no está adaptado
 
 - Los textos que hablaban del navegador, de Safari, de pestañas o de descargas ya se sustituyen dentro de la app
@@ -121,11 +159,27 @@ sirve desde `capacitor://localhost`, cosa que no se ha podido probar sin un iPho
 - Ajustes › Atajos ya no muestra «Atajos de iPhone» dentro de la app (sus enlaces abren la Clara de la web). La guía
   de captura automática llega con la Fase 2.
 
-### Si Xcode no compila
+## Si algo falla
 
-Copia el error completo (pulsa el icono rojo de la barra superior de Xcode para ver la lista) y envíalo. El código Swift
-propio son cuatro archivos de `ios/App/App/`: `SceneDelegate.swift`, `ClaraFileStore.swift`, `ClaraStoragePlugin.swift`
-y `ClaraBiometricPlugin.swift`.
+Copia el mensaje exacto y dime en qué paso estabas. Los más probables:
+
+| Mensaje (o lo que ves) | Qué pasa | Qué hacer |
+|---|---|---|
+| `Signing for "App" requires a development team` | Falta elegir el equipo | Paso 3 de «La primera vez» |
+| `Failed to register bundle identifier` o `cannot be registered to your development team` | El identificador ya lo usa otra cuenta | **No pruebes otro**: dímelo y lo decidimos (cada identificador nuevo gasta uno de los 10 de cada 7 días) |
+| `Developer Mode disabled` o el iPhone no aparece arriba | Falta el modo de desarrollador o confiar en el Mac | Pasos 4 y 5 |
+| `Preparing iPhone for development` / `Copying shared cache symbols` | Xcode prepara el iPhone la primera vez | Espera (puede tardar varios minutos) |
+| `Untrusted Developer` / «Desarrollador no fiable» al abrir | Falta confiar en tu Apple ID en el iPhone | Paso 7 |
+| `Missing package product 'Capacitor'` o `Package resolution failed` | Xcode no pudo descargar Capacitor | Comprueba internet; **File › Packages › Reset Package Caches**; después **Product › Clean Build Folder** y ▶ |
+| `maximum number of apps` | Con la cuenta gratuita caben 3 apps de desarrollo a la vez | Borra del iPhone otra app instalada desde Xcode |
+| La app no abre pasados 7 días | Caducó (cuenta gratuita) | ▶ en Xcode otra vez, **sin** borrar la app: los datos siguen |
+| `npm ci` falla | Versión de Node o archivos a medias | `node -v` (≥ 22); si sigue, copia el error |
+| Errores en rojo de Swift al compilar | Código nativo sin compilar antes | Copia la lista completa (icono rojo de la barra superior de Xcode) |
+| Pantalla en blanco | Ver «Si la pantalla se queda en blanco» | |
+
+Errores de Swift: copia el error completo (pulsa el icono rojo de la barra superior de Xcode para ver la lista) y
+envíalo. El código Swift propio son cuatro archivos de `ios/App/App/`: `SceneDelegate.swift`, `ClaraFileStore.swift`,
+`ClaraStoragePlugin.swift` y `ClaraBiometricPlugin.swift`.
 
 ## Cómo está hecho
 
