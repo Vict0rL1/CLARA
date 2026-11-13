@@ -12,8 +12,9 @@ reglas de este documento cambian, **cada una solo desde la fase que la implement
 
 - «Sin IA dentro del producto» → se permitirá IA **en el dispositivo** (Fase 5), opcional, que nunca envía datos ni
   guarda sola.
-- «Nada se guarda sin confirmar» → excepción para las capturas automáticas (Fase 2): con «Guardar automáticamente»
-  entran como movimiento real marcado «Por revisar»; apagado, solo como propuestas.
+- «Nada se guarda sin confirmar» → excepción para las capturas automáticas (Fase 2, **vigente**: `captureImport.ts`):
+  con «Guardar automáticamente» entran como movimiento real marcado «Por revisar»; apagado, solo como propuestas.
+  Nunca en la demostración ni sin presupuesto, y la cola del iPhone solo se vacía después de guardar.
 - «Una moneda por presupuesto» → sigue para los totales; cada movimiento podrá guardar su moneda original y la tasa
   usada (Fase 3). Nunca se inventa una tasa.
 - «Sin conexiones a otros sitios» → excepción opcional para las tasas del Banco de Canadá (Fase 3), sin datos de la
@@ -50,7 +51,10 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
   `domain/operations.ts`; no calcula dinero.
 - `src/ui/` — pantallas y componentes. Solo muestran y llaman operaciones.
 - `ios/` — **cáscara nativa** de iPhone (Capacitor 8, Swift Package Manager): abre la misma web dentro de una app.
-  No contiene lógica financiera ni textos de la interfaz: el Swift transporta, no calcula.
+  No contiene lógica financiera ni textos de la interfaz: el Swift transporta, no calcula. La acción «Registrar pago en
+  Clara» (`RecordPaymentIntent.swift`) solo añade líneas a `captures.jsonl` (`ClaraCaptureQueue.swift`, Application
+  Support o App Group); sus textos y frases están en `Localizable.xcstrings`/`AppShortcuts.xcstrings`. El Swift sin
+  iOS se prueba con `swift test` en `ios/ClaraNativeTests` (enlaces a las fuentes de la app).
 - `src/platform/` — **capa de plataforma** (decisión 152): lo único de `src/` que sabe si corre en el navegador o en la
   app (`isNativeIOS()`, lee `window.Capacitor`). **Ningún import de Capacitor fuera de `src/platform/`**; dentro, solo
   en `src/platform/native/`, que se carga con `import()` dentro de la app (una prueba lo exige), así el JS inicial de
