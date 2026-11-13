@@ -1,7 +1,7 @@
 # Volver atrás un despliegue (rollback)
 
 Clara guarda los datos de cada persona en su propio navegador, con un formato que tiene número:
-`SCHEMA_VERSION` (hoy **14**, en `src/domain/types.ts`). Cuando una versión nueva cambia ese número,
+`SCHEMA_VERSION` (hoy **15**, en `src/domain/types.ts`). Cuando una versión nueva cambia ese número,
 al abrirse **convierte** los datos al formato nuevo (antes guarda una copia del original). Por eso
 volver a una versión anterior no siempre es seguro.
 
@@ -67,3 +67,8 @@ Responde «Sí» o «No» y por qué (código de salida 0 o 1).
    `inboxSnoozed`, hasta 300) que ellas mismas habían guardado. Volver a un despliegue anterior a ese
    commit volvería a dejar esos presupuestos como «datos dañados» (sin borrar nada), así que ante un
    problema en v14 se corrige hacia delante: nunca por debajo de `7e5e5d0`.
+6. Esquema 15 (Fase 2 de la app de iPhone, decisión 168): los movimientos pueden estar «por revisar» (`review`) y
+   venir de una captura automática (`captureId`, orígenes `apple_pay`, `bank_text`, `siri`), y los datos guardan las
+   capturas ya leídas y las propuestas (`captures`). Una versión con esquema 14 vería esos datos como «de una versión
+   más nueva» y no los tocaría; por eso, con datos ya en 15, se corrige hacia delante. La app de iPhone y la versión
+   web guardan sus datos por separado: subir el esquema en una no cambia los de la otra hasta que se abre.

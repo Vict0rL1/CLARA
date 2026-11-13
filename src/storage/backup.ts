@@ -7,6 +7,9 @@
 import { isValidTimestamp } from '../domain/dates'
 import { isValidId } from '../domain/ids'
 import type {
+  CaptureProposal,
+  CaptureSettings,
+  CaptureState,
   HistoryEntry,
   Template,
   Account,
@@ -42,6 +45,7 @@ import { SCHEMA_VERSION } from '../domain/types'
 import {
   validateAccount,
   validateBackupState,
+  validateCaptureState,
   validateCategory,
   validateCategoryLimit,
   validateCategoryRule,
@@ -162,7 +166,10 @@ function pick<T>(src: Obj, keys: readonly string[]): T {
 const SETTINGS_KEYS = [
   'currency', 'numberLocale', 'dateStyle', 'timeZone', 'language', 'fallbackHorizonDays', 'weeklyReview',
   'budgetPeriod', 'carryOverBalance', 'safeToSpend', 'notifications', 'biometricLock', 'onboardingDone', 'toursSeen', 'proStatus', 'aiUsage',
+  // v15
+  'capture',
 ] as const
+const CAPTURE_SETTINGS_KEYS = ['autoSave', 'cardAccounts', 'defaultAccountId'] as const
 const BUDGET_PERIOD_KEYS = ['type', 'weekStartsOn', 'customStart', 'customEnd'] as const
 const SAFE_KEYS = ['showOnHome', 'granularity', 'subtractScheduled', 'subtractGoalContributions', 'bufferMinor'] as const
 const NOTIF_KEYS = ['scheduledAlerts', 'dailyReminder', 'dailyReminderTime', 'dailySummary', 'dailySummaryTime', 'quietHours', 'quietFrom', 'quietTo', 'planAlerts'] as const
@@ -182,12 +189,18 @@ const TX_KEYS = [
   'refundOfId', 'note', 'scheduleId', 'occurrenceDate', 'realizedAt', 'importRef',
   'adjustmentDirection', 'reconciliationId', 'partialSettlement', 'splits',
   'merchant', 'tagIds', 'favoriteId', 'source', 'receiptUri', 'lat', 'lng', 'isInitialBalance', 'createdAt', 'updatedAt',
+  // v15 (Fase 2 nativa): sin estas claves, restaurar una copia perdería de qué captura vino y si falta revisarlo.
+  'captureId', 'review',
 ] as const
 const SPLIT_KEYS = ['id', 'categoryId', 'amountMinor', 'note'] as const
+const REVIEW_KEYS = ['needed', 'reason', 'rawText'] as const
+const PROPOSAL_KEYS = ['captureId', 'capturedAt', 'origin', 'reason', 'amount', 'merchant', 'card', 'accountId', 'date', 'categoryId', 'similarTxId', 'rawText', 'receivedAt'] as const
+const CAPTURE_AMOUNT_KEYS = ['kind', 'minor', 'currency', 'candidates', 'text'] as const
 
 /** Movimiento con solo las claves conocidas (también en sus líneas). */
 function pickTx(t: Obj): Transaction {
   const tx = pick<Transaction>(t, TX_KEYS)
+  if (isObj(t.review)) tx.review = pick(t.review, REVIEW_KEYS)
   if (Array.isArray(t.splits)) tx.splits = t.splits.map((l) => (isObj(l) ? pick<SplitLine>(l, SPLIT_KEYS) : (l as SplitLine)))
   return tx
 }
@@ -256,6 +269,13 @@ export function validateAppData(raw: unknown): ImportResult {
   if (isObj(rawSettings.notifications)) settings.notifications = pick(rawSettings.notifications, NOTIF_KEYS)
   if (isObj(rawSettings.proStatus)) settings.proStatus = pick(rawSettings.proStatus, PRO_KEYS)
   if (isObj(rawSettings.aiUsage)) settings.aiUsage = pick(rawSettings.aiUsage, AI_KEYS)
+  if (isObj(rawSettings.capture)) {
+    const capture = pick<CaptureSettings>(rawSettings.capture, CAPTURE_SETTINGS_KEYS)
+    if (Array.isArray(rawSettings.capture.cardAccounts)) {
+      capture.cardAccounts = rawSettings.capture.cardAccounts.map((m) => (isObj(m) ? pick(m, ['card', 'accountId']) : m)) as CaptureSettings['cardAccounts']
+    }
+    settings.capture = capture
+  }
   issues.push(...validateSettings(settings, 'settings.'))
   // v9: perfil, preferencias de categorías del sistema, grupos, etiquetas y planes.
   const profile = isObj(migrated.profile) ? pick<UserProfile>(migrated.profile, PROFILE_KEYS) : ({ id: 'guest', isGuest: true } as UserProfile)
@@ -427,6 +447,24 @@ export function validateAppData(raw: unknown): ImportResult {
   const history = (Array.isArray(migrated.history) ? migrated.history : null) as HistoryEntry[] | null
   if (!history) issues.push({ path: 'history', code: 'invalidValue' })
   else issues.push(...validateHistory(history))
+  // v15: capturas automáticas (ausentes en copias anteriores = ninguna).
+  let captures: CaptureState | undefined
+  if (migrated.captures !== undefined) {
+    const raw = migrated.captures
+    if (!isObj(raw) || !Array.isArray(raw.processed) || !Array.isArray(raw.proposals) || !raw.processed.every(isObj) || !raw.proposals.every(isObj)) {
+      issues.push({ path: 'captures', code: 'invalidValue' })
+    } else {
+      captures = {
+        processed: (raw.processed as Obj[]).map((m) => pick(m, ['id', 'at'])),
+        proposals: (raw.proposals as Obj[]).map((pr) => {
+          const proposal = pick<CaptureProposal>(pr, PROPOSAL_KEYS)
+          if (isObj(pr.amount)) proposal.amount = pick(pr.amount, CAPTURE_AMOUNT_KEYS)
+          return proposal
+        }),
+      }
+      issues.push(...validateCaptureState(captures))
+    }
+  }
   if (issues.length) return { ok: false, issues: issues.slice(0, 50) }
 
   const data: AppData = {
@@ -457,6 +495,7 @@ export function validateAppData(raw: unknown): ImportResult {
     incomeDistributions,
     templates,
     history: history ?? [],
+    ...(captures ? { captures } : {}),
     historyStartedAt: typeof migrated.historyStartedAt === 'string' && isValidTimestamp(migrated.historyStartedAt) ? migrated.historyStartedAt : (typeof migrated.updatedAt === 'string' ? migrated.updatedAt : new Date().toISOString()),
     createdAt: typeof migrated.createdAt === 'string' ? migrated.createdAt : new Date().toISOString(),
     updatedAt: typeof migrated.updatedAt === 'string' ? migrated.updatedAt : new Date().toISOString(),

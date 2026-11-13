@@ -13,11 +13,10 @@
  *   lector de monedas de toda la app (`stripCurrencyMark`, `parseMoney`).
  */
 import { currencyDigits, isSupportedCurrency, markMatchesCurrency, MAX_AMOUNT_MINOR, parseMoney, stripCurrencyMark } from './money'
-import type { CurrencyCode } from './types'
-import { LIMITS } from './validation'
+import type { CaptureAmountRecord, CaptureOrigin, CurrencyCode } from './types'
+import { CAPTURE_ORIGINS, CAPTURE_TEXT_MAX, LIMITS } from './validation'
 
-export const CAPTURE_ORIGINS = ['apple_pay', 'bank_text', 'siri', 'notification'] as const
-export type CaptureOrigin = (typeof CAPTURE_ORIGINS)[number]
+export type { CaptureOrigin }
 
 export interface CaptureRecord {
   captureId: string
@@ -32,7 +31,7 @@ export interface CaptureRecord {
   rawText?: string
 }
 
-export const CAPTURE_LIMITS = { id: 64, amount: 64, card: 64, rawText: 2000 } as const
+export const CAPTURE_LIMITS = { id: 64, amount: 64, card: 64, rawText: CAPTURE_TEXT_MAX } as const
 
 export type CaptureLineIssue = 'json' | 'shape' | 'captureId' | 'createdAt' | 'origin' | 'rawAmount' | 'currencyHint' | 'text' | 'duplicateId'
 
@@ -101,16 +100,13 @@ export function readCaptureQueue(text: string): CaptureQueueRead {
   return out
 }
 
-/** Qué importe dice una captura respecto a la moneda del presupuesto. */
-export type CaptureAmount =
-  /** En la moneda del presupuesto, en unidades menores. */
-  | { kind: 'budget'; minor: number }
-  /** En otra moneda conocida: se conserva sin convertir (`minor` en unidades menores de ESA moneda). */
-  | { kind: 'foreign'; currency: string; minor: number }
-  /** «¥» sin más: puede ser yen o yuan. Nunca se adivina. */
-  | { kind: 'ambiguous'; candidates: readonly string[]; text: string }
-  /** No se entiende (moneda desconocida, dos monedas que se contradicen, número raro). */
-  | { kind: 'unreadable'; text: string }
+/**
+ * Qué importe dice una captura respecto a la moneda del presupuesto (`CaptureAmountRecord`, el mismo que se guarda en
+ * una propuesta): en la moneda del presupuesto; en otra conocida, sin convertir (`minor` en unidades menores de ESA
+ * moneda); «¥» sin más, que puede ser yen o yuan y nunca se adivina; o sin entender (moneda desconocida, dos monedas
+ * que se contradicen, número raro).
+ */
+export type CaptureAmount = CaptureAmountRecord
 
 /** Las monedas que comparten un símbolo suelto y que una captura nunca elige sola. */
 export const AMBIGUOUS_SYMBOLS: Readonly<Record<string, readonly string[]>> = { '¥': ['JPY', 'CNY'], '￥': ['JPY', 'CNY'] }
@@ -141,7 +137,7 @@ export function readCaptureAmount(record: Pick<CaptureRecord, 'rawAmount' | 'cur
   if (mark && ('unknown' in mark || 'conflict' in mark)) return { kind: 'unreadable', text: raw }
   // Un «¥» suelto en un presupuesto que no es de yenes ni de yuanes: no se sabe cuál de los dos.
   if (mark && 'symbol' in mark && AMBIGUOUS_SYMBOLS[mark.symbol] && !markMatchesCurrency(mark, settings.currency as CurrencyCode)) {
-    return { kind: 'ambiguous', candidates: AMBIGUOUS_SYMBOLS[mark.symbol]!, text: raw }
+    return { kind: 'ambiguous', candidates: [...AMBIGUOUS_SYMBOLS[mark.symbol]!], text: raw }
   }
   if (!mark || markMatchesCurrency(mark, settings.currency as CurrencyCode)) {
     const parsed = parseMoney(amount, settings.currency as CurrencyCode, settings.numberLocale)

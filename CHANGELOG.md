@@ -8,6 +8,11 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
 
 ### Novedades
 
+- **Esquema 15: base de las capturas automáticas** (Fase 2 nativa; decisión 168): los movimientos pueden venir de
+  Apple Pay, de un SMS del banco o de Siri y quedar «por revisar»; las capturas que no se registran solas (otra
+  moneda, «¥» sin saber si es yen o yuan, posible duplicado, importe sin entender o «Guardar automáticamente»
+  apagado) se guardan como propuestas que no cuentan en ninguna cifra. Todo es opcional: los datos actuales no
+  cambian. Una versión anterior verá los datos como «de una versión más nueva» (`docs/ROLLBACK.md`).
 - **Clara como app de iPhone, primer paso** (`docs/IOS-NATIVE.md`, plan en `docs/NATIVE-PLAN.md`): una cáscara nativa (Capacitor 8, carpeta `ios/`) abre
   las mismas pantallas dentro de una app, con su icono y su pantalla de arranque en claro y oscuro. Sin servidor ni
   cuenta; los datos de la app están separados de los de Safari. Dentro de la app no se ofrece «instalar Clara» y el uso

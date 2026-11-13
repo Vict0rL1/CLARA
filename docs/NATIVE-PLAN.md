@@ -10,7 +10,7 @@ El informe de la Fase 1 está en `docs/NATIVE-FASE-1.md`.
 
 ## 1. Estado actual (12-nov-2026)
 
-- **Web (PWA):** React 19 + TypeScript + Vite 8, sin backend, datos en IndexedDB, esquema 14. Publicada en Cloudflare
+- **Web (PWA):** React 19 + TypeScript + Vite 8, sin backend, datos en IndexedDB, esquema 14 (15 desde la Fase 2). Publicada en Cloudflare
   Pages. 1 241 pruebas unitarias y 406 de navegador por tamaño, en verde en CI.
 - **Rama:** `feat/ios-nativo`. Parte de `main` **más** los commits del PR #16 (auditoría del 2026-11-04, en verde y
   sin fusionar) y el primer commit de la cáscara nativa (`44bd76e`). El motivo está en la decisión 162. Mientras el
