@@ -2486,6 +2486,8 @@ export const es = {
   'settings.keywords.reinicio': 'borrar datos, demostración, empezar de nuevo',
   'settings.keywords.formulas': 'cómo se calcula, disponible, fórmulas',
   'settings.keywords.atajos': 'teclado, iphone, apple pay, wallet, tocar atrás, enlace, portapapeles, pegar',
+  'settings.keywords.captura': 'apple pay, wallet, atajos, tarjeta, pagos, automático, por revisar',
+  'settings.capture.title': 'Captura automática',
   'settings.keywords.legal': 'términos, privacidad',
   'settings.keywords.acerca': 'versión, contacto',
   'settings.keywords.galeria': 'componentes, diseño',

@@ -2485,6 +2485,8 @@ export const fr: Record<keyof typeof es, string> = {
   'settings.keywords.reinicio': 'supprimer les données, démo, recommencer',
   'settings.keywords.formulas': 'comment c’est calculé, disponible, formules',
   'settings.keywords.atajos': 'clavier, iphone, apple pay, wallet, toucher au dos, lien, presse-papiers, coller',
+  'settings.keywords.captura': 'apple pay, wallet, raccourcis, carte, paiements, automatique, contrôler',
+  'settings.capture.title': 'Capture automatique',
   'settings.keywords.legal': 'conditions, confidentialité',
   'settings.keywords.acerca': 'version, contact',
   'settings.keywords.galeria': 'composants, design',

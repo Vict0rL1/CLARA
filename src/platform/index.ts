@@ -31,6 +31,8 @@ export interface NativeServices {
   haptic?: (kind: 'tick' | 'success' | 'warning' | 'error') => void
   /** Escribe el archivo y abre la hoja Compartir (`files.ts`). `cancelled`: se cerró sin elegir; otro fallo, se lanza. */
   shareTextFile?: (filename: string, text: string) => Promise<'shared' | 'cancelled'>
+  /** «Probar» de la captura automática (`state/captureSync.ts`): `true` si la prueba llegó a «Por revisar». */
+  captureTest?: (merchant: string) => Promise<boolean>
 }
 
 const services: NativeServices = {}
