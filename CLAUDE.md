@@ -145,6 +145,14 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
   nada; más de 5000 filas → cuántas y cuáles quedan fuera, y confirmar exige reconocerlo (solo para ESA
   vista previa: archivo elegido + `omissionSignature`; otro archivo, otro contenido o leer la cabecera de
   otra forma lo piden de nuevo, RT-03); el archivo nunca sale del dispositivo.
+- Capturas automáticas (`domain/captureImport.ts`, Fase 2 nativa): idempotentes por `captureId` (leídas, movimiento,
+  papelera o propuesta); en la moneda del presupuesto y con «Guardar automáticamente», gasto realizado con
+  `review` «Por revisar» y `realizedAt` = hora del pago; si no, propuesta que no cuenta en ninguna cifra: otra moneda o
+  «¥» (`currency`, nunca se convierte), sin entender (`unparsed`), mismo importe y comercio a ≤ 2 min de un gasto
+  realizado o captura (`duplicate`), apagado o más allá de la cota de exactitud (`auto_capture`). Cuenta: tarjeta →
+  por defecto → primera activa del presupuesto (nunca archivada). Lo que no cabe (500 propuestas) o sin cuenta activa
+  se queda en la cola sin confirmar. `saveTransaction` conserva `captureId` y `review` (solo `reviewed: true` la
+  quita) y retira la propuesta de esa captura.
 - Papelera: eliminar saca el movimiento de `transactions` a `trash` (nunca participa en
   cálculos). Restaurar no deja vínculos rotos, ni liquida dos veces una ocurrencia, ni devuelve un pago a una fecha
   que su programado ya no tiene (`occurrenceMissing`; revisión de seguridad QA27, F-1); filas
