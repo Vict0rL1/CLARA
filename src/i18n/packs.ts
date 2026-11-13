@@ -1,5 +1,5 @@
 /**
- * Paquetes de texto diferidos: textos que solo necesita una pantalla poco visitada (Legal, Galería, Importar CSV, ¿Qué cambió?) y que no van en el
+ * Paquetes de texto diferidos: textos que solo necesita una pantalla poco visitada (Legal, Galería, Importar CSV, ¿Qué cambió?, Plan ante faltante) y que no van en el
  * JS inicial (presupuesto de tamaño, `scripts/check-size.mjs`). Cada paquete es un archivo JSON por idioma en `packs/`
  * (con huella de contenido al compilar, precacheado por el service worker como cualquier otro archivo de la app), con el
  * mismo conjunto de claves en los cuatro idiomas (`packs/packKeys.ts` lo exige en `tsc`). Se piden con `fetch` al abrir
@@ -40,12 +40,16 @@ import nativeAppEnUrl from './packs/nativeApp.en.json?url'
 import nativeAppEsUrl from './packs/nativeApp.es.json?url'
 import nativeAppFrUrl from './packs/nativeApp.fr.json?url'
 import nativeAppPtUrl from './packs/nativeApp.pt.json?url'
+import shortfallEnUrl from './packs/shortfall.en.json?url'
+import shortfallEsUrl from './packs/shortfall.es.json?url'
+import shortfallFrUrl from './packs/shortfall.fr.json?url'
+import shortfallPtUrl from './packs/shortfall.pt.json?url'
 import whatChangedEnUrl from './packs/whatChanged.en.json?url'
 import whatChangedEsUrl from './packs/whatChanged.es.json?url'
 import whatChangedFrUrl from './packs/whatChanged.fr.json?url'
 import whatChangedPtUrl from './packs/whatChanged.pt.json?url'
 
-export type PackName = 'legal' | 'gallery' | 'bankImport' | 'nativeApp' | 'whatChanged'
+export type PackName = 'legal' | 'gallery' | 'bankImport' | 'nativeApp' | 'whatChanged' | 'shortfall'
 type Pack = Record<string, string>
 /** Dirección del archivo JSON de cada paquete e idioma. */
 export type PackUrls = Record<PackName, Record<Language, string>>
@@ -57,6 +61,7 @@ export const PACK_URLS: PackUrls = {
   // Solo se pide dentro de la app de iPhone (`nativeTexts.ts` y Ajustes › «Clara en este iPhone»).
   nativeApp: { es: nativeAppEsUrl, en: nativeAppEnUrl, pt: nativeAppPtUrl, fr: nativeAppFrUrl },
   whatChanged: { es: whatChangedEsUrl, en: whatChangedEnUrl, pt: whatChangedPtUrl, fr: whatChangedFrUrl },
+  shortfall: { es: shortfallEsUrl, en: shortfallEnUrl, pt: shortfallPtUrl, fr: shortfallFrUrl },
 }
 
 /** Una carga que no responde en este tiempo se cancela y se da por fallida (la pantalla ofrece reintentar). `0` = sin plazo (solo pruebas). */

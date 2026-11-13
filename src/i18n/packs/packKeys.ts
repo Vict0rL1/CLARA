@@ -20,6 +20,10 @@ import nativeAppEn from './nativeApp.en.json'
 import nativeAppEs from './nativeApp.es.json'
 import nativeAppFr from './nativeApp.fr.json'
 import nativeAppPt from './nativeApp.pt.json'
+import shortfallEn from './shortfall.en.json'
+import shortfallEs from './shortfall.es.json'
+import shortfallFr from './shortfall.fr.json'
+import shortfallPt from './shortfall.pt.json'
 import whatChangedEn from './whatChanged.en.json'
 import whatChangedEs from './whatChanged.es.json'
 import whatChangedFr from './whatChanged.fr.json'
@@ -30,6 +34,7 @@ export type GalleryPackKey = keyof typeof galleryEs
 export type BankImportPackKey = keyof typeof bankImportEs
 export type NativeAppPackKey = keyof typeof nativeAppEs
 export type WhatChangedPackKey = keyof typeof whatChangedEs
+export type ShortfallPackKey = keyof typeof shortfallEs
 
 /** `true` solo si A y B tienen las mismas claves (ninguna falta en ninguno de los dos). */
 type SameKeys<A, B> = Record<keyof A, string> extends Record<keyof B, string> ? (Record<keyof B, string> extends Record<keyof A, string> ? true : never) : never
@@ -51,4 +56,7 @@ export const PACK_KEY_CHECKS: [
   SameKeys<typeof whatChangedEs, typeof whatChangedEn>,
   SameKeys<typeof whatChangedEs, typeof whatChangedPt>,
   SameKeys<typeof whatChangedEs, typeof whatChangedFr>,
-] = [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true]
+  SameKeys<typeof shortfallEs, typeof shortfallEn>,
+  SameKeys<typeof shortfallEs, typeof shortfallPt>,
+  SameKeys<typeof shortfallEs, typeof shortfallFr>,
+] = [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true]
