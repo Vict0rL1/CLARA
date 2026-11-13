@@ -21,6 +21,7 @@ import { CoachMark, CountUp } from '../components/base'
 import { haptic } from '../haptics'
 import { Segmented } from '../components/fields'
 import { weeklyReview, weekStartOf } from '../../domain/weeklyReview'
+import { captureReviewCount } from '../../domain/captureReview'
 import { inboxView } from '../../domain/inbox'
 import { useT, type MessageKey } from '../../i18n'
 import { useRun, useToday } from '../../state/hooks'
@@ -165,7 +166,8 @@ export function Home() {
     if (!inboxData) return null
     const active = inboxView(inboxData, today).active
     const suggestionCount = active.filter((i) => i.kind === 'suggestion').length
-    return { pendingCount: active.length - suggestionCount, suggestionCount }
+    // v15: los pagos capturados por revisar también esperan a la persona.
+    return { pendingCount: active.length - suggestionCount + captureReviewCount(inboxData), suggestionCount }
   }, [inboxData, today])
   const pendingCount = inboxCounts?.pendingCount ?? 0
   const inboxText = !inboxCounts

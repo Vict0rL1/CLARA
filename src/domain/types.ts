@@ -205,6 +205,8 @@ export interface CaptureProposal {
   /** Movimiento al que se parece (solo `duplicate`). */
   similarTxId?: string
   rawText?: string
+  /** La prueba de Ajustes › Captura automática: nunca se registra; solo se descarta. */
+  test?: true
   receivedAt: Timestamp
 }
 

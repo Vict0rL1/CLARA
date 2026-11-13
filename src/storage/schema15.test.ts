@@ -124,6 +124,17 @@ describe('esquema 15: capturas automáticas (decisión 168)', () => {
     expect(validateAppData(proposals).ok).toBe(false)
   })
 
+  it('la marca de prueba de una propuesta se conserva al exportar y solo puede ser true', () => {
+    const withTest = { ...v15(), captures: { processed: [], proposals: [proposal({ test: true })] } }
+    const back = parseBackup(backupText(withTest, new Date(NOW), 'test'))
+    expect(back.ok && back.data.captures!.proposals[0]!.test).toBe(true)
+    const bad = JSON.parse(JSON.stringify(withTest)) as Record<string, any>
+    bad.captures.proposals[0].test = false
+    const r = validateAppData(bad)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.issues.map((i) => i.path)).toContain('captures.proposals[0].test')
+  })
+
   it('una versión anterior (esquema 14) no abre datos v15: los ve como de una versión más nueva y no los toca', () => {
     // `validateAppData` de la versión actual acepta 15; una copia con 16 es «más nueva».
     const r = validateAppData({ ...JSON.parse(JSON.stringify(v15())), schemaVersion: SCHEMA_VERSION + 1 })

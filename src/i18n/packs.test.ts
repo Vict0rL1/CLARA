@@ -17,6 +17,10 @@ import nativeAppEn from './packs/nativeApp.en.json'
 import nativeAppEs from './packs/nativeApp.es.json'
 import nativeAppFr from './packs/nativeApp.fr.json'
 import nativeAppPt from './packs/nativeApp.pt.json'
+import captureEn from './packs/capture.en.json'
+import captureEs from './packs/capture.es.json'
+import captureFr from './packs/capture.fr.json'
+import capturePt from './packs/capture.pt.json'
 import shortfallEn from './packs/shortfall.en.json'
 import shortfallEs from './packs/shortfall.es.json'
 import shortfallFr from './packs/shortfall.fr.json'
@@ -35,15 +39,16 @@ const ALL: Record<string, Record<string, Record<string, string>>> = {
   nativeApp: { es: nativeAppEs, en: nativeAppEn, pt: nativeAppPt, fr: nativeAppFr },
   whatChanged: { es: whatChangedEs, en: whatChangedEn, pt: whatChangedPt, fr: whatChangedFr },
   shortfall: { es: shortfallEs, en: shortfallEn, pt: shortfallPt, fr: shortfallFr },
+  capture: { es: captureEs, en: captureEn, pt: capturePt, fr: captureFr },
 }
 const vars = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort()
 
 describe('paquetes de texto diferidos', () => {
   it('cada paquete tiene las mismas claves en los cuatro idiomas, sin textos vacíos, y ninguna de esas claves sigue en el diccionario principal', async () => {
     const packs = createPackLoader(PACK_URLS, 0, fromDisk)
-    for (const [name, reference] of [['legal', legalEs], ['gallery', galleryEs], ['bankImport', bankImportEs], ['nativeApp', nativeAppEs], ['whatChanged', whatChangedEs], ['shortfall', shortfallEs]] as const) {
+    for (const [name, reference] of [['legal', legalEs], ['gallery', galleryEs], ['bankImport', bankImportEs], ['nativeApp', nativeAppEs], ['whatChanged', whatChangedEs], ['shortfall', shortfallEs], ['capture', captureEs]] as const) {
       const keys = Object.keys(reference).sort()
-      expect(keys.length).toBe({ legal: 22, gallery: 54, bankImport: 103, nativeApp: 72, whatChanged: 69, shortfall: 67 }[name])
+      expect(keys.length).toBe({ legal: 22, gallery: 54, bankImport: 103, nativeApp: 72, whatChanged: 69, shortfall: 67, capture: 33 }[name])
       for (const lang of ['es', 'en', 'pt', 'fr'] as const) {
         const { pack, language } = await packs.load(name, lang)
         expect(language).toBe(lang)
@@ -60,8 +65,8 @@ describe('paquetes de texto diferidos', () => {
 
   it('cada paquete e idioma es un archivo JSON propio, fuera del JS inicial', () => {
     const urls = Object.values(PACK_URLS).flatMap((byLang) => Object.values(byLang))
-    expect(new Set(urls).size).toBe(24)
-    for (const name of ['legal', 'gallery', 'bankImport', 'nativeApp', 'whatChanged', 'shortfall'] as const) {
+    expect(new Set(urls).size).toBe(28)
+    for (const name of ['legal', 'gallery', 'bankImport', 'nativeApp', 'whatChanged', 'shortfall', 'capture'] as const) {
       for (const lang of ['es', 'en', 'pt', 'fr'] as const) expect(PACK_URLS[name][lang]).toMatch(new RegExp(`${name}\\.${lang}[^/]*\\.json$`))
     }
   })

@@ -8,7 +8,10 @@ import {
   dismissProposals,
   importCaptures,
   registerProposal,
+  reopenReviews,
+  restoreProposals,
 } from './captureImport'
+import { captureReviewCount, transactionsToReview } from './captureReview'
 import { readCaptureQueue, type CaptureRecord } from './captureQueue'
 import { saveTransaction, trashTransactions } from './operations'
 import type { AppData, CaptureProposal } from './types'
@@ -388,10 +391,17 @@ describe('propuestas: descartar y registrar', () => {
     expect(accountBalance(r.data, mainOf(r.data)).balanceMinor).toBe(100000 - 1250)
   })
 
-  it('una propuesta en otra moneda no se registra así (se escribe el importe en el formulario)', () => {
+  it('una propuesta en otra moneda solo se registra con el importe que escribe la persona en la del presupuesto', () => {
     const foreign = proposal({ reason: 'currency', amount: { kind: 'foreign', currency: 'USD', minor: 1000 } })
     expect(registerProposal(withProposals(foreign), 'cap-prop0001', ctx)).toEqual({ ok: false, issues: [{ path: 'amountMinor', code: 'currencyMismatch', params: { expected: 'CAD' } }] })
     expect(registerProposal(withProposals(foreign), 'nope', ctx)).toMatchObject({ ok: false, issues: [{ code: 'notFound' }] })
+    // USD 10,00 cobrados como CAD 13,71 (lo que dice el banco): se guarda 13,71, nunca una conversión de Clara.
+    const r = registerProposal(withProposals(foreign), 'cap-prop0001', ctx, 1371)
+    if (!r.ok) throw new Error(JSON.stringify(r.issues))
+    expect(r.value).toMatchObject({ amountMinor: 1371, currency: 'CAD', realizedAt: '2026-09-28T15:00:00Z', captureId: 'cap-prop0001' })
+    expect(r.data.captures!.proposals).toEqual([])
+    expect(accountBalance(r.data, mainOf(r.data)).balanceMinor).toBe(100000 - 1371)
+    expect(registerProposal(withProposals(foreign), 'cap-prop0001', ctx, 0)).toMatchObject({ ok: false, issues: [{ path: 'amountMinor' }] })
   })
 
   it('si su cuenta se archivó, usa la de la tarjeta o la primera activa', () => {
@@ -433,5 +443,73 @@ describe('de la cola a los datos', () => {
     ])
     // 1 000,00 − 4,25 − 18,40 = 977,35.
     expect(accountBalance(r.data, mainOf(r.data)).balanceMinor).toBe(97735)
+  })
+})
+
+describe('deshacer y contar', () => {
+  it('deshacer «Está bien» devuelve la marca tal como era; no toca lo que ya la tiene ni lo que ya no existe', () => {
+    const data = imported(baseData(), [record({ origin: 'bank_text', rawText: 'Compra 4.25' })]).data
+    const review = data.transactions[0]!.review!
+    const ok = confirmReviews(data, ['cap-00000001'], ctx)
+    if (!ok.ok) throw new Error('confirm')
+    const back = reopenReviews(ok.data, [{ id: 'cap-00000001', review }, { id: 'gone', review }], ctx)
+    if (!back.ok) throw new Error('reopen')
+    expect(back.value).toEqual(['cap-00000001'])
+    expect(back.data.transactions[0]!.review).toEqual({ needed: true, reason: 'auto_capture', rawText: 'Compra 4.25' })
+    expect(reopenReviews(back.data, [{ id: 'cap-00000001', review }], ctx)).toMatchObject({ ok: true, unchanged: true })
+  })
+
+  it('deshacer «Descartar» devuelve la propuesta, salvo si ya se registró', () => {
+    const p = proposal()
+    const data = baseData({ captures: { processed: [{ id: p.captureId, at: EARLIER }], proposals: [p] } })
+    const gone = dismissProposals(data, [p.captureId], ctx)
+    if (!gone.ok) throw new Error('dismiss')
+    const back = restoreProposals(gone.data, [p], ctx)
+    if (!back.ok) throw new Error('restore')
+    expect(back.data.captures!.proposals).toEqual([p])
+    expect(restoreProposals(back.data, [p], ctx)).toMatchObject({ ok: true, unchanged: true })
+    const registered = registerProposal(back.data, p.captureId, ctx)
+    if (!registered.ok) throw new Error('register')
+    expect(restoreProposals(registered.data, [p], ctx)).toMatchObject({ ok: true, unchanged: true })
+  })
+
+  it('deshacer «Descartar» no pasa del tope de propuestas', () => {
+    const full = Array.from({ length: CAPTURE_PROPOSALS_MAX }, (_, i) => proposal({ captureId: `cap-full${String(i).padStart(4, '0')}` }))
+    expect(restoreProposals(baseData({ captures: { processed: [], proposals: full } }), [proposal({ captureId: 'cap-other001' })], ctx)).toMatchObject({
+      ok: false,
+      issues: [{ code: 'tooMany' }],
+    })
+  })
+
+  it('cuenta los movimientos «Por revisar» y las propuestas; la lista va del pago más reciente al más antiguo', () => {
+    const r = imported(baseData(), [
+      record({ captureId: 'cap-a0000001', createdAt: '2026-09-28T14:00:00Z', merchant: 'A' }),
+      record({ captureId: 'cap-b0000001', createdAt: '2026-09-28T15:30:00Z', merchant: 'B' }),
+      record({ captureId: 'cap-usd00001', currencyHint: 'USD' }),
+    ])
+    const data = { ...r.data, transactions: [...r.data.transactions, tx({ id: 'manual-1' })] }
+    expect(captureReviewCount(data)).toBe(3)
+    expect(transactionsToReview(data).map((t) => t.id)).toEqual(['cap-b0000001', 'cap-a0000001'])
+    expect(captureReviewCount(baseData())).toBe(0)
+  })
+})
+
+describe('la prueba de Ajustes', () => {
+  it('llega por la cola y siempre queda como propuesta marcada, aunque «Guardar automáticamente» esté encendido; no se registra', () => {
+    const line = JSON.stringify({ captureId: 'cap-test0001', createdAt: '2026-09-28T15:00:00Z', origin: 'apple_pay', rawAmount: '0.01', currencyHint: 'CAD', merchant: 'Prueba de Clara', test: true })
+    const read = readCaptureQueue(line + '\n')
+    expect(read.records[0]).toMatchObject({ captureId: 'cap-test0001', test: true })
+    const r = imported(baseData(), read.records)
+    expect(r.value).toMatchObject({ saved: [], proposed: ['cap-test0001'], ack: ['cap-test0001'] })
+    expect(r.data.transactions).toEqual([])
+    expect(r.data.captures!.proposals[0]).toMatchObject({ reason: 'auto_capture', test: true, amount: { kind: 'budget', minor: 1 } })
+    expect(registerProposal(r.data, 'cap-test0001', ctx)).toMatchObject({ ok: false, issues: [{ code: 'invalidValue' }] })
+    // No hace pasar por duplicado a un pago real de 0,01 un minuto después.
+    expect(imported(r.data, [record({ captureId: 'cap-real0001', rawAmount: '0.01', merchant: 'Prueba de Clara', createdAt: '2026-09-28T15:01:00Z' })]).value.saved).toEqual(['cap-real0001'])
+  })
+
+  it('una marca «test» que no es exactamente true no se acepta', () => {
+    const line = JSON.stringify({ captureId: 'cap-test0002', createdAt: '2026-09-28T15:00:00Z', origin: 'apple_pay', rawAmount: '1', test: 'yes' })
+    expect(readCaptureQueue(line + '\n')).toMatchObject({ records: [], issues: [{ line: 1, issue: 'shape' }] })
   })
 })

@@ -7,6 +7,7 @@
  * - En la moneda del presupuesto, con «Guardar automáticamente» y sin parecerse a otro: **movimiento real** (gasto
  *   realizado) marcado «Por revisar» (`review.reason = 'auto_capture'`). Cuenta en todas las cifras desde ya; es la
  *   excepción a «nada se guarda sin confirmar» que trae la Fase 2 (CLAUDE.md).
+ * - La prueba de Ajustes (`test`) siempre es propuesta, nunca se registra y no cuenta como posible duplicado.
  * - Si no: **propuesta**, que no cuenta en ninguna cifra hasta que la persona la registra. Motivos: otra moneda o «¥»
  *   ambiguo (`currency`; nunca se convierte), importe sin entender (`unparsed`), mismo importe y comercio que otro gasto
  *   realizado o captura de menos de 2 minutos antes o después (`duplicate`: la automatización puede dispararse dos veces
@@ -30,7 +31,7 @@ import { merchantKey } from './merchants'
 import type { OpContext, OpResult } from './operations'
 import { suggestCategoryForMerchant } from './shortcutLink'
 import { normalizeText } from './text'
-import type { AppData, CaptureOrigin, CaptureProposal, CaptureState, ReviewReason, Transaction, TransactionSource } from './types'
+import type { AppData, CaptureOrigin, CaptureProposal, CaptureState, ReviewReason, Transaction, TransactionSource, TxReview } from './types'
 import { CAPTURE_PROCESSED_MAX, CAPTURE_PROPOSALS_MAX, validateTransaction } from './validation'
 
 /** Dos cargos del mismo importe y comercio a esta distancia o menos se tratan como posible duplicado. */
@@ -107,7 +108,7 @@ function chargesOf(data: AppData): Charge[] {
     if (!Number.isNaN(at)) out.push({ txId: t.id, amountMinor: t.amountMinor, at, merchant: merchantKey(t.merchant ?? '') })
   }
   for (const p of data.captures?.proposals ?? []) {
-    if (p.amount.kind === 'budget') out.push({ amountMinor: p.amount.minor, at: Date.parse(p.capturedAt), merchant: merchantKey(p.merchant ?? '') })
+    if (p.amount.kind === 'budget' && !p.test) out.push({ amountMinor: p.amount.minor, at: Date.parse(p.capturedAt), merchant: merchantKey(p.merchant ?? '') })
   }
   return out
 }
@@ -143,8 +144,9 @@ export function importCaptures(data: AppData, records: readonly CaptureRecord[],
     const merchant = merchantKey(record.merchant ?? '')
     const categoryId = (record.merchant && suggestCategoryForMerchant(record.merchant, 'expense', data)) || CAPTURE_FALLBACK_CATEGORY
     const similar = amount.kind === 'budget' ? similarCharge(charges, amount.minor, at, merchant) : undefined
-    const reason: ReviewReason | null =
-      amount.kind === 'foreign' || amount.kind === 'ambiguous'
+    const reason: ReviewReason | null = record.test
+      ? 'auto_capture'
+      : amount.kind === 'foreign' || amount.kind === 'ambiguous'
         ? 'currency'
         : amount.kind === 'unreadable'
           ? 'unparsed'
@@ -200,9 +202,10 @@ export function importCaptures(data: AppData, records: readonly CaptureRecord[],
       categoryId,
       ...(similar?.txId ? { similarTxId: similar.txId } : {}),
       ...(record.rawText ? { rawText: record.rawText } : {}),
+      ...(record.test ? { test: true as const } : {}),
       receivedAt: ctx.now,
     })
-    if (amount.kind === 'budget') charges.push({ amountMinor: amount.minor, at, merchant })
+    if (amount.kind === 'budget' && !record.test) charges.push({ amountMinor: amount.minor, at, merchant })
     summary.proposed.push(record.captureId)
     summary.ack.push(record.captureId)
   }
@@ -236,6 +239,20 @@ export function confirmReviews(data: AppData, ids: readonly string[], ctx: OpCon
   return { ok: true, data: { ...data, transactions, updatedAt: ctx.now }, value: confirmed }
 }
 
+/** Deshacer «Está bien»: vuelve a poner la marca que tenían, solo en los que siguen existiendo y no la tienen. */
+export function reopenReviews(data: AppData, items: readonly { id: string; review: TxReview }[], ctx: OpContext): OpResult<string[]> {
+  const byId = new Map(items.map((i) => [i.id, i.review]))
+  const reopened: string[] = []
+  const transactions = data.transactions.map((t) => {
+    const review = byId.get(t.id)
+    if (!review || t.review) return t
+    reopened.push(t.id)
+    return { ...t, review, updatedAt: ctx.now }
+  })
+  if (reopened.length === 0) return { ok: true, data, value: [], unchanged: true }
+  return { ok: true, data: { ...data, transactions, updatedAt: ctx.now }, value: reopened }
+}
+
 /** «Descartar»: quita propuestas. Su id queda entre las leídas, así que no vuelven aunque sigan en la cola. */
 export function dismissProposals(data: AppData, captureIds: readonly string[], ctx: OpContext): OpResult<string[]> {
   const wanted = new Set(captureIds)
@@ -249,14 +266,34 @@ export function dismissProposals(data: AppData, captureIds: readonly string[], c
 }
 
 /**
- * «Registrar»: convierte una propuesta en la moneda del presupuesto en un gasto real, ya revisado (la persona lo acaba
- * de mirar). Una en otra moneda o sin entender no se registra así: se abre el formulario para escribir el importe, y al
- * guardarlo `saveTransaction` retira la propuesta.
+ * Deshacer «Descartar»: vuelve a poner esas propuestas, salvo las que ya se registraron por otro camino o ya están.
+ * Si no caben todas (tope de propuestas), no se pone ninguna.
  */
-export function registerProposal(data: AppData, captureId: string, ctx: OpContext): OpResult<Transaction> {
+export function restoreProposals(data: AppData, proposals: readonly CaptureProposal[], ctx: OpContext): OpResult<string[]> {
+  const state = data.captures ?? EMPTY_STATE
+  const back = proposals.filter(
+    (p) =>
+      !state.proposals.some((q) => q.captureId === p.captureId) &&
+      !data.transactions.some((t) => t.id === p.captureId || t.captureId === p.captureId) &&
+      !data.trash.some((e) => e.id === p.captureId || e.transaction.captureId === p.captureId),
+  )
+  if (back.length === 0) return { ok: true, data, value: [], unchanged: true }
+  if (state.proposals.length + back.length > CAPTURE_PROPOSALS_MAX) return { ok: false, issues: [{ path: 'captures.proposals', code: 'tooMany', params: { max: CAPTURE_PROPOSALS_MAX } }] }
+  return { ok: true, data: { ...data, captures: { ...state, proposals: [...state.proposals, ...back] }, updatedAt: ctx.now }, value: back.map((p) => p.captureId) }
+}
+
+/**
+ * «Registrar»: convierte una propuesta en un gasto real, ya revisado (la persona lo acaba de mirar), con la hora del
+ * pago. Una en la moneda del presupuesto usa su importe; una en otra moneda, con «¥» o sin entender solo se registra con
+ * el importe que la persona escribe en la moneda del presupuesto (`amountMinor`): Clara nunca convierte ni elige.
+ */
+export function registerProposal(data: AppData, captureId: string, ctx: OpContext, amountMinor?: number): OpResult<Transaction> {
   const proposal = data.captures?.proposals.find((p) => p.captureId === captureId)
   if (!proposal) return { ok: false, issues: [{ path: 'captureId', code: 'notFound' }] }
-  if (proposal.amount.kind !== 'budget') return { ok: false, issues: [{ path: 'amountMinor', code: 'currencyMismatch', params: { expected: data.settings.currency } }] }
+  // La prueba de Ajustes nunca se convierte en un gasto.
+  if (proposal.test) return { ok: false, issues: [{ path: 'captureId', code: 'invalidValue' }] }
+  const minor = amountMinor ?? (proposal.amount.kind === 'budget' ? proposal.amount.minor : undefined)
+  if (minor === undefined) return { ok: false, issues: [{ path: 'amountMinor', code: 'currencyMismatch', params: { expected: data.settings.currency } }] }
   if (data.transactions.some((t) => t.id === captureId) || data.trash.some((e) => e.id === captureId)) {
     return { ok: false, issues: [{ path: 'captureId', code: 'duplicateId' }] }
   }
@@ -267,7 +304,7 @@ export function registerProposal(data: AppData, captureId: string, ctx: OpContex
     id: captureId,
     kind: 'expense',
     status: 'realized',
-    amountMinor: proposal.amount.minor,
+    amountMinor: minor,
     currency: data.settings.currency,
     date: proposal.date > ctx.today ? ctx.today : proposal.date,
     accountId,

@@ -29,6 +29,8 @@ export interface CaptureRecord {
   card?: string
   /** Texto original (solo SMS o alertas); se guarda hasta que la persona confirme el movimiento. */
   rawText?: string
+  /** «Probar» de Ajustes: recorre el mismo camino que un pago real y siempre queda como propuesta. */
+  test?: true
 }
 
 export const CAPTURE_LIMITS = { id: 64, amount: 64, card: 64, rawText: CAPTURE_TEXT_MAX } as const
@@ -58,6 +60,7 @@ function validRecord(raw: unknown): { ok: true; record: CaptureRecord } | { ok: 
   if (typeof r.rawAmount !== 'string' || r.rawAmount.trim() === '' || r.rawAmount.length > CAPTURE_LIMITS.amount) return { ok: false, issue: 'rawAmount' }
   if (r.currencyHint !== undefined && (typeof r.currencyHint !== 'string' || !/^[A-Za-z]{3}$/.test(r.currencyHint))) return { ok: false, issue: 'currencyHint' }
   if (!isText(r.merchant, LIMITS.nameMax * 4) || !isText(r.card, CAPTURE_LIMITS.card) || !isText(r.rawText, CAPTURE_LIMITS.rawText)) return { ok: false, issue: 'text' }
+  if (r.test !== undefined && r.test !== true) return { ok: false, issue: 'shape' }
   const record: CaptureRecord = { captureId: r.captureId, createdAt: r.createdAt, origin: r.origin as CaptureOrigin, rawAmount: r.rawAmount }
   if (typeof r.currencyHint === 'string') record.currencyHint = r.currencyHint.toUpperCase()
   const merchant = typeof r.merchant === 'string' ? r.merchant.replace(/\s+/g, ' ').trim() : ''
@@ -65,6 +68,7 @@ function validRecord(raw: unknown): { ok: true; record: CaptureRecord } | { ok: 
   const card = typeof r.card === 'string' ? r.card.replace(/\s+/g, ' ').trim() : ''
   if (card) record.card = card
   if (typeof r.rawText === 'string' && r.rawText.trim()) record.rawText = r.rawText
+  if (r.test === true) record.test = true
   return { ok: true, record }
 }
 

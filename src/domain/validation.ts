@@ -335,6 +335,7 @@ export function validateCaptureState(state: CaptureState, prefix = 'captures.'):
     checkDate(pr.date, `${p}date`, issues)
     if (pr.categoryId !== undefined && (typeof pr.categoryId !== 'string' || pr.categoryId.length === 0 || pr.categoryId.length > 64)) issues.push({ path: `${p}categoryId`, code: 'invalidCategory' })
     if (pr.similarTxId !== undefined && !isValidId(pr.similarTxId)) issues.push({ path: `${p}similarTxId`, code: 'invalidId' })
+    if (pr.test !== undefined && pr.test !== true) issues.push({ path: `${p}test`, code: 'invalidValue' })
   })
   return issues
 }

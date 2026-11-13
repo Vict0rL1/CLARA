@@ -60,7 +60,7 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
 - `src/i18n/` — todos los textos visibles. **Nunca** escribir texto de interfaz
   directamente en componentes: añadir cada clave a `es.ts`, `en.ts`, `pt.ts` **y** `fr.ts`
   (el tipo compartido obliga a tener todas las claves en los cuatro). Los textos de pantallas poco visitadas (Legal,
-  Galería, Importar CSV, «¿Qué cambió?», plan ante faltante) son paquetes diferidos fuera del JS inicial: archivos `src/i18n/packs/<paquete>.<idioma>.json` (mismas
+  Galería, Importar CSV, «¿Qué cambió?», plan ante faltante, capturas por revisar) son paquetes diferidos fuera del JS inicial: archivos `src/i18n/packs/<paquete>.<idioma>.json` (mismas
   claves en los cuatro: `packs/packKeys.ts` lo exige en `tsc`) pedidos con `fetch` por `usePack` (`src/i18n/packs.ts`):
   estados `loading`, `ready` (con `fallback` si el texto salió en español porque el idioma pedido no cargó; la pantalla
   marca ese contenido con `lang="es"`) y `failed`; un fallo nunca se guarda como paquete ni se enseña una clave;
@@ -152,7 +152,12 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
   realizado o captura (`duplicate`), apagado o más allá de la cota de exactitud (`auto_capture`). Cuenta: tarjeta →
   por defecto → primera activa del presupuesto (nunca archivada). Lo que no cabe (500 propuestas) o sin cuenta activa
   se queda en la cola sin confirmar. `saveTransaction` conserva `captureId` y `review` (solo `reviewed: true` la
-  quita) y retira la propuesta de esa captura.
+  quita; el formulario lo manda al guardar) y retira la propuesta de esa captura. Revisar (`CaptureReview`, arriba de
+  Pendientes; cuenta en «pendientes» de Inicio): «Está bien» (`confirmReviews`, con deshacer), «Fue rechazado» →
+  papelera; una propuesta en otra moneda o sin entender solo se registra con el importe que la persona escribe en la
+  moneda del presupuesto (`registerProposal(…, amountMinor)`, hora del pago como `realizedAt`). La prueba de Ajustes
+  (`test: true`) siempre es propuesta, nunca se registra y no cuenta como duplicado. Un movimiento «Por revisar» no sale
+  además como «Sin categoría».
 - Papelera: eliminar saca el movimiento de `transactions` a `trash` (nunca participa en
   cálculos). Restaurar no deja vínculos rotos, ni liquida dos veces una ocurrencia, ni devuelve un pago a una fecha
   que su programado ya no tiene (`occurrenceMissing`; revisión de seguridad QA27, F-1); filas

@@ -8,6 +8,10 @@ import bankImportEn from './bankImport.en.json'
 import bankImportEs from './bankImport.es.json'
 import bankImportFr from './bankImport.fr.json'
 import bankImportPt from './bankImport.pt.json'
+import captureEn from './capture.en.json'
+import captureEs from './capture.es.json'
+import captureFr from './capture.fr.json'
+import capturePt from './capture.pt.json'
 import galleryEn from './gallery.en.json'
 import galleryEs from './gallery.es.json'
 import galleryFr from './gallery.fr.json'
@@ -35,6 +39,7 @@ export type BankImportPackKey = keyof typeof bankImportEs
 export type NativeAppPackKey = keyof typeof nativeAppEs
 export type WhatChangedPackKey = keyof typeof whatChangedEs
 export type ShortfallPackKey = keyof typeof shortfallEs
+export type CapturePackKey = keyof typeof captureEs
 
 /** `true` solo si A y B tienen las mismas claves (ninguna falta en ninguno de los dos). */
 type SameKeys<A, B> = Record<keyof A, string> extends Record<keyof B, string> ? (Record<keyof B, string> extends Record<keyof A, string> ? true : never) : never
@@ -59,4 +64,7 @@ export const PACK_KEY_CHECKS: [
   SameKeys<typeof shortfallEs, typeof shortfallEn>,
   SameKeys<typeof shortfallEs, typeof shortfallPt>,
   SameKeys<typeof shortfallEs, typeof shortfallFr>,
-] = [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true]
+  SameKeys<typeof captureEs, typeof captureEn>,
+  SameKeys<typeof captureEs, typeof capturePt>,
+  SameKeys<typeof captureEs, typeof captureFr>,
+] = [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true]
