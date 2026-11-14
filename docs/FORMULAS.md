@@ -1652,3 +1652,22 @@ compactos ni se redondean para calcular.
 - **Límite declarado.** Solo se revisan particiones reconocibles por su forma; una partición antigua
   cuyo tramo anterior se borró, se renombró o cambió de regla no se puede distinguir de una serie
   nueva y no se propone (la persona la edita a mano: «Repetir» muestra la fecha que fija la serie).
+
+## 45. Movimientos en otra moneda (`domain/fx.ts`, Fase 3 nativa)
+
+- **Qué se guarda.** `amountMinor` sigue en la moneda del presupuesto (todas las fórmulas de arriba siguen igual).
+  `original` guarda la moneda en que se pagó, el importe en sus unidades menores, la tasa, su fecha, de dónde salió
+  (`manual`, `boc`, `card_actual`) y la comisión de la tarjeta en puntos básicos (`feeBps`, 250 = 2,5 %).
+- **La tasa.** Unidades de la moneda del presupuesto por 1 unidad de la otra (JPY → CAD: `0.0092`). Texto exacto:
+  decimal de hasta 12 cifras o fracción de enteros (`1371/1250`), positivo y como mucho 1 000 000. Nunca un flotante.
+- **La conversión.** `importe = original × tasa × 10^(decimales del presupuesto − decimales de la otra) × (10 000 +
+  comisión) / 10 000`, en BigInt, con **un solo redondeo** al entero más cercano y las mitades hacia arriba
+  (`(2·n + d) / (2·d)`). La comisión entra antes de redondear: ¥145 a 0,0092 con 2,5 % da 1,37 $ (1,334 × 1,025 =
+  1,36735), no los 1,36 $ de redondear dos veces. Si el resultado no es positivo (₩1 a 0,00098 = 0,098 céntimos) o
+  pasa del importe máximo, no hay cifra.
+- **La validación.** `amountMinor` tiene que ser exactamente la conversión de `original`: una tasa y una cifra que no
+  cuadran no se guardan ni se aceptan en una copia.
+- **Ajustar al cargo real.** Si el banco cobró otra cifra, esa manda: la tasa pasa a ser la fracción exacta entre los
+  dos importes (`rateFromAmounts`; 10,00 US$ cobrados como 13,71 $ → `1.371`; ¥1 200 como 11,17 $ →
+  `1117/120000`), sin comisión aparte, y la conversión vuelve a dar el cargo justo.
+- **Sin tasa no hay importe.** Nunca se inventa: el formulario no deja guardar y una captura queda como propuesta.
