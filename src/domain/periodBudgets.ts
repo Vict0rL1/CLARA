@@ -17,7 +17,7 @@ import { newId } from './ids'
 import { floorDiv, mulDivFloor, sumMinor } from './money'
 import { allocateToGoal, saveGoal, type OpContext, type OpResult } from './operations'
 import { periodTransactions } from './reserves'
-import type { AppData, Goal, LocalDate, PeriodBudget, PeriodTemplate, Transaction } from './types'
+import type { AppData, Goal, LocalDate, PeriodBudget, PeriodTemplate, Transaction, TripSettings } from './types'
 import { validatePeriodBudget, type Issue } from './validation'
 
 const fail = (issues: Issue[]): { ok: false; issues: Issue[] } => ({ ok: false, issues })
@@ -123,7 +123,10 @@ export function templateDates(template: PeriodTemplate, today: LocalDate): { sta
   return { startDate: today, endDate: addDays(today, 29) }
 }
 
-export type PeriodBudgetDraft = Pick<PeriodBudget, 'id' | 'name' | 'template' | 'startDate' | 'endDate' | 'allocatedMinor' | 'note' | 'ruleCategoryIds'>
+export type PeriodBudgetDraft = Pick<PeriodBudget, 'id' | 'name' | 'template' | 'startDate' | 'endDate' | 'allocatedMinor' | 'note' | 'ruleCategoryIds'> & {
+  /** Modo viaje (solo «Viaje»). Ausente = se conserva el que tenía; `null` = se quita. */
+  trip?: TripSettings | null
+}
 
 export function savePeriodBudget(data: AppData, draft: PeriodBudgetDraft, ctx: OpContext): OpResult<PeriodBudget> {
   const existing = data.periodBudgets.find((b) => b.id === draft.id)
@@ -140,6 +143,7 @@ export function savePeriodBudget(data: AppData, draft: PeriodBudgetDraft, ctx: O
     ...(draft.ruleCategoryIds?.length ? { ruleCategoryIds: [...new Set(draft.ruleCategoryIds)] } : {}),
     archived: existing?.archived ?? false,
     ...(draft.note?.trim() ? { note: draft.note.trim() } : {}),
+    ...(draft.template === 'trip' && draft.trip !== null && (draft.trip ?? existing?.trip) ? { trip: (draft.trip ?? existing?.trip)! } : {}),
     createdAt: existing?.createdAt ?? ctx.now,
     updatedAt: ctx.now,
   }
@@ -169,15 +173,18 @@ export function setPeriodTransaction(data: AppData, budgetId: string, txId: stri
  * Regla del periodo: ¿se propone asociar este gasto? Solo gastos y devoluciones dentro de
  * las fechas, de una categoría de la regla, en un periodo no archivado. Solo PROPONE.
  */
-export function periodRuleMatches(budget: PeriodBudget, tx: Pick<Transaction, 'kind' | 'date' | 'categoryId'>): boolean {
-  if (budget.archived || !budget.ruleCategoryIds?.length) return false
+export function periodRuleMatches(budget: PeriodBudget, tx: Pick<Transaction, 'kind' | 'date' | 'categoryId' | 'original'>): boolean {
+  if (budget.archived) return false
   if (tx.kind !== 'expense' && tx.kind !== 'refund') return false
   if (tx.date < budget.startDate || tx.date > budget.endDate) return false
+  // Modo viaje (v16): un gasto en una moneda del viaje, dentro de sus fechas, también se propone.
+  if (budget.trip && tx.original && budget.trip.currencies.includes(tx.original.currency)) return true
+  if (!budget.ruleCategoryIds?.length) return false
   return !!tx.categoryId && budget.ruleCategoryIds.includes(tx.categoryId)
 }
 
 /** Presupuestos cuya regla propone asociar este gasto. */
-export function periodsProposedFor(data: AppData, tx: Pick<Transaction, 'kind' | 'date' | 'categoryId'>): string[] {
+export function periodsProposedFor(data: AppData, tx: Pick<Transaction, 'kind' | 'date' | 'categoryId' | 'original'>): string[] {
   return data.periodBudgets.filter((b) => periodRuleMatches(b, tx)).map((b) => b.id)
 }
 

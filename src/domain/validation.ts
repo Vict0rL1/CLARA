@@ -42,6 +42,8 @@ import type {
   CategoryPref,
   Tag,
   UserProfile,
+  TripSettings,
+  CurrencyCode,
 } from './types'
 
 export type IssueCode =
@@ -1071,7 +1073,45 @@ export function validatePeriodBudget(b: PeriodBudget, ctx: { data: Pick<AppData,
   }
   if (typeof b.archived !== 'boolean') issues.push({ path: `${p}archived`, code: 'invalidValue' })
   checkOptionalText(b.note, `${p}note`, issues)
+  if (b.trip !== undefined) {
+    if (b.template !== 'trip') issues.push({ path: `${p}trip`, code: 'invalidValue' })
+    else issues.push(...validateTripSettings(b.trip, ctx.data.settings.currency, `${p}trip.`))
+  }
   checkTimestamps(b, p, issues)
+  return issues
+}
+
+/** Monedas de un viaje como mucho. */
+export const TRIP_CURRENCIES_MAX = 8
+
+export function validateTripSettings(trip: TripSettings, budgetCurrency: CurrencyCode, p = ''): Issue[] {
+  const issues: Issue[] = []
+  if (!trip || typeof trip !== 'object') return [{ path: p.replace(/\.$/, ''), code: 'invalidValue' }]
+  const currencies = Array.isArray(trip.currencies) ? trip.currencies : []
+  if (
+    !Array.isArray(trip.currencies) ||
+    currencies.length === 0 ||
+    currencies.length > TRIP_CURRENCIES_MAX ||
+    !currencies.every((c) => typeof c === 'string' && isSupportedCurrency(c) && c !== budgetCurrency) ||
+    new Set(currencies).size !== currencies.length
+  ) {
+    issues.push({ path: `${p}currencies`, code: 'invalidValue' })
+  }
+  if (trip.localCurrency !== undefined && !currencies.includes(trip.localCurrency)) issues.push({ path: `${p}localCurrency`, code: 'invalidValue' })
+  if (!Array.isArray(trip.rates) || trip.rates.length > currencies.length) {
+    issues.push({ path: `${p}rates`, code: 'invalidValue' })
+  } else {
+    const seen = new Set<string>()
+    trip.rates.forEach((r, i) => {
+      const rp = `${p}rates[${i}].`
+      if (!r || typeof r !== 'object') return void issues.push({ path: `${p}rates[${i}]`, code: 'invalidValue' })
+      if (!currencies.includes(r.currency) || seen.has(r.currency)) issues.push({ path: `${rp}currency`, code: 'invalidValue' })
+      seen.add(r.currency)
+      if (typeof r.rate !== 'string' || !parseRate(r.rate)) issues.push({ path: `${rp}rate`, code: 'invalidValue' })
+      checkDate(r.date, `${rp}date`, issues)
+    })
+  }
+  if (trip.feeBps !== undefined && (!Number.isInteger(trip.feeBps) || trip.feeBps < 0 || trip.feeBps > FEE_BPS_MAX)) issues.push({ path: `${p}feeBps`, code: 'invalidValue' })
   return issues
 }
 

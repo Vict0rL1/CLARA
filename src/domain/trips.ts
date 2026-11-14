@@ -1,0 +1,135 @@
+/**
+ * Modo viaje (Fase 3 nativa, decisión 176; ver `docs/FORMULAS.md` §46).
+ *
+ * Un viaje es un Presupuesto por periodo con plantilla «Viaje» y `trip`: sus monedas, la del país donde se está ahora
+ * («moneda local actual», que resuelve un «¥» suelto) y una tasa escrita a mano por moneda, con su fecha. Está activo
+ * entre sus fechas (incluidas) si no está archivado; con varios activos, manda el que empezó más tarde (a igualdad, el
+ * creado más tarde), siempre el mismo.
+ *
+ * - Una tasa del viaje solo se usa para lo que se registra DESPUÉS de escribirla: cambiarla nunca toca un movimiento ya
+ *   guardado (cada uno lleva la suya en `original`).
+ * - Nunca se inventa una tasa: sin una escrita para esa moneda, no hay conversión (la captura queda como propuesta, el
+ *   formulario pide la tasa o el cargo real).
+ * - La vista del viaje suma lo REALIZADO asociado al periodo (como `summarizePeriod`), separado por la moneda en que se
+ *   pagó; el total en la moneda del presupuesto es el gastado del periodo. Ninguna suma de importes originales se
+ *   redondea ni se recorta: si no cabe en un entero exacto, esa línea dice que no hay cifra.
+ */
+import { daysBetween } from './dates'
+import { parseRate, rateToText } from './fx'
+import { checkedSumMinor, floorDiv } from './money'
+import type { OpContext, OpResult } from './operations'
+import { summarizePeriod, type PeriodSummaryResult } from './periodBudgets'
+import type { AppData, CurrencyCode, LocalDate, PeriodBudget, TripRate, TripSettings } from './types'
+import { validatePeriodBudget, type Issue } from './validation'
+
+const fail = (issues: Issue[]): { ok: false; issues: Issue[] } => ({ ok: false, issues })
+
+/** Los viajes con modo viaje que están en curso hoy, del que manda al último. */
+export function activeTrips(data: Pick<AppData, 'periodBudgets'>, today: LocalDate): PeriodBudget[] {
+  return data.periodBudgets
+    .filter((b) => b.template === 'trip' && b.trip && !b.archived && b.startDate <= today && today <= b.endDate)
+    .sort((a, b) => (a.startDate === b.startDate ? (a.createdAt === b.createdAt ? (a.id < b.id ? 1 : -1) : a.createdAt < b.createdAt ? 1 : -1) : a.startDate < b.startDate ? 1 : -1))
+}
+
+/** El viaje en curso en esa fecha (el que manda), o ninguno. */
+export function activeTrip(data: Pick<AppData, 'periodBudgets'>, date: LocalDate): PeriodBudget | undefined {
+  return activeTrips(data, date)[0]
+}
+
+/** La tasa escrita para esa moneda en el viaje, si hay. */
+export function tripRate(trip: TripSettings | undefined, currency: string): TripRate | undefined {
+  return trip?.rates.find((r) => r.currency === currency)
+}
+
+/**
+ * Un «¥» suelto es yen o yuan: solo lo resuelve la moneda local actual del viaje, si es una de las candidatas. Si no,
+ * sigue sin resolver (nunca se elige).
+ */
+export function resolveAmbiguous(trip: TripSettings | undefined, candidates: readonly CurrencyCode[]): CurrencyCode | undefined {
+  const local = trip?.localCurrency
+  return local && candidates.includes(local) ? local : undefined
+}
+
+function updateTrip(data: AppData, budgetId: string, ctx: OpContext, change: (trip: TripSettings) => TripSettings): OpResult<PeriodBudget> {
+  const budget = data.periodBudgets.find((b) => b.id === budgetId)
+  if (!budget || !budget.trip) return fail([{ path: 'budgetId', code: 'notFound' }])
+  const trip = change(budget.trip)
+  const updated: PeriodBudget = { ...budget, trip, updatedAt: ctx.now }
+  const issues = validatePeriodBudget(updated, { data })
+  if (issues.length) return fail(issues)
+  return { ok: true, data: { ...data, updatedAt: ctx.now, periodBudgets: data.periodBudgets.map((b) => (b.id === budgetId ? updated : b)) }, value: updated }
+}
+
+/** «Ahora estoy en…»: cambia la moneda local actual (o la quita con `null`). Solo afecta a lo que se registre después. */
+export function setTripLocalCurrency(data: AppData, budgetId: string, currency: CurrencyCode | null, ctx: OpContext): OpResult<PeriodBudget> {
+  return updateTrip(data, budgetId, ctx, (trip) => {
+    const { localCurrency: _old, ...rest } = trip
+    return currency === null ? rest : { ...rest, localCurrency: currency }
+  })
+}
+
+/**
+ * Escribe (o quita, con `rate: null`) la tasa de una moneda del viaje. Se guarda en su forma exacta canónica
+ * («1.3950» → «1.395»). Lo ya registrado conserva su tasa.
+ */
+export function setTripRate(data: AppData, budgetId: string, currency: CurrencyCode, rate: string | null, date: LocalDate, ctx: OpContext): OpResult<PeriodBudget> {
+  let text: string | null = null
+  if (rate !== null) {
+    const parsed = parseRate(rate)
+    if (!parsed) return fail([{ path: 'rate', code: 'invalidValue' }])
+    text = rateToText(parsed)
+  }
+  return updateTrip(data, budgetId, ctx, (trip) => {
+    const others = trip.rates.filter((r) => r.currency !== currency)
+    return { ...trip, rates: text === null ? others : [...others, { currency, rate: text, date }] }
+  })
+}
+
+export interface TripCurrencyLine {
+  currency: CurrencyCode
+  /** Movimientos realizados en esa moneda. */
+  count: number
+  /** Gastado en esa moneda (devoluciones restan), en sus unidades menores. `null` = no cabe en un entero exacto. */
+  originalMinor: number | null
+  /** Lo mismo convertido a la moneda del presupuesto (lo que cuenta). */
+  convertedMinor: number | null
+}
+
+export interface TripSummary {
+  period: PeriodSummaryResult
+  /** Primero la moneda del presupuesto si hay gastos en ella; luego las del viaje en su orden; luego cualquier otra. */
+  byCurrency: TripCurrencyLine[]
+  /** Días transcurridos del viaje, contando el primero y hoy (o todos, si terminó; 0 si no empezó). */
+  daysElapsed: number
+  /** Gastado por día hasta hoy: gastado ÷ días transcurridos, hacia abajo. `null` sin días transcurridos. */
+  spentPerDayMinor: number | null
+  /** Pagos en otra moneda dentro de las fechas que siguen como propuesta: NO están en ninguna cifra. */
+  unconvertedProposals: number
+}
+
+export function tripSummary(data: AppData, budget: PeriodBudget, today: LocalDate): TripSummary {
+  const period = summarizePeriod(data, budget, today)
+  const budgetCurrency = budget.currency
+  const groups = new Map<CurrencyCode, { count: number; original: number[]; converted: number[] }>()
+  for (const t of period.transactions) {
+    if (t.status !== 'realized') continue
+    const sign = t.kind === 'refund' ? -1 : 1
+    const currency = t.original?.currency ?? budgetCurrency
+    const g = groups.get(currency) ?? { count: 0, original: [], converted: [] }
+    g.count += 1
+    g.original.push(sign * (t.original?.amountMinor ?? t.amountMinor))
+    g.converted.push(sign * t.amountMinor)
+    groups.set(currency, g)
+  }
+  const order = [budgetCurrency, ...(budget.trip?.currencies ?? [])]
+  const rank = (c: CurrencyCode) => (order.includes(c) ? order.indexOf(c) : order.length)
+  const byCurrency = [...groups.entries()]
+    .sort(([a], [b]) => rank(a) - rank(b) || (a < b ? -1 : 1))
+    .map(([currency, g]) => ({ currency, count: g.count, originalMinor: checkedSumMinor(g.original), convertedMinor: checkedSumMinor(g.converted) }))
+  const daysElapsed = period.status === 'upcoming' ? 0 : period.status === 'ended' ? period.totalDays : daysBetween(budget.startDate, today) + 1
+  const spentPerDayMinor = daysElapsed > 0 ? (period.spentMinor > 0 ? floorDiv(period.spentMinor, daysElapsed) : 0) : null
+  const unconvertedProposals = (data.captures?.proposals ?? []).filter(
+    (p) => !p.test && p.reason === 'currency' && p.date >= budget.startDate && p.date <= budget.endDate,
+  ).length
+  return { period, byCurrency, daysElapsed, spentPerDayMinor, unconvertedProposals }
+}

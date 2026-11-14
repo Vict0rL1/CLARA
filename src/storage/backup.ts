@@ -7,6 +7,8 @@
 import { isValidTimestamp } from '../domain/dates'
 import { isValidId } from '../domain/ids'
 import type {
+  TripRate,
+  TripSettings,
   CaptureProposal,
   CaptureSettings,
   CaptureState,
@@ -195,6 +197,8 @@ const TX_KEYS = [
 const SPLIT_KEYS = ['id', 'categoryId', 'amountMinor', 'note'] as const
 const REVIEW_KEYS = ['needed', 'reason', 'rawText', 'card'] as const
 const ORIGINAL_KEYS = ['currency', 'amountMinor', 'rate', 'rateDate', 'rateSource', 'feeBps'] as const
+const TRIP_KEYS = ['currencies', 'localCurrency', 'rates', 'feeBps'] as const
+const TRIP_RATE_KEYS = ['currency', 'rate', 'date'] as const
 const PROPOSAL_KEYS = ['captureId', 'capturedAt', 'origin', 'reason', 'amount', 'merchant', 'card', 'accountId', 'date', 'categoryId', 'similarTxId', 'rawText', 'test', 'receivedAt'] as const
 const CAPTURE_AMOUNT_KEYS = ['kind', 'minor', 'currency', 'candidates', 'text'] as const
 
@@ -401,9 +405,16 @@ export function validateAppData(raw: unknown): ImportResult {
   if (migrated.backup !== undefined && !isObj(migrated.backup)) issues.push({ path: 'backup', code: 'invalidValue' })
 
   // v6: presupuestos por periodo y escenarios guardados.
-  const periodBudgets = listOf(migrated.periodBudgets, 'periodBudgets', issues).map((b) =>
-    pick<PeriodBudget>(b, ['id', 'name', 'template', 'startDate', 'endDate', 'allocatedMinor', 'currency', 'txIds', 'goalId', 'ruleCategoryIds', 'archived', 'note', 'createdAt', 'updatedAt']),
-  )
+  const periodBudgets = listOf(migrated.periodBudgets, 'periodBudgets', issues).map((b) => {
+    const budget = pick<PeriodBudget>(b, ['id', 'name', 'template', 'startDate', 'endDate', 'allocatedMinor', 'currency', 'txIds', 'goalId', 'ruleCategoryIds', 'archived', 'note', 'trip', 'createdAt', 'updatedAt'])
+    // v16: modo viaje. Solo las claves conocidas; lo que no lo es se valida como «no válido», nunca se completa.
+    if (isObj(b.trip)) {
+      const trip = pick<TripSettings>(b.trip, TRIP_KEYS)
+      if (Array.isArray(trip.rates)) trip.rates = trip.rates.map((r) => (isObj(r) ? pick<TripRate>(r, TRIP_RATE_KEYS) : r))
+      budget.trip = trip
+    }
+    return budget
+  })
   periodBudgets.forEach((b, i) => issues.push(...validatePeriodBudget(b, { data: { settings, goals }, prefix: `periodBudgets[${i}].` })))
   checkDuplicates(periodBudgets, 'periodBudgets', issues)
   const scenarios = listOf(migrated.scenarios, 'scenarios', issues).map((sc) => {

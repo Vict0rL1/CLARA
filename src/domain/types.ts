@@ -738,8 +738,33 @@ export interface PeriodBudget {
   ruleCategoryIds?: string[]
   archived: boolean
   note?: string
+  /** v16 (Fase 3): solo en un periodo «Viaje»: sus monedas, la del país donde se está ahora y sus tasas. */
+  trip?: TripSettings
   createdAt: Timestamp
   updatedAt: Timestamp
+}
+
+/** Tasa escrita a mano para una moneda del viaje (texto exacto, ver `fx.ts`) y el día al que corresponde. */
+export interface TripRate {
+  currency: CurrencyCode
+  rate: string
+  date: LocalDate
+}
+
+/**
+ * v16 (Fase 3, decisión 176): modo viaje. Un periodo «Viaje» con esto está activo entre sus fechas: el formulario
+ * propone sus monedas y sus tasas, y una captura en una de ellas se convierte con la tasa escrita aquí (nunca con una
+ * inventada).
+ */
+export interface TripSettings {
+  /** Monedas del viaje (ninguna es la del presupuesto), en el orden en que se eligieron. */
+  currencies: CurrencyCode[]
+  /** La del país donde se está ahora: la primera que propone el formulario y la que resuelve un «¥» suelto. */
+  localCurrency?: CurrencyCode
+  /** Una por moneda como mucho: la última que se escribió. Cambiarla no toca lo ya registrado. */
+  rates: TripRate[]
+  /** Comisión de la tarjeta en el extranjero, en puntos básicos (250 = 2,5 %). */
+  feeBps?: number
 }
 
 /** Un cambio simulado. Nunca se aplica a los datos reales. */

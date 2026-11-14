@@ -1671,3 +1671,29 @@ compactos ni se redondean para calcular.
   dos importes (`rateFromAmounts`; 10,00 US$ cobrados como 13,71 $ → `1.371`; ¥1 200 como 11,17 $ →
   `1117/120000`), sin comisión aparte, y la conversión vuelve a dar el cargo justo.
 - **Sin tasa no hay importe.** Nunca se inventa: el formulario no deja guardar y una captura queda como propuesta.
+
+## 46. Modo viaje (`domain/trips.ts`, Fase 3 nativa)
+
+Un viaje es un Presupuesto por periodo «Viaje» con `trip`: monedas (ninguna es la del presupuesto, hasta 8), moneda
+local actual y, como mucho, una tasa escrita a mano por moneda, con su fecha; y la comisión de la tarjeta.
+
+- **Viaje en curso** (`activeTrip`): no archivado y con la fecha entre su inicio y su fin, ambos incluidos. Con varios,
+  el que empezó más tarde; a igualdad, el creado más tarde, y luego el id: siempre el mismo.
+- **«¥» suelto** (`resolveAmbiguous`): solo lo resuelve la moneda local actual si es yen o yuan. Si no, sigue sin
+  resolver y nada se registra.
+- **Cambiar una tasa o la moneda local** solo afecta a lo que se registre después: cada movimiento guarda su tasa en
+  `original` (§45).
+- **El formulario propone asociar** al viaje un gasto o devolución en una de sus monedas dentro de sus fechas (además de
+  la regla de categorías de §19). Solo propone.
+- **Vista del viaje** (`tripSummary`), sobre lo asociado como en §19 (solo realizado; las devoluciones restan):
+  - por moneda: movimientos, Σ original (en las unidades de esa moneda) y Σ convertido; lo que no lleva `original`
+    cuenta en la moneda del presupuesto. Una suma que no cabe en un entero exacto sale `null`: «sin cifra exacta»;
+  - total = gastado del periodo (§19); queda y por día que queda, los de §19;
+  - gastado por día = ⌊gastado ÷ días transcurridos⌋, contando el primero y hoy (todos si terminó; sin cifra si no
+    empezó; 0 si lo gastado no es positivo);
+  - las capturas en otra moneda que siguen como propuesta dentro de las fechas se cuentan aparte y NO están en ninguna
+    cifra.
+
+Ejemplo (prueba `trips.test.ts`): del 25-sep al 4-oct, 500,00 $; ¥1 200 a 0,0092 = 11,04 $, devolución de ¥600 =
+5,52 $, ₩15 000 a 0,00098 = 14,70 $, CN¥88,30 a 0,1923 = 16,98 $ y 20,00 $ en CAD → gastado 57,20 $; el 28-sep (4 días)
+14,30 $ por día; quedan 442,80 $ para 7 días → 63,25 $ por día.
