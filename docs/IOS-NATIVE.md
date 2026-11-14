@@ -199,6 +199,7 @@ importa nada (los pagos esperan en la cola). Abre Clara una vez después de inst
 | 27 | Otra moneda | Ejecuta la acción con un importe en USD (o paga en otra moneda): queda como propuesta y pide el importe en tu moneda | |
 | 28 | Tarjeta → cuenta | Ajustes › Captura automática › añade tu tarjeta con el nombre exacto que pasa Atajos y elige su cuenta: el siguiente pago va a esa cuenta | |
 | 29 | Apagado | Apaga «Guardar automáticamente»: el siguiente pago queda como propuesta y no cambia ninguna cifra hasta «Registrar» | |
+| 30 | Copias locales en la app | Ajustes › Copias locales › «Hacer copia ahora»: aparece en la lista. Cierra la app del todo y ábrela: sigue ahí, y el PIN (si lo activaste) se sigue pidiendo | |
 
 Apunta también: qué variables ofrece el disparador de Wallet (y cómo se llaman), si «Importe» encajó directamente en
 el campo de la acción o hubo que pasarlo como texto, y qué dice Siri con «Registrar un pago en Clara».
@@ -214,6 +215,8 @@ Prueba primero con los datos de demostración y la lista de comprobación. Cuand
 
 ## Lo que se sabe que aún no está adaptado
 
+- Las copias locales automáticas, el PIN y las preferencias ya no dependen del WebView (decisión 173): si iOS lo
+  vaciara, el bloqueo y las preferencias vuelven solos al abrir.
 - Los textos que hablaban del navegador, de Safari, de pestañas o de descargas ya se sustituyen dentro de la app
   (decisiones 164 y 167), pero puede quedar alguno suelto: si ves «navegador» o «descarga» en la app, apunta dónde.
   Los botones siguen diciendo «Descargar…» aunque en la app abran la hoja Compartir.

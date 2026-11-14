@@ -184,3 +184,4 @@ fusiona cuando Victor la haya probado.
 | Acción «Registrar pago en Clara» (`RecordPaymentIntent.swift`, `.xcstrings`) | Swift escrito, sin compilar ni probar en iPhone |
 | Cola de capturas (`ClaraCaptureQueue.swift`, `ClaraCapturesPlugin.swift`) | Swift escrito, sin compilar; XCTest escrito (`ios/ClaraNativeTests`, sin ejecutar); lado web con el plugin simulado en navegador |
 | Importar, revisar y Ajustes › Captura automática (`captureImport.ts`, `captureSync.ts`, `CaptureReview`, `CaptureSection`) | Solo web: pruebas unitarias y de navegador (3 tamaños); sin probar en iPhone |
+| Copias locales, PIN y preferencias fuera del WebView (`nativeLocalBackups.ts`, `deviceMirror.ts`) | Sin Swift nuevo (usa `ClaraStorage`); pruebas unitarias y de navegador con el plugin simulado; sin probar en iPhone |

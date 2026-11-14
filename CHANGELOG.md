@@ -8,6 +8,11 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
 
 ### Novedades
 
+- **App de iPhone: copias locales, PIN y preferencias fuera del WebView** (decisión 173): las copias locales
+  automáticas van a archivos de la app, y el bloqueo con PIN y las preferencias tienen una copia que vuelve sola si iOS
+  vacía el almacenamiento interno de la vista web. Ajustes › Datos y recuperación ve la copia previa a una migración
+  también cuando está en IndexedDB (navegador) o en la app; antes solo miraba `localStorage`. **Probado en navegador con
+  un iPhone simulado; sin probar en un iPhone.**
 - **App de iPhone: los pagos con Apple Pay se anotan solos** (Fase 2 nativa; decisiones 169–172,
   `docs/IOS-NATIVE.md` › «Fase 2»): una automatización de Atajos ejecuta la acción «Registrar pago en Clara» después de
   cada pago y Clara lo lee al abrirse. Un pago en la moneda del presupuesto entra como gasto «Por revisar» (con

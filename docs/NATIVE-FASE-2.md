@@ -18,7 +18,8 @@ PR #19 (`feat/ios-fase-2`, sobre la Fase 1). Fecha: 13 de noviembre de 2026.
 | Reglas | Importar capturas: movimiento «Por revisar» o propuesta; posible duplicado a ≤ 2 min; tarjeta → cuenta; idempotente; todo o nada | `968903b` | 169 |
 | Revisar | «Por revisar» arriba de Pendientes: «Está bien», «Editar», «Fue rechazado» (papelera), «Registrar» (con importe escrito si es otra moneda), «Descartar», todo con deshacer donde aplica | `72d07c0` | 170 |
 | iPhone | Acción «Registrar pago en Clara» (App Intents), cola `captures.jsonl`, plugin `ClaraCaptures`, textos en es/en/pt/fr, pruebas XCTest como paquete aparte | `d240345` | 171 |
-| Conexión | La web lee la cola al abrir, al volver a la app y cuando la acción avisa; solo vacía la cola después de guardar. Ajustes › Captura automática (solo en la app) con guía y «Probar» | este PR | 171, 172 |
+| Conexión | La web lee la cola al abrir, al volver a la app y cuando la acción avisa; solo vacía la cola después de guardar. Ajustes › Captura automática (solo en la app) con guía y «Probar» | `0239c7f` | 171, 172 |
+| Deuda de la Fase 1 | Copias locales automáticas en archivos de la app; PIN y preferencias con copia fuera del WebView que vuelve sola si iOS lo vacía; Datos y recuperación ve la copia previa a una migración (también la de IndexedDB en el navegador) | este PR | 173 |
 
 `CLAUDE.md`: la excepción «Guardar automáticamente» de la Fase 2 está **vigente**.
 
@@ -39,16 +40,21 @@ PR #19 (`feat/ios-fase-2`, sobre la Fase 1). Fecha: 13 de noviembre de 2026.
 
 ## 3. Pruebas y resultados
 
-- **Unitarias:** 1 371 pasan, 1 omitida, 0 fallan (`npm test`); 73 nuevas en la fase (lector de la cola, esquema 15,
-  importar con cifras calculadas a mano, deshacer, conexión con la cola, adaptador del plugin, Ajustes, bandeja).
+- **Unitarias:** 1 383 pasan, 1 omitida, 0 fallan (`npm test`); 85 nuevas en la fase (lector de la cola, esquema 15,
+  importar con cifras calculadas a mano, deshacer, conexión con la cola, adaptador del plugin, Ajustes, bandeja, copias
+  locales y ajustes del dispositivo en archivos de la app, copia previa a una migración en los tres almacenamientos).
 - **Navegador, nuevas:** `capture-review.spec.ts` (revisar, deshacer, editar, rechazar, registrar en otra moneda,
   descartar; la prueba de Ajustes) y `native-captures.spec.ts` (la cola entra al abrir y no se duplica al reabrir, con
   la app abierta, al volver a primer plano, nada en la demostración, Ajustes › Captura automática con «Probar», y que
-  en el navegador no existe), en celular, celular 320 px y escritorio, con axe.
+  en el navegador no existe) y `native-device.spec.ts` (copias locales en archivos de la app; el PIN vuelve si iOS vacía
+  el WebView, también con la app suspendida, y quitarlo se conserva; la fila de la copia previa a una migración), en
+  celular, celular 320 px y escritorio, con axe.
 - **Navegador, lo relacionado** (en los tres tamaños, con axe): con la conexión web ya hecha, app simulada, revisión,
   guardas de maquetación y accesibilidad: 198 pasan, 0 fallan; antes, Pendientes, filtros, Atajos, auditorías y la
-  app simulada: 380 pasan, 1 omitida, 0 fallan. La matriz completa la corre la integración continua del PR.
-- **Tipos, lint, compilación y tamaño:** en verde; JS inicial 841,8 KB de 844,6.
+  app simulada: 380 pasan, 1 omitida, 0 fallan; con las copias y el PIN fuera del WebView, app simulada, copias,
+  seguridad de datos y Ajustes: 138 pasan, 0 fallan. La matriz completa la corre la integración continua del PR (en
+  verde en `122a8b9`).
+- **Tipos, lint, compilación y tamaño:** en verde; JS inicial 842,5 KB de 844,6.
 - **Swift:** 12 pruebas XCTest escritas (cola y archivo de datos), **sin ejecutar**: aquí no hay Swift ni se puede
   descargar. La acción y el plugin, sin compilar.
 - **APIs de Apple comprobadas** en developer.apple.com: `AppIntent` (`title`, `description`, `perform()`),
@@ -80,15 +86,14 @@ PR #19 (`feat/ios-fase-2`, sobre la Fase 1). Fecha: 13 de noviembre de 2026.
 - **En la lista de movimientos**, un pago capturado sin nota se titula con su categoría (como cualquier movimiento sin
   nota); el comercio se ve en «Por revisar» y en el detalle. Cambiar el título de todos los movimientos es otra
   decisión.
-- **Prometido en la Fase 1 y aún no hecho:** pasar las copias locales automáticas, el PIN y las preferencias del
-  dispositivo al archivo nativo, y que la fila «copia previa a una migración» de Datos y recuperación mire la del
-  archivo nativo. La migración 14 → 15 solo sube el número (no transforma datos), así que el riesgo de esta fase es
-  bajo, pero sigue pendiente: es lo siguiente.
+- **Copias locales de una compilación anterior** que hubieran quedado en el WebView no se traen a los archivos nuevos:
+  esa compilación nunca llegó a usarse.
 - **Textos de permisos de iOS** en en, pt y fr (`InfoPlist.strings`), pendiente desde la Fase 1.
 - **App Group:** confirmado, sin usar hasta los widgets (Fase 6); con cuenta gratuita no se puede activar.
 
 ## 6. Decisiones nuevas
 
 168 (esquema 15), 169 (cómo entra un pago capturado), 170 (la revisión en Pendientes), 171 (la acción solo anota; sin
-App Group en esta fase; cuándo lee la web), 172 (Ajustes › Captura automática solo en la app; «Probar»). Detalle en
+App Group en esta fase; cuándo lee la web), 172 (Ajustes › Captura automática solo en la app; «Probar»), 173 (copias
+locales, PIN y preferencias fuera del WebView). Detalle en
 `docs/DECISIONS.md`.

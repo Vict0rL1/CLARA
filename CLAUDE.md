@@ -45,7 +45,9 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
   implícito: "hoy" y "ahora" llegan como parámetros (`OpContext`). Aquí viven todas las
   fórmulas y validaciones. Toda regla nueva lleva prueba en `*.test.ts`.
 - `src/storage/` — persistencia detrás de `DataRepository` (IndexedDB; `localStorage` si no hay; en la app de iPhone,
-  `NativeRepository`: un archivo propio de la app con la revisión en su primera línea, ver `docs/STORAGE.md`),
+  `NativeRepository`: un archivo propio de la app con la revisión en su primera línea, ver `docs/STORAGE.md`; ahí
+  también las copias locales, `NativeLocalBackups`, y una copia del PIN y las preferencias, `platform/deviceMirror.ts`,
+  que vuelve si iOS vacía el WebView; la copia previa a una migración se lee con `preMigrationCopy()` en los tres),
   copias de seguridad (`backup.ts`), migraciones (`migrations.ts`) y borradores (`drafts.ts`).
 - `src/state/` — estado en memoria (`AppStore`) y hooks. Aplica resultados de
   `domain/operations.ts`; no calcula dinero.
