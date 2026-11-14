@@ -163,6 +163,27 @@ fusiona cuando Victor la haya probado.
 - **Sin comprobar:** los nombres de los menús de Atajos para el disparador de transacciones de Wallet y qué variables
   ofrece (support.apple.com no es accesible desde este entorno). La guía lo dice; se confirma en el iPhone.
 
+## 4 quater. Fase 3: plan (rama `feat/ios-fase-3`, sobre la Fase 2)
+
+En orden; cada bloque con pruebas de cifras calculadas a mano, un commit y la cuenta del JS inicial (lo nuevo de
+pantallas y textos va en código y paquetes diferidos):
+
+1. **Hecho.** Conversión exacta y esquema 16 (`domain/fx.ts`, `original` en el movimiento; `docs/FORMULAS.md` §45;
+   decisión 175). Para dejar sitio, los textos de la revisión semanal pasan a un paquete diferido.
+2. Viajes (`domain/trips.ts`): fechas, monedas, «moneda local actual» (resuelve el «¥»), tasas del viaje escritas a
+   mano con su fecha y vínculo con un Periodo de presupuesto.
+3. Formulario: «Otra moneda» (moneda, importe, tasa, comisión; la cifra en CAD se calcula y se explica) y «Ajustar al
+   cargo real» en un movimiento ya guardado.
+4. Capturas en otra moneda con una tasa conocida (del viaje o escrita): movimiento real «Por revisar» con `original`;
+   sin tasa, propuesta como hasta ahora. Nunca se inventa una tasa.
+5. Ajustes › Monedas y viajes: viajes, comisión de tarjeta por defecto.
+6. Vista del viaje: gastado por moneda, total en CAD, gasto por día y lo que queda del periodo vinculado.
+7. Estadísticas y CSV con el importe original y el convertido.
+8. **Banco de Canadá (Valet).** Opcional y apagado por defecto; solo tasas, sin datos de la persona; con caché local y
+   el aviso «tasa indicativa del Banco de Canadá del <fecha>». **Pendiente de una sesión con acceso a
+   www.bankofcanada.ca** (este entorno lo bloquea; el 14-nov se creó el entorno «clara» que lo permite): no se escribe
+   contra un formato de respuesta que no se haya leído en su documentación.
+
 ## 5. Notas del historial de la rama
 
 - El commit `1e80e3c` (documentación del Paso 0) se llevó por error los renombrados de `src/platform/` y de la guía,

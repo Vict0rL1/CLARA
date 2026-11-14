@@ -15,7 +15,7 @@ export type Timestamp = string
 /** Código ISO 4217, por ejemplo 'CAD'. */
 export type CurrencyCode = string
 
-export const SCHEMA_VERSION = 15 as const
+export const SCHEMA_VERSION = 16 as const
 
 /**
  * 'credit' = tarjeta de crédito: su saldo es una DEUDA y se guarda como número
@@ -148,10 +148,28 @@ export interface Transaction {
   /* ---- v15 (opcionales; Fase 2 nativa, decisión 168) ---- */
   /** Captura automática de la que vino (cola de la acción de Atajos). Nunca se importa dos veces la misma. */
   captureId?: string
+  /** v16: se pagó en otra moneda. `amountMinor` sigue en la del presupuesto y sale de aquí (`domain/fx.ts`). */
+  original?: OriginalAmount
   /** Pendiente de revisar: lo registró una captura automática. Al confirmarlo se quita. */
   review?: TxReview
   createdAt: Timestamp
   updatedAt: Timestamp
+}
+
+/** De dónde salió la tasa: escrita a mano, del Banco de Canadá o ajustada al cargo real del banco. */
+export type RateSource = 'manual' | 'boc' | 'card_actual'
+
+/**
+ * v16: importe en la moneda en que se pagó. `rate` es texto exacto (decimal o fracción de enteros, nunca un flotante):
+ * unidades de la moneda del presupuesto por 1 unidad de `currency`. `feeBps`: comisión de la tarjeta en puntos básicos.
+ */
+export interface OriginalAmount {
+  currency: CurrencyCode
+  amountMinor: number
+  rate: string
+  rateDate: LocalDate
+  rateSource: RateSource
+  feeBps?: number
 }
 
 /**

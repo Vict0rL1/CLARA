@@ -6,6 +6,7 @@
 import { txIndex } from './txIndex'
 import { categoriesForKind, isCustomCategoryId, isExpenseCategory } from './categories'
 import { isValidLocalDate, isValidTimeZone, isValidTimestamp } from './dates'
+import { convertToBudget, FEE_BPS_MAX, parseRate } from './fx'
 import { isValidId } from './ids'
 import { MAX_AMOUNT_MINOR, isMinorAmount, isSupportedCurrency, sumMinor } from './money'
 import { normalizeText, RULE_PATTERN_MAX, RULE_PATTERN_MIN } from './rules'
@@ -537,6 +538,34 @@ export function validateCategoryRule(r: CategoryRule, all: readonly CategoryRule
   return issues
 }
 
+export const RATE_SOURCES = ['manual', 'boc', 'card_actual'] as const
+
+/**
+ * v16: el importe en otra moneda. Además del formato, `amountMinor` tiene que ser EXACTAMENTE lo que da la conversión
+ * (`convertToBudget`): así un movimiento nunca dice una tasa y una cifra que no cuadran.
+ */
+function checkOriginal(tx: Transaction, budget: string, p: string, issues: Issue[]) {
+  const o = tx.original as unknown as Record<string, unknown> | null
+  const path = `${p}original`
+  if (!o || typeof o !== 'object' || Array.isArray(o) || (tx.kind !== 'expense' && tx.kind !== 'income' && tx.kind !== 'refund')) {
+    issues.push({ path, code: 'invalidValue' })
+    return
+  }
+  const okCurrency = typeof o.currency === 'string' && CURRENCY_CODE.test(o.currency) && isSupportedCurrency(o.currency) && o.currency !== budget
+  const okAmount = isMinorAmount(o.amountMinor) && (o.amountMinor as number) > 0 && (o.amountMinor as number) <= MAX_AMOUNT_MINOR
+  const okRate = typeof o.rate === 'string' && parseRate(o.rate) !== null
+  const okFee = o.feeBps === undefined || (Number.isInteger(o.feeBps) && (o.feeBps as number) >= 0 && (o.feeBps as number) <= FEE_BPS_MAX)
+  if (!okCurrency) issues.push({ path: `${path}.currency`, code: 'invalidValue' })
+  if (!okAmount) issues.push({ path: `${path}.amountMinor`, code: 'invalidAmount' })
+  if (!okRate) issues.push({ path: `${path}.rate`, code: 'invalidValue' })
+  if (!okFee) issues.push({ path: `${path}.feeBps`, code: 'invalidValue' })
+  checkDate(o.rateDate, `${path}.rateDate`, issues)
+  if (!isOneOf(RATE_SOURCES, o.rateSource)) issues.push({ path: `${path}.rateSource`, code: 'invalidValue' })
+  if (okCurrency && okAmount && okRate && okFee && convertToBudget(o.amountMinor as number, o.currency as string, budget, o.rate as string, (o.feeBps as number | undefined) ?? 0) !== tx.amountMinor) {
+    issues.push({ path: `${path}.rate`, code: 'invalidValue' })
+  }
+}
+
 export function validateTransaction(tx: Transaction, ctx: ValidationContext): Issue[] {
   const p = ctx.prefix ?? ''
   const issues: Issue[] = []
@@ -622,6 +651,7 @@ export function validateTransaction(tx: Transaction, ctx: ValidationContext): Is
   if (tx.isInitialBalance !== undefined && typeof tx.isInitialBalance !== 'boolean') issues.push({ path: `${p}isInitialBalance`, code: 'invalidValue' })
   // v15
   if (tx.captureId !== undefined && !isValidId(tx.captureId)) issues.push({ path: `${p}captureId`, code: 'invalidId' })
+  if (tx.original !== undefined) checkOriginal(tx, data.settings.currency, p, issues)
   if (tx.review !== undefined) {
     const r = tx.review as unknown as Record<string, unknown> | null
     if (!r || typeof r !== 'object' || Array.isArray(r) || typeof r.needed !== 'boolean' || !isOneOf(REVIEW_REASONS, r.reason)) issues.push({ path: `${p}review`, code: 'invalidValue' })

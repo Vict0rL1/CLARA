@@ -340,7 +340,7 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
   sigue con deshacer inmediato, reparar exige la descarga (QA27-04; ver `docs/STORAGE.md`).
 - Restaurar una copia valida TODO el archivo y no aplica nada si hay un error. CSV del banco: cada fila
   con error se muestra con su motivo y no se importa; las filas marcadas se guardan todo o nada.
-- Cambios de formato de datos: subir `SCHEMA_VERSION` (hoy 15) y añadir migración con prueba.
+- Cambios de formato de datos: subir `SCHEMA_VERSION` (hoy 16) y añadir migración con prueba.
   Las migraciones solo rellenan campos ausentes; nunca borran datos mal formados.
 - Guardado (`indexedDbRepository.ts`, `localStorageRepository.ts`; ver `docs/STORAGE.md`): nunca sobrescribe lo que otra pestaña u otra
   versión guardó después de leer (error `conflict`); si guardar falla, se avisa de forma

@@ -56,7 +56,7 @@ describe('esquema 15: capturas automáticas (decisión 168)', () => {
     const r = validateAppData({ ...JSON.parse(JSON.stringify(baseData())), schemaVersion: 14 })
     expect(r.ok).toBe(true)
     if (!r.ok) return
-    expect(r.data.schemaVersion).toBe(15)
+    expect(r.data.schemaVersion).toBe(SCHEMA_VERSION)
     expect(r.data.captures).toBeUndefined()
     expect(r.data.settings.capture).toBeUndefined()
   })
