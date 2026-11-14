@@ -179,6 +179,10 @@ export class NativeRepository implements DataRepository {
     }
   }
 
+  async preMigrationCopy(): Promise<string | null> {
+    return (await this.store.read(nativePreMigrationName()))?.text ?? null
+  }
+
   /**
    * «Borrar todos los datos»: quita el archivo nativo y también lo que quedara en el WebView, y deja la marca para
    * que un resto del WebView nunca se vuelva a traer por una migración.

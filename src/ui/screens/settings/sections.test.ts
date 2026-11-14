@@ -21,4 +21,10 @@ describe('secciones de Ajustes', () => {
     expect(settingsSection('no-existe')).toBeUndefined()
     expect(settingsSection(null)).toBeUndefined()
   })
+
+  it('«Captura automática» solo existe dentro de la app de iPhone', () => {
+    expect(settingsSection('captura')).toBeUndefined()
+    expect(settingsSection('captura', true)?.id).toBe('captura')
+    expect(SETTINGS_SECTIONS.filter((s) => s.nativeOnly).map((s) => s.id)).toEqual(['captura'])
+  })
 })

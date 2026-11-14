@@ -5,7 +5,8 @@ hecha con [Capacitor](https://capacitorjs.com) 8: un proyecto de Xcode que abre 
 Existe para lo que una web no puede hacer en el iPhone: guardar sola los pagos con Apple Pay, widgets, Siri y avisos
 con la app cerrada. El plan completo está en `docs/NATIVE-PLAN.md`; **esta guía cubre la Fase 1: que Clara abra y
 funcione como app**: guarda los datos en un archivo propio, habla de la app y no del navegador, Face ID, vibración,
-barra de estado, teclado y copias por la hoja Compartir. Está pensada para alguien que nunca ha usado Xcode.
+barra de estado, teclado y copias por la hoja Compartir; y la **Fase 2: los pagos con Apple Pay se anotan solos**
+(sección «Fase 2», al final de las comprobaciones). Está pensada para alguien que nunca ha usado Xcode.
 
 > **Estado: sin compilar todavía en un Mac.** El proyecto se generó y se revisó en un entorno sin Xcode, así que nadie
 > lo ha compilado ni abierto en un iPhone. Lo que sigue son los pasos para hacerlo y lo que hay que mirar. Nada aquí
@@ -136,6 +137,74 @@ sirve desde `capacitor://localhost`, cosa que no se ha podido probar sin un iPho
    menú Desarrollo: Safari › Ajustes › Avanzado › «Mostrar funciones para desarrolladores web».)
 3. Copia lo que salga en rojo en la pestaña **Consola**.
 
+## Fase 2: los pagos con Apple Pay se anotan solos
+
+Rama `feat/ios-fase-2` (PR #19). Antes, las 19 comprobaciones de la Fase 1. Una automatización de Atajos ejecuta la
+acción **«Registrar pago en Clara»** después de cada pago; la acción solo lo anota en una cola dentro de la app y Clara
+lo lee al abrirse. Nada sale del iPhone y Clara no se conecta al banco.
+
+> **Estado: escrito, sin compilar.** La acción y la cola están escritas en Swift contra la documentación de Apple; lo
+> web (leer la cola, revisar, Ajustes) está probado en el navegador con un iPhone simulado. Los nombres exactos de los
+> menús de Atajos no se pudieron comprobar desde aquí: apunta los que veas.
+
+### 1. Probar el Swift sin el iPhone (2 minutos)
+
+```bash
+git checkout feat/ios-fase-2
+git pull
+cd ios/ClaraNativeTests
+swift test
+cd ../..
+```
+
+Debe terminar con «Executed 13 tests, with 0 failures» (la cola de capturas, también con dos escrituras a la vez, y el
+archivo de datos). Si algo falla,
+copia la salida tal cual.
+
+### 2. Compilar e instalar
+
+```bash
+npm ci
+npm run ios:sync
+```
+
+y ▶ en Xcode. Si Xcode marca un error en `RecordPaymentIntent.swift`, `ClaraCaptureQueue.swift`,
+`ClaraCapturesPlugin.swift` o en `Localizable.xcstrings`/`AppShortcuts.xcstrings`, copia el mensaje tal cual. No hace
+falta añadir ningún «Capability» (el App Group no se usa todavía; con cuenta gratuita no se puede activar).
+
+### 3. Preparar Clara
+
+Para probar con pagos, Clara necesita **tus datos o un presupuesto nuevo**: con los datos de demostración no se
+importa nada (los pagos esperan en la cola). Abre Clara una vez después de instalar: así iOS conoce la acción.
+
+### 4. Crear la automatización
+
+1. App **Atajos** › **Automatización** › crear una automatización nueva.
+2. Elige el disparador de **Wallet** para transacciones (pagos con tus tarjetas) y marca tus tarjetas.
+3. Elige que se ejecute **sin pedir confirmación**.
+4. Añade la acción: busca «Clara» › **«Registrar pago en Clara»**. En **Importe**, la variable del importe de la
+   transacción; en **Comercio**, el comercio; en **Tarjeta** (opcional), la tarjeta.
+5. Guarda.
+
+### 5. Qué mirar
+
+| # | Qué | Cómo | ¿Bien? |
+|---|---|---|---|
+| 20 | La acción existe | Atajos › buscar «Clara»: aparece «Registrar pago en Clara», en el idioma del iPhone | |
+| 21 | Probar | Ajustes › **Captura automática** › «Probar ahora»: dice «Funciona» y en Pendientes › Por revisar hay una «Prueba» que no cambia ninguna cifra. Descártala | |
+| 22 | La acción a mano | En Atajos, ejecuta «Registrar pago en Clara» con importe 1 y comercio «Prueba»: responde «Clara: 1,00 $ en Prueba, por revisar» (o parecido). Abre Clara: hay un gasto de 1,00 «Por revisar» que ya resta | |
+| 23 | Pago real | Paga algo pequeño con Apple Pay. ¿Se ejecutó la automatización sola? Abre Clara: el gasto está «Por revisar» con importe, comercio, fecha y cuenta correctos | |
+| 24 | Con Clara abierta | Con Clara en pantalla, ejecuta la acción desde Atajos (o desde el Centro de control): al volver, el gasto ya está | |
+| 25 | Revisar | En Pendientes: «Está bien» quita la marca; «Editar» y Guardar también; «Fue rechazado» lo manda a la papelera y la cifra vuelve | |
+| 26 | Dos veces el mismo pago | Ejecuta la acción dos veces seguidas con el mismo importe y comercio: el segundo queda como propuesta «puede ser el mismo pago», no resta dos veces | |
+| 27 | Otra moneda | Ejecuta la acción con un importe en USD (o paga en otra moneda): queda como propuesta y pide el importe en tu moneda | |
+| 28 | Tarjeta nueva | Con dos cuentas o más: el primer pago de una tarjeta pregunta en Pendientes «Tarjeta nueva: …» a qué cuenta va. Elige una: ese pago pasa a esa cuenta y el siguiente entra ahí solo (también se puede cambiar en Ajustes › Captura automática) | |
+| 29 | Apagado | Apaga «Guardar automáticamente»: el siguiente pago queda como propuesta y no cambia ninguna cifra hasta «Registrar» | |
+| 30 | Copias locales en la app | Ajustes › Copias locales › «Hacer copia ahora»: aparece en la lista. Cierra la app del todo y ábrela: sigue ahí, y el PIN (si lo activaste) se sigue pidiendo | |
+
+Apunta también: qué variables ofrece el disparador de Wallet (y cómo se llaman), si «Importe» encajó directamente en
+el campo de la acción o hubo que pasarlo como texto, y qué dice Siri con «Registrar un pago en Clara».
+
 ## Tus datos reales
 
 Prueba primero con los datos de demostración y la lista de comprobación. Cuando todo esté bien:
@@ -147,6 +216,8 @@ Prueba primero con los datos de demostración y la lista de comprobación. Cuand
 
 ## Lo que se sabe que aún no está adaptado
 
+- Las copias locales automáticas, el PIN y las preferencias ya no dependen del WebView (decisión 173): si iOS lo
+  vaciara, el bloqueo y las preferencias vuelven solos al abrir.
 - Los textos que hablaban del navegador, de Safari, de pestañas o de descargas ya se sustituyen dentro de la app
   (decisiones 164 y 167), pero puede quedar alguno suelto: si ves «navegador» o «descarga» en la app, apunta dónde.
   Los botones siguen diciendo «Descargar…» aunque en la app abran la hoja Compartir.
@@ -157,7 +228,7 @@ Prueba primero con los datos de demostración y la lista de comprobación. Cuand
   la app no llegan todavía. Se sustituyen por notificaciones nativas en el paso de la acción «Registrar gasto».
 - Los textos con los que iOS pide permiso (cámara, micrófono, Face ID) están solo en español.
 - Ajustes › Atajos ya no muestra «Atajos de iPhone» dentro de la app (sus enlaces abren la Clara de la web). La guía
-  de captura automática llega con la Fase 2.
+  de captura automática está en Ajustes › Captura automática (Fase 2).
 
 ## Si algo falla
 

@@ -10,7 +10,7 @@ El informe de la Fase 1 está en `docs/NATIVE-FASE-1.md`.
 
 ## 1. Estado actual (12-nov-2026)
 
-- **Web (PWA):** React 19 + TypeScript + Vite 8, sin backend, datos en IndexedDB, esquema 14. Publicada en Cloudflare
+- **Web (PWA):** React 19 + TypeScript + Vite 8, sin backend, datos en IndexedDB, esquema 14 (15 desde la Fase 2). Publicada en Cloudflare
   Pages. 1 241 pruebas unitarias y 406 de navegador por tamaño, en verde en CI.
 - **Rama:** `feat/ios-nativo`. Parte de `main` **más** los commits del PR #16 (auditoría del 2026-11-04, en verde y
   sin fusionar) y el primer commit de la cáscara nativa (`44bd76e`). El motivo está en la decisión 162. Mientras el
@@ -154,8 +154,14 @@ fusiona cuando Victor la haya probado.
   unidades menores sin flotantes; «¥» suelto con un presupuesto que no es de yenes ni de yuanes es «ambiguo», nunca
   se adivina. Falta que el lector de monedas de `money.ts` reconozca «JP¥» y «CN¥», que es como un iPhone en Canadá
   escribe yenes y yuanes.
-- **App Group.** Hace falta para que widgets y controles (Fases 4 y 6) lean la cola. Mientras Victor no confirme
-  `group.com.victorli.clara`, la acción puede escribir en la carpeta propia de la app (corre en el mismo proceso).
+- **App Group.** Confirmado `group.com.victorli.clara` (13-nov), pero solo hace falta cuando una extensión (widgets,
+  Fase 6) lea la cola, y con la cuenta gratuita de Apple no se puede activar. La acción corre dentro de la app, así que
+  la cola vive en Application Support/Clara; si el App Group existe se escribe ahí y se leen las dos (decisión 171).
+- **Hecho en el PR #19 (escrito; lo web probado en navegador, lo nativo sin compilar):** esquema 15 (decisión 168),
+  importación de capturas (169), «Por revisar» en Pendientes (170), acción «Registrar pago en Clara», cola y plugin
+  (171), Ajustes › Captura automática con «Probar» (172). Informe: `docs/NATIVE-FASE-2.md`.
+- **Sin comprobar:** los nombres de los menús de Atajos para el disparador de transacciones de Wallet y qué variables
+  ofrece (support.apple.com no es accesible desde este entorno). La guía lo dice; se confirma en el iPhone.
 
 ## 5. Notas del historial de la rama
 
@@ -175,3 +181,7 @@ fusiona cuando Victor la haya probado.
 | Vibración, barra de estado, teclado (plugins oficiales, `platform/system.ts`) | Sin Swift propio; probado en navegador con los plugins simulados; sin compilar ni probar en iPhone |
 | Copias por la hoja Compartir (plugins oficiales, `platform/files.ts`) | Sin Swift propio; probado en navegador con los plugins simulados; sin compilar ni probar en iPhone |
 | Textos y pantallas de la app (`nativeApp`, «Clara en este iPhone») | Solo web: probado en navegador con el puente simulado (3 tamaños, es y en); sin probar en iPhone |
+| Acción «Registrar pago en Clara» (`RecordPaymentIntent.swift`, `.xcstrings`) | Swift escrito, sin compilar ni probar en iPhone |
+| Cola de capturas (`ClaraCaptureQueue.swift`, `ClaraCapturesPlugin.swift`) | Swift escrito, sin compilar; XCTest escrito (`ios/ClaraNativeTests`, sin ejecutar); lado web con el plugin simulado en navegador |
+| Importar, revisar y Ajustes › Captura automática (`captureImport.ts`, `captureSync.ts`, `CaptureReview`, `CaptureSection`) | Solo web: pruebas unitarias y de navegador (3 tamaños); sin probar en iPhone |
+| Copias locales, PIN y preferencias fuera del WebView (`nativeLocalBackups.ts`, `deviceMirror.ts`) | Sin Swift nuevo (usa `ClaraStorage`); pruebas unitarias y de navegador con el plugin simulado; sin probar en iPhone |

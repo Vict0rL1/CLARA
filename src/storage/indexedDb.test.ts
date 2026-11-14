@@ -97,6 +97,10 @@ describe('migración localStorage → IndexedDB', () => {
     const r = await repo()
     const loaded = await r.load()
     expect(loaded.status === 'ok' && loaded.data.schemaVersion).toBe(SCHEMA_VERSION)
+    // La copia previa está en IndexedDB y Datos y recuperación la lee por el repositorio (antes solo miraba localStorage).
+    const copy = JSON.parse((await r.preMigrationCopy())!) as { fromVersion: number; raw: string }
+    expect(copy.fromVersion).toBe(6)
+    expect(JSON.parse(copy.raw)).toEqual(v6)
   })
 
   it('borrar todos los datos elimina también la copia del origen (no reaparecen al abrir)', async () => {

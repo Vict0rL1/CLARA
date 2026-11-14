@@ -46,6 +46,16 @@ void createPlatformRepository().then((repo) => {
   const store = new AppStore(repo)
   setStore(store)
   void store.init()
+  // En la app de iPhone, los pagos que anotó la acción de Atajos entran al abrir y al volver a Clara (Fase 2).
+  if (isNativeIOS()) {
+    void Promise.all([import('./state/captureSync'), import('./platform/native/captures')])
+      .then(([sync, native]) => {
+        const captures = sync.createCaptureSync(native.captureQueue, store)
+        captures.start(document)
+        provideNativeServices({ captureTest: captures.test })
+      })
+      .catch(() => {})
+  }
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <App />

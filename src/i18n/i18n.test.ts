@@ -14,12 +14,14 @@ import galleryPack from './packs/gallery.es.json'
 import legalPack from './packs/legal.es.json'
 import nativeAppPack from './packs/nativeApp.es.json'
 import whatChangedPack from './packs/whatChanged.es.json'
+import shortfallPack from './packs/shortfall.es.json'
+import capturePack from './packs/capture.es.json'
 
 const LANGS = { en, pt, fr } as const
 
 const keys = new Set(Object.keys(es))
 /** Las claves de los paquetes diferidos (`packs/*.json`, mismas en los cuatro idiomas por `packKeys.ts`). */
-const packKeys = new Set([...Object.keys(legalPack), ...Object.keys(galleryPack), ...Object.keys(bankImportPack), ...Object.keys(nativeAppPack), ...Object.keys(whatChangedPack)])
+const packKeys = new Set([...Object.keys(legalPack), ...Object.keys(galleryPack), ...Object.keys(bankImportPack), ...Object.keys(nativeAppPack), ...Object.keys(whatChangedPack), ...Object.keys(shortfallPack), ...Object.keys(capturePack)])
 const has = (k: string) => keys.has(k)
 
 function sourceFiles(dir: string): string[] {

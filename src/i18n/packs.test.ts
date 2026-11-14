@@ -17,6 +17,14 @@ import nativeAppEn from './packs/nativeApp.en.json'
 import nativeAppEs from './packs/nativeApp.es.json'
 import nativeAppFr from './packs/nativeApp.fr.json'
 import nativeAppPt from './packs/nativeApp.pt.json'
+import captureEn from './packs/capture.en.json'
+import captureEs from './packs/capture.es.json'
+import captureFr from './packs/capture.fr.json'
+import capturePt from './packs/capture.pt.json'
+import shortfallEn from './packs/shortfall.en.json'
+import shortfallEs from './packs/shortfall.es.json'
+import shortfallFr from './packs/shortfall.fr.json'
+import shortfallPt from './packs/shortfall.pt.json'
 import whatChangedEn from './packs/whatChanged.en.json'
 import whatChangedEs from './packs/whatChanged.es.json'
 import whatChangedFr from './packs/whatChanged.fr.json'
@@ -30,15 +38,17 @@ const ALL: Record<string, Record<string, Record<string, string>>> = {
   bankImport: { es: bankImportEs, en: bankImportEn, pt: bankImportPt, fr: bankImportFr },
   nativeApp: { es: nativeAppEs, en: nativeAppEn, pt: nativeAppPt, fr: nativeAppFr },
   whatChanged: { es: whatChangedEs, en: whatChangedEn, pt: whatChangedPt, fr: whatChangedFr },
+  shortfall: { es: shortfallEs, en: shortfallEn, pt: shortfallPt, fr: shortfallFr },
+  capture: { es: captureEs, en: captureEn, pt: capturePt, fr: captureFr },
 }
 const vars = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort()
 
 describe('paquetes de texto diferidos', () => {
   it('cada paquete tiene las mismas claves en los cuatro idiomas, sin textos vacíos, y ninguna de esas claves sigue en el diccionario principal', async () => {
     const packs = createPackLoader(PACK_URLS, 0, fromDisk)
-    for (const [name, reference] of [['legal', legalEs], ['gallery', galleryEs], ['bankImport', bankImportEs], ['nativeApp', nativeAppEs], ['whatChanged', whatChangedEs]] as const) {
+    for (const [name, reference] of [['legal', legalEs], ['gallery', galleryEs], ['bankImport', bankImportEs], ['nativeApp', nativeAppEs], ['whatChanged', whatChangedEs], ['shortfall', shortfallEs], ['capture', captureEs]] as const) {
       const keys = Object.keys(reference).sort()
-      expect(keys.length).toBe({ legal: 22, gallery: 54, bankImport: 103, nativeApp: 72, whatChanged: 69 }[name])
+      expect(keys.length).toBe({ legal: 22, gallery: 54, bankImport: 103, nativeApp: 72, whatChanged: 69, shortfall: 67, capture: 66 }[name])
       for (const lang of ['es', 'en', 'pt', 'fr'] as const) {
         const { pack, language } = await packs.load(name, lang)
         expect(language).toBe(lang)
@@ -50,13 +60,13 @@ describe('paquetes de texto diferidos', () => {
       for (const k of keys) if (name !== 'nativeApp' || k.startsWith('nativeApp.')) expect(k in es, k).toBe(false)
     }
     // Lo que las pantallas siguen pidiendo al diccionario principal no se movió.
-    for (const k of ['gallery.coachStep', 'gallery.clear', 'legal.title', 'legal.updated', 'legal.terms.title', 'legal.privacy.title', 'bankImport.title', 'changes.title', 'changes.link', 'changes.kind.estimate', 'changes.kind.assumption']) expect(k in es, k).toBe(true)
+    for (const k of ['gallery.coachStep', 'gallery.clear', 'legal.title', 'legal.updated', 'legal.terms.title', 'legal.privacy.title', 'bankImport.title', 'changes.title', 'changes.link', 'changes.kind.estimate', 'changes.kind.assumption', 'shortfall.title', 'shortfall.open', 'shortfall.baseAlert']) expect(k in es, k).toBe(true)
   })
 
   it('cada paquete e idioma es un archivo JSON propio, fuera del JS inicial', () => {
     const urls = Object.values(PACK_URLS).flatMap((byLang) => Object.values(byLang))
-    expect(new Set(urls).size).toBe(20)
-    for (const name of ['legal', 'gallery', 'bankImport', 'nativeApp', 'whatChanged'] as const) {
+    expect(new Set(urls).size).toBe(28)
+    for (const name of ['legal', 'gallery', 'bankImport', 'nativeApp', 'whatChanged', 'shortfall', 'capture'] as const) {
       for (const lang of ['es', 'en', 'pt', 'fr'] as const) expect(PACK_URLS[name][lang]).toMatch(new RegExp(`${name}\\.${lang}[^/]*\\.json$`))
     }
   })

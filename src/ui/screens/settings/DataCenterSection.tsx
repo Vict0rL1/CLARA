@@ -3,11 +3,11 @@
  * protege y en qué orden recuperarlos. El cálculo es `domain/recovery.ts`; aquí solo se recogen los
  * datos que únicamente el navegador conoce (motor, copias locales, clave previa a migración, errores).
  */
+import { useEffect, useState } from 'react'
 import { recoveryStatus, type RecoveryRow, type RecoveryState, type RecoveryStep } from '../../../domain/recovery'
 import { SCHEMA_VERSION } from '../../../domain/types'
 import { useT, type MessageKey } from '../../../i18n'
 import { nativeStorageFellBack } from '../../../platform/repository'
-import { PRE_MIGRATION_KEY_PREFIX } from '../../../storage/localStorageRepository'
 import { usePwaState } from '../../../pwa/register'
 import { useToday } from '../../../state/hooks'
 import { getStore, useData } from '../../../state/store'
@@ -25,14 +25,24 @@ import { downloadText } from '../../backupActions'
 const TONE: Record<RecoveryState, Tone> = { ok: 'good', info: 'info', warn: 'warning', critical: 'critical' }
 const ICON: Record<RecoveryState, IconName> = { ok: 'checkCircle', info: 'info', warn: 'alert', critical: 'alert' }
 
-const PRE_MIGRATION_KEY = `${PRE_MIGRATION_KEY_PREFIX}${SCHEMA_VERSION}`
-
-function readPreMigrationCopy(): string | null {
-  try {
-    return typeof localStorage === 'undefined' ? null : localStorage.getItem(PRE_MIGRATION_KEY)
-  } catch {
-    return null
-  }
+/**
+ * La copia previa a la última migración, la guarde quien la guarde: `localStorage`, IndexedDB o el archivo de la app de
+ * iPhone (antes solo se miraba `localStorage`, así que con IndexedDB y en la app la fila no la veía).
+ */
+function usePreMigrationCopy(): string | null {
+  const [copy, setCopy] = useState<string | null>(null)
+  useEffect(() => {
+    let alive = true
+    void getStore()
+      .preMigrationCopy()
+      .then((text) => {
+        if (alive) setCopy(text)
+      })
+    return () => {
+      alive = false
+    }
+  }, [])
+  return copy
 }
 
 export function DataCenterSection() {
@@ -44,7 +54,7 @@ export function DataCenterSection() {
   const exportData = useExportBackup()
   const { list, available } = useLocalBackupList()
   const localCopies = !available ? null : { count: list?.length ?? 0, lastCreatedAt: list?.[0]?.createdAt ?? null }
-  const preMigration = readPreMigrationCopy()
+  const preMigration = usePreMigrationCopy()
   const status = recoveryStatus({ data, today, backend: getStore().backend, localCopies, preMigrationCopy: preMigration !== null, errorCount: readErrors().length, offlineReady: pwa.offlineReady, webViewFallback: nativeStorageFellBack() })
   // Descarga el texto exacto anterior a la migración (ROLLBACK.md); no modifica nada.
   const downloadPreMigration = () => {

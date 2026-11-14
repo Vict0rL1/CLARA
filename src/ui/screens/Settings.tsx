@@ -33,6 +33,7 @@ import { RulesSection } from './RulesSection'
 import { PersonalizeSection } from './PersonalizeSection'
 import { InstallSection } from './settings/InstallSection'
 import { NativeAppSection } from './settings/NativeAppSection'
+import { CaptureSection } from './settings/CaptureSection'
 import { ErrorReport } from './settings/ErrorReport'
 import { FeedbackSection } from './settings/FeedbackSection'
 import { IosShortcutsSection } from './settings/IosShortcutsSection'
@@ -108,8 +109,8 @@ export function Settings({ route }: { route: Route }) {
   const aiPct = aiUsagePercent(data.settings, { today, devMode: DEV_MODE })
   const lock = useLockState()
   // Subpantalla pedida (`/ajustes/<id>`); `?seccion=<id>` (enlaces antiguos) redirige a ella.
-  const section = settingsSection(route.segments[1])
-  const legacy = settingsSection(route.query.get('seccion'))
+  const section = settingsSection(route.segments[1], native)
+  const legacy = settingsSection(route.query.get('seccion'), native)
   useEffect(() => {
     if (!route.segments[1] && legacy) navigate(legacy.href ?? `/ajustes/${legacy.id}`, { replace: true })
   }, [route.segments, legacy])
@@ -319,7 +320,7 @@ export function Settings({ route }: { route: Route }) {
           )}
 
           <SearchBar value={search} onChange={setSearch} label={t('settings.search')} placeholder={t('settings.search')} clearLabel={t('common.clear')} />
-          <SettingsIndex query={search} values={rowValues} />
+          <SettingsIndex query={search} values={rowValues} native={native} />
         </>
       )}
       {section?.id === 'formato' && (
@@ -422,6 +423,7 @@ export function Settings({ route }: { route: Route }) {
       {section?.id === 'etiquetas' && <TagsSection />}
       {section?.id === 'programados' && <ScheduledSection />}
       {section?.id === 'safe-to-spend' && <SafeToSpendSection />}
+      {section?.id === 'captura' && <CaptureSection />}
       {section?.id === 'copias-locales' && <BackupsSection />}
       {section?.id === 'datos' && <DataCenterSection />}
 
@@ -734,7 +736,7 @@ export function Settings({ route }: { route: Route }) {
 
 const fold = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase()
 
-function SettingsIndex({ query, values }: { query: string; values: Partial<Record<string, string>> }) {
+function SettingsIndex({ query, values, native }: { query: string; values: Partial<Record<string, string>>; native: boolean }) {
   const { t } = useT()
   const q = fold(query.trim())
   const matches = (x: (typeof SETTINGS_SECTIONS)[number]) => !q || fold(`${t(x.titleKey)} ${t(`settings.keywords.${x.id}` as MessageKey)} ${values[x.id] ?? ''}`).includes(q)
@@ -752,7 +754,7 @@ function SettingsIndex({ query, values }: { query: string; values: Partial<Recor
       </a>
     </li>
   )
-  const groups = SETTINGS_GROUPS.map((g) => ({ g, items: SETTINGS_SECTIONS.filter((x) => x.group === g && matches(x)) })).filter((x) => x.items.length > 0)
+  const groups = SETTINGS_GROUPS.map((g) => ({ g, items: SETTINGS_SECTIONS.filter((x) => x.group === g && (native || !x.nativeOnly) && matches(x)) })).filter((x) => x.items.length > 0)
   return (
     <nav className="settings-index" aria-label={t('settings.toc')}>
       {groups.length === 0 && (

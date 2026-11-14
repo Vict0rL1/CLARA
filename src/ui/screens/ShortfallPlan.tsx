@@ -8,14 +8,17 @@ import { isValidLocalDate } from '../../domain/dates'
 import { revertEntry } from '../../domain/historyRevert'
 import { estimateDailySpend } from '../../domain/projection'
 import { analyzeShortfall, applyShortfallPlan, evaluateLevers, leverBasis, type ShortfallLever } from '../../domain/shortfall'
-import type { AppData, IncomeScenario } from '../../domain/types'
+import type { AppData, IncomeScenario, Language } from '../../domain/types'
 import { useT } from '../../i18n'
+import { packTranslator, usePack, type PackTranslate } from '../../i18n/packs'
 import { useRun, useToday } from '../../state/hooks'
 import { getStore, useData } from '../../state/store'
 import { Alert, Badge, CalcRow, Card, PageHeader } from '../components/common'
 import { CheckboxField, MoneyField, Segmented, SelectField, TextField } from '../components/fields'
 import { ConfirmDialog } from '../components/Dialog'
 import { Icon } from '../components/Icon'
+import { PackLangScope } from '../components/PackLangScope'
+import { PackNotice } from '../components/PackNotice'
 import { useToast } from '../components/toastContext'
 import { useFormat, type Formatter } from '../format'
 import { issueMessage, planItemName } from '../labels'
@@ -23,7 +26,7 @@ import { parseMoneyText } from '../moneyText'
 import { href, type Route } from '../router'
 
 const HORIZONS = [30, 60, 90] as const
-type T = ReturnType<typeof useT>['t']
+type T = PackTranslate
 
 const leverKey = (l: ShortfallLever) => {
   switch (l.kind) {
@@ -61,7 +64,27 @@ function leverText(l: ShortfallLever, data: AppData, t: T, fmt: Formatter): stri
 }
 
 export function ShortfallPlan({ route }: { route: Route }) {
-  const { t, tn } = useT()
+  const { t } = useT()
+  // Los textos de esta pantalla van en un paquete diferido (fuera del JS inicial); la cabecera no. Hasta que el paquete
+  // está listo no se dibuja ningún texto suyo (nunca una clave); si no carga, se dice y se puede reintentar.
+  const pack = usePack('shortfall')
+  return (
+    <div className="stack">
+      <PageHeader title={t('shortfall.title')} back={{ href: href('/alcanza/escenarios'), label: t('scenario.title') }} />
+      <PackNotice state={pack} />
+      {pack.status === 'ready' && (
+        <PackLangScope fallback={pack.fallback}>
+          <ShortfallBody route={route} texts={pack.texts} packLanguage={pack.language} />
+        </PackLangScope>
+      )}
+    </div>
+  )
+}
+
+/** El plan: textos del paquete y, para lo demás, el traductor del contexto (en español en el respaldo). */
+function ShortfallBody({ route, texts, packLanguage }: { route: Route; texts: Record<string, string>; packLanguage: Language }) {
+  const base = useT()
+  const { t, tn } = useMemo(() => packTranslator(texts, packLanguage, base), [texts, packLanguage, base])
   const fmt = useFormat()
   const data = useData()
   const today = useToday()
@@ -111,7 +134,7 @@ export function ShortfallPlan({ route }: { route: Route }) {
   const apply = async () => {
     setConfirmOpen(false)
     const { result, saved } = await run((d, c) => applyShortfallPlan(d, toApply, c), { source: 'plan' })
-    if (!result.ok) return setError(result.issues.map((i) => (i.code === 'revertConflict' ? t('shortfall.conflict') : issueMessage(t, fmt, i))).join(' '))
+    if (!result.ok) return setError(result.issues.map((i) => (i.code === 'revertConflict' ? t('shortfall.conflict') : issueMessage(base.t, fmt, i))).join(' '))
     setError(null)
     setChosen({})
     setEdits({})
@@ -125,7 +148,7 @@ export function ShortfallPlan({ route }: { route: Route }) {
               label: t('common.undo'),
               onClick: () =>
                 void run((d, c) => revertEntry(d, entry.id, c), { source: 'revert', revertOf: entry.id }).then(({ result: r }) => {
-                  if (!r.ok) toast({ message: issueMessage(t, fmt, r.issues[0]!), tone: 'critical' })
+                  if (!r.ok) toast({ message: issueMessage(base.t, fmt, r.issues[0]!), tone: 'critical' })
                 }),
             },
           }
@@ -137,8 +160,7 @@ export function ShortfallPlan({ route }: { route: Route }) {
     role === 'obligation' ? <Badge icon="lock">{t('shortfall.role.obligation')}</Badge> : role === 'planned' ? <Badge icon="calendar">{t('shortfall.role.planned')}</Badge> : <Badge icon="transfer">{t('shortfall.role.transfer')}</Badge>
 
   return (
-    <div className="stack">
-      <PageHeader title={t('shortfall.title')} back={{ href: href('/alcanza/escenarios'), label: t('scenario.title') }} />
+    <>
       <Alert tone="info" icon="lock" title={t('shortfall.safeTitle')}>
         {t('shortfall.safeText')}
       </Alert>
@@ -230,7 +252,7 @@ export function ShortfallPlan({ route }: { route: Route }) {
               {analysis.contributors.map((c) => (
                 <li key={c.item.key} className="item item--stacked">
                   <p className="item__title">
-                    {planItemName(c.item, t)} · {fmt.money(c.amountMinor)}
+                    {planItemName(c.item, base.t)} · {fmt.money(c.amountMinor)}
                   </p>
                   <p className="item__meta">
                     {fmt.date(c.item.date, { compact: true, today })} {roleBadge(c.role)} {c.isEstimate && <Badge icon="info">{t('changes.kind.estimate')}</Badge>}
@@ -248,12 +270,12 @@ export function ShortfallPlan({ route }: { route: Route }) {
             <ul className="bullets">
               {analysis.incomes.map((i) => (
                 <li key={i.key}>
-                  <Badge icon="calendar">{t('changes.kind.assumption')}</Badge> {t('shortfall.incomeLine', { name: planItemName(i, t), date: fmt.date(i.date), amount: fmt.money(i.budgetEffectMinor) })}
+                  <Badge icon="calendar">{t('changes.kind.assumption')}</Badge> {t('shortfall.incomeLine', { name: planItemName(i, base.t), date: fmt.date(i.date), amount: fmt.money(i.budgetEffectMinor) })}
                   {i.range ? ` · ${t('shortfall.incomeScenario')}` : ''}
                 </li>
               ))}
               {analysis.projection.lateIncomesExcluded.map((i) => (
-                <li key={i.key}>{t('shortfall.lateIncome', { name: planItemName(i, t), date: fmt.date(i.date) })}</li>
+                <li key={i.key}>{t('shortfall.lateIncome', { name: planItemName(i, base.t), date: fmt.date(i.date) })}</li>
               ))}
               {analysis.incomes.length === 0 && <li>{t('shortfall.noIncome')}</li>}
               <li>{t('shortfall.goalsNote')}</li>
@@ -309,7 +331,7 @@ export function ShortfallPlan({ route }: { route: Route }) {
                     <ul className="bullets">
                       {combined.obligations.map((i) => (
                         <li key={i.key}>
-                          {planItemName(i, t)} · {fmt.date(i.date, { compact: true, today })} · {fmt.money(-i.budgetEffectMinor)}
+                          {planItemName(i, base.t)} · {fmt.date(i.date, { compact: true, today })} · {fmt.money(-i.budgetEffectMinor)}
                         </li>
                       ))}
                       {combined.obligations.length === 0 && <li>{t('shortfall.unresolvedSpending')}</li>}
@@ -340,6 +362,6 @@ export function ShortfallPlan({ route }: { route: Route }) {
         </ul>
         {simulationOnly.length > 0 && <p className="note">{tn('shortfall.notApplied', simulationOnly.length)}</p>}
       </ConfirmDialog>
-    </div>
+    </>
   )
 }

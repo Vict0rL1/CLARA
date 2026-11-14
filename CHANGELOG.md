@@ -8,6 +8,24 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
 
 ### Novedades
 
+- **App de iPhone: copias locales, PIN y preferencias fuera del WebView** (decisión 173): las copias locales
+  automáticas van a archivos de la app, y el bloqueo con PIN y las preferencias tienen una copia que vuelve sola si iOS
+  vacía el almacenamiento interno de la vista web. Ajustes › Datos y recuperación ve la copia previa a una migración
+  también cuando está en IndexedDB (navegador) o en la app; antes solo miraba `localStorage`. **Probado en navegador con
+  un iPhone simulado; sin probar en un iPhone.**
+- **App de iPhone: los pagos con Apple Pay se anotan solos** (Fase 2 nativa; decisiones 169–172,
+  `docs/IOS-NATIVE.md` › «Fase 2»): una automatización de Atajos ejecuta la acción «Registrar pago en Clara» después de
+  cada pago y Clara lo lee al abrirse. Un pago en la moneda del presupuesto entra como gasto «Por revisar» (con
+  «Guardar automáticamente», encendido por defecto); otra moneda, un posible duplicado de menos de 2 minutos o un
+  importe sin entender quedan como propuesta que no cuenta hasta registrarla. Se revisa arriba de Pendientes («Está
+  bien», «Editar», «Fue rechazado» a la papelera, «Registrar», «Descartar») y se configura en Ajustes › Captura
+  automática (tarjeta → cuenta, guía y «Probar»), que solo existe en la app. Nada sale del iPhone y Clara no se conecta
+  al banco. **Lo web, probado en navegador con un iPhone simulado; lo nativo, escrito y sin compilar.**
+- **Esquema 15: base de las capturas automáticas** (Fase 2 nativa; decisión 168): los movimientos pueden venir de
+  Apple Pay, de un SMS del banco o de Siri y quedar «por revisar»; las capturas que no se registran solas (otra
+  moneda, «¥» sin saber si es yen o yuan, posible duplicado, importe sin entender o «Guardar automáticamente»
+  apagado) se guardan como propuestas que no cuentan en ninguna cifra. Todo es opcional: los datos actuales no
+  cambian. Una versión anterior verá los datos como «de una versión más nueva» (`docs/ROLLBACK.md`).
 - **Clara como app de iPhone, primer paso** (`docs/IOS-NATIVE.md`, plan en `docs/NATIVE-PLAN.md`): una cáscara nativa (Capacitor 8, carpeta `ios/`) abre
   las mismas pantallas dentro de una app, con su icono y su pantalla de arranque en claro y oscuro. Sin servidor ni
   cuenta; los datos de la app están separados de los de Safari. Dentro de la app no se ofrece «instalar Clara» y el uso

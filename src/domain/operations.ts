@@ -91,6 +91,11 @@ export type TransactionDraft = Omit<Transaction, 'createdAt' | 'updatedAt' | 'cu
    * estaba incluido en el saldo escrito, así que no debe volver a restarse.
    */
   alreadyInBalance?: boolean
+  /**
+   * v15: la persona lo acaba de revisar en el formulario: se quita la marca «Por revisar» (y el texto original). Sin
+   * ella, la marca se conserva: recategorizar en lote, etiquetar o vincular no cuentan como revisar.
+   */
+  reviewed?: boolean
 }
 
 function cleanText(value: string | undefined): string | undefined {
@@ -165,6 +170,10 @@ export function saveTransaction(data: AppData, draft: TransactionDraft, ctx: OpC
     ...(realizedAt ? { realizedAt } : {}),
     // La huella de importación se conserva al editar (evita reimportar la misma fila).
     ...((draft.importRef ?? existing?.importRef) ? { importRef: draft.importRef ?? existing?.importRef } : {}),
+    // v15: la captura de la que vino se conserva siempre (evita importarla otra vez); la marca «Por revisar», hasta
+    // que la persona lo revisa.
+    ...((draft.captureId ?? existing?.captureId) ? { captureId: draft.captureId ?? existing?.captureId } : {}),
+    ...(!draft.reviewed && (draft.review ?? existing?.review) ? { review: draft.review ?? existing?.review } : {}),
     createdAt: existing?.createdAt ?? ctx.now,
     updatedAt: ctx.now,
   }
@@ -183,6 +192,12 @@ export function saveTransaction(data: AppData, draft: TransactionDraft, ctx: OpC
     const after = { ...data, transactions }
     const broken = transactions.some((r) => r.kind === 'refund' && r.refundOfId === tx.id && validateTransaction(r, { data: after }).length > 0)
     if (broken) return fail([{ path: tx.splits ? 'splits' : 'amountMinor', code: 'refundExceeds', params: { remainingMinor: 0 } }])
+  }
+  // v15: registrar desde el formulario una captura que había quedado como propuesta la retira (sigue entre las leídas).
+  const captures = data.captures
+  if (tx.captureId && captures?.proposals.some((p) => p.captureId === tx.captureId)) {
+    const proposals = captures.proposals.filter((p) => p.captureId !== tx.captureId)
+    return { ok: true, data: touch({ ...data, transactions, captures: { ...captures, proposals } }, ctx.now), value: tx }
   }
   return { ok: true, data: touch({ ...data, transactions }, ctx.now), value: tx }
 }

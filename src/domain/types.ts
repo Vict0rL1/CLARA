@@ -15,7 +15,7 @@ export type Timestamp = string
 /** Código ISO 4217, por ejemplo 'CAD'. */
 export type CurrencyCode = string
 
-export const SCHEMA_VERSION = 14 as const
+export const SCHEMA_VERSION = 15 as const
 
 /**
  * 'credit' = tarjeta de crédito: su saldo es una DEUDA y se guarda como número
@@ -145,11 +145,88 @@ export interface Transaction {
   lng?: number
   /** Saldo inicial registrado en el onboarding como ingreso (editable después). */
   isInitialBalance?: boolean
+  /* ---- v15 (opcionales; Fase 2 nativa, decisión 168) ---- */
+  /** Captura automática de la que vino (cola de la acción de Atajos). Nunca se importa dos veces la misma. */
+  captureId?: string
+  /** Pendiente de revisar: lo registró una captura automática. Al confirmarlo se quita. */
+  review?: TxReview
   createdAt: Timestamp
   updatedAt: Timestamp
 }
 
-export type TransactionSource = 'manual' | 'ai_text' | 'voice' | 'photo' | 'scheduled' | 'common' | 'shortcut' | 'import'
+/**
+ * Por qué algo capturado queda por revisar. `auto_capture`: se registró solo y la persona aún no lo miró;
+ * `currency`: vino en otra moneda o con un «¥» que puede ser yen o yuan; `duplicate`: se parece a otro de hace
+ * menos de 2 minutos; `unparsed`: no se entendió el importe.
+ */
+export type ReviewReason = 'auto_capture' | 'currency' | 'duplicate' | 'unparsed'
+
+export interface TxReview {
+  needed: boolean
+  reason: ReviewReason
+  /** Texto original (solo SMS o alertas, Fase 4). Se borra al confirmar. */
+  rawText?: string
+  /** Tarjeta que dio Wallet, para preguntar su cuenta si es nueva. Se borra al confirmar. */
+  card?: string
+}
+
+/** v15: `apple_pay` (acción de Atajos tras un pago), `bank_text` (SMS o alerta del banco), `siri` (dictado a Siri). */
+export type TransactionSource = 'manual' | 'ai_text' | 'voice' | 'photo' | 'scheduled' | 'common' | 'shortcut' | 'import' | 'apple_pay' | 'bank_text' | 'siri'
+
+/** Origen de una captura automática (lo escribe el lado nativo en la cola). */
+export type CaptureOrigin = 'apple_pay' | 'bank_text' | 'siri' | 'notification'
+
+/**
+ * Lo que dijo el sistema del importe de una captura, tal cual: en la moneda del presupuesto, en otra (sin convertir:
+ * `minor` en unidades menores de ESA moneda), ambiguo («¥») o sin entender.
+ */
+export type CaptureAmountRecord =
+  | { kind: 'budget'; minor: number }
+  | { kind: 'foreign'; currency: CurrencyCode; minor: number }
+  | { kind: 'ambiguous'; candidates: CurrencyCode[]; text: string }
+  | { kind: 'unreadable'; text: string }
+
+/**
+ * Captura que NO se registró sola (v15): «Guardar automáticamente» apagado, otra moneda, posible duplicado o importe
+ * sin entender. Es una propuesta: no cuenta en ninguna cifra hasta que la persona la registra.
+ */
+export interface CaptureProposal {
+  captureId: string
+  /** Cuándo avisó el sistema del pago. */
+  capturedAt: Timestamp
+  origin: CaptureOrigin
+  reason: ReviewReason
+  amount: CaptureAmountRecord
+  merchant?: string
+  card?: string
+  /** Cuenta que se usaría (por la tarjeta o la de por defecto). */
+  accountId: string
+  /** Fecha del pago en la zona horaria del presupuesto. */
+  date: LocalDate
+  categoryId?: string
+  /** Movimiento al que se parece (solo `duplicate`). */
+  similarTxId?: string
+  rawText?: string
+  /** La prueba de Ajustes › Captura automática: nunca se registra; solo se descarta. */
+  test?: true
+  receivedAt: Timestamp
+}
+
+/** v15: capturas ya leídas de la cola (ids, para no importarlas dos veces) y propuestas pendientes. */
+export interface CaptureState {
+  processed: { id: string; at: Timestamp }[]
+  proposals: CaptureProposal[]
+}
+
+/** v15: cómo se registran las capturas automáticas. Ausente = guardar automáticamente, sin tarjetas asignadas. */
+export interface CaptureSettings {
+  /** Encendido: un pago en la moneda del presupuesto entra como movimiento real «Por revisar». Apagado: propuesta. */
+  autoSave: boolean
+  /** Cuenta para cada tarjeta, por el nombre que da Wallet («Visa ••1234»). */
+  cardAccounts: { card: string; accountId: string }[]
+  /** Cuenta para una tarjeta sin asignar. Sin ella, la primera cuenta activa del presupuesto. */
+  defaultAccountId?: string
+}
 
 export interface SplitLine {
   id: string
@@ -604,6 +681,8 @@ export interface Settings {
   toursSeen: string[]
   proStatus: ProStatus
   aiUsage: AiUsage
+  /* ---- v15 ---- */
+  capture?: CaptureSettings
 }
 
 export interface UserProfile {
@@ -742,6 +821,8 @@ export interface AppData {
   history: HistoryEntry[]
   /** Desde cuándo hay historial (inicio de su captura o la entrada más antigua conservada). */
   historyStartedAt: Timestamp
+  /** v15: capturas automáticas (ausente = ninguna todavía). */
+  captures?: CaptureState
   createdAt: Timestamp
   updatedAt: Timestamp
   /** Aumenta en cada guardado. Sirve para detectar cambios en otra pestaña. */

@@ -23,7 +23,7 @@
   "settings.storage.local": "Tus datos se guardan solo en este iPhone, dentro de la app Clara.",
   "settings.storage.lost": "Si eliminas la app de este iPhone, se pierden. Exporta copias con regularidad.",
   "settings.storage.noSync": "Todavía no se sincronizan con otros dispositivos ni con la Clara de la web.",
-  "settings.storage.eviction": "iOS puede vaciar el almacenamiento interno de la vista web de la app si falta espacio. Ahí siguen las copias locales automáticas, el bloqueo con PIN y las preferencias de este dispositivo: no cuentes con ellas como única copia y exporta la tuya.",
+  "settings.storage.eviction": "Los datos, las copias locales automáticas, el bloqueo con PIN y las preferencias de este dispositivo están en archivos propios de la app: iOS no los vacía por falta de espacio (sí puede vaciar la vista web interna; si pasa, el bloqueo y las preferencias vuelven solos al abrir). Si eliminas la app, se pierden: exporta tu copia.",
   "settings.storage.notEncrypted": "Clara no añade cifrado ni contraseña propios: quien pueda desbloquear este iPhone puede ver los datos. Usa un código en el iPhone.",
   "settings.storage.backend.indexeddb": "La app no pudo usar su archivo propio y guarda en IndexedDB, el almacenamiento interno de la vista web, que iOS puede vaciar si falta espacio. Exporta una copia.",
   "settings.reset.clearText": "Se eliminarán de la app todas tus cuentas, movimientos, pagos programados, metas, historial y borradores. Se conservan las copias locales automáticas (Ajustes › Copias locales), las preferencias de este dispositivo y los archivos que exportaste. No se puede deshacer. Exporta una copia antes si la necesitas.",

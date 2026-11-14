@@ -98,6 +98,10 @@ export class LocalStorageRepository implements DataRepository {
     this.baseline = null
   }
 
+  async preMigrationCopy(): Promise<string | null> {
+    return getStorage()?.getItem(`${PRE_MIGRATION_KEY_PREFIX}${SCHEMA_VERSION}`) ?? null
+  }
+
   /** Guarda una copia de datos dañados antes de reemplazarlos, por si hace falta recuperarlos. */
   preserveCorrupt(raw: string, now: Date): void {
     try {
