@@ -625,7 +625,10 @@ export function validateTransaction(tx: Transaction, ctx: ValidationContext): Is
   if (tx.review !== undefined) {
     const r = tx.review as unknown as Record<string, unknown> | null
     if (!r || typeof r !== 'object' || Array.isArray(r) || typeof r.needed !== 'boolean' || !isOneOf(REVIEW_REASONS, r.reason)) issues.push({ path: `${p}review`, code: 'invalidValue' })
-    else checkOptionalText(r.rawText, `${p}review.rawText`, issues, CAPTURE_TEXT_MAX)
+    else {
+      checkOptionalText(r.rawText, `${p}review.rawText`, issues, CAPTURE_TEXT_MAX)
+      checkOptionalText(r.card, `${p}review.card`, issues, CAPTURE_SHORT_TEXT_MAX)
+    }
   }
   checkTimestamps(tx, p, issues)
   return issues

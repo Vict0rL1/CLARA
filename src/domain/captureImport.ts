@@ -32,7 +32,7 @@ import type { OpContext, OpResult } from './operations'
 import { suggestCategoryForMerchant } from './shortcutLink'
 import { normalizeText } from './text'
 import type { AppData, CaptureOrigin, CaptureProposal, CaptureState, ReviewReason, Transaction, TransactionSource, TxReview } from './types'
-import { CAPTURE_PROCESSED_MAX, CAPTURE_PROPOSALS_MAX, validateTransaction } from './validation'
+import { CAPTURE_CARDS_MAX, CAPTURE_PROCESSED_MAX, CAPTURE_PROPOSALS_MAX, validateTransaction } from './validation'
 
 /** Dos cargos del mismo importe y comercio a esta distancia o menos se tratan como posible duplicado. */
 export const CAPTURE_DUPLICATE_WINDOW_MS = 2 * 60 * 1000
@@ -170,7 +170,7 @@ export function importCaptures(data: AppData, records: readonly CaptureRecord[],
         ...(record.merchant ? { merchant: record.merchant } : {}),
         source: SOURCE[record.origin],
         captureId: record.captureId,
-        review: { needed: true, reason: 'auto_capture', ...(record.rawText ? { rawText: record.rawText } : {}) },
+        review: { needed: true, reason: 'auto_capture', ...(record.rawText ? { rawText: record.rawText } : {}), ...(record.card ? { card: record.card } : {}) },
         // Pagado cuando avisó el sistema: si el saldo de referencia se escribió después, ya lo incluía.
         realizedAt: record.createdAt,
         createdAt: ctx.now,
@@ -237,6 +237,47 @@ export function confirmReviews(data: AppData, ids: readonly string[], ctx: OpCon
   })
   if (confirmed.length === 0) return { ok: true, data, value: [], unchanged: true }
   return { ok: true, data: { ...data, transactions, updatedAt: ctx.now }, value: confirmed }
+}
+
+/** ¿Ya hay cuenta para esa tarjeta? (Sin distinguir mayúsculas ni acentos, como al importar.) */
+export function cardIsMapped(data: Pick<AppData, 'settings'>, card: string): boolean {
+  const key = normalizeText(card)
+  return (data.settings.capture?.cardAccounts ?? []).some((m) => normalizeText(m.card) === key)
+}
+
+/**
+ * «Tarjeta nueva»: la primera vez que llega un pago de una tarjeta sin cuenta asignada, la persona elige su cuenta. Se
+ * guarda en Ajustes › Captura automática y los pagos de esa tarjeta que aún esperan revisión (movimientos «Por revisar»
+ * y propuestas) pasan a esa cuenta. Lo ya revisado no cambia. Todo o nada.
+ */
+export function assignCardAccount(data: AppData, card: string, accountId: string, ctx: OpContext): OpResult<{ moved: string[] }> {
+  const name = card.replace(/\s+/g, ' ').trim()
+  if (!name || name.length > 64) return { ok: false, issues: [{ path: 'card', code: 'invalidValue' }] }
+  if (!data.accounts.some((a) => a.id === accountId && !a.archived)) return { ok: false, issues: [{ path: 'accountId', code: 'unknownAccount' }] }
+  const key = normalizeText(name)
+  const capture = data.settings.capture ?? { autoSave: true, cardAccounts: [] }
+  const cardAccounts = [...capture.cardAccounts.filter((m) => normalizeText(m.card) !== key), { card: name, accountId }]
+  if (cardAccounts.length > CAPTURE_CARDS_MAX) return { ok: false, issues: [{ path: 'settings.capture.cardAccounts', code: 'tooMany', params: { max: CAPTURE_CARDS_MAX } }] }
+  const moved: string[] = []
+  const transactions = data.transactions.map((t) => {
+    if (!t.review?.needed || !t.review.card || normalizeText(t.review.card) !== key || t.accountId === accountId) return t
+    moved.push(t.id)
+    return { ...t, accountId, updatedAt: ctx.now }
+  })
+  const state = data.captures ?? EMPTY_STATE
+  const proposals = state.proposals.map((p) => {
+    if (!p.card || normalizeText(p.card) !== key || p.accountId === accountId) return p
+    moved.push(p.captureId)
+    return { ...p, accountId }
+  })
+  const next: AppData = { ...data, transactions, captures: { ...state, proposals }, settings: { ...data.settings, capture: { ...capture, cardAccounts } }, updatedAt: ctx.now }
+  for (const id of moved) {
+    const tx = transactions.find((t) => t.id === id)
+    if (!tx) continue
+    const issues = validateTransaction(tx, { data: next, today: ctx.today })
+    if (issues.length) return { ok: false, issues }
+  }
+  return { ok: true, data: next, value: { moved } }
 }
 
 /** Deshacer «Está bien»: vuelve a poner la marca que tenían, solo en los que siguen existiendo y no la tienen. */

@@ -59,5 +59,10 @@
   "capture.settings.testButton": "Testar agora",
   "capture.settings.testOk": "Funciona: o teste está em Para revisar › Pagamentos para conferir.",
   "capture.settings.testFailed": "Não foi possível anotar o teste. Tente de novo; se continuar falhando, feche e abra o Clara.",
-  "capture.settings.testMerchant": "Teste do Clara"
+  "capture.settings.testMerchant": "Teste do Clara",
+  "capture.card.title": "Cartão novo: {card}",
+  "capture.card.question": "Para qual conta vão os pagamentos deste cartão? Os que esperam revisão passam para essa conta e os próximos entram sozinhos.",
+  "capture.card.account": "Conta de {card}",
+  "capture.card.save": "Salvar",
+  "capture.card.savedToast": "{card} → {account}"
 }

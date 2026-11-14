@@ -59,5 +59,10 @@
   "capture.settings.testButton": "Tester maintenant",
   "capture.settings.testOk": "Ça marche : le test est dans À vérifier › Paiements à contrôler.",
   "capture.settings.testFailed": "Le test n’a pas pu être noté. Réessayez ; si l’échec continue, fermez et rouvrez Clara.",
-  "capture.settings.testMerchant": "Test de Clara"
+  "capture.settings.testMerchant": "Test de Clara",
+  "capture.card.title": "Nouvelle carte : {card}",
+  "capture.card.question": "Sur quel compte vont les paiements de cette carte ? Ceux qui attendent une vérification y passent et les suivants y entrent seuls.",
+  "capture.card.account": "Compte de {card}",
+  "capture.card.save": "Enregistrer",
+  "capture.card.savedToast": "{card} → {account}"
 }

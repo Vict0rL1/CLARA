@@ -59,5 +59,10 @@
   "capture.settings.testButton": "Test now",
   "capture.settings.testOk": "It works: the test is in To review › Payments to check.",
   "capture.settings.testFailed": "The test couldn't be noted. Try again; if it keeps failing, close and reopen Clara.",
-  "capture.settings.testMerchant": "Clara test"
+  "capture.settings.testMerchant": "Clara test",
+  "capture.card.title": "New card: {card}",
+  "capture.card.question": "Which account do this card’s payments go to? The ones waiting for review move there and the next ones go there on their own.",
+  "capture.card.account": "Account for {card}",
+  "capture.card.save": "Save",
+  "capture.card.savedToast": "{card} → {account}"
 }

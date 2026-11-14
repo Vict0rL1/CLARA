@@ -111,6 +111,50 @@
         }
       }
     },
+    "Clara: %@ at %@, to review": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clara: %1$@ en %2$@, por revisar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clara : %1$@ chez %2$@, à vérifier"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clara: %1$@ em %2$@, para revisar"
+          }
+        }
+      }
+    },
+    "Clara: %@, to review": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clara: %@, por revisar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clara : %@, à vérifier"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clara: %@, para revisar"
+          }
+        }
+      }
+    },
     "How much was the payment?": {
       "localizations": {
         "es": {
@@ -195,28 +239,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Registrar pagamento no Clara"
-          }
-        }
-      }
-    },
-    "Saved in Clara. Review it when you open the app.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Anotado en Clara. Revísalo cuando abras la app."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Noté dans Clara. Vérifiez-le en ouvrant l’app."
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Anotado no Clara. Revise quando abrir o app."
           }
         }
       }

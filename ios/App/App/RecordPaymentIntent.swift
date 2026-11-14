@@ -16,6 +16,7 @@ extension Notification.Name {
 ///
 /// APIs comprobadas en developer.apple.com: `AppIntent` (`title`, `description: IntentDescription?`, `perform()`),
 /// `IntentParameter` (`needsValueError(_:)`), `IntentCurrencyAmount` (`amount: Decimal`, `currencyCode: String`),
+/// `Decimal.FormatStyle.Currency(code:locale:)` y `Decimal.formatted(_:)` (iOS 15),
 /// `ProvidesDialog`, `IntentResult.result(dialog:)`, `AppShortcutsProvider`, `AppShortcut(intent:phrases:shortTitle:
 /// systemImageName:)` (iOS 17) y `AppShortcutPhraseToken.applicationName`. Los textos se traducen en
 /// `Localizable.xcstrings` y las frases en `AppShortcuts.xcstrings`.
@@ -38,13 +39,17 @@ struct RecordPaymentIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let rawAmount: String
         let currencyHint: String?
+        /// Lo que se dice en la respuesta: el importe tal como lo verá la persona (no se usa para calcular).
+        let shown: String
         if let amount {
             // `Decimal.description` siempre con punto («12.5»): lo que espera la web con `currencyHint`.
             rawAmount = amount.amount.description
             currencyHint = amount.currencyCode
+            shown = amount.amount.formatted(Decimal.FormatStyle.Currency(code: amount.currencyCode, locale: .current))
         } else if let text = amountText?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty {
             rawAmount = String(text.prefix(64))
             currencyHint = nil
+            shown = rawAmount
         } else {
             throw $amount.needsValueError("How much was the payment?")
         }
@@ -63,7 +68,11 @@ struct RecordPaymentIntent: AppIntent {
             return .result(dialog: "Clara has too many payments waiting. Open Clara to review them.")
         }
         NotificationCenter.default.post(name: .claraCapturesAdded, object: nil)
-        return .result(dialog: "Saved in Clara. Review it when you open the app.")
+        // «Clara: 12,50 $ en Starbucks, por revisar» (lo que pide el encargo); la web decide después si cuenta o no.
+        if let place = merchant?.trimmingCharacters(in: .whitespacesAndNewlines), !place.isEmpty {
+            return .result(dialog: "Clara: \(shown) at \(place), to review")
+        }
+        return .result(dialog: "Clara: \(shown), to review")
     }
 }
 

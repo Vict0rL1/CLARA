@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import type { CaptureProposal, Transaction } from '../../src/domain/types'
-import { baseData, EARLIER, tx } from '../../src/test/fixtures'
+import { account, baseData, EARLIER, tx } from '../../src/test/fixtures'
 import { available, expectNoHorizontalScroll, go, seedStoredData, storedData } from './helpers'
 
 /**
@@ -134,4 +134,21 @@ test('la prueba de Ajustes: se ve como «Prueba», no se puede registrar y se de
   await item.getByRole('button', { name: 'Descartar' }).click()
   await expect(page.getByTestId('capture-review')).toHaveCount(0)
   await expect(await available(page)).toHaveText('$1,000.00')
+})
+
+test('tarjeta nueva: se pregunta su cuenta una vez; lo que espera revisión pasa a esa cuenta y la pregunta desaparece', async ({ page }) => {
+  const accounts = [account({ id: 'main', name: 'Principal' }), account({ id: 'visa', name: 'Visa oro', kind: 'credit', anchor: { amountMinor: 0, date: '2026-09-28', setAt: EARLIER } })]
+  const paid = captured('cap-a0000001', 425, 'Tim Hortons', '2026-09-28T15:00:00Z', { review: { needed: true, reason: 'auto_capture', card: 'Visa ••1234' } })
+  await seedStoredData(page, baseData({ accounts, transactions: [paid], captures: { processed: [{ id: paid.id, at: EARLIER }], proposals: [] } }))
+  await go(page, '/pendientes')
+  const ask = page.getByTestId('capture-review').locator('article', { hasText: 'Tarjeta nueva: Visa ••1234' })
+  await expect(ask).toBeVisible()
+  await ask.getByLabel('Cuenta de Visa ••1234').selectOption('visa')
+  await ask.getByRole('button', { name: 'Guardar' }).click()
+  await expect(toast(page, 'Visa ••1234 → Visa oro')).toBeVisible()
+  await expect(ask).toHaveCount(0)
+  await expect(card(page, 'Tim Hortons')).toContainText('Visa oro')
+  const stored = JSON.parse((await storedData(page))!) as ReturnType<typeof baseData>
+  expect(stored.settings.capture?.cardAccounts).toEqual([{ card: 'Visa ••1234', accountId: 'visa' }])
+  expect(stored.transactions[0]!.accountId).toBe('visa')
 })

@@ -77,6 +77,19 @@ final class ClaraCaptureQueueTests: XCTestCase {
         XCTAssertEqual(ClaraCaptureQueue.captureId(of: lines[1]), "cap-00000001")
     }
 
+    func testConcurrentWritersKeepEveryLineWhole() throws {
+        // La acción de Atajos y «Probar» pueden escribir a la vez, cada una con su instancia: ninguna línea se mezcla.
+        let a = queue("a")
+        let b = queue("a")
+        let lines = try (0..<60).map { try record(String(format: "cap-%08d", $0)) }
+        DispatchQueue.concurrentPerform(iterations: lines.count) { i in
+            try? (i % 2 == 0 ? a : b).append(lines[i])
+        }
+        let read = try a.readAll().split(separator: "\n")
+        XCTAssertEqual(read.count, 60)
+        XCTAssertEqual(Set(read.compactMap { ClaraCaptureQueue.captureId(of: $0) }).count, 60, "cada línea es JSON entero y con su id")
+    }
+
     func testFullQueueRefusesMore() throws {
         let q = queue("a")
         try FileManager.default.createDirectory(at: q.directories[0], withIntermediateDirectories: true)

@@ -116,6 +116,21 @@ describe('cola de capturas: el importe, sin flotantes ni conversiones', () => {
     expect(readCaptureAmount({ rawAmount: '12,50 €' }, { currency: 'CAD', numberLocale: 'fr-CA' })).toEqual({ kind: 'foreign', currency: 'EUR', minor: 1250 })
   })
 
+  it('los ejemplos del encargo, con cada formato de número de la app', () => {
+    for (const numberLocale of ['es-MX', 'en-CA', 'fr-CA', 'es-ES']) {
+      const settings = { currency: 'CAD', numberLocale }
+      // Una coma con dos cifras detrás es el decimal; un número no se lee distinto según el formato elegido.
+      expect(readCaptureAmount({ rawAmount: '12,50' }, settings), numberLocale).toEqual({ kind: 'budget', minor: 1250 })
+      expect(readCaptureAmount({ rawAmount: '1.234,56 €' }, settings), numberLocale).toEqual({ kind: 'foreign', currency: 'EUR', minor: 123456 })
+      // El won no tiene decimales: 15 000 unidades.
+      expect(readCaptureAmount({ rawAmount: '₩15,000' }, settings), numberLocale).toEqual({ kind: 'foreign', currency: 'KRW', minor: 15000 })
+      expect(readCaptureAmount({ rawAmount: '¥1,200' }, settings), numberLocale).toEqual({ kind: 'ambiguous', candidates: ['JPY', 'CNY'], text: '¥1,200' })
+      expect(readCaptureAmount({ rawAmount: 'abc€' }, settings).kind, numberLocale).toBe('unreadable')
+    }
+    // Vacío: la línea no se acepta en la cola (ni llega a leerse el importe).
+    expect(readCaptureQueue(line({ rawAmount: '   ' }) + '\n')).toMatchObject({ records: [], issues: [{ line: 1, issue: 'rawAmount' }] })
+  })
+
   it('dos monedas que se contradicen, un código desconocido o un número raro: no se entiende', () => {
     expect(readCaptureAmount({ rawAmount: 'USD 10 CAD' }, CAD).kind).toBe('unreadable')
     expect(readCaptureAmount({ rawAmount: 'ABC 10' }, CAD).kind).toBe('unreadable')

@@ -193,7 +193,7 @@ const TX_KEYS = [
   'captureId', 'review',
 ] as const
 const SPLIT_KEYS = ['id', 'categoryId', 'amountMinor', 'note'] as const
-const REVIEW_KEYS = ['needed', 'reason', 'rawText'] as const
+const REVIEW_KEYS = ['needed', 'reason', 'rawText', 'card'] as const
 const PROPOSAL_KEYS = ['captureId', 'capturedAt', 'origin', 'reason', 'amount', 'merchant', 'card', 'accountId', 'date', 'categoryId', 'similarTxId', 'rawText', 'test', 'receivedAt'] as const
 const CAPTURE_AMOUNT_KEYS = ['kind', 'minor', 'currency', 'candidates', 'text'] as const
 

@@ -6,6 +6,8 @@ import {
   CAPTURE_DUPLICATE_WINDOW_MS,
   confirmReviews,
   dismissProposals,
+  assignCardAccount,
+  cardIsMapped,
   importCaptures,
   registerProposal,
   reopenReviews,
@@ -78,7 +80,7 @@ describe('importCaptures — guardar automáticamente', () => {
         merchant: 'Tim Hortons',
         source: 'apple_pay',
         captureId: 'cap-00000001',
-        review: { needed: true, reason: 'auto_capture' },
+        review: { needed: true, reason: 'auto_capture', card: 'Visa ••1234' },
         realizedAt: '2026-09-28T15:00:00Z',
         createdAt: NOW,
         updatedAt: NOW,
@@ -109,8 +111,8 @@ describe('importCaptures — guardar automáticamente', () => {
       record({ captureId: 'cap-ntf00001', origin: 'notification', createdAt: '2026-09-28T15:30:00Z', merchant: 'Metro' }),
     ])
     expect(r.data.transactions.map((t) => [t.id, t.source, t.review])).toEqual([
-      ['cap-sms00001', 'bank_text', { needed: true, reason: 'auto_capture', rawText: 'Compra por $4.25 en TIM HORTONS' }],
-      ['cap-ntf00001', 'bank_text', { needed: true, reason: 'auto_capture' }],
+      ['cap-sms00001', 'bank_text', { needed: true, reason: 'auto_capture', rawText: 'Compra por $4.25 en TIM HORTONS', card: 'Visa ••1234' }],
+      ['cap-ntf00001', 'bank_text', { needed: true, reason: 'auto_capture', card: 'Visa ••1234' }],
     ])
   })
 
@@ -455,7 +457,7 @@ describe('deshacer y contar', () => {
     const back = reopenReviews(ok.data, [{ id: 'cap-00000001', review }, { id: 'gone', review }], ctx)
     if (!back.ok) throw new Error('reopen')
     expect(back.value).toEqual(['cap-00000001'])
-    expect(back.data.transactions[0]!.review).toEqual({ needed: true, reason: 'auto_capture', rawText: 'Compra 4.25' })
+    expect(back.data.transactions[0]!.review).toEqual({ needed: true, reason: 'auto_capture', rawText: 'Compra 4.25', card: 'Visa ••1234' })
     expect(reopenReviews(back.data, [{ id: 'cap-00000001', review }], ctx)).toMatchObject({ ok: true, unchanged: true })
   })
 
@@ -511,5 +513,48 @@ describe('la prueba de Ajustes', () => {
   it('una marca «test» que no es exactamente true no se acepta', () => {
     const line = JSON.stringify({ captureId: 'cap-test0002', createdAt: '2026-09-28T15:00:00Z', origin: 'apple_pay', rawAmount: '1', test: 'yes' })
     expect(readCaptureQueue(line + '\n')).toMatchObject({ records: [], issues: [{ line: 1, issue: 'shape' }] })
+  })
+})
+
+describe('tarjeta nueva: elegir su cuenta la primera vez', () => {
+  const twoAccounts = () =>
+    baseData({ accounts: [account({ id: 'main', name: 'Principal' }), account({ id: 'visa', name: 'Visa', kind: 'credit', anchor: { amountMinor: 0, date: '2026-09-28', setAt: EARLIER } })] })
+
+  it('el pago recuerda su tarjeta mientras espera revisión; sin cuenta asignada, se pregunta', () => {
+    const r = imported(twoAccounts(), [record()])
+    expect(r.data.transactions[0]!.review).toEqual({ needed: true, reason: 'auto_capture', card: 'Visa ••1234' })
+    expect(cardIsMapped(r.data, 'Visa ••1234')).toBe(false)
+  })
+
+  it('elegir la cuenta la guarda en Ajustes y mueve allí lo que aún espera revisión; lo revisado no cambia', () => {
+    const first = imported(twoAccounts(), [record(), record({ captureId: 'cap-usd00001', currencyHint: 'USD', createdAt: '2026-09-28T15:05:00Z' })])
+    // Un pago anterior de la misma tarjeta ya revisado se queda donde estaba.
+    const reviewed = { ...tx({ id: 'old-1', amountMinor: 999 }), review: undefined }
+    const data = { ...first.data, transactions: [...first.data.transactions, reviewed] }
+    const r = assignCardAccount(data, ' visa ••1234 ', 'visa', ctx)
+    if (!r.ok) throw new Error(JSON.stringify(r.issues))
+    expect(r.value.moved.sort()).toEqual(['cap-00000001', 'cap-usd00001'])
+    expect(r.data.settings.capture!.cardAccounts).toEqual([{ card: 'visa ••1234', accountId: 'visa' }])
+    expect(r.data.transactions.find((t) => t.id === 'cap-00000001')!.accountId).toBe('visa')
+    expect(r.data.transactions.find((t) => t.id === 'old-1')!.accountId).toBe('main')
+    expect(r.data.captures!.proposals[0]!.accountId).toBe('visa')
+    // La deuda de la tarjeta crece 4,25; la principal deja de restarlo y solo resta el gasto ya revisado: 1 000 − 9,99.
+    expect(accountBalance(r.data, r.data.accounts[1]!).balanceMinor).toBe(-425)
+    expect(accountBalance(r.data, mainOf(r.data)).balanceMinor).toBe(99001)
+    expect(cardIsMapped(r.data, 'VISA ••1234')).toBe(true)
+    // Los pagos siguientes de esa tarjeta ya entran en su cuenta.
+    expect(imported(r.data, [record({ captureId: 'cap-00000002', createdAt: '2026-09-28T15:30:00Z', merchant: 'Metro' })]).data.transactions.at(-1)!.accountId).toBe('visa')
+  })
+
+  it('no acepta una cuenta archivada o que no existe, ni una tarjeta vacía', () => {
+    const data = imported(twoAccounts(), [record()]).data
+    expect(assignCardAccount(data, 'Visa ••1234', 'nope', ctx)).toMatchObject({ ok: false, issues: [{ code: 'unknownAccount' }] })
+    expect(assignCardAccount(data, '   ', 'visa', ctx)).toMatchObject({ ok: false, issues: [{ code: 'invalidValue' }] })
+  })
+
+  it('«Está bien» quita también la tarjeta: solo se guarda mientras hace falta', () => {
+    const data = imported(twoAccounts(), [record()]).data
+    const r = confirmReviews(data, ['cap-00000001'], ctx)
+    expect(r.ok && r.data.transactions[0]).not.toHaveProperty('review')
   })
 })

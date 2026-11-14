@@ -166,6 +166,8 @@ export interface TxReview {
   reason: ReviewReason
   /** Texto original (solo SMS o alertas, Fase 4). Se borra al confirmar. */
   rawText?: string
+  /** Tarjeta que dio Wallet, para preguntar su cuenta si es nueva. Se borra al confirmar. */
+  card?: string
 }
 
 /** v15: `apple_pay` (acción de Atajos tras un pago), `bank_text` (SMS o alerta del banco), `siri` (dictado a Siri). */

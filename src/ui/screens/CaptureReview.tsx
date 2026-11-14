@@ -11,7 +11,9 @@
  * Las reglas están en `domain/captureImport.ts`; aquí solo se muestran y se llaman.
  */
 import { useMemo, useState } from 'react'
-import { confirmReviews, dismissProposals, registerProposal, reopenReviews, restoreProposals } from '../../domain/captureImport'
+import { activeAccounts } from '../../domain/balances'
+import { assignCardAccount, cardIsMapped, confirmReviews, dismissProposals, registerProposal, reopenReviews, restoreProposals } from '../../domain/captureImport'
+import { normalizeText } from '../../domain/text'
 import { transactionsToReview } from '../../domain/captureReview'
 import { formatMoney } from '../../domain/money'
 import type { CaptureOrigin, CaptureProposal, CurrencyCode, Language, Transaction } from '../../domain/types'
@@ -20,13 +22,13 @@ import { packTranslator, usePack, type PackTranslate, type PackTranslatePlural }
 import { useRun, useToday } from '../../state/hooks'
 import { useData } from '../../state/store'
 import { Badge, Card } from '../components/common'
-import { MoneyField } from '../components/fields'
+import { MoneyField, SelectField } from '../components/fields'
 import { Icon, type IconName } from '../components/Icon'
 import { PackLangScope } from '../components/PackLangScope'
 import { PackNotice } from '../components/PackNotice'
 import { useToast } from '../components/toastContext'
 import { useFormat } from '../format'
-import { accountName, categoryLabel, issueMessage, transactionTitle } from '../labels'
+import { accountLabel, accountName, categoryLabel, issueMessage, transactionTitle } from '../labels'
 import { moneyErrorMessage, parseMoneyText } from '../moneyText'
 import { href, withQuery } from '../router'
 import { useDeleteTransaction } from '../useDeleteTransaction'
@@ -83,6 +85,7 @@ function ReviewBody({ texts, packLanguage, toReview, proposals }: { texts: Recor
         <Icon name="eye" size={18} /> {tr.t('capture.review.title')} ({total})
       </h2>
       <p className="note">{tr.t('capture.review.intro')}</p>
+      <NewCards toReview={toReview} proposals={proposals} tr={tr} />
       {toReview.length > 1 && (
         <button type="button" className="btn btn--secondary btn--small" onClick={() => void confirm(toReview)} data-testid="capture-all-ok">
           <Icon name="checkCircle" size={16} />
@@ -106,6 +109,59 @@ function ReviewBody({ texts, packLanguage, toReview, proposals }: { texts: Recor
   )
 }
 
+/**
+ * La primera vez que llega un pago de una tarjeta sin cuenta asignada, se pregunta su cuenta (una vez por tarjeta). Lo
+ * que espera revisión de esa tarjeta pasa a esa cuenta y los pagos siguientes entran solos (`assignCardAccount`).
+ */
+function NewCards({ toReview, proposals, tr }: { toReview: Transaction[]; proposals: CaptureProposal[]; tr: Texts }) {
+  const data = useData()
+  const cards = new Map<string, string>()
+  for (const card of [...toReview.map((t) => t.review?.card), ...proposals.filter((p) => !p.test).map((p) => p.card)]) {
+    if (card && !cardIsMapped(data, card) && !cards.has(normalizeText(card))) cards.set(normalizeText(card), card)
+  }
+  const accounts = activeAccounts(data.accounts)
+  // Con una sola cuenta no hay nada que elegir.
+  if (cards.size === 0 || accounts.length < 2) return null
+  return (
+    <>
+      {[...cards.values()].map((card) => (
+        <NewCard key={card} card={card} tr={tr} />
+      ))}
+    </>
+  )
+}
+
+function NewCard({ card, tr }: { card: string; tr: Texts }) {
+  const { t } = useT()
+  const data = useData()
+  const run = useRun()
+  const toast = useToast()
+  const accounts = activeAccounts(data.accounts)
+  const [accountId, setAccountId] = useState(accounts[0]?.id ?? '')
+  const save = async () => {
+    const { result, saved } = await run((d, c) => assignCardAccount(d, card, accountId, c))
+    const ok = result.ok && saved
+    toast({ message: ok ? tr.t('capture.card.savedToast', { card, account: accountName(data.accounts, accountId, t) }) : t('save.error.generic'), tone: ok ? 'good' : 'critical' })
+  }
+  return (
+    <Card as="article" className="inbox-item">
+      <span className="item__main">
+        <span className="item__title">
+          <Icon name="creditCard" size={16} /> {tr.t('capture.card.title', { card })}
+        </span>
+        <span className="item__meta">{tr.t('capture.card.question')}</span>
+      </span>
+      <SelectField label={tr.t('capture.card.account', { card })} value={accountId} onChange={(e) => setAccountId(e.target.value)} options={accounts.map((a) => ({ value: a.id, label: accountLabel(a, t) }))} />
+      <div className="button-row">
+        <button type="button" className="btn btn--primary btn--small" onClick={() => void save()}>
+          <Icon name="check" size={16} />
+          {tr.t('capture.card.save')}
+        </button>
+      </div>
+    </Card>
+  )
+}
+
 /** Un movimiento que Clara registró sola: ya cuenta en las cifras. */
 function ReviewedCard({ tx, tr, onOk }: { tx: Transaction; tr: Texts; onOk: () => void }) {
   const { t } = useT()
@@ -125,6 +181,7 @@ function ReviewedCard({ tx, tr, onOk }: { tx: Transaction; tr: Texts; onOk: () =
         <span className="item__badges">
           <Badge>−{fmt.money(tx.amountMinor)}</Badge>
           <Badge icon={SOURCE_ICON[source]}>{tr.t(`capture.source.${source}`)}</Badge>
+          {tx.review?.card && <Badge icon="creditCard">{tx.review.card}</Badge>}
           <Badge tone="info" icon="check">
             {tr.t('capture.review.recorded')}
           </Badge>

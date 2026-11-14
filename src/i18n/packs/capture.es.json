@@ -59,5 +59,10 @@
   "capture.settings.testButton": "Probar ahora",
   "capture.settings.testOk": "Funciona: la prueba está en Pendientes › Por revisar.",
   "capture.settings.testFailed": "No se pudo anotar la prueba. Vuelve a intentarlo; si sigue fallando, cierra y abre Clara.",
-  "capture.settings.testMerchant": "Prueba de Clara"
+  "capture.settings.testMerchant": "Prueba de Clara",
+  "capture.card.title": "Tarjeta nueva: {card}",
+  "capture.card.question": "¿A qué cuenta van los pagos de esta tarjeta? Los que esperan revisión pasan a esa cuenta y los siguientes entran solos.",
+  "capture.card.account": "Cuenta de {card}",
+  "capture.card.save": "Guardar",
+  "capture.card.savedToast": "{card} → {account}"
 }
