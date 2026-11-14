@@ -595,6 +595,8 @@ const TxRow = memo(function TxRow({
           </span>
           <span className="item__badges">
             {tx.review?.needed ? <Badge tone="warning" icon="eye">{t('movements.toReview')}</Badge> : null}
+            {/* Fase 3: el importe en la moneda en que se pagó (siempre con su código). */}
+            {tx.original ? <Badge icon="globe">{fmt.moneyIn(tx.original.amountMinor, tx.original.currency)}</Badge> : null}
             {tx.status === 'planned' ? <Badge tone="info" icon="clock">{t('status.planned')}</Badge> : null}
             {tx.scheduleId ? <Badge icon="calendar">{t('movements.fromCalendar')}</Badge> : null}
             {tx.kind === 'adjustment' ? <Badge icon="scale">{t('adjustment.title')}</Badge> : null}

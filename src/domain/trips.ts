@@ -19,7 +19,7 @@ import { parseRate, rateToText } from './fx'
 import { checkedSumMinor, floorDiv } from './money'
 import type { OpContext, OpResult } from './operations'
 import { summarizePeriod, type PeriodSummaryResult } from './periodBudgets'
-import type { AppData, CurrencyCode, LocalDate, PeriodBudget, TripRate, TripSettings } from './types'
+import type { AppData, CurrencyCode, LocalDate, PeriodBudget, Transaction, TripRate, TripSettings } from './types'
 import { validatePeriodBudget, type Issue } from './validation'
 
 const fail = (issues: Issue[]): { ok: false; issues: Issue[] } => ({ ok: false, issues })
@@ -28,7 +28,19 @@ const fail = (issues: Issue[]): { ok: false; issues: Issue[] } => ({ ok: false, 
 export function activeTrips(data: Pick<AppData, 'periodBudgets'>, today: LocalDate): PeriodBudget[] {
   return data.periodBudgets
     .filter((b) => b.template === 'trip' && b.trip && !b.archived && b.startDate <= today && today <= b.endDate)
-    .sort((a, b) => (a.startDate === b.startDate ? (a.createdAt === b.createdAt ? (a.id < b.id ? 1 : -1) : a.createdAt < b.createdAt ? 1 : -1) : a.startDate < b.startDate ? 1 : -1))
+    .sort((a, b) =>
+      a.startDate === b.startDate
+        ? a.createdAt === b.createdAt
+          ? a.id < b.id
+            ? 1
+            : -1
+          : a.createdAt < b.createdAt
+            ? 1
+            : -1
+        : a.startDate < b.startDate
+          ? 1
+          : -1,
+    )
 }
 
 /** El viaje en curso en esa fecha (el que manda), o ninguno. */
@@ -72,7 +84,14 @@ export function setTripLocalCurrency(data: AppData, budgetId: string, currency: 
  * Escribe (o quita, con `rate: null`) la tasa de una moneda del viaje. Se guarda en su forma exacta canónica
  * («1.3950» → «1.395»). Lo ya registrado conserva su tasa.
  */
-export function setTripRate(data: AppData, budgetId: string, currency: CurrencyCode, rate: string | null, date: LocalDate, ctx: OpContext): OpResult<PeriodBudget> {
+export function setTripRate(
+  data: AppData,
+  budgetId: string,
+  currency: CurrencyCode,
+  rate: string | null,
+  date: LocalDate,
+  ctx: OpContext,
+): OpResult<PeriodBudget> {
   let text: string | null = null
   if (rate !== null) {
     const parsed = parseRate(rate)
@@ -107,12 +126,15 @@ export interface TripSummary {
   unconvertedProposals: number
 }
 
-export function tripSummary(data: AppData, budget: PeriodBudget, today: LocalDate): TripSummary {
-  const period = summarizePeriod(data, budget, today)
-  const budgetCurrency = budget.currency
+/**
+ * Gastado REALIZADO por la moneda en que se pagó (las devoluciones restan): `transactions` son gastos y devoluciones ya
+ * elegidos (los de un viaje o los de un periodo de Estadísticas). Lo que no lleva `original` cuenta en la moneda del
+ * presupuesto. Orden: la del presupuesto, luego `order`, luego el resto por código. Sumas exactas o `null`.
+ */
+export function spentByCurrency(transactions: readonly Transaction[], budgetCurrency: CurrencyCode, order: readonly CurrencyCode[] = []): TripCurrencyLine[] {
   const groups = new Map<CurrencyCode, { count: number; original: number[]; converted: number[] }>()
-  for (const t of period.transactions) {
-    if (t.status !== 'realized') continue
+  for (const t of transactions) {
+    if (t.status !== 'realized' || (t.kind !== 'expense' && t.kind !== 'refund')) continue
     const sign = t.kind === 'refund' ? -1 : 1
     const currency = t.original?.currency ?? budgetCurrency
     const g = groups.get(currency) ?? { count: 0, original: [], converted: [] }
@@ -121,11 +143,16 @@ export function tripSummary(data: AppData, budget: PeriodBudget, today: LocalDat
     g.converted.push(sign * t.amountMinor)
     groups.set(currency, g)
   }
-  const order = [budgetCurrency, ...(budget.trip?.currencies ?? [])]
-  const rank = (c: CurrencyCode) => (order.includes(c) ? order.indexOf(c) : order.length)
-  const byCurrency = [...groups.entries()]
+  const ranked = [budgetCurrency, ...order]
+  const rank = (c: CurrencyCode) => (ranked.includes(c) ? ranked.indexOf(c) : ranked.length)
+  return [...groups.entries()]
     .sort(([a], [b]) => rank(a) - rank(b) || (a < b ? -1 : 1))
     .map(([currency, g]) => ({ currency, count: g.count, originalMinor: checkedSumMinor(g.original), convertedMinor: checkedSumMinor(g.converted) }))
+}
+
+export function tripSummary(data: AppData, budget: PeriodBudget, today: LocalDate): TripSummary {
+  const period = summarizePeriod(data, budget, today)
+  const byCurrency = spentByCurrency(period.transactions, budget.currency, budget.trip?.currencies ?? [])
   const daysElapsed = period.status === 'upcoming' ? 0 : period.status === 'ended' ? period.totalDays : daysBetween(budget.startDate, today) + 1
   const spentPerDayMinor = daysElapsed > 0 ? (period.spentMinor > 0 ? floorDiv(period.spentMinor, daysElapsed) : 0) : null
   const unconvertedProposals = (data.captures?.proposals ?? []).filter(

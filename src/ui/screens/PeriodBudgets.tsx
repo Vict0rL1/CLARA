@@ -37,6 +37,8 @@ import { Icon, type IconName } from '../components/Icon'
 import { PackBody } from '../components/PackBody'
 import { usePackT } from '../components/packTexts'
 import { useToast } from '../components/toastContext'
+import { tripDraftFrom, tripFromDraft, type TripDraft } from '../tripDraft'
+import { TripCard, TripFields } from '../tripUi'
 import { useFormat } from '../format'
 import { categoryLabel, fieldError, issueMessage, otherIssues, transactionTitle } from '../labels'
 import { moneyErrorMessage, parseMoneyText } from '../moneyText'
@@ -182,6 +184,9 @@ function PeriodForm({ existing, back }: { existing: PeriodBudget | undefined; ba
   const [allocatedText, setAllocatedText] = useState(existing ? fmt.moneyInput(existing.allocatedMinor) : '')
   const [note, setNote] = useState(existing?.note ?? '')
   const [ruleCategoryIds, setRuleCategoryIds] = useState<string[]>(existing?.ruleCategoryIds ?? [])
+  // Fase 3: modo viaje (solo con la plantilla «Viaje»).
+  const [tripDraft, setTripDraft] = useState<TripDraft>(() => tripDraftFrom(existing?.trip, fmt.decimalSeparator, fmt.numberLocale))
+  const [tripTried, setTripTried] = useState(false)
   const [issues, setIssues] = useState<Issue[]>([])
   const [amountError, setAmountError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -198,9 +203,11 @@ function PeriodForm({ existing, back }: { existing: PeriodBudget | undefined; ba
   const submit = async () => {
     const parsed = parseMoneyText(allocatedText, fmt)
     setAmountError(moneyErrorMessage(t, parsed))
-    if (!parsed.ok || busy) return
+    const trip = template === 'trip' ? tripFromDraft(tripDraft, fmt.decimalSeparator, fmt.numberLocale) : ({ ok: true, trip: null } as const)
+    setTripTried(true)
+    if (!parsed.ok || !trip.ok || busy) return
     setBusy(true)
-    const { result, saved } = await run((d, c) => savePeriodBudget(d, { id, name, template, startDate, endDate, allocatedMinor: parsed.minor, note, ruleCategoryIds }, c))
+    const { result, saved } = await run((d, c) => savePeriodBudget(d, { id, name, template, startDate, endDate, allocatedMinor: parsed.minor, note, ruleCategoryIds, trip: trip.trip }, c))
     setBusy(false)
     if (!result.ok) {
       setIssues(result.issues)
@@ -236,6 +243,7 @@ function PeriodForm({ existing, back }: { existing: PeriodBudget | undefined; ba
         </div>
         <MoneyField label={t('period.allocated')} value={allocatedText} onChange={setAllocatedText} error={amountError ?? fieldError(t, fmt, issues, 'allocatedMinor')} fmt={fmt} hint={t('period.allocatedHint')} />
         <TextField label={t('fields.noteOptional')} value={note} maxLength={LIMITS.noteMax} onChange={(e) => setNote(e.target.value)} error={fieldError(t, fmt, issues, 'note')} />
+        {template === 'trip' && <TripFields draft={tripDraft} setDraft={setTripDraft} showErrors={tripTried} />}
         <details className="explain" open={ruleCategoryIds.length > 0}>
           <summary>
             <Icon name="sliders" size={16} />
@@ -419,6 +427,8 @@ function PeriodDetail({ budget }: { budget: PeriodBudget }) {
           </ul>
         </Explain>
       </Card>
+
+      {budget.template === 'trip' && budget.trip && <TripCard budget={budget} />}
 
       <Card labelledBy="period-money">
         <h2 id="period-money" className="card__title">
