@@ -28,6 +28,10 @@ import shortfallEn from './shortfall.en.json'
 import shortfallEs from './shortfall.es.json'
 import shortfallFr from './shortfall.fr.json'
 import shortfallPt from './shortfall.pt.json'
+import weeklyEn from './weekly.en.json'
+import weeklyEs from './weekly.es.json'
+import weeklyFr from './weekly.fr.json'
+import weeklyPt from './weekly.pt.json'
 import whatChangedEn from './whatChanged.en.json'
 import whatChangedEs from './whatChanged.es.json'
 import whatChangedFr from './whatChanged.fr.json'
@@ -40,6 +44,7 @@ export type NativeAppPackKey = keyof typeof nativeAppEs
 export type WhatChangedPackKey = keyof typeof whatChangedEs
 export type ShortfallPackKey = keyof typeof shortfallEs
 export type CapturePackKey = keyof typeof captureEs
+export type WeeklyPackKey = keyof typeof weeklyEs
 
 /** `true` solo si A y B tienen las mismas claves (ninguna falta en ninguno de los dos). */
 type SameKeys<A, B> = Record<keyof A, string> extends Record<keyof B, string> ? (Record<keyof B, string> extends Record<keyof A, string> ? true : never) : never
@@ -67,4 +72,7 @@ export const PACK_KEY_CHECKS: [
   SameKeys<typeof captureEs, typeof captureEn>,
   SameKeys<typeof captureEs, typeof capturePt>,
   SameKeys<typeof captureEs, typeof captureFr>,
-] = [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true]
+  SameKeys<typeof weeklyEs, typeof weeklyEn>,
+  SameKeys<typeof weeklyEs, typeof weeklyPt>,
+  SameKeys<typeof weeklyEs, typeof weeklyFr>,
+] = [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true]
