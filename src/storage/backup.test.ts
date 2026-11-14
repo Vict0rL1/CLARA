@@ -272,6 +272,8 @@ describe('migraciones', () => {
       // Los datos originales no se sobrescriben al cargar; la copia previa conserva el texto exacto.
       expect(store.get(STORAGE_KEY)).toBe(raw)
       expect(JSON.parse(store.get(`${PRE_MIGRATION_KEY_PREFIX}${SCHEMA_VERSION}`)!)).toEqual({ fromVersion: 4, raw })
+      // Datos y recuperación la lee por el repositorio (la misma copia, tal cual).
+      expect(JSON.parse((await repo.preMigrationCopy())!)).toEqual({ fromVersion: 4, raw })
       // Datos de una versión futura: se informan como no legibles y no se tocan.
       const future = JSON.stringify({ ...v4, schemaVersion: 99 })
       store.set(STORAGE_KEY, future)

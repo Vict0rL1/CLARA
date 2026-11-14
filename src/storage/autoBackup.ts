@@ -30,8 +30,35 @@ export interface LocalBackupMeta {
   counts: { accounts: number; transactions: number; categories: number; goals: number; schedules: number }
 }
 
-interface LocalBackupRecord extends LocalBackupMeta {
+export interface LocalBackupRecord extends LocalBackupMeta {
   json: string
+}
+
+/**
+ * Dónde viven las copias locales: IndexedDB del navegador (`LocalBackups`) o, en la app de iPhone, archivos propios de
+ * la app (`NativeLocalBackups`, fuera del WebView que iOS puede vaciar). Mismas reglas en los dos.
+ */
+export interface LocalBackupStore {
+  list(): Promise<LocalBackupMeta[]>
+  save(data: AppData, reason: BackupReason, now: Date, appVersion: string, keep?: number): Promise<LocalBackupMeta>
+  read(id: string): Promise<string | null>
+  remove(id: string): Promise<void>
+}
+
+/** La copia y sus datos de resumen (igual en los dos almacenes). */
+export function backupRecord(data: AppData, reason: BackupReason, now: Date, appVersion: string): LocalBackupRecord {
+  const json = JSON.stringify(createBackup(data, now, appVersion))
+  return {
+    id: `${now.toISOString()}-${reason}`,
+    createdAt: now.toISOString(),
+    reason,
+    size: new TextEncoder().encode(json).length,
+    budgetId: data.budgetId,
+    isDemo: data.isDemo,
+    dataUpdatedAt: data.updatedAt,
+    counts: { accounts: data.accounts.length, transactions: data.transactions.length, categories: data.categories.length, goals: data.goals.length, schedules: data.schedules.length },
+    json,
+  }
 }
 
 /** ¿Toca una copia automática? Nunca antes de 24 h desde la última ni si los datos no cambiaron. */
@@ -78,9 +105,10 @@ function open(factory: IDBFactory): Promise<IDBDatabase> {
   })
 }
 
-const strip = ({ json: _json, ...meta }: LocalBackupRecord): LocalBackupMeta => meta
+export const stripBackupJson = ({ json: _json, ...meta }: LocalBackupRecord): LocalBackupMeta => meta
+const strip = stripBackupJson
 
-export class LocalBackups {
+export class LocalBackups implements LocalBackupStore {
   private readonly factory: IDBFactory
   constructor(factory: IDBFactory = globalThis.indexedDB) {
     this.factory = factory
@@ -98,18 +126,7 @@ export class LocalBackups {
 
   /** Guarda una copia y poda las antiguas en la misma transacción. */
   async save(data: AppData, reason: BackupReason, now: Date, appVersion: string, keep = KEEP_BACKUPS): Promise<LocalBackupMeta> {
-    const json = JSON.stringify(createBackup(data, now, appVersion))
-    const record: LocalBackupRecord = {
-      id: `${now.toISOString()}-${reason}`,
-      createdAt: now.toISOString(),
-      reason,
-      size: new TextEncoder().encode(json).length,
-      budgetId: data.budgetId,
-      isDemo: data.isDemo,
-      dataUpdatedAt: data.updatedAt,
-      counts: { accounts: data.accounts.length, transactions: data.transactions.length, categories: data.categories.length, goals: data.goals.length, schedules: data.schedules.length },
-      json,
-    }
+    const record = backupRecord(data, reason, now, appVersion)
     const db = await open(this.factory)
     try {
       const tx = db.transaction(STORE, 'readwrite')

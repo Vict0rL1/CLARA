@@ -221,6 +221,11 @@ export class IndexedDbRepository implements DataRepository {
     }
   }
 
+  async preMigrationCopy(): Promise<string | null> {
+    const copy = await this.get<{ fromVersion: number; raw: string }>(`${PRE_MIGRATION_KEY_PREFIX}${SCHEMA_VERSION}`)
+    return copy === undefined ? null : JSON.stringify(copy)
+  }
+
   async clear(): Promise<void> {
     const tx = this.db.transaction(STORE, 'readwrite')
     const store = tx.objectStore(STORE)

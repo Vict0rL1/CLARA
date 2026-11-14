@@ -29,6 +29,11 @@ export interface DataRepository {
   load(): Promise<LoadResult>
   save(data: AppData): Promise<SaveResult>
   clear(): Promise<void>
+  /**
+   * Copia exacta de los datos de antes de la última migración de esquema (`{"fromVersion":…,"raw":"…"}`), si este
+   * almacenamiento la guardó; `null` si no hay. Solo lectura (`docs/ROLLBACK.md`).
+   */
+  preMigrationCopy?(): Promise<string | null>
   /** Avisa si otra pestaña cambió los datos. Devuelve la función para dejar de escuchar. */
   subscribe(onExternalChange: () => void): () => void
 }

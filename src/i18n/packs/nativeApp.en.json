@@ -23,7 +23,7 @@
   "settings.storage.local": "Your data is stored only on this iPhone, inside the Clara app.",
   "settings.storage.lost": "If you delete the app from this iPhone, it’s lost. Export backups regularly.",
   "settings.storage.noSync": "It doesn’t sync with other devices or with Clara on the web yet.",
-  "settings.storage.eviction": "iOS can empty the internal storage of the app’s web view when space runs low. The automatic local copies, the PIN lock and this device’s preferences still live there: do not rely on them as your only copy, and export your own.",
+  "settings.storage.eviction": "Your data, the automatic local copies, the PIN lock and this device’s preferences are in the app’s own files: iOS does not empty them when space runs low (it can empty the internal web view; if it does, the lock and preferences come back on their own when you open the app). If you delete the app, they are lost: export your own copy.",
   "settings.storage.notEncrypted": "Clara adds no encryption or password of its own: anyone who can unlock this iPhone can see the data. Use a passcode on the iPhone.",
   "settings.storage.backend.indexeddb": "The app could not use its own file and is saving to IndexedDB, the web view’s internal storage, which iOS can empty when space runs low. Export a backup.",
   "settings.reset.clearText": "All your accounts, movements, scheduled payments, goals, history and drafts will be removed from the app. Automatic local copies (Settings › Local copies), this device’s preferences and the files you exported are kept. This cannot be undone. Export a copy first if you need one.",

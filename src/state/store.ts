@@ -140,6 +140,15 @@ export class AppStore {
     return { ok: result.ok, revision: data.revision }
   }
 
+  /** La copia previa a la última migración de esquema, la guarde quien la guarde (navegador o app). */
+  async preMigrationCopy(): Promise<string | null> {
+    try {
+      return (await this.repo.preMigrationCopy?.()) ?? null
+    } catch {
+      return null
+    }
+  }
+
   /** Vuelve a intentar guardar lo que se ve (tras liberar espacio, por ejemplo). */
   async retrySave(): Promise<boolean> {
     if (this.state.phase !== 'ready' || !this.state.data) return false
