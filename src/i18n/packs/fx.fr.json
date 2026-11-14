@@ -24,5 +24,10 @@
   "fx.error.noAmount": "Ce taux ne donne pas de montant valable en {budget}.",
   "fx.error.date": "Saisissez la date du taux.",
   "fx.error.fee": "Saisissez un pourcentage de 0 à 100.",
+  "fx.stats.title": "Dépensé par devise",
+  "fx.stats.intro": "Ce que vous avez payé dans une autre devise compte en {budget} avec le taux de chaque mouvement ; ici vous le voyez aussi dans la devise du paiement. Les remboursements se déduisent.",
+  "fx.stats.count_one": "{count} mouvement",
+  "fx.stats.count_other": "{count} mouvements",
+  "fx.stats.noFigure": "Pas de montant exact",
   "fx.badge": "Payé {original}"
 }

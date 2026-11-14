@@ -1703,3 +1703,9 @@ local actual y, como mucho, una tasa escrita a mano por moneda, con su fecha; y 
 Ejemplo (prueba `trips.test.ts`): del 25-sep al 4-oct, 500,00 $; ¥1 200 a 0,0092 = 11,04 $, devolución de ¥600 =
 5,52 $, ₩15 000 a 0,00098 = 14,70 $, CN¥88,30 a 0,1923 = 16,98 $ y 20,00 $ en CAD → gastado 57,20 $; el 28-sep (4 días)
 14,30 $ por día; quedan 442,80 $ para 7 días → 63,25 $ por día.
+
+- **Por moneda en Estadísticas** (`spentByCurrency`, el mismo cálculo que la vista del viaje): gastos y devoluciones
+  realizados del periodo (con los filtros de Estadísticas), agrupados por la moneda en que se pagaron; lo que no lleva
+  `original` cuenta en la moneda del presupuesto. Σ original y Σ convertido, exactas o «sin cifra exacta».
+- **CSV** (`csvExport.ts`): seis columnas tras «Origen»: importe original con el signo del convertido (−1200 JPY con
+  −11,32 CAD), moneda, tasa exacta (`'1117/120000` si es fracción), fecha de la tasa, origen y comisión en % («2.50»).

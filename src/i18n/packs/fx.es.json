@@ -24,5 +24,10 @@
   "fx.error.noAmount": "Con esa tasa no sale un importe válido en {budget}.",
   "fx.error.date": "Escribe la fecha de la tasa.",
   "fx.error.fee": "Escribe un porcentaje de 0 a 100.",
+  "fx.stats.title": "Gastado por moneda",
+  "fx.stats.intro": "Lo pagado en otra moneda cuenta en {budget} con la tasa de cada movimiento; aquí se ve también en la moneda en que se pagó. Las devoluciones restan.",
+  "fx.stats.count_one": "{count} movimiento",
+  "fx.stats.count_other": "{count} movimientos",
+  "fx.stats.noFigure": "Sin cifra exacta",
   "fx.badge": "Pagado {original}"
 }

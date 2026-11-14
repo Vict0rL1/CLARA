@@ -154,20 +154,22 @@ export function Movements({ route }: { route?: Route }) {
   // El CSV se carga al exportar (presupuesto de tamaño del JS inicial: `npm run size`); la acción es la misma. Si el
   // módulo no llega (sin conexión antes de que el service worker lo guardara, o tras un despliegue), se dice.
   const exportCsv = async () => {
-    let transactionsToCsv: typeof import('../../domain/csvExport').transactionsToCsv
+    let csvModule: typeof import('../../domain/csvExport')
     try {
-      ;({ transactionsToCsv } = await import('../../domain/csvExport'))
+      csvModule = await import('../../domain/csvExport')
     } catch {
       toast({ message: t('export.failed'), tone: 'critical' })
       return
     }
+    const { transactionsToCsv, TX_CSV_COLUMNS, TX_CSV_ORIGINAL_COLUMNS } = csvModule
     const csv = transactionsToCsv([...planned, ...realized], {
-      headers: (['date', 'kind', 'status', 'amount', 'currency', 'category', 'account', 'toAccount', 'note', 'merchant', 'id', 'source'] as const).map((k) => t(`csv.${k}` as MessageKey)),
+      headers: [...TX_CSV_COLUMNS, ...TX_CSV_ORIGINAL_COLUMNS].map((k) => t(`csv.${k}` as MessageKey)),
       kind: (tx) => t(`txKind.${tx.kind}` as MessageKey),
       status: (tx) => t(tx.status === 'planned' ? 'status.planned' : 'status.realized'),
       category: (tx) => (tx.kind === 'transfer' || tx.kind === 'adjustment' ? '' : txCategoryIds(tx).map((c) => categoryLabel(t, c)).join(' | ')),
       account: (id) => (id ? accountName(data.accounts, id, t) : ''),
       source: (tx) => t(`source.${sourceGroupOf(tx)}` as MessageKey),
+      rateSource: (s) => t(`csv.rateSource.${s}` as MessageKey),
     })
     downloadText(`clara-movimientos-${today}.csv`, csv, 'text/csv;charset=utf-8')
   }

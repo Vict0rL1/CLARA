@@ -2,7 +2,7 @@
 import { sourceGroupOf } from '../../../domain/txFilters'
 import { useState } from 'react'
 import { resolveCategories } from '../../../domain/categories'
-import { categoriesToCsv, csvSeparatorFor, joinCsvSections, plansToCsv, transactionsToCsv } from '../../../domain/csvExport'
+import { categoriesToCsv, csvSeparatorFor, joinCsvSections, plansToCsv, transactionsToCsv, TX_CSV_COLUMNS, TX_CSV_ORIGINAL_COLUMNS } from '../../../domain/csvExport'
 import { useT, type MessageKey } from '../../../i18n'
 import { useData } from '../../../state/store'
 import { downloadText } from '../../backupActions'
@@ -33,12 +33,13 @@ export function ExportSection() {
   const build = (s: Exclude<Scope, 'all'>): string => {
     if (s === 'transactions') {
       return transactionsToCsv([...data.transactions].sort((a, b) => b.date.localeCompare(a.date)), {
-        headers: (['date', 'kind', 'status', 'amount', 'currency', 'category', 'account', 'toAccount', 'note', 'merchant', 'id', 'source'] as const).map((k) => t(`csv.${k}` as MessageKey)),
+        headers: [...TX_CSV_COLUMNS, ...TX_CSV_ORIGINAL_COLUMNS].map((k) => t(`csv.${k}` as MessageKey)),
         kind: (tx) => t(`txKind.${tx.kind}` as MessageKey),
         status: (tx) => t(`status.${tx.status}` as MessageKey),
         category: (tx) => (tx.splits?.length ? tx.splits.map((l) => categoryLabel(t, l.categoryId)).join(' + ') : categoryLabel(t, tx.categoryId)),
         account: (id) => accountName(data.accounts, id, t),
         source: (tx) => t(`source.${sourceGroupOf(tx)}` as MessageKey),
+        rateSource: (s) => t(`csv.rateSource.${s}` as MessageKey),
         separator,
       })
     }

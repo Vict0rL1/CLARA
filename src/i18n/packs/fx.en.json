@@ -24,5 +24,10 @@
   "fx.error.noAmount": "That rate doesn't give a valid amount in {budget}.",
   "fx.error.date": "Enter the rate date.",
   "fx.error.fee": "Enter a percentage from 0 to 100.",
+  "fx.stats.title": "Spent by currency",
+  "fx.stats.intro": "What you paid in another currency counts in {budget} with each transaction’s rate; here you also see it in the currency you paid in. Refunds subtract.",
+  "fx.stats.count_one": "{count} transaction",
+  "fx.stats.count_other": "{count} transactions",
+  "fx.stats.noFigure": "No exact figure",
   "fx.badge": "Paid {original}"
 }

@@ -30,8 +30,8 @@ test('historial: selección múltiple a la papelera (con restauración) y export
   expect(file.suggestedFilename()).toMatch(/^clara-movimientos-\d{4}-\d{2}-\d{2}\.csv$/)
   const text = await (await import('node:fs/promises')).readFile(await file.path(), 'utf8')
   const lines = text.replace(/^﻿/, '').trim().split('\r\n')
-  // L1: columna final «Origen» (manual, asistente, atajo…).
-  expect(lines[0]).toBe('Fecha,Tipo,Estado,Importe,Moneda,Categoría,Cuenta,Cuenta destino,Nota,Comercio,Id,Origen')
+  // L1: columna «Origen» (manual, asistente, atajo…); Fase 3: luego el importe en la moneda en que se pagó.
+  expect(lines[0]).toBe('Fecha,Tipo,Estado,Importe,Moneda,Categoría,Cuenta,Cuenta destino,Nota,Comercio,Id,Origen,Importe original,Moneda original,Tasa,Fecha de la tasa,Origen de la tasa,Comisión (%)')
   expect(lines.length - 1).toBe(count)
   expect(lines[1]).toMatch(/^\d{4}-\d{2}-\d{2},Ingreso,Realizado,\d+\.\d{2},CAD,/)
 })

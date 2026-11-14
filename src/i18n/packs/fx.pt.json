@@ -24,5 +24,10 @@
   "fx.error.noAmount": "Com essa taxa não sai um valor válido em {budget}.",
   "fx.error.date": "Digite a data da taxa.",
   "fx.error.fee": "Digite uma porcentagem de 0 a 100.",
+  "fx.stats.title": "Gasto por moeda",
+  "fx.stats.intro": "O que foi pago em outra moeda conta em {budget} com a taxa de cada movimento; aqui você vê também na moeda em que pagou. As devoluções subtraem.",
+  "fx.stats.count_one": "{count} movimento",
+  "fx.stats.count_other": "{count} movimentos",
+  "fx.stats.noFigure": "Sem valor exato",
   "fx.badge": "Pago {original}"
 }

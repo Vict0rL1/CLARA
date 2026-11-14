@@ -45,7 +45,7 @@ test('el origen «Atajo» aparece en el filtro del historial y en el CSV', async
   await expect(page.locator('.tx-group .item').first()).toContainText('7.25')
   const [download] = await Promise.all([page.waitForEvent('download'), (await openMoreMenu(page)).getByRole('button', { name: 'Exportar CSV' }).click()])
   const csv = readFileSync((await download.path())!, 'utf8')
-  expect(csv.split('\r\n')[0]).toMatch(/Origen$/)
+  expect(csv.split('\r\n')[0]).toMatch(/,Origen,Importe original,Moneda original,Tasa,Fecha de la tasa,Origen de la tasa,Comisión \(%\)$/)
   expect(csv).toContain('Atajo')
 })
 
