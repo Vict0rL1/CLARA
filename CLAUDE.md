@@ -163,7 +163,8 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
   papelera; una propuesta en otra moneda o sin entender solo se registra con el importe que la persona escribe en la
   moneda del presupuesto (`registerProposal(…, amountMinor)`, hora del pago como `realizedAt`). La prueba de Ajustes
   (`test: true`) siempre es propuesta, nunca se registra y no cuenta como duplicado. Un movimiento «Por revisar» no sale
-  además como «Sin categoría».
+  además como «Sin categoría». Tarjeta nueva (`review.card`, se borra al confirmar): «Por revisar» pregunta su cuenta
+  una vez; `assignCardAccount` la guarda y mueve solo lo que aún espera revisión.
 - Papelera: eliminar saca el movimiento de `transactions` a `trash` (nunca participa en
   cálculos). Restaurar no deja vínculos rotos, ni liquida dos veces una ocurrencia, ni devuelve un pago a una fecha
   que su programado ya no tiene (`occurrenceMissing`; revisión de seguridad QA27, F-1); filas

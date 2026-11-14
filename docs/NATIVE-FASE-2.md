@@ -19,6 +19,7 @@ PR #19 (`feat/ios-fase-2`, sobre la Fase 1). Fecha: 13 de noviembre de 2026.
 | Revisar | «Por revisar» arriba de Pendientes: «Está bien», «Editar», «Fue rechazado» (papelera), «Registrar» (con importe escrito si es otra moneda), «Descartar», todo con deshacer donde aplica | `72d07c0` | 170 |
 | iPhone | Acción «Registrar pago en Clara» (App Intents), cola `captures.jsonl`, plugin `ClaraCaptures`, textos en es/en/pt/fr, pruebas XCTest como paquete aparte | `d240345` | 171 |
 | Conexión | La web lee la cola al abrir, al volver a la app y cuando la acción avisa; solo vacía la cola después de guardar. Ajustes › Captura automática (solo en la app) con guía y «Probar» | `0239c7f` | 171, 172 |
+| Encargo | Tarjeta nueva: se pregunta su cuenta la primera vez; la acción responde con el importe y el comercio; pruebas de los importes del encargo y de dos escrituras a la vez en Swift | este PR | 174 |
 | Deuda de la Fase 1 | Copias locales automáticas en archivos de la app; PIN y preferencias con copia fuera del WebView que vuelve sola si iOS lo vacía; Datos y recuperación ve la copia previa a una migración (también la de IndexedDB en el navegador) | este PR | 173 |
 
 `CLAUDE.md`: la excepción «Guardar automáticamente» de la Fase 2 está **vigente**.
@@ -40,7 +41,7 @@ PR #19 (`feat/ios-fase-2`, sobre la Fase 1). Fecha: 13 de noviembre de 2026.
 
 ## 3. Pruebas y resultados
 
-- **Unitarias:** 1 383 pasan, 1 omitida, 0 fallan (`npm test`); 85 nuevas en la fase (lector de la cola, esquema 15,
+- **Unitarias:** 1 388 pasan, 1 omitida, 0 fallan (`npm test`); 90 nuevas en la fase (lector de la cola, esquema 15,
   importar con cifras calculadas a mano, deshacer, conexión con la cola, adaptador del plugin, Ajustes, bandeja, copias
   locales y ajustes del dispositivo en archivos de la app, copia previa a una migración en los tres almacenamientos).
 - **Navegador, nuevas:** `capture-review.spec.ts` (revisar, deshacer, editar, rechazar, registrar en otra moneda,
@@ -55,7 +56,7 @@ PR #19 (`feat/ios-fase-2`, sobre la Fase 1). Fecha: 13 de noviembre de 2026.
   seguridad de datos y Ajustes: 138 pasan, 0 fallan. La matriz completa la corre la integración continua del PR (en
   verde en `122a8b9`).
 - **Tipos, lint, compilación y tamaño:** en verde; JS inicial 842,5 KB de 844,6.
-- **Swift:** 12 pruebas XCTest escritas (cola y archivo de datos), **sin ejecutar**: aquí no hay Swift ni se puede
+- **Swift:** 13 pruebas XCTest escritas (cola, también con dos escrituras a la vez, y archivo de datos), **sin ejecutar**: aquí no hay Swift ni se puede
   descargar. La acción y el plugin, sin compilar.
 - **APIs de Apple comprobadas** en developer.apple.com: `AppIntent` (`title`, `description`, `perform()`),
   `IntentParameter.needsValueError(_:)`, `IntentCurrencyAmount` (`amount: Decimal`, `currencyCode`),
@@ -69,11 +70,11 @@ PR #19 (`feat/ios-fase-2`, sobre la Fase 1). Fecha: 13 de noviembre de 2026.
 
 1. Si aún no está: la Fase 1 (`feat/ios-nativo`) con sus 19 comprobaciones (`docs/IOS-NATIVE.md`).
 2. En la carpeta del repositorio: `git checkout feat/ios-fase-2`, `git pull`, y `cd ios/ClaraNativeTests && swift
-   test`. Debe decir «Executed 12 tests, with 0 failures»; si no, copia la salida.
+   test`. Debe decir «Executed 13 tests, with 0 failures»; si no, copia la salida.
 3. `npm ci`, `npm run ios:sync` y ▶ en Xcode. Si sale un error, cópialo tal cual.
 4. En la app, usa tus datos o un presupuesto nuevo (con los de demostración no se importa nada) y ábrela una vez.
 5. Crea la automatización de Atajos (guía, «Fase 2», paso 4).
-6. Recorre las comprobaciones **20–29** y apunta qué variables ofrece el disparador de Wallet, si «Importe» encajó
+6. Recorre las comprobaciones **20–30** y apunta qué variables ofrece el disparador de Wallet, si «Importe» encajó
    directo y qué dice Siri.
 7. Dime el modelo de iPhone, la versión de iOS y la de Xcode.
 
@@ -95,5 +96,5 @@ PR #19 (`feat/ios-fase-2`, sobre la Fase 1). Fecha: 13 de noviembre de 2026.
 
 168 (esquema 15), 169 (cómo entra un pago capturado), 170 (la revisión en Pendientes), 171 (la acción solo anota; sin
 App Group en esta fase; cuándo lee la web), 172 (Ajustes › Captura automática solo en la app; «Probar»), 173 (copias
-locales, PIN y preferencias fuera del WebView). Detalle en
+locales, PIN y preferencias fuera del WebView), 174 (tarjeta nueva y respuesta con el pago). Detalle en
 `docs/DECISIONS.md`.

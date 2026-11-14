@@ -157,7 +157,8 @@ swift test
 cd ../..
 ```
 
-Debe terminar con «Executed 12 tests, with 0 failures» (la cola de capturas y el archivo de datos). Si algo falla,
+Debe terminar con «Executed 13 tests, with 0 failures» (la cola de capturas, también con dos escrituras a la vez, y el
+archivo de datos). Si algo falla,
 copia la salida tal cual.
 
 ### 2. Compilar e instalar
@@ -191,13 +192,13 @@ importa nada (los pagos esperan en la cola). Abre Clara una vez después de inst
 |---|---|---|---|
 | 20 | La acción existe | Atajos › buscar «Clara»: aparece «Registrar pago en Clara», en el idioma del iPhone | |
 | 21 | Probar | Ajustes › **Captura automática** › «Probar ahora»: dice «Funciona» y en Pendientes › Por revisar hay una «Prueba» que no cambia ninguna cifra. Descártala | |
-| 22 | La acción a mano | En Atajos, ejecuta «Registrar pago en Clara» con importe 1 y comercio «Prueba»: responde «Anotado en Clara». Abre Clara: hay un gasto de 1,00 «Por revisar» que ya resta | |
+| 22 | La acción a mano | En Atajos, ejecuta «Registrar pago en Clara» con importe 1 y comercio «Prueba»: responde «Clara: 1,00 $ en Prueba, por revisar» (o parecido). Abre Clara: hay un gasto de 1,00 «Por revisar» que ya resta | |
 | 23 | Pago real | Paga algo pequeño con Apple Pay. ¿Se ejecutó la automatización sola? Abre Clara: el gasto está «Por revisar» con importe, comercio, fecha y cuenta correctos | |
 | 24 | Con Clara abierta | Con Clara en pantalla, ejecuta la acción desde Atajos (o desde el Centro de control): al volver, el gasto ya está | |
 | 25 | Revisar | En Pendientes: «Está bien» quita la marca; «Editar» y Guardar también; «Fue rechazado» lo manda a la papelera y la cifra vuelve | |
 | 26 | Dos veces el mismo pago | Ejecuta la acción dos veces seguidas con el mismo importe y comercio: el segundo queda como propuesta «puede ser el mismo pago», no resta dos veces | |
 | 27 | Otra moneda | Ejecuta la acción con un importe en USD (o paga en otra moneda): queda como propuesta y pide el importe en tu moneda | |
-| 28 | Tarjeta → cuenta | Ajustes › Captura automática › añade tu tarjeta con el nombre exacto que pasa Atajos y elige su cuenta: el siguiente pago va a esa cuenta | |
+| 28 | Tarjeta nueva | Con dos cuentas o más: el primer pago de una tarjeta pregunta en Pendientes «Tarjeta nueva: …» a qué cuenta va. Elige una: ese pago pasa a esa cuenta y el siguiente entra ahí solo (también se puede cambiar en Ajustes › Captura automática) | |
 | 29 | Apagado | Apaga «Guardar automáticamente»: el siguiente pago queda como propuesta y no cambia ninguna cifra hasta «Registrar» | |
 | 30 | Copias locales en la app | Ajustes › Copias locales › «Hacer copia ahora»: aparece en la lista. Cierra la app del todo y ábrela: sigue ahí, y el PIN (si lo activaste) se sigue pidiendo | |
 
