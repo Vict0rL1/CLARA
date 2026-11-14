@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { baseData, ctx, tx } from '../test/fixtures'
 import { convertToBudget, parseRate, rateToText } from './fx'
-import { rateForDisplay, rateFromAmounts } from './fxAdjust'
+import { foreignFromInput, rateForDisplay, rateFromAmounts } from './fxAdjust'
 import { saveTransaction, trashTransactions, restoreFromTrash } from './operations'
 import { validateTransaction } from './validation'
 import type { OriginalAmount } from './types'
@@ -143,5 +143,27 @@ describe('un movimiento con su importe original', () => {
     )
     // ¥600 × 0,0092 = 5,52 $
     expect(r.ok && r.value.amountMinor).toBe(552)
+  })
+})
+
+describe('foreignFromInput (lo que escribe la persona en el formulario)', () => {
+  it('con una tasa: la forma exacta canónica, la comisión y la conversión de siempre', () => {
+    expect(foreignFromInput({ mode: 'rate', currency: 'JPY', originalMinor: 1200, rate: '0.00920', rateDate: '2026-09-28', feeBps: 250 }, 'CAD')).toEqual({
+      ok: true,
+      amountMinor: 1132,
+      original: { currency: 'JPY', amountMinor: 1200, rate: '0.0092', rateDate: '2026-09-28', rateSource: 'manual', feeBps: 250 },
+    })
+    expect(foreignFromInput({ mode: 'rate', currency: 'JPY', originalMinor: 1200, rate: '0.0092', rateDate: '2026-09-28', feeBps: 0 }, 'CAD')).toMatchObject({ amountMinor: 1104, original: { rate: '0.0092' } })
+    expect(foreignFromInput({ mode: 'rate', currency: 'JPY', originalMinor: 1200, rate: '', rateDate: '2026-09-28', feeBps: 0 }, 'CAD')).toEqual({ ok: false, error: 'rate' })
+    // ₩1 × 0,00098 no llega a medio céntimo: no hay importe.
+    expect(foreignFromInput({ mode: 'rate', currency: 'KRW', originalMinor: 1, rate: '0.00098', rateDate: '2026-09-28', feeBps: 0 }, 'CAD')).toEqual({ ok: false, error: 'noAmount' })
+  })
+
+  it('con lo que cobró el banco: esa cifra manda y la tasa es la fracción exacta, sin comisión aparte', () => {
+    expect(foreignFromInput({ mode: 'actual', currency: 'JPY', originalMinor: 1200, budgetMinor: 1117, date: '2026-09-28' }, 'CAD')).toEqual({
+      ok: true,
+      amountMinor: 1117,
+      original: { currency: 'JPY', amountMinor: 1200, rate: '1117/120000', rateDate: '2026-09-28', rateSource: 'card_actual' },
+    })
   })
 })

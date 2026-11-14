@@ -66,7 +66,8 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
 - `src/i18n/` — todos los textos visibles. **Nunca** escribir texto de interfaz
   directamente en componentes: añadir cada clave a `es.ts`, `en.ts`, `pt.ts` **y** `fr.ts`
   (el tipo compartido obliga a tener todas las claves en los cuatro). Los textos de pantallas poco visitadas (Legal,
-  Galería, Importar CSV, «¿Qué cambió?», plan ante faltante, capturas por revisar) son paquetes diferidos fuera del JS inicial: archivos `src/i18n/packs/<paquete>.<idioma>.json` (mismas
+  Galería, Importar CSV, «¿Qué cambió?», plan ante faltante, capturas por revisar, revisión semanal, presupuestos por
+  periodo y viajes, «Pagado en otra moneda») son paquetes diferidos fuera del JS inicial: archivos `src/i18n/packs/<paquete>.<idioma>.json` (mismas
   claves en los cuatro: `packs/packKeys.ts` lo exige en `tsc`) pedidos con `fetch` por `usePack` (`src/i18n/packs.ts`):
   estados `loading`, `ready` (con `fallback` si el texto salió en español porque el idioma pedido no cargó; la pantalla
   marca ese contenido con `lang="es"`) y `failed`; un fallo nunca se guarda como paquete ni se enseña una clave;
@@ -77,7 +78,8 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
   viejo que termine tarde ni entra en memoria ni retira al nuevo. Con el español de respaldo, el contenido va en
   `PackLangScope` (`lang="es"` y el traductor del contexto en español, así ningún texto de la interfaz queda con la
   marca de otro idioma); la cabecera y `PackNotice` van fuera. Un texto de la interfaz nunca se traduce con el paquete
-  (`packTranslator`: claves del paquete del paquete, el resto del traductor de la interfaz). Textos de la app de iPhone
+  (`packTranslator`: claves del paquete del paquete, el resto del traductor de la interfaz). Una pantalla con muchos
+  componentes envuelve su cuerpo en `PackBody` y cada componente lee `usePackT()` (`ui/components/packTexts.ts`). Textos de la app de iPhone
   (decisión 164): el paquete `nativeApp` solo se pide dentro de la app (`platform/texts.ts` → `import()` de
   `i18n/nativeTexts.ts`); sus claves que YA existen en el diccionario principal sustituyen al texto de la web (el que
   habla del navegador, de Safari o de pestañas) y las `nativeApp.*` son de la sección «Clara en este iPhone». Solo se

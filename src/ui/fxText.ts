@@ -19,3 +19,15 @@ export function feeLabel(bps: number, locale: string): string {
   const escaped = decimal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   return bpsToInputString(bps, locale).replace(new RegExp(`${escaped}?0+$`), '')
 }
+
+/** Lo escrito en un campo de tasa, listo para `parseRate`: «0,0092» en francés → «0.0092»; sin espacios. En inglés una
+ * coma no es un decimal: la tasa no se lee (nunca se adivina). */
+export function rateInput(text: string, decimal: string): string {
+  const t = text.replace(/[\s\u00a0\u202f]/g, '')
+  return decimal === ',' ? t.replace(',', '.') : t
+}
+
+/** El texto editable de una tasa guardada: decimal con el separador del idioma, o la fracción tal cual. */
+export function rateText(rate: string, decimal: string): string {
+  return rate.includes('/') ? rate : rate.replace('.', decimal)
+}
