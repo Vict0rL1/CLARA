@@ -8,8 +8,11 @@
  *   realizado) marcado «Por revisar» (`review.reason = 'auto_capture'`). Cuenta en todas las cifras desde ya; es la
  *   excepción a «nada se guarda sin confirmar» que trae la Fase 2 (CLAUDE.md).
  * - La prueba de Ajustes (`test`) siempre es propuesta, nunca se registra y no cuenta como posible duplicado.
- * - Si no: **propuesta**, que no cuenta en ninguna cifra hasta que la persona la registra. Motivos: otra moneda o «¥»
- *   ambiguo (`currency`; nunca se convierte), importe sin entender (`unparsed`), mismo importe y comercio que otro gasto
+ * - En otra moneda durante un viaje en curso con una tasa escrita para ella (Fase 3, decisión 177; un «¥» suelto solo si
+ *   la moneda local del viaje lo resuelve): también **movimiento real** «Por revisar» (`review.reason = 'currency'`),
+ *   convertido con ESA tasa y la comisión del viaje (`original`, `fx.ts`) y asociado al viaje. Nunca con otra tasa.
+ * - Si no: **propuesta**, que no cuenta en ninguna cifra hasta que la persona la registra. Motivos: otra moneda sin tasa
+ *   o «¥» sin resolver (`currency`; nunca se inventa una tasa), importe sin entender (`unparsed`), mismo importe y comercio que otro gasto
  *   realizado o captura de menos de 2 minutos antes o después (`duplicate`: la automatización puede dispararse dos veces
  *   o la persona ya lo anotó a mano), o «Guardar automáticamente» apagado (`auto_capture`). Un gasto que llevaría los
  *   importes más allá de la cota de exactitud (`exactRange.ts`) tampoco se crea: queda como propuesta.
@@ -24,14 +27,18 @@
  * como leído (`deferred`) y se lee la próxima vez: nunca se descarta.
  */
 import { activeAccounts } from './balances'
-import { readCaptureAmount, type CaptureRecord } from './captureQueue'
+import { readCaptureAmount, type CaptureAmount, type CaptureRecord } from './captureQueue'
 import { localDateInTimeZone } from './dates'
+import { convertToBudget, parseRate, rateToText } from './fx'
+import { rateFromAmounts } from './fxAdjust'
+import { parseMoney, stripCurrencyMark } from './money'
+import { activeTrip, resolveAmbiguous, tripRate } from './trips'
 import { EXACT_RANGE_MAX_MINOR, exactRangeIssue, exceedsExactRange, signedMagnitudes } from './exactRange'
 import { merchantKey } from './merchants'
 import type { OpContext, OpResult } from './operations'
 import { suggestCategoryForMerchant } from './shortcutLink'
 import { normalizeText } from './text'
-import type { AppData, CaptureOrigin, CaptureProposal, CaptureState, ReviewReason, Transaction, TransactionSource, TxReview } from './types'
+import type { AppData, CaptureOrigin, CaptureProposal, CaptureState, CurrencyCode, LocalDate, OriginalAmount, PeriodBudget, ReviewReason, Transaction, TransactionSource, TxReview } from './types'
 import { CAPTURE_CARDS_MAX, CAPTURE_PROCESSED_MAX, CAPTURE_PROPOSALS_MAX, validateTransaction } from './validation'
 
 /** Dos cargos del mismo importe y comercio a esta distancia o menos se tratan como posible duplicado. */
@@ -113,6 +120,43 @@ function chargesOf(data: AppData): Charge[] {
   return out
 }
 
+/**
+ * Un importe en otra moneda que se puede leer: el de la captura, o un «¥» suelto que la moneda local del viaje resuelve
+ * (el texto se vuelve a leer en esa moneda: el yen no tiene decimales y el yuan sí).
+ */
+export function foreignAmount(amount: CaptureAmount, trip: PeriodBudget | undefined, numberLocale: string): { currency: CurrencyCode; minor: number } | undefined {
+  if (amount.kind === 'foreign') return { currency: amount.currency, minor: amount.minor }
+  if (amount.kind !== 'ambiguous') return undefined
+  const currency = resolveAmbiguous(trip?.trip, amount.candidates)
+  if (!currency) return undefined
+  const parsed = parseMoney(stripCurrencyMark(amount.text.replace(/[\u00a0\u202f]/g, ' ')).text, currency, numberLocale)
+  return parsed.ok ? { currency, minor: parsed.minor } : undefined
+}
+
+/** La conversión con la tasa del viaje en curso ese día, si hay una escrita para esa moneda. Nunca otra. */
+function tripConversion(data: AppData, foreign: { currency: CurrencyCode; minor: number } | undefined, trip: PeriodBudget | undefined): { amountMinor: number; original: OriginalAmount } | undefined {
+  if (!foreign || !trip?.trip) return undefined
+  const rate = tripRate(trip.trip, foreign.currency)
+  if (!rate) return undefined
+  const feeBps = trip.trip.feeBps ?? 0
+  const amountMinor = convertToBudget(foreign.minor, foreign.currency, data.settings.currency, rate.rate, feeBps)
+  if (amountMinor === null) return undefined
+  return {
+    amountMinor,
+    original: { currency: foreign.currency, amountMinor: foreign.minor, rate: rate.rate, rateDate: rate.date, rateSource: 'manual', ...(feeBps > 0 ? { feeBps } : {}) },
+  }
+}
+
+/** Añade movimientos a viajes (solo ids, como «Asociar»); los que ya estaban no se repiten. */
+function linkToTrips(data: AppData, links: ReadonlyMap<string, string[]>, now: string): AppData {
+  if (links.size === 0) return data
+  const periodBudgets = data.periodBudgets.map((b) => {
+    const ids = links.get(b.id)?.filter((id) => !b.txIds.includes(id))
+    return ids?.length ? { ...b, txIds: [...b.txIds, ...ids], updatedAt: now } : b
+  })
+  return { ...data, periodBudgets }
+}
+
 export function importCaptures(data: AppData, records: readonly CaptureRecord[], ctx: OpContext): OpResult<CaptureImportSummary> {
   const summary: CaptureImportSummary = { saved: [], proposed: [], skipped: [], deferred: [], ack: [] }
   const state = data.captures ?? EMPTY_STATE
@@ -122,6 +166,7 @@ export function importCaptures(data: AppData, records: readonly CaptureRecord[],
   let outflowMinor = signedMagnitudes(data).outflowMinor
   const newTxs: Transaction[] = []
   const newProposals: CaptureProposal[] = []
+  const tripLinks = new Map<string, string[]>()
   const seen = new Set<string>()
   let room = CAPTURE_PROPOSALS_MAX - state.proposals.length
 
@@ -136,48 +181,57 @@ export function importCaptures(data: AppData, records: readonly CaptureRecord[],
       summary.deferred.push(record.captureId)
       continue
     }
-    const amount = readCaptureAmount(record, data.settings)
+    const read = readCaptureAmount(record, data.settings)
     const at = Date.parse(record.createdAt)
     const paidOn = localDateInTimeZone(new Date(at), data.settings.timeZone)
     // Un reloj o una zona horaria desfasados no pueden dejar un gasto realizado en el futuro.
     const date = paidOn > ctx.today ? ctx.today : paidOn
+    // Fase 3: el viaje en curso el día del pago (la prueba de Ajustes nunca usa uno).
+    const trip = record.test ? undefined : activeTrip(data, date)
+    const foreign = foreignAmount(read, trip, data.settings.numberLocale)
+    // Un «¥» que el viaje resolvió se guarda ya como esa moneda, también si queda como propuesta.
+    const amount: CaptureAmount = read.kind === 'ambiguous' && foreign ? { kind: 'foreign', ...foreign } : read
+    const conversion = tripConversion(data, foreign, trip)
+    const budgetMinor = amount.kind === 'budget' ? amount.minor : conversion?.amountMinor
     const merchant = merchantKey(record.merchant ?? '')
     const categoryId = (record.merchant && suggestCategoryForMerchant(record.merchant, 'expense', data)) || CAPTURE_FALLBACK_CATEGORY
-    const similar = amount.kind === 'budget' ? similarCharge(charges, amount.minor, at, merchant) : undefined
+    const similar = budgetMinor !== undefined ? similarCharge(charges, budgetMinor, at, merchant) : undefined
     const reason: ReviewReason | null = record.test
       ? 'auto_capture'
-      : amount.kind === 'foreign' || amount.kind === 'ambiguous'
-        ? 'currency'
-        : amount.kind === 'unreadable'
-          ? 'unparsed'
+      : amount.kind === 'unreadable'
+        ? 'unparsed'
+        : budgetMinor === undefined
+          ? 'currency'
           : similar
             ? 'duplicate'
-            : !autoSave || outflowMinor + amount.minor > EXACT_RANGE_MAX_MINOR
+            : !autoSave || outflowMinor + budgetMinor > EXACT_RANGE_MAX_MINOR
               ? 'auto_capture'
               : null
 
-    if (reason === null && amount.kind === 'budget') {
+    if (reason === null && budgetMinor !== undefined) {
       seen.add(record.captureId)
       const tx: Transaction = {
         id: record.captureId,
         kind: 'expense',
         status: 'realized',
-        amountMinor: amount.minor,
+        amountMinor: budgetMinor,
         currency: data.settings.currency,
+        ...(conversion ? { original: conversion.original } : {}),
         date,
         accountId,
         categoryId,
         ...(record.merchant ? { merchant: record.merchant } : {}),
         source: SOURCE[record.origin],
         captureId: record.captureId,
-        review: { needed: true, reason: 'auto_capture', ...(record.rawText ? { rawText: record.rawText } : {}), ...(record.card ? { card: record.card } : {}) },
+        review: { needed: true, reason: conversion ? 'currency' : 'auto_capture', ...(record.rawText ? { rawText: record.rawText } : {}), ...(record.card ? { card: record.card } : {}) },
         // Pagado cuando avisó el sistema: si el saldo de referencia se escribió después, ya lo incluía.
         realizedAt: record.createdAt,
         createdAt: ctx.now,
         updatedAt: ctx.now,
       }
       newTxs.push(tx)
-      outflowMinor += amount.minor
+      if (conversion && trip) tripLinks.set(trip.id, [...(tripLinks.get(trip.id) ?? []), tx.id])
+      outflowMinor += budgetMinor
       charges.push({ txId: tx.id, amountMinor: tx.amountMinor, at, merchant })
       summary.saved.push(tx.id)
       summary.ack.push(tx.id)
@@ -212,7 +266,7 @@ export function importCaptures(data: AppData, records: readonly CaptureRecord[],
 
   if (newTxs.length === 0 && newProposals.length === 0) return { ok: true, data, value: summary, unchanged: true }
   const transactions = [...data.transactions, ...newTxs]
-  const after = { ...data, transactions }
+  const after = linkToTrips({ ...data, transactions }, tripLinks, ctx.now)
   for (const tx of newTxs) {
     const issues = validateTransaction(tx, { data: after, today: ctx.today })
     if (issues.length) return { ok: false, issues }
@@ -323,17 +377,38 @@ export function restoreProposals(data: AppData, proposals: readonly CapturePropo
   return { ok: true, data: { ...data, captures: { ...state, proposals: [...state.proposals, ...back] }, updatedAt: ctx.now }, value: back.map((p) => p.captureId) }
 }
 
+/** Cómo se registra una propuesta en otra moneda: con lo que cobró el banco, o con una tasa (escrita o la del viaje). */
+export type RegisterWith = number | { rate: string; rateDate: LocalDate; feeBps?: number }
+
 /**
  * «Registrar»: convierte una propuesta en un gasto real, ya revisado (la persona lo acaba de mirar), con la hora del
- * pago. Una en la moneda del presupuesto usa su importe; una en otra moneda, con «¥» o sin entender solo se registra con
- * el importe que la persona escribe en la moneda del presupuesto (`amountMinor`): Clara nunca convierte ni elige.
+ * pago. Una en la moneda del presupuesto usa su importe. Una en otra moneda (o con un «¥» que la moneda local del viaje
+ * resuelve) se registra con lo que cobró el banco en la moneda del presupuesto (`with` = importe; la tasa queda como la
+ * fracción exacta entre los dos, «cargo real») o con una tasa (`with` = tasa, fecha y comisión): en ambos casos guarda
+ * `original`. Un «¥» sin resolver o un importe sin entender solo con el importe escrito, sin `original`. Clara nunca
+ * elige una tasa ni una moneda. Si la moneda es del viaje en curso ese día, el gasto se asocia a ese viaje.
  */
-export function registerProposal(data: AppData, captureId: string, ctx: OpContext, amountMinor?: number): OpResult<Transaction> {
+export function registerProposal(data: AppData, captureId: string, ctx: OpContext, how?: RegisterWith): OpResult<Transaction> {
   const proposal = data.captures?.proposals.find((p) => p.captureId === captureId)
   if (!proposal) return { ok: false, issues: [{ path: 'captureId', code: 'notFound' }] }
   // La prueba de Ajustes nunca se convierte en un gasto.
   if (proposal.test) return { ok: false, issues: [{ path: 'captureId', code: 'invalidValue' }] }
-  const minor = amountMinor ?? (proposal.amount.kind === 'budget' ? proposal.amount.minor : undefined)
+  const trip = activeTrip(data, proposal.date)
+  const foreign = foreignAmount(proposal.amount, trip, data.settings.numberLocale)
+  let minor: number | undefined
+  let original: OriginalAmount | undefined
+  if (typeof how === 'object') {
+    if (!foreign) return { ok: false, issues: [{ path: 'rate', code: 'invalidValue' }] }
+    const feeBps = how.feeBps ?? 0
+    const converted = convertToBudget(foreign.minor, foreign.currency, data.settings.currency, how.rate, feeBps)
+    if (converted === null) return { ok: false, issues: [{ path: 'rate', code: 'invalidValue' }] }
+    minor = converted
+    original = { currency: foreign.currency, amountMinor: foreign.minor, rate: rateToText(parseRate(how.rate)!), rateDate: how.rateDate, rateSource: 'manual', ...(feeBps > 0 ? { feeBps } : {}) }
+  } else {
+    minor = how ?? (proposal.amount.kind === 'budget' ? proposal.amount.minor : undefined)
+    const rate = how !== undefined && foreign ? rateFromAmounts(how, data.settings.currency, foreign.minor, foreign.currency) : null
+    if (rate && foreign) original = { currency: foreign.currency, amountMinor: foreign.minor, rate, rateDate: proposal.date, rateSource: 'card_actual' }
+  }
   if (minor === undefined) return { ok: false, issues: [{ path: 'amountMinor', code: 'currencyMismatch', params: { expected: data.settings.currency } }] }
   if (data.transactions.some((t) => t.id === captureId) || data.trash.some((e) => e.id === captureId)) {
     return { ok: false, issues: [{ path: 'captureId', code: 'duplicateId' }] }
@@ -347,6 +422,7 @@ export function registerProposal(data: AppData, captureId: string, ctx: OpContex
     status: 'realized',
     amountMinor: minor,
     currency: data.settings.currency,
+    ...(original ? { original } : {}),
     date: proposal.date > ctx.today ? ctx.today : proposal.date,
     accountId,
     categoryId: proposal.categoryId ?? CAPTURE_FALLBACK_CATEGORY,
@@ -363,5 +439,6 @@ export function registerProposal(data: AppData, captureId: string, ctx: OpContex
   if (exceedsExactRange({ accounts: data.accounts, transactions, trash: data.trash })) return { ok: false, issues: [exactRangeIssue()] }
   const state = data.captures ?? EMPTY_STATE
   const proposals = state.proposals.filter((p) => p.captureId !== captureId)
-  return { ok: true, data: { ...data, transactions, captures: { ...state, proposals }, updatedAt: ctx.now }, value: tx }
+  const links = new Map<string, string[]>(original && trip?.trip?.currencies.includes(original.currency) ? [[trip.id, [tx.id]]] : [])
+  return { ok: true, data: linkToTrips({ ...data, transactions, captures: { ...state, proposals }, updatedAt: ctx.now }, links, ctx.now), value: tx }
 }

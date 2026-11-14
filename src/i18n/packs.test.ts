@@ -53,7 +53,7 @@ describe('paquetes de texto diferidos', () => {
     const packs = createPackLoader(PACK_URLS, 0, fromDisk)
     for (const [name, reference] of [['legal', legalEs], ['gallery', galleryEs], ['bankImport', bankImportEs], ['nativeApp', nativeAppEs], ['whatChanged', whatChangedEs], ['shortfall', shortfallEs], ['capture', captureEs], ['weekly', weeklyEs]] as const) {
       const keys = Object.keys(reference).sort()
-      expect(keys.length).toBe({ legal: 22, gallery: 54, bankImport: 103, nativeApp: 72, whatChanged: 69, shortfall: 67, capture: 66, weekly: 54 }[name])
+      expect(keys.length).toBe({ legal: 22, gallery: 54, bankImport: 103, nativeApp: 72, whatChanged: 69, shortfall: 67, capture: 72, weekly: 54 }[name])
       for (const lang of ['es', 'en', 'pt', 'fr'] as const) {
         const { pack, language } = await packs.load(name, lang)
         expect(language).toBe(lang)

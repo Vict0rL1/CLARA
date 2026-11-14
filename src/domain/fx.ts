@@ -12,7 +12,8 @@
  *   cercano (las mitades hacia arriba). Así el mismo `original` da siempre el mismo `amountMinor` y la validación lo
  *   comprueba.
  * - «Ajustar al cargo real»: cuando el banco dice cuánto se cobró de verdad, ese importe manda y la tasa pasa a ser la
- *   fracción exacta entre los dos importes (`rateFromAmounts`), sin comisión aparte (ya va dentro).
+ *   fracción exacta entre los dos importes (`rateFromAmounts`, en `fxAdjust.ts`: fuera del JS inicial), sin comisión
+ *   aparte (ya va dentro).
  * - Nunca se inventa una tasa: sin tasa, no hay importe (la captura queda como propuesta; el formulario no deja guardar).
  */
 import { currencyDigits, isSupportedCurrency, MAX_AMOUNT_MINOR } from './money'
@@ -35,7 +36,8 @@ export const FEE_BPS_MAX = 10_000
 const DECIMAL = /^(\d{1,15})(?:\.(\d{1,12}))?$/
 const FRACTION = /^(\d{1,20})\/(\d{1,20})$/
 
-const gcd = (a: bigint, b: bigint): bigint => {
+/** Máximo común divisor (para reducir fracciones). */
+export const gcd = (a: bigint, b: bigint): bigint => {
   while (b) [a, b] = [b, a % b]
   return a
 }
@@ -104,21 +106,4 @@ export function convertToBudget(originalMinor: number, from: string, to: string,
   const rounded = (2n * n + d) / (2n * d)
   if (rounded <= 0n || rounded > BigInt(MAX_AMOUNT_MINOR)) return null
   return Number(rounded)
-}
-
-/**
- * «Ajustar al cargo real»: la tasa exacta que convierte `originalMinor` de `from` en `budgetMinor` de `to` (fracción
- * reducida o decimal si es exacto). Con ella, `convertToBudget(originalMinor, from, to, tasa)` da `budgetMinor` justo.
- */
-export function rateFromAmounts(budgetMinor: number, to: string, originalMinor: number, from: string): string | null {
-  if (!Number.isSafeInteger(budgetMinor) || budgetMinor <= 0 || !Number.isSafeInteger(originalMinor) || originalMinor <= 0) return null
-  if (!isSupportedCurrency(from) || !isSupportedCurrency(to)) return null
-  const shift = currencyDigits(to as CurrencyCode) - currencyDigits(from as CurrencyCode)
-  let num = BigInt(budgetMinor)
-  let den = BigInt(originalMinor)
-  if (shift >= 0) den *= 10n ** BigInt(shift)
-  else num *= 10n ** BigInt(-shift)
-  const g = gcd(num, den)
-  const text = rateToText({ num: num / g, den: den / g })
-  return text.length <= RATE_TEXT_MAX && parseRate(text) ? text : null
 }

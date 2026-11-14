@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { baseData, ctx, tx } from '../test/fixtures'
-import { convertToBudget, parseRate, rateFromAmounts, rateToText } from './fx'
+import { convertToBudget, parseRate, rateToText } from './fx'
+import { rateForDisplay, rateFromAmounts } from './fxAdjust'
 import { saveTransaction, trashTransactions, restoreFromTrash } from './operations'
 import { validateTransaction } from './validation'
 import type { OriginalAmount } from './types'
@@ -26,6 +27,19 @@ describe('tasas: texto exacto, nunca flotantes', () => {
     expect(rateToText({ num: 23n, den: 2500n })).toBe('0.0092')
     expect(rateToText({ num: 1n, den: 3n })).toBe('1/3')
     expect(rateToText({ num: 7n, den: 1n })).toBe('7')
+  })
+})
+
+describe('rateForDisplay (solo para mostrar)', () => {
+  it('el decimal exacto si cabe; si no, aproximado a 6 decimales y marcado', () => {
+    expect(rateForDisplay('1.3950')).toEqual({ text: '1.395', exact: true })
+    expect(rateForDisplay('0.00098')).toEqual({ text: '0.00098', exact: true })
+    // 1117/120000 = 0,0093083333… → 0,009308
+    expect(rateForDisplay('1117/120000')).toEqual({ text: '0.009308', exact: false })
+    // 2/3 = 0,6666666… → 0,666667 (mitades y más, hacia arriba)
+    expect(rateForDisplay('2/3')).toEqual({ text: '0.666667', exact: false })
+    expect(rateForDisplay('0.0000001')).toEqual({ text: '0', exact: false })
+    expect(rateForDisplay('nope')).toBeNull()
   })
 })
 

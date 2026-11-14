@@ -1694,6 +1694,12 @@ local actual y, como mucho, una tasa escrita a mano por moneda, con su fecha; y 
   - las capturas en otra moneda que siguen como propuesta dentro de las fechas se cuentan aparte y NO están en ninguna
     cifra.
 
+- **Capturas** (`captureImport.ts`, decisión 177): en otra moneda durante un viaje en curso (el día del pago) con tasa
+  escrita para ella → gasto «Por revisar» con `amountMinor = convertToBudget(original, tasa del viaje, comisión del
+  viaje)` y asociado al viaje; sin tasa → propuesta. Ejemplo (`captureFx.test.ts`): ¥1 200 a 0,0092 con 2,5 % = 11,316
+  → 11,32 $; ₩15 000 a 0,00098 con 2,5 % = 15,0675 → 15,07 $; subir el yen a 0,0095 solo cambia lo siguiente (11,685 →
+  11,69 $).
+
 Ejemplo (prueba `trips.test.ts`): del 25-sep al 4-oct, 500,00 $; ¥1 200 a 0,0092 = 11,04 $, devolución de ¥600 =
 5,52 $, ₩15 000 a 0,00098 = 14,70 $, CN¥88,30 a 0,1923 = 16,98 $ y 20,00 $ en CAD → gastado 57,20 $; el 28-sep (4 días)
 14,30 $ por día; quedan 442,80 $ para 7 días → 63,25 $ por día.

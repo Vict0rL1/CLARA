@@ -397,10 +397,12 @@ describe('propuestas: descartar y registrar', () => {
     const foreign = proposal({ reason: 'currency', amount: { kind: 'foreign', currency: 'USD', minor: 1000 } })
     expect(registerProposal(withProposals(foreign), 'cap-prop0001', ctx)).toEqual({ ok: false, issues: [{ path: 'amountMinor', code: 'currencyMismatch', params: { expected: 'CAD' } }] })
     expect(registerProposal(withProposals(foreign), 'nope', ctx)).toMatchObject({ ok: false, issues: [{ code: 'notFound' }] })
-    // USD 10,00 cobrados como CAD 13,71 (lo que dice el banco): se guarda 13,71, nunca una conversión de Clara.
+    // USD 10,00 cobrados como CAD 13,71 (lo que dice el banco): se guarda 13,71, nunca una conversión de Clara. Desde la
+    // Fase 3 también el importe original, con la tasa exacta entre los dos («cargo real»).
     const r = registerProposal(withProposals(foreign), 'cap-prop0001', ctx, 1371)
     if (!r.ok) throw new Error(JSON.stringify(r.issues))
     expect(r.value).toMatchObject({ amountMinor: 1371, currency: 'CAD', realizedAt: '2026-09-28T15:00:00Z', captureId: 'cap-prop0001' })
+    expect(r.value.original).toEqual({ currency: 'USD', amountMinor: 1000, rate: '1.371', rateDate: '2026-09-28', rateSource: 'card_actual' })
     expect(r.data.captures!.proposals).toEqual([])
     expect(accountBalance(r.data, mainOf(r.data)).balanceMinor).toBe(100000 - 1371)
     expect(registerProposal(withProposals(foreign), 'cap-prop0001', ctx, 0)).toMatchObject({ ok: false, issues: [{ path: 'amountMinor' }] })

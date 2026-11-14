@@ -153,15 +153,20 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
   otra forma lo piden de nuevo, RT-03); el archivo nunca sale del dispositivo.
 - Capturas automáticas (`domain/captureImport.ts`, Fase 2 nativa): idempotentes por `captureId` (leídas, movimiento,
   papelera o propuesta); en la moneda del presupuesto y con «Guardar automáticamente», gasto realizado con
-  `review` «Por revisar» y `realizedAt` = hora del pago; si no, propuesta que no cuenta en ninguna cifra: otra moneda o
-  «¥» (`currency`, nunca se convierte), sin entender (`unparsed`), mismo importe y comercio a ≤ 2 min de un gasto
+  `review` «Por revisar» y `realizedAt` = hora del pago; en otra moneda (o un «¥» que resuelve la moneda local) durante
+  un viaje en curso con tasa escrita para ella, igual pero convertido con ESA tasa y la comisión del viaje (`original`,
+  `review.reason: 'currency'`, asociado al viaje; Fase 3, decisión 177); si no, propuesta que no cuenta en ninguna
+  cifra: otra moneda sin tasa o «¥» sin resolver (`currency`, nunca se inventa una tasa), sin entender (`unparsed`),
+  mismo importe y comercio a ≤ 2 min de un gasto
   realizado o captura (`duplicate`), apagado o más allá de la cota de exactitud (`auto_capture`). Cuenta: tarjeta →
   por defecto → primera activa del presupuesto (nunca archivada). Lo que no cabe (500 propuestas) o sin cuenta activa
   se queda en la cola sin confirmar. `saveTransaction` conserva `captureId` y `review` (solo `reviewed: true` la
   quita; el formulario lo manda al guardar) y retira la propuesta de esa captura. Revisar (`CaptureReview`, arriba de
   Pendientes; cuenta en «pendientes» de Inicio): «Está bien» (`confirmReviews`, con deshacer), «Fue rechazado» →
-  papelera; una propuesta en otra moneda o sin entender solo se registra con el importe que la persona escribe en la
-  moneda del presupuesto (`registerProposal(…, amountMinor)`, hora del pago como `realizedAt`). La prueba de Ajustes
+  papelera; una propuesta en otra moneda o sin entender se registra con el importe que la persona escribe en la
+  moneda del presupuesto (`registerProposal(…, amountMinor)`, hora del pago como `realizedAt`; en otra moneda guarda
+  `original` con la tasa exacta del cargo real) o, con tasa del viaje, con esa tasa (`{ rate, rateDate, feeBps }`). Un
+  importe en otra moneda siempre se muestra con su código (`fmt.moneyIn`) y respeta el modo privado. La prueba de Ajustes
   (`test: true`) siempre es propuesta, nunca se registra y no cuenta como duplicado. Un movimiento «Por revisar» no sale
   además como «Sin categoría». Tarjeta nueva (`review.card`, se borra al confirmar): «Por revisar» pregunta su cuenta
   una vez; `assignCardAccount` la guarda y mueve solo lo que aún espera revisión.
