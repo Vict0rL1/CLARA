@@ -734,7 +734,7 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
         )}
         {canForeign && (
           <Suspense fallback={null}>
-            <ForeignAmount kind={kind} date={date} existing={existing?.original} amountText={amountText} setAmountText={setAmountText} submitted={foreignTries} onChange={setForeign} />
+            <ForeignAmount kind={kind} date={date} existing={existing?.original ?? duplicateOf?.original} amountText={amountText} setAmountText={setAmountText} submitted={foreignTries} onChange={setForeign} />
           </Suspense>
         )}
 

@@ -87,3 +87,16 @@ test('otra moneda: con la tasa del viaje, ajustar al cargo real, sin tasa no se 
   expect(data.transactions.find((t) => t.id === yen.id)).not.toHaveProperty('original')
   expect(data.transactions.find((t) => t.id !== yen.id)).toMatchObject({ amountMinor: 1507, original: { currency: 'KRW', rate: '0.00098', rateDate: '2026-09-28', feeBps: 250 } })
 })
+
+test('duplicar un gasto en otra moneda copia también el original', async ({ page }) => {
+  const yen = { id: 'yen', kind: 'expense' as const, status: 'realized' as const, amountMinor: 1132, currency: 'CAD' as const, date: '2026-09-26', accountId: 'main', categoryId: 'dining', note: 'Ramen', original: { currency: 'JPY' as const, amountMinor: 1200, rate: '0.0092', rateDate: '2026-09-25', rateSource: 'manual' as const, feeBps: 250 }, source: 'manual' as const, realizedAt: EARLIER, createdAt: EARLIER, updatedAt: EARLIER }
+  await seedStoredData(page, baseData({ periodBudgets: [trip], transactions: [yen] }))
+  await go(page, '/movimientos/nuevo?duplicar=yen')
+  await expect(page.getByLabel('Importe en JPY')).toHaveValue('1200')
+  await expect(page.getByTestId('foreign-result')).toContainText('= $11.32')
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  // El original es anterior al saldo de referencia (ya incluido); la copia, de hoy, resta: 1 000,00 − 11,32.
+  await expect(await available(page)).toHaveText('$988.68')
+  const data = await stored(page)
+  expect(data.transactions.filter((t) => t.original?.currency === 'JPY').map((t) => t.amountMinor)).toEqual([1132, 1132])
+})
