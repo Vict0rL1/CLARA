@@ -15,8 +15,9 @@ reglas de este documento cambian, **cada una solo desde la fase que la implement
 - «Nada se guarda sin confirmar» → excepción para las capturas automáticas (Fase 2, **vigente**: `captureImport.ts`):
   con «Guardar automáticamente» entran como movimiento real marcado «Por revisar»; apagado, solo como propuestas.
   Nunca en la demostración ni sin presupuesto, y la cola del iPhone solo se vacía después de guardar.
-- «Una moneda por presupuesto» → sigue para los totales; cada movimiento podrá guardar su moneda original y la tasa
-  usada (Fase 3). Nunca se inventa una tasa.
+- «Una moneda por presupuesto» → sigue para los totales; cada movimiento puede guardar su moneda original y la tasa
+  usada (Fase 3, **vigente**: `domain/fx.ts`, `original`, esquema 16; modo viaje en `domain/trips.ts`). Nunca se
+  inventa una tasa: sin tasa escrita no hay importe.
 - «Sin conexiones a otros sitios» → excepción opcional para las tasas del Banco de Canadá (Fase 3), sin datos de la
   persona.
 

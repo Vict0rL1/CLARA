@@ -170,15 +170,17 @@ pantallas y textos va en código y paquetes diferidos):
 
 1. **Hecho.** Conversión exacta y esquema 16 (`domain/fx.ts`, `original` en el movimiento; `docs/FORMULAS.md` §45;
    decisión 175). Para dejar sitio, los textos de la revisión semanal pasan a un paquete diferido.
-2. Viajes (`domain/trips.ts`): fechas, monedas, «moneda local actual» (resuelve el «¥»), tasas del viaje escritas a
+2. **Hecho.** Viajes (`domain/trips.ts`; decisión 176): fechas, monedas, «moneda local actual» (resuelve el «¥»), tasas del viaje escritas a
    mano con su fecha y vínculo con un Periodo de presupuesto.
-3. Formulario: «Otra moneda» (moneda, importe, tasa, comisión; la cifra en CAD se calcula y se explica) y «Ajustar al
+3. **Hecho.** Formulario (decisión 178): «Otra moneda» (moneda, importe, tasa, comisión; la cifra en CAD se calcula y se explica) y «Ajustar al
    cargo real» en un movimiento ya guardado.
-4. Capturas en otra moneda con una tasa conocida (del viaje o escrita): movimiento real «Por revisar» con `original`;
-   sin tasa, propuesta como hasta ahora. Nunca se inventa una tasa.
-5. Ajustes › Monedas y viajes: viajes, comisión de tarjeta por defecto.
-6. Vista del viaje: gastado por moneda, total en CAD, gasto por día y lo que queda del periodo vinculado.
-7. Estadísticas y CSV con el importe original y el convertido.
+4. **Hecho.** Capturas en otra moneda con la tasa escrita del viaje en curso (decisión 177): movimiento real «Por
+   revisar» con `original`; sin tasa, propuesta como hasta ahora. Nunca se inventa una tasa.
+5. **Hecho, en otro sitio.** Los viajes y su comisión se escriben en el formulario del periodo «Viaje» (no hizo falta
+   una sección de Ajustes: la comisión es de cada viaje y, en un movimiento suelto, del propio movimiento).
+6. **Hecho.** Vista del viaje: gastado por moneda, total en CAD, gasto por día y lo que queda del periodo vinculado.
+7. **Hecho.** Estadísticas y CSV con el importe original y el convertido (decisión 179). Y el asistente con la tasa
+   del viaje (decisión 180).
 8. **Banco de Canadá (Valet).** Opcional y apagado por defecto; solo tasas, sin datos de la persona; con caché local y
    el aviso «tasa indicativa del Banco de Canadá del <fecha>». **Pendiente de una sesión con acceso a
    www.bankofcanada.ca** (este entorno lo bloquea; el 14-nov se creó el entorno «clara» que lo permite): no se escribe

@@ -205,6 +205,37 @@ importa nada (los pagos esperan en la cola). Abre Clara una vez después de inst
 Apunta también: qué variables ofrece el disparador de Wallet (y cómo se llaman), si «Importe» encajó directamente en
 el campo de la acción o hubo que pasarlo como texto, y qué dice Siri con «Registrar un pago en Clara».
 
+## Fase 3: varias monedas y modo viaje
+
+Rama `feat/ios-fase-3` (PR #20, sobre la Fase 2). Todo es web (formulario, viajes, Estadísticas, CSV, capturas
+convertidas): no hay Swift nuevo, así que basta con volver a compilar.
+
+> **Estado: escrito y probado en el navegador con un iPhone simulado; sin probar en el iPhone.** El Banco de Canadá
+> todavía no está (las tasas se escriben a mano): no busques ese botón.
+
+```bash
+git checkout feat/ios-fase-3
+git pull
+npm ci
+npm run ios:sync
+```
+
+y ▶ en Xcode. Las cifras de abajo están calculadas a mano (una sola vez al céntimo más cercano).
+
+| # | Qué | Cómo | ¿Bien? |
+|---|---|---|---|
+| 31 | Crear un viaje | Plan › Periodos › nuevo › «Viaje», con fechas que incluyan hoy. Enciende «Modo viaje», añade JPY, KRW y CNY con las tasas 0.0092, 0.00098 y 0.1923 y comisión 0. Guarda: el detalle dice las tres tasas | |
+| 32 | Yen, won y yuan | Desde «+», con «Pagado en otra moneda»: ¥1 200 (la tasa del viaje sale sola), luego KRW 15 000 y CNY 88.30. Cada uno dice su cuenta: 11,04 $, 14,70 $ y 16,98 $ | |
+| 33 | Total del viaje | En el detalle del viaje: «Total en CAD: 42,72 $», una línea por moneda con el importe original y el convertido | |
+| 34 | Comisión | Edita el viaje: comisión 2.5. Un gasto nuevo de ¥1 200 da 11,32 $; los de antes no cambian | |
+| 35 | Cargo real | Edita el gasto de ¥1 200 › «Con lo que cobró el banco» › 11.17: se guarda 11,17 $ y la tasa sale «≈ 0.009308» | |
+| 36 | Captura en yenes | En Atajos, ejecuta «Registrar pago en Clara» con un importe en **JPY** (1 200): al abrir Clara está «Por revisar», convertido con la tasa del viaje y dentro del viaje | |
+| 37 | Sin tasa | Igual con un importe en USD (no es moneda del viaje): queda como propuesta; «Registrar» con lo que cobró el banco guarda los dos importes | |
+| 38 | «¥» suelto | En el detalle del viaje, «Ahora estás en» › CNY; ejecuta la acción con el importe como texto «¥88.30»: se lee como yuan. Con «Ninguna», queda como propuesta | |
+| 39 | Estadísticas y CSV | Estadísticas › «Gastado por moneda» con las tres monedas; Movimientos › Más › Exportar CSV: cada gasto en otra moneda tiene su importe original, la moneda y la tasa | |
+
+Apunta si el campo de importe de la acción ofreció elegir la moneda (JPY) o si hubo que usar «Importe como texto».
+
 ## Tus datos reales
 
 Prueba primero con los datos de demostración y la lista de comprobación. Cuando todo esté bien:
