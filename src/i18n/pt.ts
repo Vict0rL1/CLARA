@@ -1787,6 +1787,8 @@ export const pt: Record<keyof typeof es, string> = {
   'assistant.hint.amountWords': 'Valor escrito por extenso.',
   'assistant.remove': 'Remover esta linha',
   'assistant.openForm': 'Abrir no formulário',
+  'assistant.tripRate': '{original} com a taxa da viagem “{trip}” ({rate} de {date}): {amount}.',
+  'assistant.tripRateFee': '{original} com a taxa da viagem “{trip}” ({rate} de {date}) e {fee}% de tarifa: {amount}.',
   'assistant.account': 'Conta para todas as linhas',
   'assistant.record_one': 'Registrar {count} movimento',
   'assistant.record_other': 'Registrar {count} movimentos',

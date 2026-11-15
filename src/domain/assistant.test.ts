@@ -65,3 +65,24 @@ describe('proveedor de IA', () => {
     expect(f).toMatchObject({ amountMinor: 4500, categoryId: 'dining' })
   })
 })
+
+describe('Fase 3: una entrada convertida con la tasa del viaje', () => {
+  const original = { currency: 'JPY' as const, amountMinor: 1200, rate: '0.0092', rateDate: '2026-09-25', rateSource: 'manual' as const, feeBps: 250 }
+  const entry = { id: 'yen', kind: 'expense' as const, date: '2026-09-28', accountId: 'main', categoryId: 'dining', source: 'ai_text' as const }
+
+  it('se guarda con su original; la moneda escrita es la del original, así que no bloquea', () => {
+    const r = saveConfirmedEntries(baseData(), [{ ...entry, amountMinor: 1132, original, writtenCurrency: 'JPY' }], ctx)
+    expect(r.ok && r.value[0]).toMatchObject({ amountMinor: 1132, original })
+  })
+
+  it('si el importe no es exactamente la conversión (¥1 200 × 0,0092 × 1,025 = 11,32 $), no se guarda nada', () => {
+    const r = saveConfirmedEntries(baseData(), [{ ...entry, amountMinor: 1131, original }], ctx)
+    expect(r.ok).toBe(false)
+    expect(!r.ok && r.issues.map((i) => i.path)).toEqual(['entries[0].original.rate'])
+  })
+
+  it('otra moneda escrita sin original sigue bloqueada (AS-01)', () => {
+    const r = saveConfirmedEntries(baseData(), [{ ...entry, amountMinor: 1132, writtenCurrency: 'JPY' }], ctx)
+    expect(!r.ok && r.issues[0]).toMatchObject({ code: 'writtenCurrency' })
+  })
+})

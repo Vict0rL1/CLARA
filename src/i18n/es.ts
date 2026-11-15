@@ -1788,6 +1788,8 @@ export const es = {
   'assistant.hint.amountWords': 'Importe escrito en palabras.',
   'assistant.remove': 'Quitar esta línea',
   'assistant.openForm': 'Abrir en el formulario',
+  'assistant.tripRate': '{original} con la tasa del viaje «{trip}» ({rate} del {date}): {amount}.',
+  'assistant.tripRateFee': '{original} con la tasa del viaje «{trip}» ({rate} del {date}) y {fee} % de comisión: {amount}.',
   'assistant.account': 'Cuenta para todas las líneas',
   'assistant.record_one': 'Registrar {count} movimiento',
   'assistant.record_other': 'Registrar {count} movimientos',

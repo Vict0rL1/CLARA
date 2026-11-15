@@ -1789,6 +1789,8 @@ export const en: Record<keyof typeof es, string> = {
   'assistant.hint.amountWords': 'Amount written in words.',
   'assistant.remove': 'Remove this line',
   'assistant.openForm': 'Open in the form',
+  'assistant.tripRate': '{original} with the rate of the trip “{trip}” ({rate} from {date}): {amount}.',
+  'assistant.tripRateFee': '{original} with the rate of the trip “{trip}” ({rate} from {date}) and a {fee}% fee: {amount}.',
   'assistant.account': 'Account for every line',
   'assistant.record_one': 'Record {count} transaction',
   'assistant.record_other': 'Record {count} transactions',

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { validateAppData } from '../storage/backup'
 import { baseData, ctx, EARLIER, tx } from '../test/fixtures'
 import { savePeriodBudget, periodsProposedFor, setPeriodTransaction, type PeriodBudgetDraft } from './periodBudgets'
-import { activeTrip, resolveAmbiguous, setTripLocalCurrency, setTripRate, tripRate, tripSummary } from './trips'
+import { activeTrip, resolveAmbiguous, setTripLocalCurrency, setTripRate, tripAmountFromText, tripRate, tripSummary } from './trips'
 import type { AppData, CaptureProposal, OriginalAmount, TripSettings } from './types'
 import { validatePeriodBudget } from './validation'
 
@@ -219,5 +219,38 @@ describe('vista del viaje', () => {
     d = ok(setPeriodTransaction(d, 'asia', 'big-2', true, ctx)).data
     const krw = tripSummary(d, d.periodBudgets[0]!, '2026-09-28').byCurrency.find((l) => l.currency === 'KRW')!
     expect(krw).toMatchObject({ count: 3, originalMinor: null, convertedMinor: 1670 })
+  })
+})
+
+describe('importe escrito durante un viaje (asistente)', () => {
+  // Viaje del 25-sep al 4-oct: yen 0,0092 y won 0,00098 escritos; al yuan se le quita la tasa; moneda local yen;
+  // comisión 2,5 %.
+  const noYuan = setTripRate(tripData(), 'asia', 'CNY', null, '2026-09-28', ctx)
+  if (!noYuan.ok) throw new Error('rate')
+  const d = noYuan.data
+  const read = (text: string, date = '2026-09-28', data = d) => tripAmountFromText(data, text, date)
+
+  it('en la moneda del presupuesto, como siempre', () => {
+    expect(read('12.50')).toEqual({ kind: 'budget', minor: 1250 })
+    // «$» es también el dólar canadiense: nunca se elige otra moneda.
+    expect(read('$12.50')).toEqual({ kind: 'budget', minor: 1250 })
+  })
+
+  it('en una moneda del viaje con tasa: convertida con ella y la comisión (¥1 200 → 11,32 $; ₩15 000 → 15,07 $)', () => {
+    expect(read('JPY 1200')).toMatchObject({ kind: 'trip', minor: 1132, original: { currency: 'JPY', amountMinor: 1200, rate: '0.0092', rateDate: '2026-09-25', rateSource: 'manual', feeBps: 250 } })
+    // El asistente escribe «1200.00»: los ceros de sobra del yen no cambian el importe.
+    expect(read('¥1200.00')).toMatchObject({ kind: 'trip', minor: 1132, original: { currency: 'JPY', amountMinor: 1200 } })
+    expect(read('₩15000')).toMatchObject({ kind: 'trip', minor: 1507, original: { currency: 'KRW', amountMinor: 15000 } })
+  })
+
+  it('sin tasa, fuera del viaje, en otra moneda, con decimales que no existen o con «¥» sin moneda local: el error de siempre', () => {
+    expect(read('CNY 88.30')).toMatchObject({ kind: 'none', result: { ok: false, error: 'currencyMismatch' } })
+    expect(read('USD 10')).toMatchObject({ kind: 'none' })
+    expect(read('JPY 1200', '2026-10-05')).toMatchObject({ kind: 'none' })
+    expect(read('JPY 1200.50')).toMatchObject({ kind: 'none' })
+    const inKorea = setTripLocalCurrency(d, 'asia', 'KRW', ctx)
+    if (!inKorea.ok) throw new Error('local')
+    expect(read('¥1200', '2026-09-28', inKorea.data)).toMatchObject({ kind: 'none' })
+    expect(read('abc')).toMatchObject({ kind: 'none', result: { ok: false } })
   })
 })

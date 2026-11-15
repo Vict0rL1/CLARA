@@ -1787,6 +1787,8 @@ export const fr: Record<keyof typeof es, string> = {
   'assistant.hint.amountWords': 'Montant écrit en toutes lettres.',
   'assistant.remove': 'Retirer cette ligne',
   'assistant.openForm': 'Ouvrir dans le formulaire',
+  'assistant.tripRate': '{original} avec le taux du voyage « {trip} » ({rate} du {date}) : {amount}.',
+  'assistant.tripRateFee': '{original} avec le taux du voyage « {trip} » ({rate} du {date}) et {fee} % de frais : {amount}.',
   'assistant.account': 'Compte pour toutes les lignes',
   'assistant.record_one': 'Enregistrer {count} opération',
   'assistant.record_other': 'Enregistrer {count} opérations',

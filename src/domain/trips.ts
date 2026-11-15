@@ -15,11 +15,11 @@
  *   redondea ni se recorta: si no cabe en un entero exacto, esa línea dice que no hay cifra.
  */
 import { daysBetween } from './dates'
-import { parseRate, rateToText } from './fx'
-import { checkedSumMinor, floorDiv } from './money'
+import { convertToBudget, parseRate, rateToText } from './fx'
+import { checkedSumMinor, currencyDigits, floorDiv, localeSeparators, markMatchesCurrency, parseMoney, stripCurrencyMark, SUPPORTED_CURRENCIES, type ParseMoneyResult } from './money'
 import type { OpContext, OpResult } from './operations'
 import { summarizePeriod, type PeriodSummaryResult } from './periodBudgets'
-import type { AppData, CurrencyCode, LocalDate, PeriodBudget, Transaction, TripRate, TripSettings } from './types'
+import type { AppData, CurrencyCode, LocalDate, OriginalAmount, PeriodBudget, Transaction, TripRate, TripSettings } from './types'
 import { validatePeriodBudget, type Issue } from './validation'
 
 const fail = (issues: Issue[]): { ok: false; issues: Issue[] } => ({ ok: false, issues })
@@ -159,4 +159,45 @@ export function tripSummary(data: AppData, budget: PeriodBudget, today: LocalDat
     (p) => !p.test && p.reason === 'currency' && p.date >= budget.startDate && p.date <= budget.endDate,
   ).length
   return { period, byCurrency, daysElapsed, spentPerDayMinor, unconvertedProposals }
+}
+
+export type TextAmount =
+  | { kind: 'budget'; minor: number }
+  /** Escrito en una moneda del viaje en curso ese día y convertido con SU tasa y su comisión. */
+  | { kind: 'trip'; minor: number; original: OriginalAmount; trip: PeriodBudget }
+  /** Lo de siempre: el error de leerlo en la moneda del presupuesto (otra moneda sin tasa, sin entender…). */
+  | { kind: 'none'; result: ParseMoneyResult }
+
+/**
+ * Un importe escrito (el campo de una línea del asistente) con el modo viaje (Fase 3, decisión 180). En la moneda del
+ * presupuesto, como siempre. Con otra moneda escrita, solo si ese día hay un viaje en curso con tasa para ESA moneda:
+ * convertido con ella y la comisión del viaje. Una marca que puede ser de varias monedas («¥», «kr») solo la resuelve la
+ * moneda local del viaje; un código o un símbolo de una sola moneda vale si es del viaje. Si no, el error de siempre:
+ * nunca se convierte sin una tasa escrita.
+ */
+export function tripAmountFromText(data: Pick<AppData, 'periodBudgets' | 'settings'>, text: string, date: LocalDate): TextAmount {
+  const budget = data.settings.currency
+  const locale = data.settings.numberLocale
+  const result = parseMoney(text, budget, locale)
+  if (result.ok) return { kind: 'budget', minor: result.minor }
+  const none: TextAmount = { kind: 'none', result }
+  if (result.error !== 'currencyMismatch') return none
+  const trip = activeTrip(data, date)
+  if (!trip?.trip) return none
+  const { text: number, mark } = stripCurrencyMark(text)
+  if (!mark || 'unknown' in mark || 'conflict' in mark) return none
+  const candidates = SUPPORTED_CURRENCIES.map((c) => c.code).filter((c) => c !== budget && markMatchesCurrency(mark, c))
+  const code = candidates.length === 1 ? candidates[0] : resolveAmbiguous(trip.trip, candidates)
+  if (!code || !trip.trip.currencies.includes(code)) return none
+  const rate = tripRate(trip.trip, code)
+  if (!rate) return none
+  // El asistente escribe el número con los decimales del presupuesto («1200.00»): ceros de sobra no cambian el importe.
+  const { decimal } = localeSeparators(locale)
+  const zeros = new RegExp(`${decimal === '.' ? '\\.' : decimal}0+$`)
+  const parsed = parseMoney(currencyDigits(code) === 0 ? number.replace(zeros, '') : number, code, locale)
+  if (!parsed.ok) return none
+  const feeBps = trip.trip.feeBps ?? 0
+  const minor = convertToBudget(parsed.minor, code, budget, rate.rate, feeBps)
+  if (minor === null) return none
+  return { kind: 'trip', minor, trip, original: { currency: code, amountMinor: parsed.minor, rate: rate.rate, rateDate: rate.date, rateSource: 'manual', ...(feeBps > 0 ? { feeBps } : {}) } }
 }
