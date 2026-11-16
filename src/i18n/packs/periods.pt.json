@@ -132,5 +132,7 @@
   "period.trip.rateLine": "{currency}: {rate} {budget} de {date}",
   "period.trip.rateMissing": "{currency}: sem taxa",
   "period.trip.feeLine": "Tarifa do cartão: {fee}%",
-  "period.trip.how": "Cada gasto foi convertido com A SUA taxa (a que tinha ao ser registrado) e um só arredondamento ao centavo. As devoluções subtraem na sua moeda e em {budget}. O previsto e a lixeira não contam."
+  "period.trip.how": "Cada gasto foi convertido com A SUA taxa (a que tinha ao ser registrado) e um só arredondamento ao centavo. As devoluções subtraem na sua moeda e em {budget}. O previsto e a lixeira não contam.",
+  "period.trip.bocCount_one": "{count} movimento foi convertido com a taxa indicativa do Banco do Canadá da sua data.",
+  "period.trip.bocCount_other": "{count} movimentos foram convertidos com a taxa indicativa do Banco do Canadá da sua data."
 }

@@ -183,6 +183,11 @@ export function TripCard({ budget }: { budget: PeriodBudget }) {
           </a>
         </Alert>
       )}
+      {s.bocConverted > 0 && (
+        <p className="note" data-testid="trip-boc">
+          <Icon name="globe" size={16} /> {tn('period.trip.bocCount', s.bocConverted)}
+        </p>
+      )}
       <h3 className="stat__label">{t('period.trip.rates')}</h3>
       <ul className="stack-sm" data-testid="trip-rates">
         {trip.currencies.map((c) => {

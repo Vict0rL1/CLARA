@@ -29,5 +29,20 @@
   "fx.stats.count_one": "{count} movimiento",
   "fx.stats.count_other": "{count} movimientos",
   "fx.stats.noFigure": "Sin cifra exacta",
-  "fx.badge": "Pagado {original}"
+  "fx.badge": "Pagado {original}",
+  "fx.boc.title": "Tasas del Banco de Canadá",
+  "fx.boc.toggle": "Pedir tasas al Banco de Canadá",
+  "fx.boc.toggleHelp": "Apagado, Clara no se conecta a ningún sitio. Encendido, al pedir una tasa solo se envía a www.bankofcanada.ca la moneda y dos fechas: nada tuyo (ni importes, ni comercios, ni cuentas).",
+  "fx.boc.what": "Son tasas indicativas: el promedio del día que el banco publica los días hábiles hacia las 16:30 (hora de Ottawa), no lo que cobra tu tarjeta. Se usa la del último día hábil publicado hasta la fecha del gasto; si sabes lo que cobró el banco, esa cifra manda.",
+  "fx.boc.where": "Se ofrece en «Pagado en otra moneda» cuando no hay una tasa escrita del viaje y, en la app de iPhone, convierte los pagos capturados en otra moneda, que quedan «Por revisar». Sin conexión no hay tasa: nada se inventa.",
+  "fx.boc.cache": "Las tasas ya pedidas se guardan en este dispositivo, fuera de tus datos y de las copias.",
+  "fx.boc.source": "Fuente: Banco de Canadá (condiciones de uso en bankofcanada.ca/terms).",
+  "fx.boc.onlyCad": "Solo con un presupuesto en dólares canadienses: el banco publica sus tasas en CAD y tu presupuesto es en {budget}.",
+  "fx.boc.use": "Usar la tasa del Banco de Canadá",
+  "fx.boc.loading": "Pidiendo la tasa al Banco de Canadá…",
+  "fx.boc.notice": "Tasa indicativa del Banco de Canadá del {date}.",
+  "fx.boc.none": "El Banco de Canadá no publicó una tasa de {currency} entre el {from} y el {date}. Escribe la tasa o usa lo que cobró el banco.",
+  "fx.boc.offline": "No se pudo conectar con el Banco de Canadá: no hay tasa. Escribe la tasa o usa lo que cobró el banco.",
+  "fx.boc.error": "El Banco de Canadá respondió algo que Clara no entiende: no hay tasa. Escribe la tasa o usa lo que cobró el banco.",
+  "fx.boc.unsupported": "El Banco de Canadá no publica una tasa diaria de {currency}."
 }

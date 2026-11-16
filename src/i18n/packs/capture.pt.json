@@ -70,5 +70,14 @@
   "capture.card.question": "Para qual conta vão os pagamentos deste cartão? Os que esperam revisão passam para essa conta e os próximos entram sozinhos.",
   "capture.card.account": "Conta de {card}",
   "capture.card.save": "Salvar",
-  "capture.card.savedToast": "{card} → {account}"
+  "capture.card.savedToast": "{card} → {account}",
+  "capture.review.convertedBoc": "Pago {original}. Convertido com a taxa indicativa do Banco do Canadá de {date} ({rate}).",
+  "capture.review.convertedBocFee": "Pago {original}. Convertido com a taxa indicativa do Banco do Canadá de {date} ({rate}) e {fee}% de tarifa.",
+  "capture.proposal.bocAsk": "Pedir a taxa do Banco do Canadá",
+  "capture.proposal.bocLoading": "Pedindo a taxa ao Banco do Canadá…",
+  "capture.proposal.bocRate": "Com a taxa indicativa do Banco do Canadá de {date} ({rate}): {amount}.",
+  "capture.proposal.bocRateFee": "Com a taxa indicativa do Banco do Canadá de {date} ({rate}) e {fee}% de tarifa: {amount}.",
+  "capture.proposal.bocNone": "O Banco do Canadá não publicou uma taxa de {currency} entre {from} e {date}.",
+  "capture.proposal.bocOffline": "Não foi possível conectar ao Banco do Canadá: não há taxa.",
+  "capture.proposal.bocError": "O Banco do Canadá respondeu algo que a Clara não entende: não há taxa."
 }

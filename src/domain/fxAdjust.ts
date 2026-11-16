@@ -40,8 +40,8 @@ export function rateForDisplay(rate: string, decimals = 6): { text: string; exac
 
 /** Lo que escribió la persona en «Pagado en otra moneda» (ya leído a números y texto exacto). */
 export type ForeignInput =
-  /** Con una tasa (escrita o la del viaje), su fecha y la comisión de la tarjeta. */
-  | { mode: 'rate'; currency: CurrencyCode; originalMinor: number; rate: string; rateDate: string; feeBps: number }
+  /** Con una tasa (escrita, la del viaje o la del Banco de Canadá: `rateSource: 'boc'`), su fecha y la comisión. */
+  | { mode: 'rate'; currency: CurrencyCode; originalMinor: number; rate: string; rateDate: string; feeBps: number; rateSource?: 'manual' | 'boc' }
   /** Con lo que cobró el banco en la moneda del presupuesto: esa cifra manda y la tasa sale de las dos. */
   | { mode: 'actual'; currency: CurrencyCode; originalMinor: number; budgetMinor: number; date: string }
 
@@ -66,7 +66,7 @@ export function foreignFromInput(input: ForeignInput, budgetCurrency: CurrencyCo
         amountMinor: input.originalMinor,
         rate,
         rateDate: input.rateDate,
-        rateSource: 'manual',
+        rateSource: input.rateSource ?? 'manual',
         ...(input.feeBps > 0 ? { feeBps: input.feeBps } : {}),
       },
     }

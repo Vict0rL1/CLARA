@@ -7,9 +7,15 @@
  *   importe en la moneda del presupuesto se calcula con un solo redondeo y se enseña la cuenta.
  * - «Con lo que cobró el banco» (ajustar al cargo real): esa cifra manda y la tasa sale de las dos.
  *
- * Nunca se inventa una tasa: sin tasa no hay importe y el formulario no guarda. El Banco de Canadá no está: no hay botón.
+ * Nunca se inventa una tasa: sin tasa no hay importe y el formulario no guarda. Orden (decisión 181): la tasa del viaje
+ * (se propone), si no la del Banco de Canadá (botón «Usar la tasa del Banco de Canadá», solo con Ajustes › Tasas del
+ * Banco de Canadá encendido y presupuesto en CAD: la pide para la fecha del gasto y la pone en el campo con el aviso
+ * «Tasa indicativa del Banco de Canadá del <fecha>»; si se cambia a mano, deja de serlo), y siempre «Con lo que cobró
+ * el banco». Sin conexión o sin tasa publicada se dice y el campo queda como estaba.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { bocSeries, bocWindow, type BocRate } from '../domain/boc'
+import { parseRate, rateToText } from '../domain/fx'
 import { currencyName } from '../domain/formatters'
 import { foreignFromInput, type ForeignResult } from '../domain/fxAdjust'
 import { bpsToInputString, isSupportedCurrency, minorToInputString, parseMoney, parsePercentBps, SUPPORTED_CURRENCIES } from '../domain/money'
@@ -18,8 +24,11 @@ import type { CurrencyCode, LocalDate, OriginalAmount } from '../domain/types'
 import { isValidLocalDate } from '../domain/dates'
 import { useT } from '../i18n'
 import { packTranslator, usePack, type PackTranslate } from '../i18n/packs'
+import { lookupBocRate, useBocEnabled } from '../state/bocRates'
+import { useToday } from '../state/hooks'
 import { useData } from '../state/store'
 import { Toggle } from './components/base'
+import { Icon } from './components/Icon'
 import { MoneyField, Segmented, SelectField, TextField } from './components/fields'
 import { PackLangScope } from './components/PackLangScope'
 import { PackNotice } from './components/PackNotice'
@@ -31,6 +40,16 @@ import { moneyErrorMessage } from './moneyText'
 export type ForeignState = { active: false } | { active: true; result: ForeignResult | { ok: false; error: 'input' } }
 
 type Mode = 'rate' | 'actual'
+
+/** La tasa del Banco de Canadá en el formulario: pedida y puesta en el campo, o por qué no hay. */
+type BocState = { status: 'idle' | 'loading' | 'none' | 'offline' | 'error' } | { status: 'ok'; rate: BocRate }
+
+/** Misma tasa aunque se escriba distinto («0,008910» y «0.00891»). */
+const sameRate = (a: string, b: string) => {
+  const x = parseRate(a)
+  const y = parseRate(b)
+  return !!x && !!y && rateToText(x) === rateToText(y)
+}
 
 export function ForeignAmount(props: {
   kind: 'expense' | 'income' | 'refund'
@@ -89,17 +108,52 @@ function ForeignBody({
     return bps > 0 ? bpsToInputString(bps, fmt.numberLocale) : ''
   })
 
+  const bocOn = useBocEnabled()
+  const today = useToday()
+  // `for`: moneda y fecha para las que se pidió; con otra elegida, lo que pasó ya no se enseña.
+  const [boc, setBoc] = useState<BocState & { for: string }>(() =>
+    existing?.rateSource === 'boc'
+      ? { status: 'ok', rate: { rate: existing.rate, rateDate: existing.rateDate }, for: `${existing.currency}|${date}` }
+      : { status: 'idle', for: '' },
+  )
+  const bocKeyNow = `${currency}|${date}`
+  // La última moneda y fecha elegidas: una petición que termina tarde (ya con otras) no pisa nada.
+  const latestKey = useRef(bocKeyNow)
+  useEffect(() => {
+    latestKey.current = bocKeyNow
+  }, [bocKeyNow])
+
   const chooseCurrency = (next: string) => {
     setCurrency(next)
     const r = prefill(next)
     setRateValue(rateText(r?.rate ?? '', fmt.decimalSeparator))
     setRateDate(r?.date ?? date)
+    setBoc({ status: 'idle', for: '' })
   }
 
   const code = isSupportedCurrency(currency) && currency !== budget ? (currency as CurrencyCode) : null
   const foreignFmt: Formatter = { ...fmt, currency: code ?? fmt.currency }
   const locale = fmt.numberLocale
   const decimal = fmt.decimalSeparator
+  // La tasa del campo es la del banco mientras sea la misma tasa y la misma fecha que llegaron.
+  const bocShown: BocState = boc.status === 'ok' || boc.for === bocKeyNow ? boc : { status: 'idle' }
+  const fromBoc = boc.status === 'ok' && sameRate(rateInput(rateValue, decimal), boc.rate.rate) && rateDate === boc.rate.rateDate
+  // El botón solo sin tasa del viaje para esa moneda (va primero) y con una serie del banco.
+  const bocOffer = bocOn && mode === 'rate' && !!code && !prefill(code)
+  const bocSupported = !!code && bocSeries(budget, code) !== null
+
+  const requestBoc = async () => {
+    if (!code) return
+    const key = bocKeyNow
+    setBoc({ status: 'loading', for: key })
+    const r = await lookupBocRate(budget, code, date, today)
+    if (latestKey.current !== key) return
+    if (r.status === 'ok') {
+      setRateValue(rateText(r.rate.rate, decimal))
+      setRateDate(r.rate.rateDate)
+      setBoc({ status: 'ok', rate: r.rate, for: key })
+    } else setBoc({ status: r.status === 'unsupported' ? 'none' : r.status, for: key })
+  }
   // Todo se lee del texto escrito: el estado solo cambia cuando cambia lo escrito (así `onChange` no se repite).
   const parsed = useMemo(() => {
     const original = code ? parseMoney(originalText, code, locale) : null
@@ -117,7 +171,15 @@ function ForeignBody({
             : {
                 active: true,
                 result: foreignFromInput(
-                  { mode: 'rate', currency: code, originalMinor: original.minor, rate: rateInput(rateValue, decimal), rateDate, feeBps: fee.minor },
+                  {
+                    mode: 'rate',
+                    currency: code,
+                    originalMinor: original.minor,
+                    rate: rateInput(rateValue, decimal),
+                    rateDate,
+                    feeBps: fee.minor,
+                    rateSource: fromBoc ? 'boc' : 'manual',
+                  },
                   budget,
                 ),
               }
@@ -131,7 +193,7 @@ function ForeignBody({
       }
     }
     return { original, fee, actual, dateOk, state }
-  }, [on, code, originalText, mode, feeText, rateDate, rateValue, amountText, date, budget, locale, decimal])
+  }, [on, code, originalText, mode, feeText, rateDate, rateValue, amountText, date, budget, locale, decimal, fromBoc])
   const { original, fee, actual, dateOk, state } = parsed
 
   useEffect(() => onChange(state), [state, onChange])
@@ -182,6 +244,17 @@ function ForeignBody({
               { value: 'actual', label: t('fx.mode.actual') },
             ]}
           />
+          {bocOffer && (
+            <BocRow
+              t={t}
+              state={bocShown}
+              supported={bocSupported}
+              currency={code}
+              from={fmt.date(bocWindow(date).start)}
+              date={fmt.date(date)}
+              onUse={() => void requestBoc()}
+            />
+          )}
           {mode === 'rate' ? (
             <RateFields
               t={t}
@@ -200,9 +273,11 @@ function ForeignBody({
               dateError={show && !dateOk ? t('fx.error.date') : null}
               feeError={show && !fee.ok ? t('fx.error.fee') : null}
               fromTrip={
-                trip && code && prefill(code) && rateInput(rateValue, fmt.decimalSeparator) === prefill(code)!.rate
-                  ? t('fx.rateFromTrip', { trip: trip.name, date: fmt.date(prefill(code)!.date) })
-                  : undefined
+                fromBoc
+                  ? t('fx.boc.notice', { date: fmt.date(rateDate) })
+                  : trip && code && prefill(code) && rateInput(rateValue, fmt.decimalSeparator) === prefill(code)!.rate
+                    ? t('fx.rateFromTrip', { trip: trip.name, date: fmt.date(prefill(code)!.date) })
+                    : undefined
               }
             />
           ) : (
@@ -235,6 +310,36 @@ function ForeignBody({
           )}
         </>
       )}
+    </div>
+  )
+}
+
+/** «Usar la tasa del Banco de Canadá» y lo que pasó al pedirla (con texto, nunca solo color). */
+function BocRow(p: { t: PackTranslate; state: BocState; supported: boolean; currency: string; from: string; date: string; onUse: () => void }) {
+  if (!p.supported) return <p className="field__hint" data-testid="boc-unsupported">{p.t('fx.boc.unsupported', { currency: p.currency })}</p>
+  const s = p.state.status
+  const message =
+    s === 'loading'
+      ? p.t('fx.boc.loading')
+      : s === 'none'
+        ? p.t('fx.boc.none', { currency: p.currency, from: p.from, date: p.date })
+        : s === 'offline'
+          ? p.t('fx.boc.offline')
+          : s === 'error'
+            ? p.t('fx.boc.error')
+            : null
+  return (
+    <div className="stack-sm" data-testid="boc-row">
+      <div className="button-row">
+        <button type="button" className="btn btn--secondary btn--small" onClick={p.onUse} disabled={s === 'loading'} aria-busy={s === 'loading'}>
+          <Icon name="globe" size={16} />
+          {p.t('fx.boc.use')}
+        </button>
+      </div>
+      <p className={s === 'none' || s === 'offline' || s === 'error' ? 'field__error' : 'field__hint'} role="status" data-testid="boc-status">
+        {message && (s === 'none' || s === 'offline' || s === 'error') && <Icon name="alert" size={16} />}
+        {message}
+      </p>
     </div>
   )
 }

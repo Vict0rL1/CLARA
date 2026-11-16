@@ -29,5 +29,20 @@
   "fx.stats.count_one": "{count} transaction",
   "fx.stats.count_other": "{count} transactions",
   "fx.stats.noFigure": "No exact figure",
-  "fx.badge": "Paid {original}"
+  "fx.badge": "Paid {original}",
+  "fx.boc.title": "Bank of Canada rates",
+  "fx.boc.toggle": "Get rates from the Bank of Canada",
+  "fx.boc.toggleHelp": "Off, Clara connects to no site. On, asking for a rate sends only the currency and two dates to www.bankofcanada.ca: nothing of yours (no amounts, merchants or accounts).",
+  "fx.boc.what": "These are indicative rates: the daily average the bank publishes on business days around 4:30 p.m. (Ottawa time), not what your card charges. Clara uses the last business day published up to the date of the expense; if you know what the bank charged, that figure wins.",
+  "fx.boc.where": "It is offered in “Paid in another currency” when there is no written trip rate and, in the iPhone app, it converts captured payments in another currency, which stay “To check”. Offline there is no rate: nothing is made up.",
+  "fx.boc.cache": "Rates already fetched are kept on this device, outside your data and backups.",
+  "fx.boc.source": "Source: Bank of Canada (terms of use at bankofcanada.ca/terms).",
+  "fx.boc.onlyCad": "Only with a budget in Canadian dollars: the bank publishes its rates in CAD and your budget is in {budget}.",
+  "fx.boc.use": "Use the Bank of Canada rate",
+  "fx.boc.loading": "Getting the rate from the Bank of Canada…",
+  "fx.boc.notice": "Indicative Bank of Canada rate of {date}.",
+  "fx.boc.none": "The Bank of Canada published no {currency} rate between {from} and {date}. Enter the rate or use what the bank charged.",
+  "fx.boc.offline": "Could not reach the Bank of Canada: no rate. Enter the rate or use what the bank charged.",
+  "fx.boc.error": "The Bank of Canada sent a reply Clara does not understand: no rate. Enter the rate or use what the bank charged.",
+  "fx.boc.unsupported": "The Bank of Canada publishes no daily {currency} rate."
 }

@@ -70,5 +70,14 @@
   "capture.card.question": "Which account do this card’s payments go to? The ones waiting for review move there and the next ones go there on their own.",
   "capture.card.account": "Account for {card}",
   "capture.card.save": "Save",
-  "capture.card.savedToast": "{card} → {account}"
+  "capture.card.savedToast": "{card} → {account}",
+  "capture.review.convertedBoc": "Paid {original}. Converted with the indicative Bank of Canada rate of {date} ({rate}).",
+  "capture.review.convertedBocFee": "Paid {original}. Converted with the indicative Bank of Canada rate of {date} ({rate}) and a {fee}% fee.",
+  "capture.proposal.bocAsk": "Get the Bank of Canada rate",
+  "capture.proposal.bocLoading": "Getting the rate from the Bank of Canada…",
+  "capture.proposal.bocRate": "With the indicative Bank of Canada rate of {date} ({rate}): {amount}.",
+  "capture.proposal.bocRateFee": "With the indicative Bank of Canada rate of {date} ({rate}) and a {fee}% fee: {amount}.",
+  "capture.proposal.bocNone": "The Bank of Canada published no {currency} rate between {from} and {date}.",
+  "capture.proposal.bocOffline": "Could not reach the Bank of Canada: no rate.",
+  "capture.proposal.bocError": "The Bank of Canada sent a reply Clara does not understand: no rate."
 }

@@ -70,5 +70,14 @@
   "capture.card.question": "Sur quel compte vont les paiements de cette carte ? Ceux qui attendent une vérification y passent et les suivants y entrent seuls.",
   "capture.card.account": "Compte de {card}",
   "capture.card.save": "Enregistrer",
-  "capture.card.savedToast": "{card} → {account}"
+  "capture.card.savedToast": "{card} → {account}",
+  "capture.review.convertedBoc": "Payé {original}. Converti au taux indicatif de la Banque du Canada du {date} ({rate}).",
+  "capture.review.convertedBocFee": "Payé {original}. Converti au taux indicatif de la Banque du Canada du {date} ({rate}) avec {fee} % de frais.",
+  "capture.proposal.bocAsk": "Demander le taux de la Banque du Canada",
+  "capture.proposal.bocLoading": "Demande du taux à la Banque du Canada…",
+  "capture.proposal.bocRate": "Au taux indicatif de la Banque du Canada du {date} ({rate}) : {amount}.",
+  "capture.proposal.bocRateFee": "Au taux indicatif de la Banque du Canada du {date} ({rate}) avec {fee} % de frais : {amount}.",
+  "capture.proposal.bocNone": "La Banque du Canada n’a publié aucun taux {currency} entre le {from} et le {date}.",
+  "capture.proposal.bocOffline": "Impossible de joindre la Banque du Canada : pas de taux.",
+  "capture.proposal.bocError": "La Banque du Canada a répondu quelque chose que Clara ne comprend pas : pas de taux."
 }

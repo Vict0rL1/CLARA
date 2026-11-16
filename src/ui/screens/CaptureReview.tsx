@@ -7,7 +7,11 @@
  *   o sin importe claro, con el importe que la persona escribe en la moneda del presupuesto (cargo real) o, en una
  *   moneda del viaje en curso con tasa escrita, con esa tasa (Fase 3). Clara nunca inventa una tasa.
  *   «Descartar» las quita, con «Deshacer».
- * - Un pago convertido solo con la tasa del viaje dice el importe original, la tasa, su fecha y la comisión.
+ * - Un pago convertido solo con la tasa del viaje dice el importe original, la tasa, su fecha y la comisión; uno
+ *   convertido con la del Banco de Canadá lo dice («tasa indicativa del Banco de Canadá del <fecha>», decisión 181).
+ * - Una propuesta en otra moneda sin tasa del viaje, con Ajustes › Tasas del Banco de Canadá encendido y presupuesto en
+ *   CAD: «Pedir la tasa del Banco de Canadá» la pide para la fecha del pago, enseña la cuenta y «Registrar con esta
+ *   tasa». Sin conexión o sin tasa, se dice y la propuesta sigue igual.
  *
  * Los textos van en el paquete diferido `capture` (fuera del JS inicial); mientras no carga, `PackNotice` lo dice.
  * Las reglas están en `domain/captureImport.ts`; aquí solo se muestran y se llaman.
@@ -15,6 +19,7 @@
 import { useMemo, useState } from 'react'
 import { activeAccounts } from '../../domain/balances'
 import { assignCardAccount, cardIsMapped, confirmReviews, dismissProposals, foreignAmount, registerProposal, reopenReviews, restoreProposals, type RegisterWith } from '../../domain/captureImport'
+import { bocSeries, bocWindow, type BocRate } from '../../domain/boc'
 import { convertToBudget } from '../../domain/fx'
 import { activeTrip, tripRate } from '../../domain/trips'
 import { normalizeText } from '../../domain/text'
@@ -22,6 +27,7 @@ import { transactionsToReview } from '../../domain/captureReview'
 import type { CaptureOrigin, CaptureProposal, Language, Transaction } from '../../domain/types'
 import { useT } from '../../i18n'
 import { packTranslator, usePack, type PackTranslate, type PackTranslatePlural } from '../../i18n/packs'
+import { lookupBocRate, useBocEnabled } from '../../state/bocRates'
 import { useRun, useToday } from '../../state/hooks'
 import { useData } from '../../state/store'
 import { Badge, Card } from '../components/common'
@@ -192,7 +198,15 @@ function ReviewedCard({ tx, tr, onOk }: { tx: Transaction; tr: Texts; onOk: () =
         </span>
         {tx.original && (
           <span className="item__meta">
-            {tr.t(tx.original.feeBps ? 'capture.review.convertedFee' : 'capture.review.converted', {
+            {tr.t(
+              tx.original.rateSource === 'boc'
+                ? tx.original.feeBps
+                  ? 'capture.review.convertedBocFee'
+                  : 'capture.review.convertedBoc'
+                : tx.original.feeBps
+                  ? 'capture.review.convertedFee'
+                  : 'capture.review.converted',
+              {
               original: fmt.moneyIn(tx.original.amountMinor, tx.original.currency),
               rate: rateLabel(tx.original.rate, fmt.numberLocale),
               date: fmt.date(tx.original.rateDate, { compact: true, today }),
@@ -241,6 +255,17 @@ function ProposalCard({ proposal: p, tr }: { proposal: CaptureProposal; tr: Text
   const rate = foreign ? tripRate(trip?.trip, foreign.currency) : undefined
   const feeBps = trip?.trip?.feeBps ?? 0
   const withRate = foreign && rate ? convertToBudget(foreign.minor, foreign.currency, budget, rate.rate, feeBps) : null
+  // Decisión 181: sin tasa del viaje, la del Banco de Canadá si está encendido (la pide la persona: «Pedir»).
+  const bocOn = useBocEnabled()
+  const bocOffer = bocOn && !p.test && !!foreign && !rate && bocSeries(budget, foreign.currency) !== null
+  const [boc, setBoc] = useState<{ status: 'idle' | 'loading' | 'none' | 'offline' | 'error' } | { status: 'ok'; rate: BocRate }>({ status: 'idle' })
+  const withBoc = foreign && boc.status === 'ok' ? convertToBudget(foreign.minor, foreign.currency, budget, boc.rate.rate, feeBps) : null
+  const askBoc = async () => {
+    if (!foreign) return
+    setBoc({ status: 'loading' })
+    const r = await lookupBocRate(budget, foreign.currency, p.date, today)
+    setBoc(r.status === 'ok' ? { status: 'ok', rate: r.rate } : { status: r.status === 'unsupported' ? 'none' : r.status })
+  }
   const why = p.test
     ? tr.t('capture.proposal.why.test')
     : p.reason === 'duplicate'
@@ -320,6 +345,48 @@ function ProposalCard({ proposal: p, tr }: { proposal: CaptureProposal; tr: Text
           <p className="item__meta">{tr.t('capture.proposal.orActual')}</p>
         </div>
       )}
+      {bocOffer && foreign && (
+        <div className="stack-sm" data-testid="proposal-boc">
+          {withBoc !== null && boc.status === 'ok' ? (
+            <>
+              <p className="item__meta">
+                {tr.t(feeBps ? 'capture.proposal.bocRateFee' : 'capture.proposal.bocRate', {
+                  rate: rateLabel(boc.rate.rate, fmt.numberLocale),
+                  date: fmt.date(boc.rate.rateDate, { compact: true, today }),
+                  fee: feeLabel(feeBps, fmt.numberLocale),
+                  amount: fmt.money(withBoc),
+                })}
+              </p>
+              <div className="button-row">
+                <button type="button" className="btn btn--primary btn--small" onClick={() => void register({ rate: boc.rate.rate, rateDate: boc.rate.rateDate, feeBps, rateSource: 'boc' })}>
+                  <Icon name="plus" size={16} />
+                  {tr.t('capture.proposal.registerWithRate')}
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="button-row">
+              <button type="button" className="btn btn--secondary btn--small" onClick={() => void askBoc()} disabled={boc.status === 'loading'} aria-busy={boc.status === 'loading'}>
+                <Icon name="globe" size={16} />
+                {tr.t('capture.proposal.bocAsk')}
+              </button>
+            </div>
+          )}
+          <p className={boc.status === 'none' || boc.status === 'offline' || boc.status === 'error' ? 'field__error' : 'item__meta'} role="status">
+            {(boc.status === 'none' || boc.status === 'offline' || boc.status === 'error') && <Icon name="alert" size={16} />}
+            {boc.status === 'loading'
+              ? tr.t('capture.proposal.bocLoading')
+              : boc.status === 'none'
+                ? tr.t('capture.proposal.bocNone', { currency: foreign.currency, from: fmt.date(bocWindow(p.date).start, { compact: true, today }), date: fmt.date(p.date, { compact: true, today }) })
+                : boc.status === 'offline'
+                  ? tr.t('capture.proposal.bocOffline')
+                  : boc.status === 'error'
+                    ? tr.t('capture.proposal.bocError')
+                    : null}
+          </p>
+          {withBoc !== null && <p className="item__meta">{tr.t('capture.proposal.orActual')}</p>}
+        </div>
+      )}
       {needsAmount && (
         <MoneyField
           label={tr.t('capture.proposal.amountLabel', { budget })}
@@ -338,7 +405,7 @@ function ProposalCard({ proposal: p, tr }: { proposal: CaptureProposal; tr: Text
       )}
       <div className="button-row">
         {!p.test && (
-          <button type="button" className={`btn ${withRate !== null ? 'btn--secondary' : 'btn--primary'} btn--small`} onClick={() => void register()}>
+          <button type="button" className={`btn ${withRate !== null || withBoc !== null ? 'btn--secondary' : 'btn--primary'} btn--small`} onClick={() => void register()}>
             <Icon name="plus" size={16} />
             {tr.t('capture.proposal.register')}
           </button>

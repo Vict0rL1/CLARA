@@ -132,5 +132,7 @@
   "period.trip.rateLine": "{currency} : {rate} {budget} du {date}",
   "period.trip.rateMissing": "{currency} : pas de taux",
   "period.trip.feeLine": "Frais de la carte : {fee} %",
-  "period.trip.how": "Chaque dépense a été convertie avec SON taux (celui qu’elle avait à l’enregistrement) et un seul arrondi au centime. Les remboursements se déduisent dans leur devise et en {budget}. Le prévu et la corbeille ne comptent pas."
+  "period.trip.how": "Chaque dépense a été convertie avec SON taux (celui qu’elle avait à l’enregistrement) et un seul arrondi au centime. Les remboursements se déduisent dans leur devise et en {budget}. Le prévu et la corbeille ne comptent pas.",
+  "period.trip.bocCount_one": "{count} opération a été convertie au taux indicatif de la Banque du Canada de sa date.",
+  "period.trip.bocCount_other": "{count} opérations ont été converties au taux indicatif de la Banque du Canada de leur date."
 }

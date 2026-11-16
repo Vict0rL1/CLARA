@@ -29,5 +29,20 @@
   "fx.stats.count_one": "{count} mouvement",
   "fx.stats.count_other": "{count} mouvements",
   "fx.stats.noFigure": "Pas de montant exact",
-  "fx.badge": "Payé {original}"
+  "fx.badge": "Payé {original}",
+  "fx.boc.title": "Taux de la Banque du Canada",
+  "fx.boc.toggle": "Demander les taux à la Banque du Canada",
+  "fx.boc.toggleHelp": "Désactivé, Clara ne se connecte à aucun site. Activé, une demande de taux n’envoie à www.bankofcanada.ca que la devise et deux dates : rien de vous (ni montants, ni commerçants, ni comptes).",
+  "fx.boc.what": "Ce sont des taux indicatifs : la moyenne du jour que la banque publie les jours ouvrables vers 16 h 30 (heure d’Ottawa), pas ce que débite votre carte. Clara utilise celui du dernier jour ouvrable publié jusqu’à la date de la dépense ; si vous savez ce que la banque a débité, ce montant l’emporte.",
+  "fx.boc.where": "Il est proposé dans « Payé dans une autre devise » quand le voyage n’a pas de taux saisi et, dans l’app iPhone, il convertit les paiements capturés dans une autre devise, qui restent « À contrôler ». Hors ligne, pas de taux : rien n’est inventé.",
+  "fx.boc.cache": "Les taux déjà obtenus sont gardés sur cet appareil, hors de vos données et des sauvegardes.",
+  "fx.boc.source": "Source : Banque du Canada (conditions d’utilisation sur bankofcanada.ca/terms).",
+  "fx.boc.onlyCad": "Seulement avec un budget en dollars canadiens : la banque publie ses taux en CAD et votre budget est en {budget}.",
+  "fx.boc.use": "Utiliser le taux de la Banque du Canada",
+  "fx.boc.loading": "Demande du taux à la Banque du Canada…",
+  "fx.boc.notice": "Taux indicatif de la Banque du Canada du {date}.",
+  "fx.boc.none": "La Banque du Canada n’a publié aucun taux {currency} entre le {from} et le {date}. Saisissez le taux ou utilisez ce que la banque a débité.",
+  "fx.boc.offline": "Impossible de joindre la Banque du Canada : pas de taux. Saisissez le taux ou utilisez ce que la banque a débité.",
+  "fx.boc.error": "La Banque du Canada a répondu quelque chose que Clara ne comprend pas : pas de taux. Saisissez le taux ou utilisez ce que la banque a débité.",
+  "fx.boc.unsupported": "La Banque du Canada ne publie pas de taux quotidien {currency}."
 }

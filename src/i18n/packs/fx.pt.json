@@ -29,5 +29,20 @@
   "fx.stats.count_one": "{count} movimento",
   "fx.stats.count_other": "{count} movimentos",
   "fx.stats.noFigure": "Sem valor exato",
-  "fx.badge": "Pago {original}"
+  "fx.badge": "Pago {original}",
+  "fx.boc.title": "Taxas do Banco do Canadá",
+  "fx.boc.toggle": "Pedir taxas ao Banco do Canadá",
+  "fx.boc.toggleHelp": "Desligado, a Clara não se conecta a nenhum site. Ligado, ao pedir uma taxa só são enviadas a moeda e duas datas para www.bankofcanada.ca: nada seu (nem valores, nem estabelecimentos, nem contas).",
+  "fx.boc.what": "São taxas indicativas: a média do dia que o banco publica nos dias úteis por volta das 16h30 (horário de Ottawa), não o que o seu cartão cobra. Usa-se a do último dia útil publicado até a data do gasto; se você sabe o que o banco cobrou, esse valor manda.",
+  "fx.boc.where": "É oferecida em “Pago em outra moeda” quando não há uma taxa escrita da viagem e, no app do iPhone, converte os pagamentos capturados em outra moeda, que ficam “Para conferir”. Sem conexão não há taxa: nada é inventado.",
+  "fx.boc.cache": "As taxas já pedidas ficam guardadas neste dispositivo, fora dos seus dados e das cópias.",
+  "fx.boc.source": "Fonte: Banco do Canadá (condições de uso em bankofcanada.ca/terms).",
+  "fx.boc.onlyCad": "Só com um orçamento em dólares canadenses: o banco publica suas taxas em CAD e o seu orçamento é em {budget}.",
+  "fx.boc.use": "Usar a taxa do Banco do Canadá",
+  "fx.boc.loading": "Pedindo a taxa ao Banco do Canadá…",
+  "fx.boc.notice": "Taxa indicativa do Banco do Canadá de {date}.",
+  "fx.boc.none": "O Banco do Canadá não publicou uma taxa de {currency} entre {from} e {date}. Digite a taxa ou use o que o banco cobrou.",
+  "fx.boc.offline": "Não foi possível conectar ao Banco do Canadá: não há taxa. Digite a taxa ou use o que o banco cobrou.",
+  "fx.boc.error": "O Banco do Canadá respondeu algo que a Clara não entende: não há taxa. Digite a taxa ou use o que o banco cobrou.",
+  "fx.boc.unsupported": "O Banco do Canadá não publica uma taxa diária de {currency}."
 }

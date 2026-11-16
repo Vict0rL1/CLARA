@@ -132,5 +132,7 @@
   "period.trip.rateLine": "{currency}: {rate} {budget} from {date}",
   "period.trip.rateMissing": "{currency}: no rate",
   "period.trip.feeLine": "Card fee: {fee}%",
-  "period.trip.how": "Each expense was converted with ITS rate (the one it had when recorded) and rounded once to the cent. Refunds subtract in their currency and in {budget}. Planned items and the trash don’t count."
+  "period.trip.how": "Each expense was converted with ITS rate (the one it had when recorded) and rounded once to the cent. Refunds subtract in their currency and in {budget}. Planned items and the trash don’t count.",
+  "period.trip.bocCount_one": "{count} transaction was converted with the indicative Bank of Canada rate for its date.",
+  "period.trip.bocCount_other": "{count} transactions were converted with the indicative Bank of Canada rate for their date."
 }
