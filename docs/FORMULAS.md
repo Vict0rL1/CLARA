@@ -1709,3 +1709,32 @@ Ejemplo (prueba `trips.test.ts`): del 25-sep al 4-oct, 500,00 $; ¥1 200 a 0,009
   `original` cuenta en la moneda del presupuesto. Σ original y Σ convertido, exactas o «sin cifra exacta».
 - **CSV** (`csvExport.ts`): seis columnas tras «Origen»: importe original con el signo del convertido (−1200 JPY con
   −11,32 CAD), moneda, tasa exacta (`'1117/120000` si es fracción), fecha de la tasa, origen y comisión en % («2.50»).
+
+## 47. Tasas del Banco de Canadá (`domain/boc.ts`, `state/bocRates.ts`, Fase 3 nativa, decisión 181)
+
+Opcional y apagado por defecto (Ajustes › Formato; es de este dispositivo). Solo con presupuesto en CAD: las
+series diarias del banco son `FX<moneda>CAD` («Canadian dollars per <moneda>»), que es la dirección de la tasa de §45.
+Lo comprobado de la API, con sus URLs, en `docs/BOC-VALET.md`.
+
+- **Qué se pide:** `GET /valet/observations/FX<moneda>CAD/json?start_date=F−10&end_date=F`, con F la fecha del gasto (en
+  capturas, la del pago en la zona del presupuesto). Ningún dato de la persona.
+- **Qué tasa:** la observación de fecha más reciente con `F − 10 ≤ fecha ≤ F` (`pickBocRate`). Fines de semana y
+  festivos no tienen; una serie que dejó de publicarse (VND desde 2019) no da tasa. Sin observación, sin conexión, con
+  un error o con una respuesta que no se entiende: no hay tasa (nunca se inventa).
+- **El valor** es el texto que publica el banco («0.008940»), leído con `parseRate` y guardado canónico («0.00894»):
+  nunca un flotante. Un valor que no es un decimal exacto positivo invalida toda la respuesta.
+- **Importe:** el de §45 (`convertToBudget`, un solo redondeo), con la comisión del viaje si el gasto cae en uno y sin
+  comisión si no. `original` = moneda, importe, la tasa, `rateDate` = la fecha de la observación, `rateSource: 'boc'`.
+- **Orden:** la tasa escrita del viaje → la del banco → «Con lo que cobró el banco» (que siempre manda si se escribe).
+- **Capturas:** la importación es pura y síncrona; las tasas se piden antes (`bocRatesNeeded`) y se le pasan. Con tasa,
+  gasto «Por revisar» (`review.reason: 'currency'`); se asocia al viaje en curso solo si la moneda es del viaje.
+- **Caché** (del dispositivo, fuera de los datos y de las copias; 300 resultados): solo lo que ya no puede cambiar
+  (`bocResultFinal`): la tasa del mismo día F, o cualquier resultado con F ≤ hoy − 2. Hoy o ayer, la del día aún puede
+  publicarse: se usa la anterior y se vuelve a pedir la próxima vez.
+
+Ejemplos (pruebas `boc.test.ts` y `captureBoc.test.ts`, con respuestas reales guardadas):
+
+- ¥1 200 el domingo 8-nov-2026 → la del viernes 6-nov, 0.00891: 1 200 × 0,00891 = 10,692 → **10,69 $**.
+- ¥1 200 el 10-nov a 0.00894 = 10,728 → **10,73 $**; con 2,5 % de comisión, 10,9962 → **11,00 $** (un solo redondeo).
+- US$25,00 el 1-ene-2026 (festivo) → la del 31-dic, 1.3706: 34,265 → **34,27 $** (la mitad, hacia arriba).
+- Navidad y el 26-dic → la del 24-dic (1.3674); el 3-nov-2026, sin observación en el margen guardado → sin tasa.

@@ -181,10 +181,11 @@ pantallas y textos va en código y paquetes diferidos):
 6. **Hecho.** Vista del viaje: gastado por moneda, total en CAD, gasto por día y lo que queda del periodo vinculado.
 7. **Hecho.** Estadísticas y CSV con el importe original y el convertido (decisión 179). Y el asistente con la tasa
    del viaje (decisión 180).
-8. **Banco de Canadá (Valet).** Opcional y apagado por defecto; solo tasas, sin datos de la persona; con caché local y
-   el aviso «tasa indicativa del Banco de Canadá del <fecha>». **Pendiente de una sesión con acceso a
-   www.bankofcanada.ca** (este entorno lo bloquea; el 14-nov se creó el entorno «clara» que lo permite): no se escribe
-   contra un formato de respuesta que no se haya leído en su documentación.
+8. **Hecho.** Banco de Canadá (Valet; decisión 181, `docs/BOC-VALET.md`): API comprobada de verdad el 16-nov desde el
+   entorno «clara» (URL, JSON con el valor en texto, festivos, CORS `*` sin consulta previa: no hace falta HTTP
+   nativo). Opcional y apagado por defecto; solo la serie y dos fechas; caché local; aviso «Tasa indicativa del Banco
+   de Canadá del <fecha>» en el formulario, «Por revisar» y la vista del viaje; las capturas sin tasa del viaje se
+   convierten con ella. Sin probar en el iPhone (comprobaciones 40–45 de `docs/IOS-NATIVE.md`).
 
 ## 5. Notas del historial de la rama
 

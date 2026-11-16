@@ -14,8 +14,14 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
   formulario, con una tasa o con lo que cobró el banco. Un periodo «Viaje» tiene monedas, moneda local actual (resuelve
   el «¥») y tasas escritas a mano; mientras dura, el formulario, el asistente y los pagos de Apple Pay usan esas tasas, y
   la vista del viaje dice lo gastado por moneda, el total, el gasto por día y lo que queda. Estadísticas y el CSV dicen
-  el original y el convertido. Nunca se inventa una tasa: sin ella, no hay importe. Esquema 16. El Banco de Canadá aún
-  no está. **Probado en navegador con un iPhone simulado; sin probar en un iPhone.**
+  el original y el convertido. Nunca se inventa una tasa: sin ella, no hay importe. Esquema 16. **Probado en navegador con un iPhone simulado; sin probar en un iPhone.**
+- **Tasas del Banco de Canadá** (Fase 3 nativa; decisión 181, `docs/BOC-VALET.md`): opcional y apagado por defecto
+  (Ajustes › Formato), solo con presupuesto en CAD. «Usar la tasa del Banco de Canadá» en «Pagado en otra
+  moneda» pide la tasa indicativa del último día hábil publicado hasta la fecha del gasto y la pone con su aviso; en la
+  app, un pago capturado en otra moneda sin tasa del viaje entra «Por revisar» convertido con ella, y una propuesta
+  puede pedirla. Solo se envía la moneda y dos fechas; la CSP abre solo `https://www.bankofcanada.ca`; caché local
+  fuera de las copias. Sin conexión o sin tasa, no hay importe: nada se inventa. **Probado en navegador con el banco
+  simulado; sin probar en un iPhone.**
 - Los textos de la revisión semanal y de Presupuestos por periodo se cargan aparte (JS inicial 844,5 → 837,9 KB).
 
 - **App de iPhone: copias locales, PIN y preferencias fuera del WebView** (decisión 173): las copias locales

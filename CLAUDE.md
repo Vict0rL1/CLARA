@@ -18,8 +18,13 @@ reglas de este documento cambian, **cada una solo desde la fase que la implement
 - «Una moneda por presupuesto» → sigue para los totales; cada movimiento puede guardar su moneda original y la tasa
   usada (Fase 3, **vigente**: `domain/fx.ts`, `original`, esquema 16; modo viaje en `domain/trips.ts`). Nunca se
   inventa una tasa: sin tasa escrita no hay importe.
-- «Sin conexiones a otros sitios» → excepción opcional para las tasas del Banco de Canadá (Fase 3), sin datos de la
-  persona.
+- «Sin conexiones a otros sitios» → excepción opcional para las tasas del Banco de Canadá (Fase 3, **vigente**,
+  decisión 181; `docs/BOC-VALET.md`): apagada por defecto y del dispositivo (`state/bocRates.ts`, Ajustes › Formato),
+  solo con presupuesto en CAD, `connect-src` abre solo `https://www.bankofcanada.ca` (`vite.config.ts`); GET
+  sin cabeceras propias, credenciales ni Referer, con la serie y dos fechas y nada de la persona. Lo puro en
+  `domain/boc.ts` (valor como texto exacto, última observación ≤ la fecha del gasto y como mucho 10 días antes,
+  `rateSource: 'boc'`); caché local acotada solo de lo definitivo, fuera de las copias. Orden: tasa del viaje → banco →
+  cargo real; sin conexión o sin tasa, nada se inventa (las capturas quedan como propuesta).
 
 Lo nativo tiene tres estados y no se salta ninguno: **escrito**, **compila** (en el Mac de Victor) y **probado en
 iPhone**. Nunca se dice que algo funciona en el iPhone si Victor no lo probó.
@@ -158,7 +163,9 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
   papelera o propuesta); en la moneda del presupuesto y con «Guardar automáticamente», gasto realizado con
   `review` «Por revisar» y `realizedAt` = hora del pago; en otra moneda (o un «¥» que resuelve la moneda local) durante
   un viaje en curso con tasa escrita para ella, igual pero convertido con ESA tasa y la comisión del viaje (`original`,
-  `review.reason: 'currency'`, asociado al viaje; Fase 3, decisión 177); si no, propuesta que no cuenta en ninguna
+  `review.reason: 'currency'`, asociado al viaje; Fase 3, decisión 177); sin tasa del viaje, con la del Banco de Canadá
+  que `state/captureSync.ts` pidió antes (`bocRatesNeeded`, `options.boc`; la importación sigue pura y síncrona;
+  `rateSource: 'boc'`, decisión 181); si no, propuesta que no cuenta en ninguna
   cifra: otra moneda sin tasa o «¥» sin resolver (`currency`, nunca se inventa una tasa), sin entender (`unparsed`),
   mismo importe y comercio a ≤ 2 min de un gasto
   realizado o captura (`duplicate`), apagado o más allá de la cota de exactitud (`auto_capture`). Cuenta: tarjeta →
