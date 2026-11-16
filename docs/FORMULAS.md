@@ -1652,3 +1652,89 @@ compactos ni se redondean para calcular.
 - **Límite declarado.** Solo se revisan particiones reconocibles por su forma; una partición antigua
   cuyo tramo anterior se borró, se renombró o cambió de regla no se puede distinguir de una serie
   nueva y no se propone (la persona la edita a mano: «Repetir» muestra la fecha que fija la serie).
+
+## 45. Movimientos en otra moneda (`domain/fx.ts`, Fase 3 nativa)
+
+- **Qué se guarda.** `amountMinor` sigue en la moneda del presupuesto (todas las fórmulas de arriba siguen igual).
+  `original` guarda la moneda en que se pagó, el importe en sus unidades menores, la tasa, su fecha, de dónde salió
+  (`manual`, `boc`, `card_actual`) y la comisión de la tarjeta en puntos básicos (`feeBps`, 250 = 2,5 %).
+- **La tasa.** Unidades de la moneda del presupuesto por 1 unidad de la otra (JPY → CAD: `0.0092`). Texto exacto:
+  decimal de hasta 12 cifras o fracción de enteros (`1371/1250`), positivo y como mucho 1 000 000. Nunca un flotante.
+- **La conversión.** `importe = original × tasa × 10^(decimales del presupuesto − decimales de la otra) × (10 000 +
+  comisión) / 10 000`, en BigInt, con **un solo redondeo** al entero más cercano y las mitades hacia arriba
+  (`(2·n + d) / (2·d)`). La comisión entra antes de redondear: ¥145 a 0,0092 con 2,5 % da 1,37 $ (1,334 × 1,025 =
+  1,36735), no los 1,36 $ de redondear dos veces. Si el resultado no es positivo (₩1 a 0,00098 = 0,098 céntimos) o
+  pasa del importe máximo, no hay cifra.
+- **La validación.** `amountMinor` tiene que ser exactamente la conversión de `original`: una tasa y una cifra que no
+  cuadran no se guardan ni se aceptan en una copia.
+- **Ajustar al cargo real.** Si el banco cobró otra cifra, esa manda: la tasa pasa a ser la fracción exacta entre los
+  dos importes (`rateFromAmounts`; 10,00 US$ cobrados como 13,71 $ → `1.371`; ¥1 200 como 11,17 $ →
+  `1117/120000`), sin comisión aparte, y la conversión vuelve a dar el cargo justo.
+- **Sin tasa no hay importe.** Nunca se inventa: el formulario no deja guardar y una captura queda como propuesta.
+
+## 46. Modo viaje (`domain/trips.ts`, Fase 3 nativa)
+
+Un viaje es un Presupuesto por periodo «Viaje» con `trip`: monedas (ninguna es la del presupuesto, hasta 8), moneda
+local actual y, como mucho, una tasa escrita a mano por moneda, con su fecha; y la comisión de la tarjeta.
+
+- **Viaje en curso** (`activeTrip`): no archivado y con la fecha entre su inicio y su fin, ambos incluidos. Con varios,
+  el que empezó más tarde; a igualdad, el creado más tarde, y luego el id: siempre el mismo.
+- **«¥» suelto** (`resolveAmbiguous`): solo lo resuelve la moneda local actual si es yen o yuan. Si no, sigue sin
+  resolver y nada se registra.
+- **Cambiar una tasa o la moneda local** solo afecta a lo que se registre después: cada movimiento guarda su tasa en
+  `original` (§45).
+- **El formulario propone asociar** al viaje un gasto o devolución en una de sus monedas dentro de sus fechas (además de
+  la regla de categorías de §19). Solo propone.
+- **Vista del viaje** (`tripSummary`), sobre lo asociado como en §19 (solo realizado; las devoluciones restan):
+  - por moneda: movimientos, Σ original (en las unidades de esa moneda) y Σ convertido; lo que no lleva `original`
+    cuenta en la moneda del presupuesto. Una suma que no cabe en un entero exacto sale `null`: «sin cifra exacta»;
+  - total = gastado del periodo (§19); queda y por día que queda, los de §19;
+  - gastado por día = ⌊gastado ÷ días transcurridos⌋, contando el primero y hoy (todos si terminó; sin cifra si no
+    empezó; 0 si lo gastado no es positivo);
+  - las capturas en otra moneda que siguen como propuesta dentro de las fechas se cuentan aparte y NO están en ninguna
+    cifra.
+
+- **Capturas** (`captureImport.ts`, decisión 177): en otra moneda durante un viaje en curso (el día del pago) con tasa
+  escrita para ella → gasto «Por revisar» con `amountMinor = convertToBudget(original, tasa del viaje, comisión del
+  viaje)` y asociado al viaje; sin tasa → propuesta. Ejemplo (`captureFx.test.ts`): ¥1 200 a 0,0092 con 2,5 % = 11,316
+  → 11,32 $; ₩15 000 a 0,00098 con 2,5 % = 15,0675 → 15,07 $; subir el yen a 0,0095 solo cambia lo siguiente (11,685 →
+  11,69 $).
+
+Ejemplo (prueba `trips.test.ts`): del 25-sep al 4-oct, 500,00 $; ¥1 200 a 0,0092 = 11,04 $, devolución de ¥600 =
+5,52 $, ₩15 000 a 0,00098 = 14,70 $, CN¥88,30 a 0,1923 = 16,98 $ y 20,00 $ en CAD → gastado 57,20 $; el 28-sep (4 días)
+14,30 $ por día; quedan 442,80 $ para 7 días → 63,25 $ por día.
+
+- **Por moneda en Estadísticas** (`spentByCurrency`, el mismo cálculo que la vista del viaje): gastos y devoluciones
+  realizados del periodo (con los filtros de Estadísticas), agrupados por la moneda en que se pagaron; lo que no lleva
+  `original` cuenta en la moneda del presupuesto. Σ original y Σ convertido, exactas o «sin cifra exacta».
+- **CSV** (`csvExport.ts`): seis columnas tras «Origen»: importe original con el signo del convertido (−1200 JPY con
+  −11,32 CAD), moneda, tasa exacta (`'1117/120000` si es fracción), fecha de la tasa, origen y comisión en % («2.50»).
+
+## 47. Tasas del Banco de Canadá (`domain/boc.ts`, `state/bocRates.ts`, Fase 3 nativa, decisión 181)
+
+Opcional y apagado por defecto (Ajustes › Formato; es de este dispositivo). Solo con presupuesto en CAD: las
+series diarias del banco son `FX<moneda>CAD` («Canadian dollars per <moneda>»), que es la dirección de la tasa de §45.
+Lo comprobado de la API, con sus URLs, en `docs/BOC-VALET.md`.
+
+- **Qué se pide:** `GET /valet/observations/FX<moneda>CAD/json?start_date=F−10&end_date=F`, con F la fecha del gasto (en
+  capturas, la del pago en la zona del presupuesto). Ningún dato de la persona.
+- **Qué tasa:** la observación de fecha más reciente con `F − 10 ≤ fecha ≤ F` (`pickBocRate`). Fines de semana y
+  festivos no tienen; una serie que dejó de publicarse (VND desde 2019) no da tasa. Sin observación, sin conexión, con
+  un error o con una respuesta que no se entiende: no hay tasa (nunca se inventa).
+- **El valor** es el texto que publica el banco («0.008940»), leído con `parseRate` y guardado canónico («0.00894»):
+  nunca un flotante. Un valor que no es un decimal exacto positivo invalida toda la respuesta.
+- **Importe:** el de §45 (`convertToBudget`, un solo redondeo), con la comisión del viaje si el gasto cae en uno y sin
+  comisión si no. `original` = moneda, importe, la tasa, `rateDate` = la fecha de la observación, `rateSource: 'boc'`.
+- **Orden:** la tasa escrita del viaje → la del banco → «Con lo que cobró el banco» (que siempre manda si se escribe).
+- **Capturas:** la importación es pura y síncrona; las tasas se piden antes (`bocRatesNeeded`) y se le pasan. Con tasa,
+  gasto «Por revisar» (`review.reason: 'currency'`); se asocia al viaje en curso solo si la moneda es del viaje.
+- **Caché** (del dispositivo, fuera de los datos y de las copias; 300 resultados): solo lo que ya no puede cambiar
+  (`bocResultFinal`): la tasa del mismo día F, o cualquier resultado con F ≤ hoy − 2. Hoy o ayer, la del día aún puede
+  publicarse: se usa la anterior y se vuelve a pedir la próxima vez.
+
+Ejemplos (pruebas `boc.test.ts` y `captureBoc.test.ts`, con respuestas reales guardadas):
+
+- ¥1 200 el domingo 8-nov-2026 → la del viernes 6-nov, 0.00891: 1 200 × 0,00891 = 10,692 → **10,69 $**.
+- ¥1 200 el 10-nov a 0.00894 = 10,728 → **10,73 $**; con 2,5 % de comisión, 10,9962 → **11,00 $** (un solo redondeo).
+- US$25,00 el 1-ene-2026 (festivo) → la del 31-dic, 1.3706: 34,265 → **34,27 $** (la mitad, hacia arriba).
+- Navidad y el 26-dic → la del 24-dic (1.3674); el 3-nov-2026, sin observación en el margen guardado → sin tasa.

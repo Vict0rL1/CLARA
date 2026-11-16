@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { CategoryIcon } from '../components/CategoryIcon'
 import { detectTimeZone, todayInTimeZone } from '../../domain/dates'
 import { changeCurrency, updateSettings } from '../../domain/operations'
@@ -41,6 +41,8 @@ import { AssistantSection } from './settings/AssistantSection'
 import { AccountsSection } from './settings/AccountsSection'
 import { BackupsSection } from './settings/BackupsSection'
 import { DataCenterSection } from './settings/DataCenterSection'
+// Tasas del Banco de Canadá (decisión 181): aparte, con sus textos en el paquete `fx`.
+const BocSetting = lazy(() => import('./settings/BocSetting'))
 import { PassphraseDialog } from './settings/PassphraseDialog'
 import { useEncryptedExport } from '../useEncryptedExport'
 import { DEV_MODE } from './Pro'
@@ -400,6 +402,9 @@ export function Settings({ route }: { route: Route }) {
           </button>
           <p className="field__hint" data-testid="currency-hint">{canChangeCurrency ? t('currency.canChange') : bufferOnly ? blockedMessage() : t('settings.currency.hint')}</p>
         </div>
+        <Suspense fallback={null}>
+          <BocSetting />
+        </Suspense>
         <fieldset className="field">
           <legend className="field__label">{t('settings.language.label')}</legend>
           <div className="chip-wrap" data-testid="language-chips">

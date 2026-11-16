@@ -9,11 +9,14 @@ import { createAiProvider, LocalProvider } from '../../domain/aiProvider'
 import { gate } from '../../domain/featureGate'
 import { DEV_MODE } from './Pro'
 import { recordAiUsage, saveConfirmedEntries, type ConfirmedEntry } from '../../domain/assistant'
+import { tripAmountFromText } from '../../domain/trips'
+import { feeLabel, rateLabel } from '../fxText'
 import { parseReceiptText } from '../../domain/receipt'
 import { compressReceipt, ocrAvailable, recognizeText } from '../ocr'
 import { resolveCategories } from '../../domain/categories'
 import { newId } from '../../domain/ids'
-import { parseMoney, withCurrencyMark, withCurrencyMarks } from '../../domain/money'
+import { parseMoney, withCurrencyMark, withCurrencyMarks, type ParseMoneyResult } from '../../domain/money'
+import type { OriginalAmount, PeriodBudget } from '../../domain/types'
 import { countEntries, learnCategories, MAX_PARSER_LINES, type ParsedEntry } from '../../domain/parser'
 import { computeBudget } from '../../domain/budget'
 import { implausibilityRatio, isImplausibleAmount } from '../../domain/plausibility'
@@ -198,6 +201,13 @@ export function Assistant({ route }: { route: Route }) {
   }, [])
 
   const update = (id: string, patch: Partial<Line>) => setLines((ls) => ls?.map((l) => (l.id === id ? { ...l, ...patch } : l)) ?? null)
+  // Fase 3 (decisión 180): con un viaje en curso ese día, una línea escrita en una de sus monedas con tasa se convierte
+  // con ESA tasa; si no, el importe se lee como siempre (otra moneda bloquea la línea).
+  const amountOf = (l: Line): LineAmount => {
+    const a = tripAmountFromText(data, l.amountText, l.date)
+    if (a.kind === 'none') return { parsed: a.result }
+    return { parsed: { ok: true, minor: a.minor }, ...(a.kind === 'trip' ? { original: a.original, trip: a.trip } : {}) }
+  }
 
   // Revisión única (etapa 2): las mismas comprobaciones que el CSV y el formulario, línea por línea.
   const reviewed = useMemo(() => {
@@ -205,7 +215,8 @@ export function Assistant({ route }: { route: Route }) {
     return reviewProposals(
       data,
       lines.map((l) => {
-        const parsed = parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale)
+        const read = tripAmountFromText(data, l.amountText, l.date)
+        const parsed = read.kind === 'none' ? read.result : ({ ok: true, minor: read.minor } as const)
         const written = writtenCurrencyOf(parsed, fmt.list)
         return {
           id: l.id,
@@ -229,12 +240,13 @@ export function Assistant({ route }: { route: Route }) {
   const reviewOf = (id: string) => reviewed?.reviews.find((r) => r.id === id)
 
   const transferRows = lines?.filter((l) => l.review === 'transfer').length ?? 0
-  // AS-01: una línea con otra moneda escrita no se registra (ni se convierte) hasta corregir el importe.
-  const foreignRows = lines?.filter((l) => !!writtenCurrencyOf(parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale), fmt.list)).length ?? 0
+  // AS-01: una línea con otra moneda escrita no se registra hasta corregir el importe, salvo que la tasa escrita de un
+  // viaje en curso la convierta (Fase 3, decisión 180); nunca se convierte con otra.
+  const foreignRows = lines?.filter((l) => !!writtenCurrencyOf(amountOf(l).parsed, fmt.list)).length ?? 0
   const availableMinor = useMemo(() => computeBudget(data, today).availableMinor, [data, today])
   const implausibleTimes = (l: Line): number | null | false => {
     if (l.kind !== 'expense') return false
-    const parsed = parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale)
+    const parsed = amountOf(l).parsed
     if (!parsed.ok || !isImplausibleAmount(parsed.minor, availableMinor, data.settings.currency)) return false
     return implausibilityRatio(parsed.minor, availableMinor)
   }
@@ -244,14 +256,15 @@ export function Assistant({ route }: { route: Route }) {
     const entries: ConfirmedEntry[] = []
     const errs: Issue[] = []
     lines.forEach((l, i) => {
-      const parsed = parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale)
+      const amount = amountOf(l)
+      const parsed = amount.parsed
       if (!parsed.ok) {
         const written = writtenCurrencyOf(parsed, fmt.list)
         errs.push(written ? { path: `entries[${i}].amountMinor`, code: 'writtenCurrency', params: { found: written, expected: data.settings.currency } } : { path: `entries[${i}].amountMinor`, code: 'invalidAmount' })
         return
       }
       const match = l.linked ? reviewOf(l.id)?.scheduleMatch : undefined
-      entries.push({ id: l.id, kind: l.kind, amountMinor: parsed.minor, date: l.date, accountId, categoryId: l.categoryId, note: l.note.trim() || undefined, merchant: l.entry.merchant, ...(match ? { scheduleId: match.sourceId, occurrenceDate: match.date } : {}), ...(l.receiptUri ? { receiptUri: l.receiptUri, source: 'photo' as const } : { source: fromShortcut ? ('shortcut' as const) : ('ai_text' as const) }) })
+      entries.push({ id: l.id, kind: l.kind, amountMinor: parsed.minor, ...(amount.original ? { original: amount.original } : {}), date: l.date, accountId, categoryId: l.categoryId, note: l.note.trim() || undefined, merchant: l.entry.merchant, ...(match ? { scheduleId: match.sourceId, occurrenceDate: match.date } : {}), ...(l.receiptUri ? { receiptUri: l.receiptUri, source: 'photo' as const } : { source: fromShortcut ? ('shortcut' as const) : ('ai_text' as const) }) })
     })
     if (errs.length) {
       setIssues(errs)
@@ -474,7 +487,8 @@ export function Assistant({ route }: { route: Route }) {
                   </Badge>
                 </div>
                 <Segmented legend={t('fields.kind')} name={`kind-${l.id}`} value={l.kind} onChange={(k) => update(l.id, { kind: k, review: undefined, categoryId: k === 'income' ? 'salary' : 'other_expense' })} options={[{ value: 'expense', label: t('txKind.expense') }, { value: 'income', label: t('txKind.income') }]} />
-                <MoneyField label={t('fields.amount')} value={l.amountText} onChange={(v) => update(l.id, { amountText: v })} fmt={fmt} error={lineError(i, 'amountMinor') || writtenCurrencyOf(parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale), fmt.list) ? (moneyErrorMessage(t, parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale)) ?? t('issue.invalidAmount')) : null} />
+                <MoneyField label={t('fields.amount')} value={l.amountText} onChange={(v) => update(l.id, { amountText: v })} fmt={fmt} error={lineError(i, 'amountMinor') || writtenCurrencyOf(amountOf(l).parsed, fmt.list) ? (moneyErrorMessage(t, amountOf(l).parsed) ?? t('issue.invalidAmount')) : null} />
+                <TripNote line={amountOf(l)} />
                 <CategoryPicker label={t('fields.category')} kind={l.kind} data={data} value={l.categoryId} onChange={(id) => update(l.id, { categoryId: id })} keep={l.categoryId} allowNew />
                 <TextField label={t('fields.date')} type="date" value={l.date} max={today} onChange={(e) => update(l.id, { date: e.target.value })} error={lineError(i, 'date') ? issueMessage(t, fmt, lineError(i, 'date')!) : undefined} />
                 <TextField label={t('fields.noteOptional')} value={l.note} maxLength={120} onChange={(e) => update(l.id, { note: e.target.value })} />
@@ -490,7 +504,7 @@ export function Assistant({ route }: { route: Route }) {
                 </ul>
                 {reviewOf(l.id) && <ProposalReviewView review={reviewOf(l.id)!} linked={!!l.linked} onLink={(v) => update(l.id, { linked: v })} returnTo="/asistente" testId={`review-${i}`} />}
                 <div className="button-row">
-                  <a className="btn btn--ghost btn--small" href={href(withQuery('/movimientos/nuevo', { kind: l.kind, amount: parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale).ok ? (parseMoney(l.amountText, data.settings.currency, data.settings.numberLocale) as { minor: number }).minor : undefined, date: l.date, note: l.note, category: l.categoryId, account: accountId, returnTo: '/asistente' }))}>
+                  <a className="btn btn--ghost btn--small" href={href(withQuery('/movimientos/nuevo', { kind: l.kind, amount: amountOf(l).parsed.ok ? (amountOf(l).parsed as { minor: number }).minor : undefined, date: l.date, note: l.note, category: l.categoryId, account: accountId, returnTo: '/asistente' }))}>
                     {t('assistant.openForm')}
                   </a>
                   <button type="button" className="btn btn--ghost btn--small" onClick={() => setLines((ls) => ls?.filter((x) => x.id !== l.id) ?? null)}>
@@ -533,3 +547,33 @@ export function Assistant({ route }: { route: Route }) {
     </div>
   )
 }
+
+/** El importe de una línea: leído en la moneda del presupuesto o, en un viaje, convertido con su tasa (Fase 3). */
+interface LineAmount {
+  parsed: ParseMoneyResult
+  original?: OriginalAmount
+  trip?: PeriodBudget
+}
+
+/** Fase 3: la cuenta de una línea convertida con la tasa del viaje, debajo de su importe. */
+function TripNote({ line }: { line: LineAmount }) {
+  const { t } = useT()
+  const fmt = useFormat()
+  const today = useToday()
+  if (!line.original || !line.trip || !line.parsed.ok) return null
+  const o = line.original
+  const params = {
+    original: fmt.moneyIn(o.amountMinor, o.currency),
+    trip: line.trip.name,
+    rate: rateLabel(o.rate, fmt.numberLocale),
+    date: fmt.date(o.rateDate, { compact: true, today }),
+    fee: feeLabel(o.feeBps ?? 0, fmt.numberLocale),
+    amount: fmt.money(line.parsed.minor),
+  }
+  return (
+    <p className="note" data-testid="assistant-trip-rate">
+      {t(o.feeBps ? 'assistant.tripRateFee' : 'assistant.tripRate', params)}
+    </p>
+  )
+}
+

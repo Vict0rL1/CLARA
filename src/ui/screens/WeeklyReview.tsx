@@ -6,19 +6,42 @@ import { useMemo } from 'react'
 import { addDays, isValidLocalDate } from '../../domain/dates'
 import { updateSettings } from '../../domain/operations'
 import { trackedSince, weeklyReview, weekStartOf, type Observation, type WeekChange } from '../../domain/weeklyReview'
+import type { Language } from '../../domain/types'
 import { useT } from '../../i18n'
+import { packTranslator, usePack, type PackTranslate, type PackTranslatePlural } from '../../i18n/packs'
 import { useRun, useToday } from '../../state/hooks'
 import { useData } from '../../state/store'
 import { Alert, Badge, CalcRow, Card, Explain, Meter, PageHeader } from '../components/common'
 import { InsightsTabs } from '../components/InsightsTabs'
 import { CheckboxField } from '../components/fields'
 import { Icon } from '../components/Icon'
+import { PackLangScope } from '../components/PackLangScope'
+import { PackNotice } from '../components/PackNotice'
 import { useFormat, type Formatter } from '../format'
 import { categoryLabel, planItemName } from '../labels'
 import { href, withQuery, type Route } from '../router'
 
 export function WeeklyReview({ route }: { route: Route }) {
-  const { t, tn } = useT()
+  const { t } = useT()
+  // Los textos de esta pantalla van en un paquete diferido (fuera del JS inicial); la cabecera y las pestañas no.
+  const pack = usePack('weekly')
+  return (
+    <div className="stack">
+      <PageHeader title={t('weekly.title')} back={{ href: href('/'), label: t('nav.home') }} />
+      <InsightsTabs active="revision" />
+      <PackNotice state={pack} />
+      {pack.status === 'ready' && (
+        <PackLangScope fallback={pack.fallback}>
+          <WeeklyBody route={route} texts={pack.texts} packLanguage={pack.language} />
+        </PackLangScope>
+      )}
+    </div>
+  )
+}
+
+function WeeklyBody({ route, texts, packLanguage }: { route: Route; texts: Record<string, string>; packLanguage: Language }) {
+  const base = useT()
+  const { t, tn } = useMemo(() => packTranslator(texts, packLanguage, base), [texts, packLanguage, base])
   const fmt = useFormat()
   const data = useData()
   const today = useToday()
@@ -44,8 +67,6 @@ export function WeeklyReview({ route }: { route: Route }) {
 
   return (
     <div className="stack">
-      <PageHeader title={t('weekly.title')} back={{ href: href('/'), label: t('nav.home') }} />
-      <InsightsTabs active="revision" />
       <nav className="month-nav" aria-label={t('weekly.navAria')}>
         <a className="btn btn--ghost btn--icon" href={prevHref}>
           <Icon name="chevronLeft" />
@@ -219,7 +240,7 @@ export function WeeklyReview({ route }: { route: Route }) {
   )
 }
 
-function observationText(o: Observation, t: ReturnType<typeof useT>['t'], tn: ReturnType<typeof useT>['tn'], fmt: Formatter): string {
+function observationText(o: Observation, t: PackTranslate, tn: PackTranslatePlural, fmt: Formatter): string {
   const p = o.params
   const money = (k: string) => fmt.money(Number(p[k] ?? 0))
   switch (o.id) {

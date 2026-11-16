@@ -1,15 +1,27 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { buildCsp, remoteOrigin, renderHeaders, safeRemoteEndpoint } from '../../vite.config'
+import { BOC_ORIGIN } from '../domain/boc'
+import { BOC_CONNECT_ORIGIN, buildCsp, remoteOrigin, renderHeaders, safeRemoteEndpoint } from '../../vite.config'
+
+const BOC = 'https://www.bankofcanada.ca'
 
 describe('CSP de la versión compilada', () => {
-  it('solo conecta con la propia app; con un proveedor remoto https añade exactamente su origen', () => {
-    expect(buildCsp()).toContain("connect-src 'self';")
-    expect(buildCsp('https://ai.example.com/v1/parse?x=1')).toContain("connect-src 'self' https://ai.example.com;")
+  it('solo conecta con la propia app y el Banco de Canadá; con un proveedor remoto https añade exactamente su origen', () => {
+    expect(buildCsp()).toContain(`connect-src 'self' ${BOC};`)
+    expect(buildCsp('https://ai.example.com/v1/parse?x=1')).toContain(`connect-src 'self' ${BOC} https://ai.example.com;`)
     expect(remoteOrigin('http://ai.example.com')).toBeNull()
     expect(remoteOrigin('no es una url')).toBeNull()
-    expect(buildCsp('http://ai.example.com')).toContain("connect-src 'self';")
+    expect(buildCsp('http://ai.example.com')).toContain(`connect-src 'self' ${BOC};`)
     expect(buildCsp()).toContain("font-src 'self'")
+  })
+
+  it('decisión 181: la excepción del Banco de Canadá es SOLO su origen https, en connect-src y en ninguna otra directiva', () => {
+    expect(BOC_CONNECT_ORIGIN).toBe(BOC)
+    expect(BOC_ORIGIN).toBe(BOC)
+    const directives = buildCsp().split(';').map((d) => d.trim())
+    expect(directives.filter((d) => d.includes('bankofcanada'))).toEqual([`connect-src 'self' ${BOC}`])
+    // Ni comodines, ni el dominio francés, ni http.
+    expect(buildCsp()).not.toMatch(/\*|banqueducanada|http:/)
   })
 })
 
@@ -53,7 +65,7 @@ describe('R-01 · la compilación falla con una configuración insegura del prov
   it('sin variables no hay origen remoto; con un servicio propio seguro se usa ese endpoint', () => {
     expect(safeRemoteEndpoint({})).toBeUndefined()
     expect(safeRemoteEndpoint({ VITE_AI_ENDPOINT: 'https://clara-ai.example.com/parse', VITE_AI_KEY: 'pub_token', VITE_AI_ALLOWED_ORIGINS: 'https://clara-ai.example.com' })).toBe('https://clara-ai.example.com/parse')
-    expect(buildCsp(safeRemoteEndpoint({ VITE_AI_ENDPOINT: 'https://clara-ai.example.com/parse', VITE_AI_KEY: 'pub_token', VITE_AI_ALLOWED_ORIGINS: 'https://clara-ai.example.com' }))).toContain("connect-src 'self' https://clara-ai.example.com;")
+    expect(buildCsp(safeRemoteEndpoint({ VITE_AI_ENDPOINT: 'https://clara-ai.example.com/parse', VITE_AI_KEY: 'pub_token', VITE_AI_ALLOWED_ORIGINS: 'https://clara-ai.example.com' }))).toContain(`connect-src 'self' ${BOC} https://clara-ai.example.com;`)
   })
 
   it('una clave de proveedor, un endpoint directo a un proveedor, http o una variable suelta detienen la compilación con el motivo', () => {

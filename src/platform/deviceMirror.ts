@@ -18,8 +18,8 @@ import type { NativeTextStore } from '../storage/nativeRepository'
 
 export const NATIVE_DEVICE = 'device'
 
-/** Las claves de este dispositivo. El registro de errores y lo ya avisado no se copian. */
-export const DEVICE_KEYS = ['clara.lock.v1', 'clara.ui.v1', 'clara.theme', 'clara.device.v1', 'clara.plan.tab', 'clara.movements.summary', 'clara.hint.view'] as const
+/** Las claves de este dispositivo (también el interruptor del Banco de Canadá, `state/bocRates.ts`). El registro de errores, lo ya avisado y la caché de tasas no se copian. */
+export const DEVICE_KEYS = ['clara.lock.v1', 'clara.ui.v1', 'clara.theme', 'clara.device.v1', 'clara.plan.tab', 'clara.movements.summary', 'clara.hint.view', 'clara.boc.v1'] as const
 
 type KeyStorage = Pick<Storage, 'getItem' | 'setItem'>
 

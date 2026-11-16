@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { activeAccounts, isBudgetAccount } from '../../domain/balances'
 import { categoriesForKind } from '../../domain/categories'
 import { addDays, isValidLocalDate } from '../../domain/dates'
@@ -28,6 +28,7 @@ import { resolveSplitTemplate } from '../../domain/templates'
 import { clearDraft, readDraft, writeDraft } from '../../storage/drafts'
 import type { Frequency, AppData, CategoryRule, SplitLine, Transaction, TxKind, TxStatus } from '../../domain/types'
 import type { Issue } from '../../domain/validation'
+import type { ForeignState } from '../fxFields'
 import { LIMITS } from '../../domain/validation'
 import { useT, type MessageKey } from '../../i18n'
 import { useRun, useToday } from '../../state/hooks'
@@ -50,6 +51,9 @@ import { sourceGroupOf } from '../../domain/txFilters'
 import { href, navigate, withQuery, type Route, navigateIfStillAt, useNavigateIfStillHere } from '../router'
 
 type FormKind = Exclude<TxKind, 'adjustment'>
+
+/** Fase 3: «Pagado en otra moneda» se carga aparte, con sus textos (paquete `fx`), para no crecer el JS inicial. */
+const ForeignAmount = lazy(() => import('../fxFields').then((m) => ({ default: m.ForeignAmount })))
 
 const DRAFT_NAME = 'movement'
 
@@ -299,6 +303,12 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
     return openItemsUntil(data, today, addDays(today, 14)).filter((i) => i.source === 'schedule' && i.direction === kind && i.date >= addDays(today, -45))
   }, [data, today, kind, existing])
   const linked = linkCandidates.find((i) => i.key === linkKey)
+  // Fase 3: otra moneda en gastos, ingresos y devoluciones (no al liquidar una ocurrencia: esa ruta no la guarda).
+  const [foreign, setForeign] = useState<ForeignState | null>(null)
+  const [foreignTries, setForeignTries] = useState(0)
+  const canForeign = (kind === 'expense' || kind === 'income' || kind === 'refund') && !(linked && status === 'realized')
+  const foreignOn = canForeign && foreign?.active === true
+  const foreignOriginal = foreignOn && foreign.active && foreign.result.ok ? foreign.result.original : undefined
 
   const changeNote = (value: string) => {
     setNote(value)
@@ -348,7 +358,7 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
       .slice(0, 50)
   }, [data.transactions, id, refundOfId, kind])
 
-  const proposedPeriods = existing ? [] : periodsProposedFor(data, { kind, date, categoryId })
+  const proposedPeriods = existing ? [] : periodsProposedFor(data, { kind, date, categoryId, original: foreignOriginal })
   const periodChecked = (budgetId: string) => (budgetId in periodChoice ? periodChoice[budgetId]! : proposedPeriods.includes(budgetId))
   const periodIds = openPeriods.filter((b) => periodChecked(b.id)).map((b) => b.id)
 
@@ -380,7 +390,9 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
   const canRepeat = !existing && !linked && (kind === 'expense' || kind === 'income') && status === 'realized' && !splitDrafts
 
   const submit = async (another = false) => {
-    const parsed = parseMoneyText(amountText, fmt)
+    // En otra moneda, el importe sale de la sección (tasa o cargo real): sin un resultado válido no se guarda.
+    if (foreignOn && foreign.active && !foreign.result.ok) return void setForeignTries((n) => n + 1)
+    const parsed = foreignOn && foreign.active && foreign.result.ok ? ({ ok: true, minor: foreign.result.amountMinor } as const) : parseMoneyText(amountText, fmt)
     setAmountError(moneyErrorMessage(t, parsed))
     // Evita un segundo envío por doble clic antes de que React vuelva a pintar.
     if (!parsed.ok || submitting.current) return
@@ -517,6 +529,8 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
       ...(existing?.scheduleId ? { scheduleId: existing.scheduleId, occurrenceDate: existing.occurrenceDate, partialSettlement: existing.partialSettlement } : {}),
       // v15: guardar desde el formulario es revisar lo que registró una captura automática.
       ...(existing?.review ? { reviewed: true } : {}),
+      // v16: el importe original. Apagado (o un tipo que no lo admite) lo quita; sin cargar la sección, se conserva.
+      ...(foreignOriginal ? { original: foreignOriginal } : existing?.original && (!canForeign || foreign?.active === false) ? { original: null } : {}),
       alreadyInBalance,
     }
     if (repeat && canRepeat && (kind === 'expense' || kind === 'income')) {
@@ -699,23 +713,30 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
           hint={t(`movementForm.kindHint.${kind}` as MessageKey)}
         />
 
-        <MoneyField
-          label={t('fields.amount')}
-          value={amountText}
-          hint={
-            link?.amountUnreadable
-              ? t('movementForm.shortcutAmountUnreadable')
-              : link?.foreignCurrency
-                ? t('movementForm.shortcutForeignCurrency', { code: link.foreignCurrency, currency: data.settings.currency })
-                : undefined
-          }
-          onChange={setAmountText}
-          error={amountError ?? fieldError(t, fmt, issues, 'amountMinor')}
-          fmt={fmt}
-          big
-          autoFocus={!existing}
-          name="amount"
-        />
+        {!foreignOn && (
+          <MoneyField
+            label={t('fields.amount')}
+            value={amountText}
+            hint={
+              link?.amountUnreadable
+                ? t('movementForm.shortcutAmountUnreadable')
+                : link?.foreignCurrency
+                  ? t('movementForm.shortcutForeignCurrency', { code: link.foreignCurrency, currency: data.settings.currency })
+                  : undefined
+            }
+            onChange={setAmountText}
+            error={amountError ?? fieldError(t, fmt, issues, 'amountMinor')}
+            fmt={fmt}
+            big
+            autoFocus={!existing}
+            name="amount"
+          />
+        )}
+        {canForeign && (
+          <Suspense fallback={null}>
+            <ForeignAmount kind={kind} date={date} existing={existing?.original ?? duplicateOf?.original} amountText={amountText} setAmountText={setAmountText} submitted={foreignTries} onChange={setForeign} />
+          </Suspense>
+        )}
 
         <SelectField
           label={kind === 'transfer' ? t('fields.fromAccount') : t('fields.account')}

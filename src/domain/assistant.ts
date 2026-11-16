@@ -5,7 +5,7 @@
  * nunca calcula ni modifica saldos (eso lo hacen las fórmulas de siempre).
  */
 import { saveTransaction, type OpContext, type OpResult } from './operations'
-import type { AppData, LocalDate, Transaction, TransactionSource } from './types'
+import type { AppData, LocalDate, OriginalAmount, Transaction, TransactionSource } from './types'
 import type { Issue } from './validation'
 
 export interface ConfirmedEntry {
@@ -25,6 +25,11 @@ export interface ConfirmedEntry {
   occurrenceDate?: LocalDate
   /** Moneda escrita por la persona, si la hubo. Distinta de la del presupuesto → no se guarda (AS-01). */
   writtenCurrency?: string
+  /**
+   * Fase 3: escrita en una moneda del viaje en curso y convertida con su tasa (`tripAmountFromText`). La validación
+   * exige que `amountMinor` sea exactamente esa conversión.
+   */
+  original?: OriginalAmount
 }
 
 /** Registra todas las entradas o ninguna. Los errores llevan el índice de la entrada (`entries[i].campo`). */
@@ -34,7 +39,7 @@ export function saveConfirmedEntries(data: AppData, entries: readonly ConfirmedE
   const saved: Transaction[] = []
   const issues: Issue[] = []
   entries.forEach((e, i) => {
-    if (e.writtenCurrency && e.writtenCurrency !== data.settings.currency) {
+    if (e.writtenCurrency && e.writtenCurrency !== data.settings.currency && e.writtenCurrency !== e.original?.currency) {
       issues.push({ path: `entries[${i}].amountMinor`, code: 'writtenCurrency', params: { found: e.writtenCurrency, expected: data.settings.currency } })
       return
     }
@@ -52,6 +57,7 @@ export function saveConfirmedEntries(data: AppData, entries: readonly ConfirmedE
         ...(e.merchant ? { merchant: e.merchant } : {}),
         ...(e.receiptUri ? { receiptUri: e.receiptUri } : {}),
         ...(e.scheduleId && e.occurrenceDate ? { scheduleId: e.scheduleId, occurrenceDate: e.occurrenceDate } : {}),
+        ...(e.original ? { original: e.original } : {}),
         source: e.source,
       },
       ctx,

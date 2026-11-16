@@ -191,6 +191,11 @@ export const MIGRATIONS: Record<number, (raw: Raw) => Raw> = {
   // sube para que una versión anterior, que no sabe que un movimiento puede estar «por revisar», vea «datos de una
   // versión más nueva» en vez de perder esas marcas al guardar (docs/ROLLBACK.md).
   14: (raw) => ({ ...raw, schemaVersion: 15 }),
+  // v15 → v16 (Fase 3 nativa, decisión 175): un movimiento puede guardar su importe en otra moneda (`original`, con la
+  // tasa exacta) y los datos ganan viajes (`trips`). Todo opcional: ausente = pagado en la moneda del presupuesto y sin
+  // viajes. El número sube para que una versión anterior, que no sabe de `original`, vea «datos de una versión más
+  // nueva» en vez de perder la moneda y la tasa al guardar (docs/ROLLBACK.md).
+  15: (raw) => ({ ...raw, schemaVersion: 16 }),
 }
 
 export function migrate(raw: Raw): Raw {

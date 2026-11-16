@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { SCHEMA_VERSION } from '../../src/domain/types'
 import { baseData } from '../../src/test/fixtures'
 import { available, go, openApp, waitForSaved } from './helpers'
 import { asNativeApp, FAKE_NATIVE_PREFIX, nativeFile, seedNativeData } from './nativeShell'
@@ -94,9 +95,10 @@ test('Datos y recuperación ve la copia previa a una migración guardada en el a
   await openApp(page)
   await seedNativeData(page, { ...baseData(), schemaVersion: 14 })
   await expect(await available(page)).toHaveText('$1,000.00')
-  expect(JSON.parse((await nativeFile(page, 'before-v15'))!.text).fromVersion).toBe(14)
+  // La copia se nombra por el esquema al que se migra: el actual (no un número fijo, que caduca con cada esquema).
+  expect(JSON.parse((await nativeFile(page, `before-v${SCHEMA_VERSION}`))!.text).fromVersion).toBe(14)
   await go(page, '/ajustes/datos')
-  await expect(page.getByTestId('data-row-preMigration')).toContainText('Copia previa a la migración al esquema 15, conservada en la app')
+  await expect(page.getByTestId('data-row-preMigration')).toContainText(`Copia previa a la migración al esquema ${SCHEMA_VERSION}, conservada en la app`)
   await expect(page.getByTestId('data-row-preMigration')).toHaveAttribute('data-state', 'ok')
 })
 

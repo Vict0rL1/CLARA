@@ -1,6 +1,9 @@
 /**
  * Presupuestos por periodo (semestre, viaje o personalizado). Los cálculos viven en
  * `domain/periodBudgets.ts`; aquí solo se muestran y se llaman operaciones.
+ *
+ * Los textos van en el paquete diferido `periods` (fuera del JS inicial): cada pantalla tiene su cabecera fuera
+ * (diccionario principal) y el cuerpo dentro de `PackBody`, que lee el traductor con `usePackT()`.
  */
 import { useMemo, useState } from 'react'
 import { computeBudget } from '../../domain/budget'
@@ -31,7 +34,11 @@ import { Alert, Badge, CalcRow, Card, EmptyState, Explain, Meter, PageHeader, Wh
 import { Dialog } from '../components/Dialog'
 import { CheckboxField, MoneyField, Segmented, TextField } from '../components/fields'
 import { Icon, type IconName } from '../components/Icon'
+import { PackBody } from '../components/PackBody'
+import { usePackT } from '../components/packTexts'
 import { useToast } from '../components/toastContext'
+import { tripDraftFrom, tripFromDraft, type TripDraft } from '../tripDraft'
+import { TripCard, TripFields } from '../tripUi'
 import { useFormat } from '../format'
 import { categoryLabel, fieldError, issueMessage, otherIssues, transactionTitle } from '../labels'
 import { moneyErrorMessage, parseMoneyText } from '../moneyText'
@@ -47,7 +54,7 @@ const STATUS: Record<PeriodStatus, { tone: Tone; icon: IconName }> = {
 const TEMPLATES: PeriodTemplate[] = ['semester', 'trip', 'custom']
 
 function StatusBadge({ budget, status }: { budget: PeriodBudget; status: PeriodStatus }) {
-  const { t } = useT()
+  const { t } = usePackT()
   if (budget.archived) return <Badge icon="lock">{t('period.archived')}</Badge>
   return (
     <Badge tone={STATUS[status].tone} icon={STATUS[status].icon}>
@@ -56,9 +63,17 @@ function StatusBadge({ budget, status }: { budget: PeriodBudget; status: PeriodS
   )
 }
 
-/** Pestaña «Periodos» del Plan. */
+/** Pestaña «Periodos» del Plan (la cabecera es la del Plan). */
 export function PeriodBudgets() {
-  const { t, tn } = useT()
+  return (
+    <PackBody name="periods">
+      <PeriodList />
+    </PackBody>
+  )
+}
+
+function PeriodList() {
+  const { t, tn } = usePackT()
   const fmt = useFormat()
   const data = useData()
   const today = useToday()
@@ -134,15 +149,32 @@ export function PeriodBudgets() {
 }
 
 export function PeriodBudgetForm({ route }: { route: Route }) {
-  const leave = useNavigateIfStillHere()
   const { t } = useT()
+  const data = useData()
+  const editId = route.segments[2] === 'editar' ? route.segments[3] : undefined
+  const existing = editId ? data.periodBudgets.find((b) => b.id === editId) : undefined
+  if (editId && !existing) {
+    return <PageHeader title={t('period.notFound')} back={{ href: href('/plan/periodos'), label: t('plan.periods') }} />
+  }
+  const back = existing ? `/plan/periodos/${existing.id}` : '/plan/periodos'
+  return (
+    <div className="stack">
+      <PageHeader title={existing ? t('period.editTitle') : t('period.newTitle')} back={{ href: href(back), label: t('common.back') }} />
+      <PackBody name="periods">
+        <PeriodForm existing={existing} back={back} />
+      </PackBody>
+    </div>
+  )
+}
+
+function PeriodForm({ existing, back }: { existing: PeriodBudget | undefined; back: string }) {
+  const leave = useNavigateIfStillHere()
+  const { t } = usePackT()
   const fmt = useFormat()
   const data = useData()
   const today = useToday()
   const run = useRun()
   const toast = useToast()
-  const editId = route.segments[2] === 'editar' ? route.segments[3] : undefined
-  const existing = editId ? data.periodBudgets.find((b) => b.id === editId) : undefined
   const [id] = useState(() => existing?.id ?? newId())
   const [template, setTemplate] = useState<PeriodTemplate>(existing?.template ?? 'semester')
   const initialDates = existing ?? templateDates('semester', today)
@@ -152,13 +184,12 @@ export function PeriodBudgetForm({ route }: { route: Route }) {
   const [allocatedText, setAllocatedText] = useState(existing ? fmt.moneyInput(existing.allocatedMinor) : '')
   const [note, setNote] = useState(existing?.note ?? '')
   const [ruleCategoryIds, setRuleCategoryIds] = useState<string[]>(existing?.ruleCategoryIds ?? [])
+  // Fase 3: modo viaje (solo con la plantilla «Viaje»).
+  const [tripDraft, setTripDraft] = useState<TripDraft>(() => tripDraftFrom(existing?.trip, fmt.decimalSeparator, fmt.numberLocale))
+  const [tripTried, setTripTried] = useState(false)
   const [issues, setIssues] = useState<Issue[]>([])
   const [amountError, setAmountError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-
-  if (editId && !existing) {
-    return <PageHeader title={t('period.notFound')} back={{ href: href('/plan/periodos'), label: t('plan.periods') }} />
-  }
 
   const chooseTemplate = (tpl: PeriodTemplate) => {
     setTemplate(tpl)
@@ -172,9 +203,11 @@ export function PeriodBudgetForm({ route }: { route: Route }) {
   const submit = async () => {
     const parsed = parseMoneyText(allocatedText, fmt)
     setAmountError(moneyErrorMessage(t, parsed))
-    if (!parsed.ok || busy) return
+    const trip = template === 'trip' ? tripFromDraft(tripDraft, fmt.decimalSeparator, fmt.numberLocale) : ({ ok: true, trip: null } as const)
+    setTripTried(true)
+    if (!parsed.ok || !trip.ok || busy) return
     setBusy(true)
-    const { result, saved } = await run((d, c) => savePeriodBudget(d, { id, name, template, startDate, endDate, allocatedMinor: parsed.minor, note, ruleCategoryIds }, c))
+    const { result, saved } = await run((d, c) => savePeriodBudget(d, { id, name, template, startDate, endDate, allocatedMinor: parsed.minor, note, ruleCategoryIds, trip: trip.trip }, c))
     setBusy(false)
     if (!result.ok) {
       setIssues(result.issues)
@@ -184,11 +217,9 @@ export function PeriodBudgetForm({ route }: { route: Route }) {
     leave(`/plan/periodos/${id}`)
   }
 
-  const back = existing ? `/plan/periodos/${existing.id}` : '/plan/periodos'
   const unknown = otherIssues(issues, ['name', 'startDate', 'endDate', 'allocatedMinor', 'note'])
   return (
-    <div className="stack">
-      <PageHeader title={existing ? t('period.editTitle') : t('period.newTitle')} back={{ href: href(back), label: t('common.back') }} />
+    <>
       <form
         className="form card"
         noValidate
@@ -212,6 +243,7 @@ export function PeriodBudgetForm({ route }: { route: Route }) {
         </div>
         <MoneyField label={t('period.allocated')} value={allocatedText} onChange={setAllocatedText} error={amountError ?? fieldError(t, fmt, issues, 'allocatedMinor')} fmt={fmt} hint={t('period.allocatedHint')} />
         <TextField label={t('fields.noteOptional')} value={note} maxLength={LIMITS.noteMax} onChange={(e) => setNote(e.target.value)} error={fieldError(t, fmt, issues, 'note')} />
+        {template === 'trip' && <TripFields draft={tripDraft} setDraft={setTripDraft} showErrors={tripTried} />}
         <details className="explain" open={ruleCategoryIds.length > 0}>
           <summary>
             <Icon name="sliders" size={16} />
@@ -249,13 +281,39 @@ export function PeriodBudgetForm({ route }: { route: Route }) {
           </a>
         </div>
       </form>
-    </div>
+    </>
   )
 }
 
 export function PeriodBudgetDetail({ route }: { route: Route }) {
+  const { t } = useT()
+  const data = useData()
+  const budget = data.periodBudgets.find((b) => b.id === route.segments[2])
+  if (!budget) {
+    return (
+      <div className="stack">
+        <PageHeader title={t('period.notFound')} back={{ href: href('/plan/periodos'), label: t('plan.periods') }} />
+      </div>
+    )
+  }
+  return (
+    <div className="stack">
+      <PageHeader title={budget.name} back={{ href: href('/plan/periodos'), label: t('plan.periods') }}>
+        <a className="btn btn--secondary" href={href(`/plan/periodos/editar/${budget.id}`)}>
+          <Icon name="edit" />
+          {t('common.edit')}
+        </a>
+      </PageHeader>
+      <PackBody name="periods">
+        <PeriodDetail budget={budget} />
+      </PackBody>
+    </div>
+  )
+}
+
+function PeriodDetail({ budget }: { budget: PeriodBudget }) {
   const leave = useNavigateIfStillHere()
-  const { t, tn } = useT()
+  const { t, tn } = usePackT()
   const fmt = useFormat()
   const data = useData()
   const today = useToday()
@@ -264,19 +322,10 @@ export function PeriodBudgetDetail({ route }: { route: Route }) {
   const [reserving, setReserving] = useState(false)
   const [suggestCategory, setSuggestCategory] = useState('')
   const [showAll, setShowAll] = useState(false)
-  const budget = data.periodBudgets.find((b) => b.id === route.segments[2])
-  const summary = useMemo(() => (budget ? summarizePeriod(data, budget, today) : null), [data, budget, today])
-  const candidates = useMemo(() => (budget ? periodCandidates(data, budget) : []), [data, budget])
-  const reserve = budget?.goalId ? goalReserveLines(data).find((l) => l.goal.id === budget.goalId) : undefined
+  const summary = useMemo(() => summarizePeriod(data, budget, today), [data, budget, today])
+  const candidates = useMemo(() => periodCandidates(data, budget), [data, budget])
+  const reserve = budget.goalId ? goalReserveLines(data).find((l) => l.goal.id === budget.goalId) : undefined
   const availableMinor = useMemo(() => computeBudget(data, today).availableMinor, [data, today])
-
-  if (!budget || !summary) {
-    return (
-      <div className="stack">
-        <PageHeader title={t('period.notFound')} back={{ href: href('/plan/periodos'), label: t('plan.periods') }} />
-      </div>
-    )
-  }
 
   const linked = new Set(budget.txIds)
   const outside = new Set(summary.outsideRange.map((x) => x.id))
@@ -321,13 +370,7 @@ export function PeriodBudgetDetail({ route }: { route: Route }) {
   }
 
   return (
-    <div className="stack">
-      <PageHeader title={budget.name} back={{ href: href('/plan/periodos'), label: t('plan.periods') }}>
-        <a className="btn btn--secondary" href={href(`/plan/periodos/editar/${budget.id}`)}>
-          <Icon name="edit" />
-          {t('common.edit')}
-        </a>
-      </PageHeader>
+    <>
       <p className="item__badges">
         <StatusBadge budget={budget} status={summary.status} />
         <Badge>{t(`period.template.${budget.template}`)}</Badge>
@@ -384,6 +427,8 @@ export function PeriodBudgetDetail({ route }: { route: Route }) {
           </ul>
         </Explain>
       </Card>
+
+      {budget.template === 'trip' && budget.trip && <TripCard budget={budget} />}
 
       <Card labelledBy="period-money">
         <h2 id="period-money" className="card__title">
@@ -488,12 +533,12 @@ export function PeriodBudgetDetail({ route }: { route: Route }) {
       </div>
       <p className="note">{t('period.deleteNote')}</p>
       {reserving && <ReserveDialog budget={budget} available={availableMinor} onClose={() => setReserving(false)} />}
-    </div>
+    </>
   )
 }
 
 function ReserveDialog({ budget, available, onClose }: { budget: PeriodBudget; available: number; onClose: () => void }) {
-  const { t } = useT()
+  const { t } = usePackT()
   const fmt = useFormat()
   const run = useRun()
   const toast = useToast()

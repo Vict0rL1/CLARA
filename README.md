@@ -363,7 +363,7 @@ IP en la red local no se activa el uso sin conexión (el navegador lo exige así
 **Protección de los datos (lo que hay y lo que no):** los datos están solo en este
 navegador (IndexedDB; `localStorage` si no está disponible; ver `docs/STORAGE.md`), **sin cifrar y sin contraseña**: cualquiera que use ese
 navegador puede verlos. No hay servidor, cuentas ni envío de datos (la versión compilada
-declara una política de seguridad que bloquea scripts y conexiones a otros sitios). El
+declara una política de seguridad que bloquea scripts y conexiones a otros sitios; la única excepción es www.bankofcanada.ca para las tasas de cambio, apagadas por defecto: ver `docs/BOC-VALET.md`). El
 navegador puede borrar los datos (al limpiar datos del sitio, con poco espacio o, en
 Safari, tras ~7 días sin uso si no está instalada); por eso existen las copias exportadas.
 Si no se puede guardar, la app lo dice, conserva lo último guardado y ofrece descargar una

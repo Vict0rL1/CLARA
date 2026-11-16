@@ -14,7 +14,7 @@
   "legal.privacy.2.title": "Ce que nous ne collectons pas",
   "legal.privacy.2.text": "Clara ne collecte ni identifiants, ni statistiques d'usage, ni localisation, ni contacts, et ne contient ni traceurs ni publicités.",
   "legal.privacy.3.title": "Assistant et fournisseurs externes",
-  "legal.privacy.3.text": "L'assistant textuel fonctionne sur votre appareil. Ce n'est que si la personne qui compile l'application configure un fournisseur externe que le texte saisi lui serait envoyé ; l'écran de l'assistant l'indique.",
+  "legal.privacy.3.text": "L'assistant textuel fonctionne sur votre appareil. Ce n'est que si la personne qui compile l'application configure un fournisseur externe que le texte saisi lui serait envoyé ; l'écran de l'assistant l'indique. Les taux de la Banque du Canada, seulement si vous les activez dans Réglages › Format, sont demandés à www.bankofcanada.ca avec la devise et deux dates : rien de vous.",
   "legal.privacy.4.title": "Notifications et autorisations",
   "legal.privacy.4.text": "Les alertes sont calculées sur l'appareil et affichées avec l'autorisation du navigateur, que vous pouvez retirer à tout moment. Le micro n'est utilisé que si vous activez la dictée.",
   "legal.privacy.5.title": "Verrouillage et chiffrement",

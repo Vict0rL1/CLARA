@@ -2,7 +2,9 @@
  * Lleva los pagos de la cola del iPhone a los datos (Fase 2, decisión 169). Solo dentro de la app: `main.tsx` lo carga
  * con `import()` junto con la cola nativa (`platform/native/captures.ts`).
  *
- * Cada lectura: leer la cola → `importCaptures` (las reglas están en el dominio) → guardar → y SOLO si se guardó,
+ * Cada lectura: leer la cola → (Fase 3, decisión 181: si Ajustes › Tasas del Banco de Canadá está encendido, pedir las
+ * tasas que harían falta, `bocRatesNeeded` + `state/bocRates.ts`; sin conexión o sin tasa, nada) → `importCaptures`
+ * (las reglas están en el dominio) → guardar → y SOLO si se guardó,
  * pedir al iPhone que quite esas líneas. Si algo falla antes de guardar, la cola sigue igual y se intenta la próxima
  * vez: un pago nunca se pierde. Si falla quitar las líneas, la próxima lectura las salta porque ya se conocen.
  *
@@ -10,13 +12,18 @@
  * la acción anota un pago con la app abierta. Nunca con datos de demostración ni antes de crear el presupuesto: los
  * pagos esperan en la cola. Dos lecturas nunca corren a la vez; una pedida durante otra se hace justo después.
  */
-import { importCaptures, type CaptureImportSummary } from '../domain/captureImport'
+import type { BocRate } from '../domain/boc'
+import { bocRatesNeeded, importCaptures, type CaptureImportSummary } from '../domain/captureImport'
 import { readCaptureQueue } from '../domain/captureQueue'
 import { minorToDecimalString } from '../domain/money'
 import type { Issue } from '../domain/validation'
 import type { AppData } from '../domain/types'
 import type { CaptureQueuePort } from '../platform/nativeCaptures'
+import { bocRatesFor } from './bocRates'
 import { makeContext } from './hooks'
+
+/** Cómo se piden las tasas del banco (se cambia en las pruebas). Devuelve solo las que hay; nada si está apagado. */
+export type BocRatesSource = (budgetCurrency: string, wanted: readonly { currency: string; date: string }[], today: string) => Promise<ReadonlyMap<string, BocRate>>
 
 export type CaptureSyncOutcome =
   | { status: 'imported'; summary: CaptureImportSummary }
@@ -41,7 +48,7 @@ export interface CaptureSync {
   start(target: Pick<Document, 'addEventListener' | 'removeEventListener' | 'visibilityState'>): () => void
 }
 
-export function createCaptureSync(port: CaptureQueuePort, store: CaptureSyncStore): CaptureSync {
+export function createCaptureSync(port: CaptureQueuePort, store: CaptureSyncStore, bocRates: BocRatesSource = (b, w, t) => bocRatesFor(b, w, t)): CaptureSync {
   let running: Promise<CaptureSyncOutcome> | null = null
   let again = false
 
@@ -57,11 +64,19 @@ export function createCaptureSync(port: CaptureQueuePort, store: CaptureSyncStor
     }
     const { records } = readCaptureQueue(text)
     if (records.length === 0) return { status: 'empty' }
-    // Los datos de ahora (pudieron cambiar mientras se leía la cola); de aquí a `commit` no hay esperas.
+    // Las tasas del Banco de Canadá que harían falta (solo si está encendido; un fallo no impide importar).
+    let boc: ReadonlyMap<string, BocRate> = new Map()
+    const mid = store.data
+    if (mid && !mid.isDemo) {
+      const ctx = makeContext(mid.settings.timeZone)
+      const wanted = bocRatesNeeded(mid, records, ctx)
+      if (wanted.length) boc = await bocRates(mid.settings.currency, wanted, ctx.today).catch(() => new Map())
+    }
+    // Los datos de ahora (pudieron cambiar mientras se leía la cola o se pedían las tasas); de aquí a `commit` no hay esperas.
     const data = store.data
     if (!data) return { status: 'waiting', reason: 'noData' }
     if (data.isDemo) return { status: 'waiting', reason: 'demo' }
-    const result = importCaptures(data, records, makeContext(data.settings.timeZone))
+    const result = importCaptures(data, records, makeContext(data.settings.timeZone), { boc })
     if (!result.ok) return { status: 'invalid', issues: result.issues }
     if (!result.unchanged && !(await store.commit(result.data))) return { status: 'notSaved' }
     await port.remove(result.value.ack).catch(() => {})

@@ -14,7 +14,7 @@
   "legal.privacy.2.title": "What we do not collect",
   "legal.privacy.2.text": "Clara collects no identifiers, usage analytics, location or contacts, and includes no trackers or ads.",
   "legal.privacy.3.title": "Assistant and external providers",
-  "legal.privacy.3.text": "The text assistant runs on your device. Only if whoever builds the app configures an external provider would the text you type be sent to that provider; the assistant screen says so.",
+  "legal.privacy.3.text": "The text assistant runs on your device. Only if whoever builds the app configures an external provider would the text you type be sent to that provider; the assistant screen says so. Bank of Canada rates, only if you turn them on in Settings › Format, are fetched from www.bankofcanada.ca with the currency and two dates: nothing of yours.",
   "legal.privacy.4.title": "Notifications and permissions",
   "legal.privacy.4.text": "Alerts are computed on the device and shown with the browser's permission, which you can revoke at any time. The microphone is used only if you turn on dictation.",
   "legal.privacy.5.title": "Lock and encryption",

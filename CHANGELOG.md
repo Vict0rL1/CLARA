@@ -8,6 +8,22 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
 
 ### Novedades
 
+- **Varias monedas y modo viaje** (Fase 3 nativa; decisiones 175–180, `docs/IOS-NATIVE.md` › «Fase 3»): un movimiento
+  puede guardar el importe en la moneda en que se pagó, con la tasa exacta, su fecha y la comisión de la tarjeta; la
+  cifra en la moneda del presupuesto sale de un solo redondeo al céntimo y se valida. «Pagado en otra moneda» en el
+  formulario, con una tasa o con lo que cobró el banco. Un periodo «Viaje» tiene monedas, moneda local actual (resuelve
+  el «¥») y tasas escritas a mano; mientras dura, el formulario, el asistente y los pagos de Apple Pay usan esas tasas, y
+  la vista del viaje dice lo gastado por moneda, el total, el gasto por día y lo que queda. Estadísticas y el CSV dicen
+  el original y el convertido. Nunca se inventa una tasa: sin ella, no hay importe. Esquema 16. **Probado en navegador con un iPhone simulado; sin probar en un iPhone.**
+- **Tasas del Banco de Canadá** (Fase 3 nativa; decisión 181, `docs/BOC-VALET.md`): opcional y apagado por defecto
+  (Ajustes › Formato), solo con presupuesto en CAD. «Usar la tasa del Banco de Canadá» en «Pagado en otra
+  moneda» pide la tasa indicativa del último día hábil publicado hasta la fecha del gasto y la pone con su aviso; en la
+  app, un pago capturado en otra moneda sin tasa del viaje entra «Por revisar» convertido con ella, y una propuesta
+  puede pedirla. Solo se envía la moneda y dos fechas; la CSP abre solo `https://www.bankofcanada.ca`; caché local
+  fuera de las copias. Sin conexión o sin tasa, no hay importe: nada se inventa. **Probado en navegador con el banco
+  simulado; sin probar en un iPhone.**
+- Los textos de la revisión semanal y de Presupuestos por periodo se cargan aparte (JS inicial 844,5 → 837,9 KB).
+
 - **App de iPhone: copias locales, PIN y preferencias fuera del WebView** (decisión 173): las copias locales
   automáticas van a archivos de la app, y el bloqueo con PIN y las preferencias tienen una copia que vuelve sola si iOS
   vacía el almacenamiento interno de la vista web. Ajustes › Datos y recuperación ve la copia previa a una migración
