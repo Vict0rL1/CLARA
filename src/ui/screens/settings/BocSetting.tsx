@@ -1,5 +1,5 @@
 /**
- * Ajustes › Formato y moneda › Tasas del Banco de Canadá (Fase 3, decisión 181). Se carga aparte (`lazy` en
+ * Ajustes › Formato › Tasas del Banco de Canadá (Fase 3, decisión 181). Se carga aparte (`lazy` en
  * `Settings.tsx`) con sus textos en el paquete diferido `fx`: el JS inicial no crece.
  *
  * Apagado por defecto y de este dispositivo (`state/bocRates.ts`). Solo tiene sentido con presupuesto en CAD: con otra

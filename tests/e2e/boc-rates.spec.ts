@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page, type Route } from '@playwright/test'
-import type { Transaction } from '../../src/domain/types'
-import { baseData } from '../../src/test/fixtures'
+import type { PeriodBudget, Transaction } from '../../src/domain/types'
+import { baseData, EARLIER, tx } from '../../src/test/fixtures'
 import { available, expectNoHorizontalScroll, go, openApp, seedStoredData, storedData } from './helpers'
 import { addFakeCapture, asNativeApp, fakeCaptureQueue, nativeFile, seedNativeData } from './nativeShell'
 
@@ -49,7 +49,7 @@ test('formulario: apagado no pide nada; encendido usa la tasa del banco con su a
   await expect(section.getByText('Importe en JPY')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Usar la tasa del Banco de Canadá' })).toHaveCount(0)
 
-  // Ajustes › Formato y moneda › Tasas del Banco de Canadá.
+  // Ajustes › Formato › Tasas del Banco de Canadá.
   await go(page, '/ajustes/formato')
   const setting = page.getByTestId('boc-setting')
   await expect(setting).toContainText('nada tuyo (ni importes, ni comercios, ni cuentas)')
@@ -155,4 +155,30 @@ test('app: una captura en yenes entra convertida con la tasa del banco; sin cone
   await expect(await available(page)).toHaveText('$984.30')
   const after = JSON.parse((await nativeFile(page, 'data'))!.text) as { transactions: Transaction[] }
   expect(after.transactions.find((t) => t.id === 'cap-y0000002')).toMatchObject({ amountMinor: 462, original: { rate: '0.00923', rateDate: '2026-09-25', rateSource: 'boc' } })
+})
+
+test('vista del viaje: dice cuántos movimientos se convirtieron con la tasa del banco', async ({ page }) => {
+  const yen = tx({ id: 'tx-boc00001', amountMinor: 1108, merchant: 'Lawson', original: { currency: 'JPY', amountMinor: 1200, rate: '0.00923', rateDate: '2026-09-25', rateSource: 'boc' } })
+  const trip: PeriodBudget = {
+    id: 'japon',
+    name: 'Japón',
+    template: 'trip',
+    startDate: '2026-09-25',
+    endDate: '2026-10-04',
+    allocatedMinor: 50000,
+    currency: 'CAD',
+    txIds: [yen.id],
+    archived: false,
+    trip: { currencies: ['JPY'], localCurrency: 'JPY', rates: [] },
+    createdAt: EARLIER,
+    updatedAt: EARLIER,
+  }
+  await seedStoredData(page, baseData({ transactions: [yen], periodBudgets: [trip] }))
+  await go(page, '/plan/periodos/japon')
+  const card = page.getByTestId('trip-card')
+  await expect(page.getByTestId('trip-total')).toHaveText('Total en CAD: $11.08')
+  await expect(page.getByTestId('trip-boc')).toHaveText('1 movimiento se convirtió con la tasa indicativa del Banco de Canadá de su fecha.')
+  await expectNoHorizontalScroll(page, 'viaje con tasa del banco')
+  expect((await new AxeBuilder({ page }).include('[data-testid="trip-card"]').analyze()).violations).toEqual([])
+  await expect(card).toContainText('JPY: sin tasa')
 })
