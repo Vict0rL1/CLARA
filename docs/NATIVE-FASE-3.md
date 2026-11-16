@@ -84,7 +84,7 @@ también la excepción «sin conexiones a otros sitios» para el Banco de Canad�
   como propuesta y se registra luego con la tasa (¥500 → 4,62 $); la vista del viaje lo cuenta. Con las relacionadas
   (otra moneda, «Por revisar», capturas, viajes, seguridad, Ajustes, dispositivo, guardas de maquetación y
   accesibilidad): 201 de 201.
-- **Navegador, la matriz completa tras el Banco de Canadá:** en curso al escribir esto (se completa al terminar).
+- **Navegador, la matriz completa tras el Banco de Canadá:** 1 340 pasan, 4 omitidas, 0 fallan (celular, celular 320 px y escritorio; 28 min). Después del texto nuevo de privacidad (Legal), recompilado y vuelto a correr lo que toca Legal, Ajustes, accesibilidad y el banco: 120 de 120.
 - **Tamaño:** JS inicial 838,2 KB de 844,6 (todo lo del banco se carga aparte).
 - **iPhone:** nada probado. No hay Swift nuevo.
 
