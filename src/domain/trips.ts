@@ -124,6 +124,8 @@ export interface TripSummary {
   spentPerDayMinor: number | null
   /** Pagos en otra moneda dentro de las fechas que siguen como propuesta: NO están en ninguna cifra. */
   unconvertedProposals: number
+  /** Movimientos del viaje convertidos con una tasa indicativa del Banco de Canadá (decisión 181). */
+  bocConverted: number
 }
 
 /**
@@ -158,7 +160,8 @@ export function tripSummary(data: AppData, budget: PeriodBudget, today: LocalDat
   const unconvertedProposals = (data.captures?.proposals ?? []).filter(
     (p) => !p.test && p.reason === 'currency' && p.date >= budget.startDate && p.date <= budget.endDate,
   ).length
-  return { period, byCurrency, daysElapsed, spentPerDayMinor, unconvertedProposals }
+  const bocConverted = period.transactions.filter((t) => t.original?.rateSource === 'boc').length
+  return { period, byCurrency, daysElapsed, spentPerDayMinor, unconvertedProposals, bocConverted }
 }
 
 export type TextAmount =

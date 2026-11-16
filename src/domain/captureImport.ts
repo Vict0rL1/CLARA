@@ -10,7 +10,10 @@
  * - La prueba de Ajustes (`test`) siempre es propuesta, nunca se registra y no cuenta como posible duplicado.
  * - En otra moneda durante un viaje en curso con una tasa escrita para ella (Fase 3, decisión 177; un «¥» suelto solo si
  *   la moneda local del viaje lo resuelve): también **movimiento real** «Por revisar» (`review.reason = 'currency'`),
- *   convertido con ESA tasa y la comisión del viaje (`original`, `fx.ts`) y asociado al viaje. Nunca con otra tasa.
+ *   convertido con ESA tasa y la comisión del viaje (`original`, `fx.ts`) y asociado al viaje.
+ * - Sin tasa del viaje, con la del Banco de Canadá si quien llama la trae ya pedida (`options.boc`, decisión 181: la pide
+ *   `state/captureSync.ts` antes, solo con el interruptor encendido y presupuesto en CAD; aquí no hay red): igual, con
+ *   `rateSource: 'boc'` y la fecha de la observación; se asocia al viaje solo si la moneda es del viaje. Nunca otra tasa.
  * - Si no: **propuesta**, que no cuenta en ninguna cifra hasta que la persona la registra. Motivos: otra moneda sin tasa
  *   o «¥» sin resolver (`currency`; nunca se inventa una tasa), importe sin entender (`unparsed`), mismo importe y comercio que otro gasto
  *   realizado o captura de menos de 2 minutos antes o después (`duplicate`: la automatización puede dispararse dos veces
@@ -27,6 +30,7 @@
  * como leído (`deferred`) y se lee la próxima vez: nunca se descarta.
  */
 import { activeAccounts } from './balances'
+import { bocConversion, bocKey, bocSeries, type BocRate } from './boc'
 import { readCaptureAmount, type CaptureAmount, type CaptureRecord } from './captureQueue'
 import { localDateInTimeZone } from './dates'
 import { convertToBudget, parseRate, rateToText } from './fx'
@@ -157,7 +161,36 @@ function linkToTrips(data: AppData, links: ReadonlyMap<string, string[]>, now: s
   return { ...data, periodBudgets }
 }
 
-export function importCaptures(data: AppData, records: readonly CaptureRecord[], ctx: OpContext): OpResult<CaptureImportSummary> {
+/** Lo que la importación puede recibir ya calculado fuera (es síncrona y no pide nada a la red). */
+export interface CaptureImportOptions {
+  /** Tasas del Banco de Canadá ya pedidas, por `bocKey(moneda, fecha del pago)`. */
+  boc?: ReadonlyMap<string, BocRate>
+}
+
+/**
+ * Las tasas del Banco de Canadá que harían falta para estas capturas: las nuevas (no leídas), que no son la prueba, en
+ * otra moneda que se lee y sin tasa del viaje, con presupuesto en CAD y serie publicada. Una por (moneda, fecha).
+ */
+export function bocRatesNeeded(data: AppData, records: readonly CaptureRecord[], ctx: OpContext): { currency: CurrencyCode; date: LocalDate }[] {
+  const out = new Map<string, { currency: CurrencyCode; date: LocalDate }>()
+  for (const record of records) {
+    if (record.test || captureKnown(data, record.captureId)) continue
+    const date = captureDate(record, data, ctx)
+    const trip = activeTrip(data, date)
+    const foreign = foreignAmount(readCaptureAmount(record, data.settings), trip, data.settings.numberLocale)
+    if (!foreign || tripRate(trip?.trip, foreign.currency) || !bocSeries(data.settings.currency, foreign.currency)) continue
+    out.set(bocKey(foreign.currency, date), { currency: foreign.currency, date })
+  }
+  return [...out.values()]
+}
+
+/** La fecha de un pago en la zona horaria del presupuesto; un reloj desfasado no la deja en el futuro. */
+function captureDate(record: CaptureRecord, data: AppData, ctx: OpContext): LocalDate {
+  const paidOn = localDateInTimeZone(new Date(Date.parse(record.createdAt)), data.settings.timeZone)
+  return paidOn > ctx.today ? ctx.today : paidOn
+}
+
+export function importCaptures(data: AppData, records: readonly CaptureRecord[], ctx: OpContext, options: CaptureImportOptions = {}): OpResult<CaptureImportSummary> {
   const summary: CaptureImportSummary = { saved: [], proposed: [], skipped: [], deferred: [], ack: [] }
   const state = data.captures ?? EMPTY_STATE
   const autoSave = data.settings.capture?.autoSave ?? true
@@ -183,15 +216,18 @@ export function importCaptures(data: AppData, records: readonly CaptureRecord[],
     }
     const read = readCaptureAmount(record, data.settings)
     const at = Date.parse(record.createdAt)
-    const paidOn = localDateInTimeZone(new Date(at), data.settings.timeZone)
     // Un reloj o una zona horaria desfasados no pueden dejar un gasto realizado en el futuro.
-    const date = paidOn > ctx.today ? ctx.today : paidOn
+    const date = captureDate(record, data, ctx)
     // Fase 3: el viaje en curso el día del pago (la prueba de Ajustes nunca usa uno).
     const trip = record.test ? undefined : activeTrip(data, date)
     const foreign = foreignAmount(read, trip, data.settings.numberLocale)
     // Un «¥» que el viaje resolvió se guarda ya como esa moneda, también si queda como propuesta.
     const amount: CaptureAmount = read.kind === 'ambiguous' && foreign ? { kind: 'foreign', ...foreign } : read
-    const conversion = tripConversion(data, foreign, trip)
+    const tripConv = tripConversion(data, foreign, trip)
+    const bocRate = !tripConv && foreign ? options.boc?.get(bocKey(foreign.currency, date)) : undefined
+    const conversion = tripConv ?? (bocRate && foreign ? (bocConversion(foreign, data.settings.currency, bocRate, trip?.trip?.feeBps ?? 0) ?? undefined) : undefined)
+    // Lo convirtió el viaje (su tasa) o es una moneda del viaje: se asocia a él.
+    const linkTrip = conversion && trip?.trip && (tripConv || trip.trip.currencies.includes(conversion.original.currency)) ? trip : undefined
     const budgetMinor = amount.kind === 'budget' ? amount.minor : conversion?.amountMinor
     const merchant = merchantKey(record.merchant ?? '')
     const categoryId = (record.merchant && suggestCategoryForMerchant(record.merchant, 'expense', data)) || CAPTURE_FALLBACK_CATEGORY
@@ -230,7 +266,7 @@ export function importCaptures(data: AppData, records: readonly CaptureRecord[],
         updatedAt: ctx.now,
       }
       newTxs.push(tx)
-      if (conversion && trip) tripLinks.set(trip.id, [...(tripLinks.get(trip.id) ?? []), tx.id])
+      if (linkTrip) tripLinks.set(linkTrip.id, [...(tripLinks.get(linkTrip.id) ?? []), tx.id])
       outflowMinor += budgetMinor
       charges.push({ txId: tx.id, amountMinor: tx.amountMinor, at, merchant })
       summary.saved.push(tx.id)
@@ -378,7 +414,7 @@ export function restoreProposals(data: AppData, proposals: readonly CapturePropo
 }
 
 /** Cómo se registra una propuesta en otra moneda: con lo que cobró el banco, o con una tasa (escrita o la del viaje). */
-export type RegisterWith = number | { rate: string; rateDate: LocalDate; feeBps?: number }
+export type RegisterWith = number | { rate: string; rateDate: LocalDate; feeBps?: number; rateSource?: 'manual' | 'boc' }
 
 /**
  * «Registrar»: convierte una propuesta en un gasto real, ya revisado (la persona lo acaba de mirar), con la hora del
@@ -403,7 +439,7 @@ export function registerProposal(data: AppData, captureId: string, ctx: OpContex
     const converted = convertToBudget(foreign.minor, foreign.currency, data.settings.currency, how.rate, feeBps)
     if (converted === null) return { ok: false, issues: [{ path: 'rate', code: 'invalidValue' }] }
     minor = converted
-    original = { currency: foreign.currency, amountMinor: foreign.minor, rate: rateToText(parseRate(how.rate)!), rateDate: how.rateDate, rateSource: 'manual', ...(feeBps > 0 ? { feeBps } : {}) }
+    original = { currency: foreign.currency, amountMinor: foreign.minor, rate: rateToText(parseRate(how.rate)!), rateDate: how.rateDate, rateSource: how.rateSource === 'boc' ? 'boc' : 'manual', ...(feeBps > 0 ? { feeBps } : {}) }
   } else {
     minor = how ?? (proposal.amount.kind === 'budget' ? proposal.amount.minor : undefined)
     const rate = how !== undefined && foreign ? rateFromAmounts(how, data.settings.currency, foreign.minor, foreign.currency) : null
