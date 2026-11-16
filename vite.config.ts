@@ -10,8 +10,9 @@ import { serviceWorker } from './pwa/serviceWorkerPlugin.ts'
 /**
  * Política de seguridad de contenido (solo en la versión compilada: el servidor de
  * desarrollo necesita scripts en línea). Solo se cargan archivos de la propia app y
- * no se permite conectar con otros sitios: si alguna vez se colara texto con código,
- * el navegador no lo ejecutaría ni podría enviar datos fuera.
+ * no se permite conectar con otros sitios (salvo el Banco de Canadá, `BOC_CONNECT_ORIGIN`):
+ * si alguna vez se colara texto con código, el navegador no lo ejecutaría ni podría enviar
+ * datos a ningún otro sitio.
  */
 /**
  * Origen permitido para el proveedor remoto del asistente: solo si la compilación define
@@ -41,6 +42,13 @@ export function safeRemoteEndpoint(env: RemoteAiEnv): string | undefined {
   throw new Error(`Proveedor remoto del asistente mal configurado (${check.reason}): ${REMOTE_AI_REASON_TEXT[check.reason]}`)
 }
 
+/**
+ * Banco de Canadá (Valet, decisión 181): la única excepción fija a «sin conexiones a otros sitios». Solo tasas de cambio
+ * y solo si la persona enciende Ajustes › Tasas del Banco de Canadá (apagado por defecto): la CSP lo permite y la app no
+ * pide nada mientras esté apagado. Es el mismo origen que `BOC_ORIGIN` (`src/domain/boc.ts`; una prueba lo exige).
+ */
+export const BOC_CONNECT_ORIGIN = 'https://www.bankofcanada.ca'
+
 export function buildCsp(aiEndpoint?: string): string {
   const remote = remoteOrigin(aiEndpoint)
   return [
@@ -50,7 +58,7 @@ export function buildCsp(aiEndpoint?: string): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self'",
-    `connect-src 'self'${remote ? ` ${remote}` : ''}`,
+    `connect-src 'self' ${BOC_CONNECT_ORIGIN}${remote ? ` ${remote}` : ''}`,
     "worker-src 'self'",
     "manifest-src 'self'",
     "object-src 'none'",

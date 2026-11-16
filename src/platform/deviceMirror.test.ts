@@ -4,6 +4,7 @@ import { DEVICE_KEY } from '../ui/install'
 import { LOCK_KEY } from '../ui/lock/pin'
 import { PREFS_KEY } from '../ui/preferences'
 import { THEME_KEY } from '../ui/theme'
+import { BOC_CACHE_KEY, BOC_SETTING_KEY } from '../state/bocRates'
 import { DEVICE_KEYS, NATIVE_DEVICE, restoreDeviceKeys, startDeviceMirror } from './deviceMirror'
 
 class MemoryStorage {
@@ -121,7 +122,9 @@ describe('ajustes de este dispositivo fuera del WebView (deviceMirror)', () => {
   })
 
   it('las claves copiadas son las que usa el código (si una cambia de nombre, esta prueba falla)', () => {
-    for (const key of [LOCK_KEY, PREFS_KEY, THEME_KEY, DEVICE_KEY]) expect(DEVICE_KEYS).toContain(key)
+    for (const key of [LOCK_KEY, PREFS_KEY, THEME_KEY, DEVICE_KEY, BOC_SETTING_KEY]) expect(DEVICE_KEYS).toContain(key)
     expect(DEVICE_KEYS).not.toContain('clara.errors.v1')
+    // La caché de tasas del Banco de Canadá se vuelve a pedir; no hace falta copiarla.
+    expect(DEVICE_KEYS).not.toContain(BOC_CACHE_KEY)
   })
 })
