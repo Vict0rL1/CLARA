@@ -14,7 +14,7 @@
   "legal.privacy.2.title": "O que não coletamos",
   "legal.privacy.2.text": "A Clara não coleta identificadores, estatísticas de uso, localização nem contatos, e não inclui rastreadores nem anúncios.",
   "legal.privacy.3.title": "Assistente e provedores externos",
-  "legal.privacy.3.text": "O assistente de texto funciona no seu dispositivo. Só se quem compila o app configurar um provedor externo o texto digitado seria enviado a esse provedor; a tela do assistente indica isso.",
+  "legal.privacy.3.text": "O assistente de texto funciona no seu dispositivo. Só se quem compila o app configurar um provedor externo o texto digitado seria enviado a esse provedor; a tela do assistente indica isso. As taxas do Banco do Canadá, só se você as ligar em Ajustes › Formato, são pedidas a www.bankofcanada.ca com a moeda e duas datas: nada seu.",
   "legal.privacy.4.title": "Notificações e permissões",
   "legal.privacy.4.text": "Os avisos são calculados no dispositivo e mostrados com a permissão do navegador, que você pode retirar quando quiser. O microfone só é usado se ativar o ditado.",
   "legal.privacy.5.title": "Bloqueio e criptografia",
