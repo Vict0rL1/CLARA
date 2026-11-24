@@ -19,6 +19,7 @@
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { SCHEMA_VERSION } from './types'
 import { analysisItems } from './analysis'
 import { computeBudget } from './budget'
 import { recordHistory } from './history'
@@ -48,11 +49,11 @@ describe('QA-01 histórico · copia v13 genuina de intención conocida (escrita 
     if (!r.ok) throw new Error(JSON.stringify(r.issues))
     return r.data
   }
-  it('la copia es esquema 13 tal cual la escribió la versión anterior y migra a 14 sin perder ningún registro', () => {
+  it('la copia es esquema 13 tal cual la escribió la versión anterior y migra a la versión actual sin perder ningún registro', () => {
     const raw = JSON.parse(V13) as { data: { schemaVersion: number; schedules: { id: string }[]; accounts: unknown[]; history: unknown[]; transactions: unknown[] } }
     expect(raw.data.schemaVersion).toBe(13)
     const d = imported()
-    expect(d.schemaVersion).toBe(14)
+    expect(d.schemaVersion).toBe(SCHEMA_VERSION)
     expect([d.accounts.length, d.schedules.length, d.history.length, d.transactions.length]).toEqual([raw.data.accounts.length, raw.data.schedules.length, raw.data.history.length, raw.data.transactions.length])
     expect(d.schedules.map((s) => s.id)).toEqual(raw.data.schedules.map((s) => s.id))
     expect(d.schedules.map((s) => [s.id, s.startDate, s.endDate ?? null, s.anchorDate ?? null, s.amountMinor])).toEqual([

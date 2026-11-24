@@ -1,38 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { SCHEMA_VERSION } from '../domain/types'
 import { account, baseData, tx } from '../test/fixtures'
-import { NATIVE_DATA, NATIVE_MIGRATION, NativeMigrationMismatch, NativeRepository, NativeStoreError, nativePreMigrationName, type LegacySource, type NativeTextStore } from './nativeRepository'
+import { NATIVE_DATA, NATIVE_MIGRATION, NativeMigrationMismatch, NativeRepository, NativeStoreError, nativePreMigrationName, type LegacySource } from './nativeRepository'
+import { FakeStore } from '../test/fakeNativeStore'
 import type { LoadResult } from './repository'
 
 /** Almacén nativo en memoria con el mismo contrato que el plugin `ClaraStorage` (revisión junto al texto, escritura con comparación). */
-class FakeStore implements NativeTextStore {
-  files = new Map<string, { text: string; revision: number }>()
-  writes: string[] = []
-  failNext: NativeStoreError | null = null
-  /** Simula un disco que devuelve otra cosa al releer. */
-  corruptReads = false
-
-  async read(name: string) {
-    const f = this.files.get(name)
-    if (!f) return null
-    return this.corruptReads ? { text: `${f.text} `, revision: f.revision } : { ...f }
-  }
-  async write(name: string, text: string, revision: number, expectedRevision: number | null) {
-    if (this.failNext) {
-      const e = this.failNext
-      this.failNext = null
-      throw e
-    }
-    const current = this.files.get(name)?.revision ?? null
-    if (current !== expectedRevision) throw new NativeStoreError('conflict')
-    this.files.set(name, { text, revision })
-    this.writes.push(name)
-  }
-  async remove(name: string) {
-    this.files.delete(name)
-  }
-}
-
 const sample = () =>
   baseData({
     accounts: [account({ id: 'main', name: 'Principal', anchor: { amountMinor: 150000, date: '2026-11-01', setAt: '2026-11-01T12:00:00.000Z' } })],
@@ -134,6 +107,9 @@ describe('NativeRepository · datos en un archivo propio de la app', () => {
     expect(result.status).toBe('ok')
     const copy = store.files.get(nativePreMigrationName())
     expect(JSON.parse(copy!.text)).toEqual({ fromVersion: SCHEMA_VERSION - 1, raw: old })
+    // Datos y recuperación la ve aunque esté en el archivo de la app, no en el WebView.
+    expect(await new NativeRepository(store).preMigrationCopy()).toBe(copy!.text)
+    expect(await new NativeRepository(new FakeStore()).preMigrationCopy()).toBeNull()
     // Otra lectura no la pisa.
     store.files.set(NATIVE_DATA, { text: old.replace('Principal', 'Otra'), revision: 3 })
     await new NativeRepository(store).load()

@@ -8,6 +8,8 @@
  * - Este archivo no importa nada de Capacitor: el puente nativo deja `window.Capacitor` antes de que cargue la página.
  * - La plataforma decide CÓMO se hace algo (guardar, vibrar, compartir) y qué se EXPLICA; nunca cambia cifras.
  */
+import type { LocalBackupStore } from '../storage/autoBackup'
+
 type CapacitorGlobal = { isNativePlatform?: () => boolean; getPlatform?: () => string }
 type WithCapacitor = { Capacitor?: CapacitorGlobal }
 
@@ -31,6 +33,12 @@ export interface NativeServices {
   haptic?: (kind: 'tick' | 'success' | 'warning' | 'error') => void
   /** Escribe el archivo y abre la hoja Compartir (`files.ts`). `cancelled`: se cerró sin elegir; otro fallo, se lanza. */
   shareTextFile?: (filename: string, text: string) => Promise<'shared' | 'cancelled'>
+  /** «Probar» de la captura automática (`state/captureSync.ts`): `true` si la prueba llegó a «Por revisar». */
+  captureTest?: (merchant: string) => Promise<boolean>
+  /** Copias locales en archivos de la app, no en el WebView (`storage/nativeLocalBackups.ts`, decisión 173). */
+  localBackups?: LocalBackupStore
+  /** Copia ya los ajustes de este dispositivo al archivo de la app (`deviceMirror.ts`); tras cambiar el bloqueo. */
+  saveDeviceSettings?: () => Promise<boolean>
 }
 
 const services: NativeServices = {}

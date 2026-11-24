@@ -235,3 +235,13 @@ describe('bandeja: confirmación automática que registró el importe completo t
     expect(dismissed.ok && inboxView(dismissed.data, ctx.today).active.some((i) => i.reason === 'autoConfirmOverstated')).toBe(false)
   })
 })
+
+describe('v15: pagos capturados por revisar', () => {
+  it('un movimiento «Por revisar» en «Otros gastos» no sale además como sin categoría; al revisarlo, sí', () => {
+    const captured = tx({ id: 'cap-a0000001', categoryId: 'other_expense', captureId: 'cap-a0000001', source: 'apple_pay', review: { needed: true, reason: 'auto_capture' } })
+    const ids = (data: AppData) => inboxView(data, TODAY).active.filter((i) => i.kind === 'uncategorized').map((i) => i.id)
+    expect(ids(baseData({ transactions: [captured] }))).toEqual([])
+    const { review: _review, ...reviewed } = captured
+    expect(ids(baseData({ transactions: [reviewed] }))).toEqual(['cat:cap-a0000001'])
+  })
+})

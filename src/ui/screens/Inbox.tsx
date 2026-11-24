@@ -4,6 +4,7 @@
  * o descartar (eso nunca cambia cifras).
  */
 import { useMemo, useState } from 'react'
+import { captureReviewCount } from '../../domain/captureReview'
 import { addDays } from '../../domain/dates'
 import { dismissInboxItem, INBOX_KINDS, inboxView, snoozeInboxItem, undismissInboxItem, unsnoozeInboxItem, type InboxItem } from '../../domain/inbox'
 import { setOccurrenceSkipped } from '../../domain/operations'
@@ -16,6 +17,7 @@ import { Badge, Card, EmptyState, PageHeader } from '../components/common'
 import { Icon, type IconName } from '../components/Icon'
 import { useToast } from '../components/toastContext'
 import { MarkPaidDialog } from '../dialogs'
+import { CaptureReview } from './CaptureReview'
 import { useFormat } from '../format'
 import { accountName, categoryLabel, frequencyLabel, planItemName, planTitle, transactionTitle } from '../labels'
 import { href, withQuery } from '../router'
@@ -41,6 +43,8 @@ export function Inbox() {
   const run = useRun()
   const toast = useToast()
   const view = useMemo(() => inboxView(data, today), [data, today])
+  // v15: pagos capturados por revisar (su sección va primero; no se posponen ni se descartan como los avisos).
+  const reviewCount = captureReviewCount(data)
   const [payItem, setPayItem] = useState<PlanItem | null>(null)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
 
@@ -69,11 +73,12 @@ export function Inbox() {
       <PageHeader title={t('inbox.title')} back={{ href: href('/'), label: t('nav.home') }} />
       <p className="lead">{t('inbox.intro')}</p>
       <p className="summary-line" aria-live="polite" data-testid="inbox-count">
-        {tn('inbox.count', view.active.length)}
+        {tn('inbox.count', view.active.length + reviewCount)}
       </p>
-      {view.active.length === 0 && (
+      {view.active.length + reviewCount === 0 && (
         <EmptyState icon="checkCircle" title={t('inbox.empty')} text={t('inbox.emptyText')} />
       )}
+      <CaptureReview />
       {groups.map((g) => {
         const shown = expanded[g.kind] ? g.items : g.items.slice(0, PAGE)
         return (

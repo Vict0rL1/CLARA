@@ -368,7 +368,7 @@ export function Movements({ route }: { route?: Route }) {
                 <MoneyField label={t('filters.amountMax')} value={amountMax} onChange={setAmountMax} fmt={fmt} error={maxParsed && !maxParsed.ok ? moneyErrorMessage(t, maxParsed) : null} />
               </div>
               <ChipGroup legend={t('filters.sort')} value={sort} onChange={(v) => setSort(v as TxSort)} options={TX_SORTS.map((s) => ({ value: s, label: t(`filters.sort${s[0]!.toUpperCase()}${s.slice(1)}` as MessageKey) }))} />
-              <ChipGroup legend={t('filters.source')} value={source} onChange={(v) => setSource(v as typeof source)} options={[{ value: 'all', label: t('filters.allSources') }, ...SOURCE_GROUPS.map((g) => ({ value: g, label: t(`source.${g}` as MessageKey) }))]} />
+              <ChipGroup legend={t('filters.source')} value={source} onChange={(v) => setSource(v as typeof source)} options={[{ value: 'all', label: t('filters.allSources') }, ...[...SOURCE_GROUPS, ...(source === 'capture' || data.transactions.some((x) => sourceGroupOf(x) === 'capture') ? (['capture'] as const) : [])].map((g) => ({ value: g, label: t(`source.${g}` as MessageKey) }))]} />
               <div className="form-row">
                 <TextField label={t('filters.from')} type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} />
                 <TextField label={t('filters.to')} type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} />
@@ -594,6 +594,7 @@ const TxRow = memo(function TxRow({
             {tx.kind !== 'transfer' && data.accounts.length > 1 && <> · {accountName(data.accounts, tx.accountId, t)}</>}
           </span>
           <span className="item__badges">
+            {tx.review?.needed ? <Badge tone="warning" icon="eye">{t('movements.toReview')}</Badge> : null}
             {tx.status === 'planned' ? <Badge tone="info" icon="clock">{t('status.planned')}</Badge> : null}
             {tx.scheduleId ? <Badge icon="calendar">{t('movements.fromCalendar')}</Badge> : null}
             {tx.kind === 'adjustment' ? <Badge icon="scale">{t('adjustment.title')}</Badge> : null}

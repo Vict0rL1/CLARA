@@ -19,6 +19,11 @@
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
 		E64EB68EB13F3A705B4E0106 /* ClaraBiometricPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AC9C1A101E6FBD270817622 /* ClaraBiometricPlugin.swift */; };
+		392E8852E96B1DACC638D944 /* ClaraCaptureQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = E68B7B08B351624E2B34676B /* ClaraCaptureQueue.swift */; };
+		E59431CC874E2317105A0D1B /* RecordPaymentIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96AD80493D2D4652C5F819A7 /* RecordPaymentIntent.swift */; };
+		50DBA5B00D7B44EF3A5778EE /* ClaraCapturesPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BD1F9415944B9201A920378 /* ClaraCapturesPlugin.swift */; };
+		823B2B0065E8F8B53391BD5C /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 6D9171C8595DD0F57E983884 /* Localizable.xcstrings */; };
+		3DD82A479AC80C0FC07DA853 /* AppShortcuts.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CE3622A85DEBA56CEFC36A65 /* AppShortcuts.xcstrings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,6 +37,11 @@
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		5AC9C1A101E6FBD270817622 /* ClaraBiometricPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClaraBiometricPlugin.swift; sourceTree = "<group>"; };
+		E68B7B08B351624E2B34676B /* ClaraCaptureQueue.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClaraCaptureQueue.swift; sourceTree = "<group>"; };
+		96AD80493D2D4652C5F819A7 /* RecordPaymentIntent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordPaymentIntent.swift; sourceTree = "<group>"; };
+		7BD1F9415944B9201A920378 /* ClaraCapturesPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClaraCapturesPlugin.swift; sourceTree = "<group>"; };
+		6D9171C8595DD0F57E983884 /* Localizable.xcstrings */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		CE3622A85DEBA56CEFC36A65 /* AppShortcuts.xcstrings */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.json.xcstrings; path = AppShortcuts.xcstrings; sourceTree = "<group>"; };
 		63D65B826C7AF31C710F246F /* ClaraStoragePlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClaraStoragePlugin.swift; sourceTree = "<group>"; };
 		8AECBE85BB83E5518AACE0C5 /* ClaraFileStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClaraFileStore.swift; sourceTree = "<group>"; };
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -82,6 +92,11 @@
 				8AECBE85BB83E5518AACE0C5 /* ClaraFileStore.swift */,
 				63D65B826C7AF31C710F246F /* ClaraStoragePlugin.swift */,
 				5AC9C1A101E6FBD270817622 /* ClaraBiometricPlugin.swift */,
+				E68B7B08B351624E2B34676B /* ClaraCaptureQueue.swift */,
+				96AD80493D2D4652C5F819A7 /* RecordPaymentIntent.swift */,
+				7BD1F9415944B9201A920378 /* ClaraCapturesPlugin.swift */,
+				6D9171C8595DD0F57E983884 /* Localizable.xcstrings */,
+				CE3622A85DEBA56CEFC36A65 /* AppShortcuts.xcstrings */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -132,6 +147,9 @@
 			knownRegions = (
 				en,
 				Base,
+				es,
+				pt,
+				fr,
 			);
 			mainGroup = 504EC2FB1FED79650016851F;
 			packageReferences = (
@@ -157,6 +175,8 @@
 				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
+				823B2B0065E8F8B53391BD5C /* Localizable.xcstrings in Resources */,
+				3DD82A479AC80C0FC07DA853 /* AppShortcuts.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -172,6 +192,9 @@
 				3741A033B5F9DFB42EB3F5EF /* ClaraFileStore.swift in Sources */,
 				1B9F2DD03B274378D8770A1B /* ClaraStoragePlugin.swift in Sources */,
 				E64EB68EB13F3A705B4E0106 /* ClaraBiometricPlugin.swift in Sources */,
+				392E8852E96B1DACC638D944 /* ClaraCaptureQueue.swift in Sources */,
+				E59431CC874E2317105A0D1B /* RecordPaymentIntent.swift in Sources */,
+				50DBA5B00D7B44EF3A5778EE /* ClaraCapturesPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

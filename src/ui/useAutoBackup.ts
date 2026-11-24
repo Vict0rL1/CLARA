@@ -3,7 +3,8 @@
  * por hora), solo si los datos cambiaron y no es la demo. Nunca sustituye a exportar un archivo.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { isAutoBackupDue, LocalBackups, type LocalBackupMeta } from '../storage/autoBackup'
+import { nativeServices } from '../platform'
+import { isAutoBackupDue, LocalBackups, type LocalBackupMeta, type LocalBackupStore } from '../storage/autoBackup'
 import type { AppData } from '../domain/types'
 import { useData } from '../state/store'
 import { APP_VERSION } from './backupActions'
@@ -36,7 +37,7 @@ export function probeLocalCopies(): Promise<boolean> {
 
 /** Resultado de `probeLocalCopies` para la interfaz: `null` mientras se comprueba. Sin `indexedDB` es `false` desde el principio. */
 export function useLocalCopiesAvailable(): boolean | null {
-  const [state, setState] = useState<boolean | null>(() => (typeof indexedDB === 'undefined' ? false : probed))
+  const [state, setState] = useState<boolean | null>(() => (localBackups() === null ? false : probed))
   useEffect(() => {
     let alive = true
     void probeLocalCopies().then((ok) => {
@@ -48,7 +49,10 @@ export function useLocalCopiesAvailable(): boolean | null {
   }, [])
   return state
 }
-export function localBackups(): LocalBackups | null {
+/** En la app de iPhone, archivos propios de la app (decisión 173); en el navegador, IndexedDB. */
+export function localBackups(): LocalBackupStore | null {
+  const native = nativeServices().localBackups
+  if (native) return native
   if (typeof indexedDB === 'undefined') return null
   backupsInstance ??= new LocalBackups()
   return backupsInstance

@@ -18,6 +18,9 @@ export interface FakeBiometric {
  *   revisión, rechazo `conflict` si la revisión esperada no coincide;
  * - `ClaraBiometric` (`ClaraBiometricPlugin.swift`), solo con `biometric`: `availability` y `authenticate`. Cada
  *   petición anota su texto en `sessionStorage` (`fake-biometric-calls`) para que la prueba lo lea tras recargar.
+ * - `ClaraCaptures` (`ClaraCapturesPlugin.swift`): la cola `captures.jsonl` como un «archivo» más (sobrevive a
+ *   recargar), con `read`, `remove`, `appendTest` y el evento `capturesAdded` (`addFakeCapture` lo dispara, como la
+ *   acción de Atajos con la app abierta).
  *
  * Es un doble: comprueba el lado web de la app (repositorio nativo, textos, pantallas). No dice nada del Swift ni del
  * iPhone real; eso solo se prueba compilando en Xcode.
@@ -89,13 +92,51 @@ export async function asNativeApp(page: Page, options: { storage?: boolean; biom
           ]),
         )
       }
+      // Cola de capturas: el mismo contrato que `ClaraCaptureQueue` + plugin (líneas JSON; quitar por id).
+      const queueKey = prefix + 'captures'
+      const queue = () => localStorage.getItem(queueKey) ?? ''
+      type CaptureOptions = Options & { ids?: string[]; rawAmount?: string; currencyHint?: string; merchant?: string }
+      plugins.ClaraCaptures = {
+        read: () => ({ text: queue() }),
+        remove: (o) => {
+          const ids = (o as CaptureOptions).ids ?? []
+          const lines = queue().split('\n').filter((l) => l.trim() !== '')
+          const kept = lines.filter((l) => {
+            try {
+              return !ids.includes((JSON.parse(l) as { captureId?: string }).captureId ?? '')
+            } catch {
+              return true
+            }
+          })
+          localStorage.setItem(queueKey, kept.map((l) => l + '\n').join(''))
+          return { removed: lines.length - kept.length }
+        },
+        appendTest: (o) => {
+          const { rawAmount, currencyHint, merchant } = o as CaptureOptions
+          const captureId = `cap-test-${Date.now()}`
+          const createdAt = new Date().toISOString().replace(/\.\d+Z$/, 'Z')
+          localStorage.setItem(queueKey, queue() + JSON.stringify({ captureId, createdAt, origin: 'apple_pay', rawAmount, currencyHint, merchant, test: true }) + '\n')
+          return { captureId }
+        },
+        removeListener: () => ({}),
+      }
+      const listeners: Record<string, (() => void)[]> = {}
+      ;(window as unknown as { __fakeNativeFire: (event: string) => void }).__fakeNativeFire = (event) => (listeners[event] ?? []).forEach((l) => l())
       const w = window as unknown as Record<string, unknown>
       w.webkit = { messageHandlers: { bridge: { postMessage() {} } } }
       w.Capacitor = {
         isNativePlatform: () => true,
         getPlatform: () => 'ios',
-        PluginHeaders: Object.entries(plugins).map(([name, methods]) => ({ name, methods: Object.keys(methods).map((m) => ({ name: m, rtype: 'promise' })) })),
+        PluginHeaders: Object.entries(plugins).map(([name, methods]) => ({
+          name,
+          methods: [...Object.keys(methods).map((m) => ({ name: m, rtype: 'promise' })), ...(name === 'ClaraCaptures' ? [{ name: 'addListener', rtype: 'callback' }] : [])],
+        })),
         nativePromise: (plugin: string, method: string, o?: Options) => Promise.resolve().then(() => plugins[plugin]![method]!(o ?? {})),
+        // Solo `addListener`: guarda la función para que `addFakeCapture` la llame.
+        nativeCallback: (_plugin: string, method: string, o: { eventName?: string }, callback: () => void) => {
+          if (method === 'addListener' && o.eventName) (listeners[o.eventName] ??= []).push(callback)
+          return 'fake-callback'
+        },
       }
     },
     {
@@ -144,4 +185,26 @@ export function nativeCalls(page: Page, prefix = ''): Promise<{ call: string; op
 /** Lo que hará la hoja Compartir la próxima vez: guardar, cerrarse sin elegir o fallar. */
 export function setFakeShare(page: Page, answer: 'save' | 'cancel' | 'error'): Promise<void> {
   return page.evaluate((a) => sessionStorage.setItem('fake-share', a), answer)
+}
+
+/** Lo que hay en la cola de capturas del doble (el texto de `captures.jsonl`). */
+export function fakeCaptureQueue(page: Page): Promise<string> {
+  return page.evaluate((key) => localStorage.getItem(key) ?? '', FAKE_NATIVE_PREFIX + 'captures')
+}
+
+/** Como la acción de Atajos: añade un pago a la cola y, si la app está abierta, avisa (`capturesAdded`). */
+export async function addFakeCapture(page: Page, record: Record<string, unknown>, notify = true): Promise<void> {
+  await page.evaluate(
+    ({ key, line, notify }) => {
+      localStorage.setItem(key, (localStorage.getItem(key) ?? '') + line + '\n')
+      if (notify) (window as unknown as { __fakeNativeFire: (event: string) => void }).__fakeNativeFire('capturesAdded')
+    },
+    { key: FAKE_NATIVE_PREFIX + 'captures', line: JSON.stringify(record), notify },
+  )
+}
+
+/** Deja datos propios (no de demostración) en el archivo nativo del doble y recarga, como quien ya usaba la app. */
+export async function seedNativeData(page: Page, data: unknown): Promise<void> {
+  await page.evaluate(({ key, text }) => localStorage.setItem(key, JSON.stringify({ text, revision: 1 })), { key: FAKE_NATIVE_PREFIX + 'data', text: JSON.stringify(data) })
+  await page.reload()
 }

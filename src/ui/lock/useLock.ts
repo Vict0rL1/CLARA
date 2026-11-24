@@ -3,6 +3,7 @@
  * con la app en segundo plano. Nada de esto cifra los datos (ver pin.ts).
  */
 import { useCallback, useEffect, useState } from 'react'
+import { nativeServices } from '../../platform'
 import { readLockConfig, shouldRelock, writeLockConfig, type LockConfig } from './pin'
 
 export interface LockState {
@@ -39,6 +40,8 @@ export function useLock(): LockState {
     if (ok) {
       setConfigState(next)
       if (!next) setLocked(false)
+      // En la app de iPhone, la copia fuera del WebView se actualiza ya (quitar el PIN no debe volver tras un vaciado).
+      void nativeServices().saveDeviceSettings?.()
     }
     return ok
   }, [])

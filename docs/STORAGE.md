@@ -41,9 +41,16 @@ que iOS puede vaciar `localStorage` e IndexedDB del WebView cuando falta espacio
   nada vuelva solo por una migración.
 - **Si el plugin no está.** La app sigue con el almacenamiento del WebView y Ajustes › Datos y recuperación lo avisa
   (`webViewFallback`): nunca en silencio.
-- **Copia previa a una migración de esquema:** `before-v<N>.clara`, una sola vez por versión.
-- **Lo que sigue en el WebView por ahora:** las copias locales automáticas (`clara-backups`), el PIN y las
-  preferencias del dispositivo. Pasan a nativo en la Fase 2.
+- **Copia previa a una migración de esquema:** `before-v<N>.clara`, una sola vez por versión. Datos y recuperación la
+  lee por el repositorio (`preMigrationCopy()`, igual que con `localStorage` e IndexedDB en el navegador).
+- **Copias locales automáticas (Fase 2, decisión 173):** `backup-<milisegundos>-<motivo>.clara` con el JSON de cada
+  copia y un índice `local-backups.clara` (`storage/nativeLocalBackups.ts`). Mismas reglas que en el navegador. Se
+  escribe primero la copia y después el índice: la lista nunca señala una copia que no existe; un índice ilegible no se
+  sobrescribe.
+- **PIN, preferencias y lo que recuerda la interfaz (Fase 2, decisión 173):** se siguen leyendo de `localStorage` (el
+  bloqueo hace falta antes de pintar, de forma síncrona), con una copia en `device.clara` (`platform/deviceMirror.ts`).
+  Al abrir y al volver de segundo plano vuelve lo que falte (nunca pisa lo que hay); al ir a segundo plano y al
+  cambiar el bloqueo se copia lo actual. El registro de errores y los avisos ya mostrados no se copian.
 - **Medido aquí (Node, mediana de 5):** 10 000 movimientos = 3,14 MB, serializar 9,6 ms; 50 000 = 15,8 MB, 43 ms.
   El coste del puente y del disco en el iPhone está **pendiente de medir**; de esa medida depende pasar o no a SQLite.
 
@@ -172,8 +179,9 @@ Probado en `src/storage/indexedDb.test.ts` y en la prueba de navegador `data-saf
   propio camino de recuperación, REC-01), mientras que reparar una partición exige la copia descargada de los datos tal
   como están (QA27-04). Exportar distingue «archivo entregado» de «anotado en el registro»: si el almacén no pudo
   guardar la anotación, el aviso lo dice sin negar la descarga.
-- El bloqueo con PIN (`ui/lock/pin.ts`) vive en `localStorage` (`clara.lock.v1`), nunca en estas copias ni en
-  las exportaciones.
+- El bloqueo con PIN (`ui/lock/pin.ts`) vive en `localStorage` (`clara.lock.v1`; en la app, también en
+  `device.clara`), nunca en estas copias ni en las exportaciones.
+- En la app de iPhone las copias van a archivos de la app, no a `clara-backups` (ver arriba).
 
 ## Copias cifradas (v2)
 

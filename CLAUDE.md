@@ -12,8 +12,9 @@ reglas de este documento cambian, **cada una solo desde la fase que la implement
 
 - «Sin IA dentro del producto» → se permitirá IA **en el dispositivo** (Fase 5), opcional, que nunca envía datos ni
   guarda sola.
-- «Nada se guarda sin confirmar» → excepción para las capturas automáticas (Fase 2): con «Guardar automáticamente»
-  entran como movimiento real marcado «Por revisar»; apagado, solo como propuestas.
+- «Nada se guarda sin confirmar» → excepción para las capturas automáticas (Fase 2, **vigente**: `captureImport.ts`):
+  con «Guardar automáticamente» entran como movimiento real marcado «Por revisar»; apagado, solo como propuestas.
+  Nunca en la demostración ni sin presupuesto, y la cola del iPhone solo se vacía después de guardar.
 - «Una moneda por presupuesto» → sigue para los totales; cada movimiento podrá guardar su moneda original y la tasa
   usada (Fase 3). Nunca se inventa una tasa.
 - «Sin conexiones a otros sitios» → excepción opcional para las tasas del Banco de Canadá (Fase 3), sin datos de la
@@ -44,13 +45,18 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
   implícito: "hoy" y "ahora" llegan como parámetros (`OpContext`). Aquí viven todas las
   fórmulas y validaciones. Toda regla nueva lleva prueba en `*.test.ts`.
 - `src/storage/` — persistencia detrás de `DataRepository` (IndexedDB; `localStorage` si no hay; en la app de iPhone,
-  `NativeRepository`: un archivo propio de la app con la revisión en su primera línea, ver `docs/STORAGE.md`),
+  `NativeRepository`: un archivo propio de la app con la revisión en su primera línea, ver `docs/STORAGE.md`; ahí
+  también las copias locales, `NativeLocalBackups`, y una copia del PIN y las preferencias, `platform/deviceMirror.ts`,
+  que vuelve si iOS vacía el WebView; la copia previa a una migración se lee con `preMigrationCopy()` en los tres),
   copias de seguridad (`backup.ts`), migraciones (`migrations.ts`) y borradores (`drafts.ts`).
 - `src/state/` — estado en memoria (`AppStore`) y hooks. Aplica resultados de
   `domain/operations.ts`; no calcula dinero.
 - `src/ui/` — pantallas y componentes. Solo muestran y llaman operaciones.
 - `ios/` — **cáscara nativa** de iPhone (Capacitor 8, Swift Package Manager): abre la misma web dentro de una app.
-  No contiene lógica financiera ni textos de la interfaz: el Swift transporta, no calcula.
+  No contiene lógica financiera ni textos de la interfaz: el Swift transporta, no calcula. La acción «Registrar pago en
+  Clara» (`RecordPaymentIntent.swift`) solo añade líneas a `captures.jsonl` (`ClaraCaptureQueue.swift`, Application
+  Support o App Group); sus textos y frases están en `Localizable.xcstrings`/`AppShortcuts.xcstrings`. El Swift sin
+  iOS se prueba con `swift test` en `ios/ClaraNativeTests` (enlaces a las fuentes de la app).
 - `src/platform/` — **capa de plataforma** (decisión 152): lo único de `src/` que sabe si corre en el navegador o en la
   app (`isNativeIOS()`, lee `window.Capacitor`). **Ningún import de Capacitor fuera de `src/platform/`**; dentro, solo
   en `src/platform/native/`, que se carga con `import()` dentro de la app (una prueba lo exige), así el JS inicial de
@@ -60,7 +66,7 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
 - `src/i18n/` — todos los textos visibles. **Nunca** escribir texto de interfaz
   directamente en componentes: añadir cada clave a `es.ts`, `en.ts`, `pt.ts` **y** `fr.ts`
   (el tipo compartido obliga a tener todas las claves en los cuatro). Los textos de pantallas poco visitadas (Legal,
-  Galería, Importar CSV, «¿Qué cambió?») son paquetes diferidos fuera del JS inicial: archivos `src/i18n/packs/<paquete>.<idioma>.json` (mismas
+  Galería, Importar CSV, «¿Qué cambió?», plan ante faltante, capturas por revisar) son paquetes diferidos fuera del JS inicial: archivos `src/i18n/packs/<paquete>.<idioma>.json` (mismas
   claves en los cuatro: `packs/packKeys.ts` lo exige en `tsc`) pedidos con `fetch` por `usePack` (`src/i18n/packs.ts`):
   estados `loading`, `ready` (con `fallback` si el texto salió en español porque el idioma pedido no cargó; la pantalla
   marca ese contenido con `lang="es"`) y `failed`; un fallo nunca se guarda como paquete ni se enseña una clave;
@@ -145,6 +151,20 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
   nada; más de 5000 filas → cuántas y cuáles quedan fuera, y confirmar exige reconocerlo (solo para ESA
   vista previa: archivo elegido + `omissionSignature`; otro archivo, otro contenido o leer la cabecera de
   otra forma lo piden de nuevo, RT-03); el archivo nunca sale del dispositivo.
+- Capturas automáticas (`domain/captureImport.ts`, Fase 2 nativa): idempotentes por `captureId` (leídas, movimiento,
+  papelera o propuesta); en la moneda del presupuesto y con «Guardar automáticamente», gasto realizado con
+  `review` «Por revisar» y `realizedAt` = hora del pago; si no, propuesta que no cuenta en ninguna cifra: otra moneda o
+  «¥» (`currency`, nunca se convierte), sin entender (`unparsed`), mismo importe y comercio a ≤ 2 min de un gasto
+  realizado o captura (`duplicate`), apagado o más allá de la cota de exactitud (`auto_capture`). Cuenta: tarjeta →
+  por defecto → primera activa del presupuesto (nunca archivada). Lo que no cabe (500 propuestas) o sin cuenta activa
+  se queda en la cola sin confirmar. `saveTransaction` conserva `captureId` y `review` (solo `reviewed: true` la
+  quita; el formulario lo manda al guardar) y retira la propuesta de esa captura. Revisar (`CaptureReview`, arriba de
+  Pendientes; cuenta en «pendientes» de Inicio): «Está bien» (`confirmReviews`, con deshacer), «Fue rechazado» →
+  papelera; una propuesta en otra moneda o sin entender solo se registra con el importe que la persona escribe en la
+  moneda del presupuesto (`registerProposal(…, amountMinor)`, hora del pago como `realizedAt`). La prueba de Ajustes
+  (`test: true`) siempre es propuesta, nunca se registra y no cuenta como duplicado. Un movimiento «Por revisar» no sale
+  además como «Sin categoría». Tarjeta nueva (`review.card`, se borra al confirmar): «Por revisar» pregunta su cuenta
+  una vez; `assignCardAccount` la guarda y mueve solo lo que aún espera revisión.
 - Papelera: eliminar saca el movimiento de `transactions` a `trash` (nunca participa en
   cálculos). Restaurar no deja vínculos rotos, ni liquida dos veces una ocurrencia, ni devuelve un pago a una fecha
   que su programado ya no tiene (`occurrenceMissing`; revisión de seguridad QA27, F-1); filas
@@ -162,8 +182,8 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
   asistente), no solo por `parseEntry`; una coma entre dígitos es parte del importe. El asistente
   escribe en un `<textarea>` (una línea por movimiento). Moneda escrita (RT-01): un solo lector en
   `money.ts` (`currencyMarksAround`, `currencyMarksIn`, `stripCurrencyMark`) para códigos delante o
-  detrás (también pegados), símbolos, nombres, signos locales con letras («kr», «Ft») e importes en
-  palabras; si no es la del presupuesto o
+  detrás (también pegados), símbolos, nombres, signos locales con letras («kr», «Ft»), prefijos de región («US$»,
+  «JP¥», «CN¥»; el «¥» suelto es yen o yuan y nunca se elige) e importes en palabras; si no es la del presupuesto o
   queda sin resolver, el campo la conserva (`withCurrencyMark`) y la línea no se registra. Nunca se convierte.
   Se leen TODAS las marcas (hasta dos a cada lado del importe y las del resto de la frase) y se unen con
   `reconcileMarks`: un código concreto acota a un símbolo genérico («USD $10» = USD, «$10 CAD» = CAD) y dos que se
@@ -320,7 +340,7 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
   sigue con deshacer inmediato, reparar exige la descarga (QA27-04; ver `docs/STORAGE.md`).
 - Restaurar una copia valida TODO el archivo y no aplica nada si hay un error. CSV del banco: cada fila
   con error se muestra con su motivo y no se importa; las filas marcadas se guardan todo o nada.
-- Cambios de formato de datos: subir `SCHEMA_VERSION` (hoy 14) y añadir migración con prueba.
+- Cambios de formato de datos: subir `SCHEMA_VERSION` (hoy 15) y añadir migración con prueba.
   Las migraciones solo rellenan campos ausentes; nunca borran datos mal formados.
 - Guardado (`indexedDbRepository.ts`, `localStorageRepository.ts`; ver `docs/STORAGE.md`): nunca sobrescribe lo que otra pestaña u otra
   versión guardó después de leer (error `conflict`); si guardar falla, se avisa de forma

@@ -5,7 +5,9 @@
 import { txCategoryIds } from './splits'
 import type { Transaction, TxKind, TxStatus } from './types'
 
-export type SourceGroup = 'manual' | 'assistant' | 'import' | 'scheduled' | 'common' | 'shortcut'
+/** v15: `capture` = lo que registró una captura automática del iPhone (Apple Pay, aviso del banco, Siri). */
+export type SourceGroup = 'manual' | 'assistant' | 'import' | 'scheduled' | 'common' | 'shortcut' | 'capture'
+/** Los filtros de siempre. `capture` solo se ofrece si hay algún movimiento capturado (en la web no se captura nada). */
 export const SOURCE_GROUPS: readonly SourceGroup[] = ['manual', 'assistant', 'import', 'scheduled', 'common', 'shortcut']
 
 export interface TxFilter {
@@ -28,6 +30,7 @@ export function sourceGroupOf(tx: Transaction): SourceGroup {
   if (tx.favoriteId || tx.source === 'common') return 'common'
   if (tx.source === 'ai_text' || tx.source === 'voice' || tx.source === 'photo') return 'assistant'
   if (tx.source === 'shortcut') return 'shortcut'
+  if (tx.captureId || tx.source === 'apple_pay' || tx.source === 'bank_text' || tx.source === 'siri') return 'capture'
   return 'manual'
 }
 

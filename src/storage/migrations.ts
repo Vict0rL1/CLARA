@@ -185,6 +185,12 @@ export const MIGRATIONS: Record<number, (raw: Raw) => Raw> = {
   // rellenar: los datos v13 valen tal cual. El número sube para que una versión anterior, que no sabe leer esos
   // valores, vea «datos de una versión más nueva» en vez de calcular mal las fechas (docs/ROLLBACK.md).
   13: (raw) => ({ ...raw, schemaVersion: 14 }),
+  // v14 → v15 (Fase 2 nativa, decisión 168): capturas automáticas. Todo lo nuevo es opcional y su ausencia significa
+  // «nada capturado» y «guardar automáticamente»: los movimientos ganan `captureId` y `review`, `source` admite
+  // `apple_pay`, `bank_text` y `siri`, los ajustes ganan `capture` y los datos `captures`. Nada que rellenar. El número
+  // sube para que una versión anterior, que no sabe que un movimiento puede estar «por revisar», vea «datos de una
+  // versión más nueva» en vez de perder esas marcas al guardar (docs/ROLLBACK.md).
+  14: (raw) => ({ ...raw, schemaVersion: 15 }),
 }
 
 export function migrate(raw: Raw): Raw {

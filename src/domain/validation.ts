@@ -11,6 +11,8 @@ import { MAX_AMOUNT_MINOR, isMinorAmount, isSupportedCurrency, sumMinor } from '
 import { normalizeText, RULE_PATTERN_MAX, RULE_PATTERN_MIN } from './rules'
 import { MAX_SPLIT_LINES, refundableByCategory, splitDifference } from './splits'
 import type {
+  CaptureSettings,
+  CaptureState,
   HistoryCollection,
   HistoryEntry,
   HistorySource,
@@ -140,7 +142,18 @@ export const DATE_STYLES = ['short', 'medium', 'iso'] as const
 export const LANGUAGES = ['es', 'en', 'pt', 'fr'] as const
 export const BUDGET_PERIOD_TYPES = ['week', 'biweek', 'month', 'quarter', 'semester', 'year', 'custom', 'untilIncome'] as const
 export const CATEGORY_COLORS = ['emerald', 'green', 'lime', 'yellow', 'amber', 'orange', 'red', 'rose', 'pink', 'purple', 'violet', 'indigo', 'blue', 'sky', 'cyan', 'teal'] as const
-export const TX_SOURCES = ['manual', 'ai_text', 'voice', 'photo', 'scheduled', 'common', 'shortcut', 'import'] as const
+export const TX_SOURCES = ['manual', 'ai_text', 'voice', 'photo', 'scheduled', 'common', 'shortcut', 'import', 'apple_pay', 'bank_text', 'siri'] as const
+/* ---- v15: capturas automáticas (decisión 168) ---- */
+export const REVIEW_REASONS = ['auto_capture', 'currency', 'duplicate', 'unparsed'] as const
+export const CAPTURE_ORIGINS = ['apple_pay', 'bank_text', 'siri', 'notification'] as const
+/** Ids de capturas ya leídas que se recuerdan (las más recientes). La cola nativa se vacía al confirmar el guardado. */
+export const CAPTURE_PROCESSED_MAX = 2000
+/** Propuestas pendientes como mucho (una cola sin revisar de meses no debe crecer sin límite). */
+export const CAPTURE_PROPOSALS_MAX = 500
+export const CAPTURE_CARDS_MAX = 50
+export const CAPTURE_TEXT_MAX = 2000
+const CAPTURE_SHORT_TEXT_MAX = 64
+const CURRENCY_CODE = /^[A-Z]{3}$/
 const CLOCK_TIME = /^([01]\d|2[0-3]):[0-5]\d$/
 /** Nombres de iconos: letras, números y guiones (se validan por forma; la interfaz tiene un icono de reserva). */
 const ICON_NAME = /^[a-zA-Z][a-zA-Z0-9_-]{0,39}$/
@@ -243,6 +256,87 @@ export function validateSettings(s: Settings, prefix = ''): Issue[] {
   if (!ai || typeof ai !== 'object' || typeof ai.month !== 'string' || !Number.isInteger(ai.count) || ai.count < 0) {
     issues.push({ path: `${prefix}aiUsage`, code: 'invalidValue' })
   }
+  if (s.capture !== undefined) issues.push(...validateCaptureSettings(s.capture, `${prefix}capture.`))
+  return issues
+}
+
+/**
+ * v15: ajustes de la captura automática. Solo el formato: una cuenta que ya no existe no invalida los datos (la captura
+ * usa entonces la de por defecto y se ve al revisar).
+ */
+export function validateCaptureSettings(c: CaptureSettings, prefix = 'settings.capture.'): Issue[] {
+  const issues: Issue[] = []
+  if (!c || typeof c !== 'object' || Array.isArray(c) || typeof c.autoSave !== 'boolean' || !Array.isArray(c.cardAccounts)) {
+    return [{ path: prefix.slice(0, -1), code: 'invalidValue' }]
+  }
+  if (c.cardAccounts.length > CAPTURE_CARDS_MAX) issues.push({ path: `${prefix}cardAccounts`, code: 'tooMany', params: { max: CAPTURE_CARDS_MAX } })
+  const seen = new Set<string>()
+  c.cardAccounts.forEach((m, i) => {
+    const card = m && typeof m.card === 'string' ? m.card.trim() : ''
+    if (!card || card.length > CAPTURE_SHORT_TEXT_MAX) issues.push({ path: `${prefix}cardAccounts[${i}].card`, code: 'invalidValue' })
+    else if (seen.has(normalizeText(card))) issues.push({ path: `${prefix}cardAccounts[${i}].card`, code: 'duplicateId' })
+    else seen.add(normalizeText(card))
+    if (!m || !isValidId(m.accountId)) issues.push({ path: `${prefix}cardAccounts[${i}].accountId`, code: 'invalidId' })
+  })
+  if (c.defaultAccountId !== undefined && !isValidId(c.defaultAccountId)) issues.push({ path: `${prefix}defaultAccountId`, code: 'invalidId' })
+  return issues
+}
+
+function validateCaptureAmount(a: unknown, path: string, issues: Issue[]) {
+  const amount = a as Record<string, unknown> | null
+  if (!amount || typeof amount !== 'object' || Array.isArray(amount)) {
+    issues.push({ path, code: 'invalidValue' })
+    return
+  }
+  const positive = (v: unknown) => isMinorAmount(v) && (v as number) > 0 && (v as number) <= MAX_AMOUNT_MINOR
+  const shortText = (v: unknown) => typeof v === 'string' && v.length > 0 && v.length <= CAPTURE_SHORT_TEXT_MAX
+  const ok =
+    amount.kind === 'budget'
+      ? positive(amount.minor)
+      : amount.kind === 'foreign'
+        ? positive(amount.minor) && typeof amount.currency === 'string' && CURRENCY_CODE.test(amount.currency)
+        : amount.kind === 'ambiguous'
+          ? Array.isArray(amount.candidates) && amount.candidates.length >= 2 && amount.candidates.length <= 4 && amount.candidates.every((c) => typeof c === 'string' && CURRENCY_CODE.test(c)) && shortText(amount.text)
+          : amount.kind === 'unreadable'
+            ? shortText(amount.text)
+            : false
+  if (!ok) issues.push({ path, code: 'invalidValue' })
+}
+
+/** v15: capturas ya leídas y propuestas pendientes. */
+export function validateCaptureState(state: CaptureState, prefix = 'captures.'): Issue[] {
+  const issues: Issue[] = []
+  if (!state || typeof state !== 'object' || !Array.isArray(state.processed) || !Array.isArray(state.proposals)) return [{ path: prefix.slice(0, -1), code: 'invalidValue' }]
+  if (state.processed.length > CAPTURE_PROCESSED_MAX) issues.push({ path: `${prefix}processed`, code: 'tooMany', params: { max: CAPTURE_PROCESSED_MAX } })
+  if (state.proposals.length > CAPTURE_PROPOSALS_MAX) issues.push({ path: `${prefix}proposals`, code: 'tooMany', params: { max: CAPTURE_PROPOSALS_MAX } })
+  state.processed.forEach((m, i) => {
+    if (!m || !isValidId(m.id)) issues.push({ path: `${prefix}processed[${i}].id`, code: 'invalidId' })
+    if (!isValidTimestamp(m?.at)) issues.push({ path: `${prefix}processed[${i}].at`, code: 'invalidTimestamp' })
+  })
+  const ids = new Set<string>()
+  state.proposals.forEach((pr, i) => {
+    const p = `${prefix}proposals[${i}].`
+    if (!pr || typeof pr !== 'object') {
+      issues.push({ path: p.slice(0, -1), code: 'invalidValue' })
+      return
+    }
+    if (!isValidId(pr.captureId)) issues.push({ path: `${p}captureId`, code: 'invalidId' })
+    else if (ids.has(pr.captureId)) issues.push({ path: `${p}captureId`, code: 'duplicateId' })
+    else ids.add(pr.captureId)
+    if (!isValidTimestamp(pr.capturedAt)) issues.push({ path: `${p}capturedAt`, code: 'invalidTimestamp' })
+    if (!isValidTimestamp(pr.receivedAt)) issues.push({ path: `${p}receivedAt`, code: 'invalidTimestamp' })
+    if (!isOneOf(CAPTURE_ORIGINS, pr.origin)) issues.push({ path: `${p}origin`, code: 'invalidValue' })
+    if (!isOneOf(REVIEW_REASONS, pr.reason)) issues.push({ path: `${p}reason`, code: 'invalidValue' })
+    validateCaptureAmount(pr.amount, `${p}amount`, issues)
+    checkOptionalText(pr.merchant, `${p}merchant`, issues, 80)
+    checkOptionalText(pr.card, `${p}card`, issues, CAPTURE_SHORT_TEXT_MAX)
+    checkOptionalText(pr.rawText, `${p}rawText`, issues, CAPTURE_TEXT_MAX)
+    if (!isValidId(pr.accountId)) issues.push({ path: `${p}accountId`, code: 'invalidId' })
+    checkDate(pr.date, `${p}date`, issues)
+    if (pr.categoryId !== undefined && (typeof pr.categoryId !== 'string' || pr.categoryId.length === 0 || pr.categoryId.length > 64)) issues.push({ path: `${p}categoryId`, code: 'invalidCategory' })
+    if (pr.similarTxId !== undefined && !isValidId(pr.similarTxId)) issues.push({ path: `${p}similarTxId`, code: 'invalidId' })
+    if (pr.test !== undefined && pr.test !== true) issues.push({ path: `${p}test`, code: 'invalidValue' })
+  })
   return issues
 }
 
@@ -526,6 +620,16 @@ export function validateTransaction(tx: Transaction, ctx: ValidationContext): Is
     if (tx[k] !== undefined && (typeof tx[k] !== 'number' || !Number.isFinite(tx[k]) || Math.abs(tx[k]) > (k === 'lat' ? 90 : 180))) issues.push({ path: `${p}${k}`, code: 'invalidValue' })
   }
   if (tx.isInitialBalance !== undefined && typeof tx.isInitialBalance !== 'boolean') issues.push({ path: `${p}isInitialBalance`, code: 'invalidValue' })
+  // v15
+  if (tx.captureId !== undefined && !isValidId(tx.captureId)) issues.push({ path: `${p}captureId`, code: 'invalidId' })
+  if (tx.review !== undefined) {
+    const r = tx.review as unknown as Record<string, unknown> | null
+    if (!r || typeof r !== 'object' || Array.isArray(r) || typeof r.needed !== 'boolean' || !isOneOf(REVIEW_REASONS, r.reason)) issues.push({ path: `${p}review`, code: 'invalidValue' })
+    else {
+      checkOptionalText(r.rawText, `${p}review.rawText`, issues, CAPTURE_TEXT_MAX)
+      checkOptionalText(r.card, `${p}review.card`, issues, CAPTURE_SHORT_TEXT_MAX)
+    }
+  }
   checkTimestamps(tx, p, issues)
   return issues
 }

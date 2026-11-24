@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ceilDiv, floorDiv, formatMoney, groupAmountInput, minorToDecimalString, minorToInputString, mulDivFloor, parseMoney, sumMinor, stripCurrencyMark, symbolMatchesCurrency } from './money'
+import { ceilDiv, currencyMarksAround, currencyMarksIn, floorDiv, formatMoney, groupAmountInput, minorToDecimalString, minorToInputString, mulDivFloor, parseMoney, sumMinor, stripCurrencyMark, symbolMatchesCurrency } from './money'
 
 const ok = (input: string, locale = 'es-MX', currency = 'CAD', opts = {}) => {
   const r = parseMoney(input, currency, locale, opts)
@@ -203,5 +203,29 @@ describe('marcas de moneda junto al importe (QA-05)', () => {
     for (const c of ['CAD', 'USD', 'MXN', 'COP', 'CLP', 'ARS', 'AUD', 'BRL']) expect(symbolMatchesCurrency('$', c), c).toBe(true)
     for (const c of ['EUR', 'GBP', 'JPY', 'PEN', 'CHF']) expect(symbolMatchesCurrency('$', c), c).toBe(false)
     expect(symbolMatchesCurrency('¥', 'JPY') && symbolMatchesCurrency('¥', 'CNY')).toBe(true)
+  })
+})
+
+describe('«JP¥» y «CN¥»: el yen y el yuan como los escribe un iPhone de otra región (Fase 2 nativa)', () => {
+  it('delante del importe, el prefijo decide la moneda; el «¥» suelto sigue siendo de las dos', () => {
+    expect(stripCurrencyMark('JP¥1,200')).toEqual({ text: '1,200', mark: { code: 'JPY' } })
+    expect(stripCurrencyMark('CN¥88.00')).toEqual({ text: '88.00', mark: { code: 'CNY' } })
+    expect(stripCurrencyMark('CN￥ 88')).toEqual({ text: '88', mark: { code: 'CNY' } })
+    expect(stripCurrencyMark('¥1,200')).toEqual({ text: '1,200', mark: { symbol: '¥' } })
+    // Otras letras delante del «¥» no se interpretan: no hay más prefijos de yen conocidos.
+    expect(stripCurrencyMark('XX¥5').mark).not.toEqual({ code: 'JPY' })
+  })
+
+  it('con la moneda del presupuesto, «JP¥» se lee como yen y nunca como otra', () => {
+    expect(parseMoney('JP¥1,200', 'JPY', 'en-CA')).toEqual({ ok: true, minor: 1200 })
+    expect(parseMoney('CN¥88.30', 'CNY', 'en-CA')).toEqual({ ok: true, minor: 8830 })
+    const yuanInYen = parseMoney('CN¥88', 'JPY', 'en-CA')
+    expect(yuanInYen.ok).toBe(false)
+  })
+
+  it('en texto libre (asistente, recibos) cuenta igual, pegado al importe y suelto', () => {
+    expect(currencyMarksAround('ramen JP¥1200', 9, 13).map((m) => m.mark)).toEqual([{ code: 'JPY' }])
+    expect(currencyMarksIn('taxi CN¥45 aeropuerto').map((m) => m.mark)).toEqual([{ code: 'CNY' }])
+    expect(currencyMarksIn('taxi ¥45').map((m) => m.mark)).toEqual([{ symbol: '¥' }])
   })
 })

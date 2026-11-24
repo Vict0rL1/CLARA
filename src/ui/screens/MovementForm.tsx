@@ -515,6 +515,8 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
       tagIds: tagIds.filter((id) => d.tags.some((tg) => tg.id === id)),
       ...(existing ? {} : favorite ? { favoriteId: favorite.id, source: 'common' as const } : { source: link?.fromShortcut ? ('shortcut' as const) : ('manual' as const) }),
       ...(existing?.scheduleId ? { scheduleId: existing.scheduleId, occurrenceDate: existing.occurrenceDate, partialSettlement: existing.partialSettlement } : {}),
+      // v15: guardar desde el formulario es revisar lo que registró una captura automática.
+      ...(existing?.review ? { reviewed: true } : {}),
       alreadyInBalance,
     }
     if (repeat && canRepeat && (kind === 'expense' || kind === 'income')) {
@@ -597,7 +599,13 @@ function MovementEditor({ route, existing, returnTo }: { route: Route; existing:
               </Badge>
             )}
             {existing.merchant && <Badge icon="tag">{existing.merchant}</Badge>}
+            {existing.review?.needed && (
+              <Badge tone="warning" icon="eye">
+                {t('movements.toReview')}
+              </Badge>
+            )}
           </p>
+          {existing.review?.needed && <p className="note">{t('movements.captureReviewNote')}</p>}
           {schedule && (
             <p className="note">
               {t('movementForm.scopeThisOnly', { name: schedule.name })} <a href={href(`/plan/programado/editar/${schedule.id}`)}>{t('movementForm.editSchedule')}</a>

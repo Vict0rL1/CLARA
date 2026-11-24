@@ -104,9 +104,10 @@ function txKey(t: Transaction): string {
   return [t.kind, t.accountId, t.amountMinor, t.date, normalizeText(t.note ?? '')].join('|')
 }
 
+/** v15: un movimiento «Por revisar» ya está arriba de la bandeja con su categoría; aquí no se repite hasta revisarlo. */
 function uncategorized(data: AppData): InboxItem[] {
   return data.transactions
-    .filter((t) => t.status === 'realized' && (t.kind === 'expense' || t.kind === 'income') && !t.splits?.length && t.categoryId && CATCH_ALL.has(t.categoryId))
+    .filter((t) => t.status === 'realized' && (t.kind === 'expense' || t.kind === 'income') && !t.splits?.length && t.categoryId && CATCH_ALL.has(t.categoryId) && !t.review?.needed)
     .map((t) => ({
       id: `cat:${t.id}`,
       kind: 'uncategorized' as const,

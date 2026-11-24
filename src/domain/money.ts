@@ -311,6 +311,13 @@ export type CurrencyMark = { code: string } | { symbol: string } | { unknown: st
 /** Prefijos con dólar → moneda. */
 const DOLLAR_PREFIX: Record<string, string> = { C: 'CAD', CA: 'CAD', CAN: 'CAD', US: 'USD', U: 'USD', MX: 'MXN', MEX: 'MXN', R: 'BRL', COL: 'COP', CO: 'COP', AU: 'AUD', NZ: 'NZD', AR: 'ARS', CL: 'CLP', UY: 'UYU', HK: 'HKD', SG: 'SGD', NT: 'TWD' }
 
+/**
+ * «JP¥» y «CN¥»: así escribe el yen y el yuan un iPhone de otra región (en Canadá, `NumberFormatter` da «JP¥1,200» y
+ * «CN¥88.00»). El prefijo decide cuál es; el «¥» suelto sigue siendo de los dos (Fase 2 nativa).
+ */
+const YEN_PREFIX: Record<string, string> = { JP: 'JPY', CN: 'CNY' }
+const YEN_PREFIXED = '(JP|CN)[¥￥]'
+
 function dollarMark(letters: string): CurrencyMark {
   const key = letters.toUpperCase()
   if (!key) return { symbol: '$' }
@@ -528,6 +535,8 @@ function nameMark(words: string): { mark: CurrencyMark; far: boolean } | undefin
 function markBefore(before: string, at: number, options: TextMarkOptions): TextMark | null {
   const dollar = /(?<![\p{L}\p{N}])([A-Za-z]{1,3})\$\s*$/u.exec(before)
   if (dollar) return { mark: dollarMark(dollar[1]!), start: dollar.index, end: at, kind: 'code' }
+  const yen = new RegExp(`(?<![\\p{L}\\p{N}])${YEN_PREFIXED}\\s*$`, 'u').exec(before)
+  if (yen) return { mark: { code: YEN_PREFIX[yen[1]!]! }, start: yen.index, end: at, kind: 'code' }
   const symbol = /(\p{Sc})\s*$/u.exec(before)
   if (symbol) return { mark: { symbol: symbol[1]! }, start: symbol.index, end: at, kind: 'symbol' }
   const code = CODE_BEFORE.exec(before)
@@ -592,8 +601,9 @@ export function currencyMarksAround(text: string, start: number, end: number, op
  */
 export function currencyMarksIn(text: string, options: TextMarkOptions = {}): TextMark[] {
   const out: TextMark[] = []
-  for (const m of text.matchAll(/(?<![\p{L}\p{N}])([A-Za-z]{1,3})\$|\p{Sc}/gu)) {
-    out.push({ mark: m[1] !== undefined ? dollarMark(m[1]) : { symbol: m[0] }, start: m.index!, end: m.index! + m[0].length, kind: m[1] !== undefined ? 'code' : 'symbol' })
+  for (const m of text.matchAll(new RegExp(`(?<![\\p{L}\\p{N}])(?:${YEN_PREFIXED}|([A-Za-z]{1,3})\\$)|\\p{Sc}`, 'gu'))) {
+    const mark: CurrencyMark = m[1] !== undefined ? { code: YEN_PREFIX[m[1]]! } : m[2] !== undefined ? dollarMark(m[2]) : { symbol: m[0] }
+    out.push({ mark, start: m.index!, end: m.index! + m[0].length, kind: m[1] !== undefined || m[2] !== undefined ? 'code' : 'symbol' })
   }
   if (options.receipt) return out.sort((a, b) => a.start - b.start)
   for (const m of text.matchAll(/(?<![\p{L}\p{N}])([A-Za-z]{3})(?![\p{L}\p{N}])/gu)) {
@@ -676,6 +686,8 @@ function suffixMark(s: string): { mark: CurrencyMark; rest: string } | null {
 function prefixMark(s: string): { mark: CurrencyMark; rest: string } | null {
   const dollar = /^([A-Za-z]{0,3})\$\s*/.exec(s)
   if (dollar) return { mark: dollarMark(dollar[1]!), rest: s.slice(dollar[0].length) }
+  const yen = new RegExp(`^${YEN_PREFIXED}\\s*`, 'u').exec(s)
+  if (yen) return { mark: { code: YEN_PREFIX[yen[1]!]! }, rest: s.slice(yen[0].length) }
   // «CAD 12», «(RUB) 10», «RUB: 10»: la misma puntuación acotada que el texto libre; el signo sigue siendo del número.
   const code = /^[([]?([A-Za-z]{3})[)\]]?\s*[:=,]?\s*(?=[-−+]?[\d.,]|\p{Sc})/u.exec(s)
   if (code) return { mark: codeMarkOf(code[1]!), rest: s.slice(code[0].length) }
