@@ -5,6 +5,23 @@ Sin backend, sin cuentas de usuario, sin conexión bancaria y sin IA dentro del 
 Interfaz en español, inglés, portugués y francés (`src/i18n/es.ts`, `en.ts`, `pt.ts`, `fr.ts`). Antes se llamaba «Margen»: las
 claves internas (`margen.data.v1`, `margen-backup`, cachés `margen-`) NO se renombran.
 
+## App nativa de iOS (en curso: `docs/NATIVE-PLAN.md`, decisiones 152–163)
+
+Clara se está convirtiendo también en app de iPhone con Capacitor, reutilizando toda la web. La PWA no cambia. Cuatro
+reglas de este documento cambian, **cada una solo desde la fase que la implementa** (hasta entonces rige lo de siempre):
+
+- «Sin IA dentro del producto» → se permitirá IA **en el dispositivo** (Fase 5), opcional, que nunca envía datos ni
+  guarda sola.
+- «Nada se guarda sin confirmar» → excepción para las capturas automáticas (Fase 2): con «Guardar automáticamente»
+  entran como movimiento real marcado «Por revisar»; apagado, solo como propuestas.
+- «Una moneda por presupuesto» → sigue para los totales; cada movimiento podrá guardar su moneda original y la tasa
+  usada (Fase 3). Nunca se inventa una tasa.
+- «Sin conexiones a otros sitios» → excepción opcional para las tasas del Banco de Canadá (Fase 3), sin datos de la
+  persona.
+
+Lo nativo tiene tres estados y no se salta ninguno: **escrito**, **compila** (en el Mac de Victor) y **probado en
+iPhone**. Nunca se dice que algo funciona en el iPhone si Victor no lo probó.
+
 ## Comandos (ejecutar antes de cada commit)
 
 ```bash
@@ -17,20 +34,33 @@ npm run build
 
 En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/chrome npm run test:e2e`.
 
+App de iPhone (solo en un Mac con Xcode; ver `docs/IOS-NATIVE.md`): `npm run ios:sync` compila la web y la copia al
+proyecto de `ios/`; `npm run ios:open` abre Xcode. Nada de `ios/` se compila ni se prueba en CI ni en Linux: lo que
+no se haya compilado y abierto en un iPhone se dice como «sin probar».
+
 ## Arquitectura (no mezclar capas)
 
 - `src/domain/` — **lógica financiera pura**. Sin React, sin `localStorage`, sin `Date.now()`
   implícito: "hoy" y "ahora" llegan como parámetros (`OpContext`). Aquí viven todas las
   fórmulas y validaciones. Toda regla nueva lleva prueba en `*.test.ts`.
-- `src/storage/` — persistencia detrás de `DataRepository` (IndexedDB; `localStorage` si no hay),
+- `src/storage/` — persistencia detrás de `DataRepository` (IndexedDB; `localStorage` si no hay; en la app de iPhone,
+  `NativeRepository`: un archivo propio de la app con la revisión en su primera línea, ver `docs/STORAGE.md`),
   copias de seguridad (`backup.ts`), migraciones (`migrations.ts`) y borradores (`drafts.ts`).
 - `src/state/` — estado en memoria (`AppStore`) y hooks. Aplica resultados de
   `domain/operations.ts`; no calcula dinero.
 - `src/ui/` — pantallas y componentes. Solo muestran y llaman operaciones.
+- `ios/` — **cáscara nativa** de iPhone (Capacitor 8, Swift Package Manager): abre la misma web dentro de una app.
+  No contiene lógica financiera ni textos de la interfaz: el Swift transporta, no calcula.
+- `src/platform/` — **capa de plataforma** (decisión 152): lo único de `src/` que sabe si corre en el navegador o en la
+  app (`isNativeIOS()`, lee `window.Capacitor`). **Ningún import de Capacitor fuera de `src/platform/`**; dentro, solo
+  en `src/platform/native/`, que se carga con `import()` dentro de la app (una prueba lo exige), así el JS inicial de
+  la web no crece. Cada función tiene una implementación web que hace exactamente lo de siempre. Decide cómo se hace
+  algo y qué se EXPLICA, nunca cifras ni datos. `ios/App/App/public/` lo
+  escribe `cap sync` y no se versiona.
 - `src/i18n/` — todos los textos visibles. **Nunca** escribir texto de interfaz
   directamente en componentes: añadir cada clave a `es.ts`, `en.ts`, `pt.ts` **y** `fr.ts`
   (el tipo compartido obliga a tener todas las claves en los cuatro). Los textos de pantallas poco visitadas (Legal,
-  Galería, Importar CSV) son paquetes diferidos fuera del JS inicial: archivos `src/i18n/packs/<paquete>.<idioma>.json` (mismas
+  Galería, Importar CSV, «¿Qué cambió?») son paquetes diferidos fuera del JS inicial: archivos `src/i18n/packs/<paquete>.<idioma>.json` (mismas
   claves en los cuatro: `packs/packKeys.ts` lo exige en `tsc`) pedidos con `fetch` por `usePack` (`src/i18n/packs.ts`):
   estados `loading`, `ready` (con `fallback` si el texto salió en español porque el idioma pedido no cargó; la pantalla
   marca ese contenido con `lang="es"`) y `failed`; un fallo nunca se guarda como paquete ni se enseña una clave;
@@ -41,7 +71,12 @@ En entornos con Chromium preinstalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/ruta/a/c
   viejo que termine tarde ni entra en memoria ni retira al nuevo. Con el español de respaldo, el contenido va en
   `PackLangScope` (`lang="es"` y el traductor del contexto en español, así ningún texto de la interfaz queda con la
   marca de otro idioma); la cabecera y `PackNotice` van fuera. Un texto de la interfaz nunca se traduce con el paquete
-  (`packTranslator`: claves del paquete del paquete, el resto del traductor de la interfaz).
+  (`packTranslator`: claves del paquete del paquete, el resto del traductor de la interfaz). Textos de la app de iPhone
+  (decisión 164): el paquete `nativeApp` solo se pide dentro de la app (`platform/texts.ts` → `import()` de
+  `i18n/nativeTexts.ts`); sus claves que YA existen en el diccionario principal sustituyen al texto de la web (el que
+  habla del navegador, de Safari o de pestañas) y las `nativeApp.*` son de la sección «Clara en este iPhone». Solo se
+  sustituye con el paquete del mismo idioma; mismos parámetros que el texto sustituido (pruebas). Un texto nuevo que
+  hable del navegador lleva su sustitución en `nativeApp.<idioma>.json`; nunca se ramifica el texto en el componente.
 
 ## Reglas financieras (ver `docs/FORMULAS.md`)
 

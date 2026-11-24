@@ -24,7 +24,8 @@ export interface DataRepository {
   /** Descripción para la interfaz, por ejemplo "este navegador". */
   readonly kind: 'local' | 'memory'
   /** Dónde se guarda (para explicarlo en Ajustes). */
-  readonly backend?: 'indexeddb' | 'localStorage' | 'memory'
+  /** `native` = archivo propio de la app de iPhone (`NativeRepository`, decisión 156). */
+  readonly backend?: 'indexeddb' | 'localStorage' | 'memory' | 'native'
   load(): Promise<LoadResult>
   save(data: AppData): Promise<SaveResult>
   clear(): Promise<void>

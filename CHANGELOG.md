@@ -8,6 +8,32 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
 
 ### Novedades
 
+- **Clara como app de iPhone, primer paso** (`docs/IOS-NATIVE.md`, plan en `docs/NATIVE-PLAN.md`): una cáscara nativa (Capacitor 8, carpeta `ios/`) abre
+  las mismas pantallas dentro de una app, con su icono y su pantalla de arranque en claro y oscuro. Sin servidor ni
+  cuenta; los datos de la app están separados de los de Safari. Dentro de la app no se ofrece «instalar Clara» y el uso
+  sin conexión figura como activo. **Aún sin compilar ni probar en un iPhone**: la guía dice cómo hacerlo y qué mirar.
+  Es la base para la acción «Registrar gasto» de Atajos (Apple Pay), Siri y un widget, que llegan después.
+- **App de iPhone: datos en un archivo propio** (Fase 1 nativa, bloque 2; `docs/STORAGE.md`): dentro de la app Clara
+  guarda en `Application Support`, fuera del navegador interno que iOS puede vaciar, con escritura atómica, versión
+  anterior y detección de conflicto. Lo que hubiera en el WebView se trae una sola vez, verificando. Si la app no
+  pudiera usar su archivo, Ajustes › Datos y recuperación lo avisa. **Escrito, sin compilar ni probar en un iPhone.**
+- **App de iPhone: habla de la app, no del navegador** (Fase 1 nativa, bloque 3; decisión 164): dentro de la app,
+  «Instalar Clara» pasa a ser «Clara en este iPhone» (dónde están los datos, cómo traer los de la versión web, cómo se
+  actualiza y que con una cuenta gratuita de Apple deja de abrirse a los 7 días); no se ofrece pedir al navegador que
+  conserve los datos; los enlaces de «Atajos de iPhone» no se muestran; y los textos que hablaban del navegador, de
+  Safari o de pestañas se sustituyen por los de la app, en los cuatro idiomas. Todo va en un paquete de texto que la
+  versión web nunca pide. **Probado en navegador con el puente nativo simulado; sin probar en un iPhone.**
+- **App de iPhone: Face ID o Touch ID en el bloqueo** (Fase 1 nativa, bloque 4; decisión 165): dentro de la app,
+  Ajustes › Bloqueo ofrece «Usar Face ID o Touch ID» y la pantalla de bloqueo lo pide al abrir; el PIN sigue siendo la
+  alternativa. Solo un «sí» del sistema desbloquea. En el navegador nada cambia (WebAuthn). **Escrito, sin compilar
+  ni probar en un iPhone.**
+- **App de iPhone: tacto del sistema** (Fase 1 nativa, bloque 5; decisión 166): vibración del iPhone al guardar,
+  deshacer y en errores (nunca con «reducir movimiento»), barra de estado que sigue el tema de Clara y teclado que no
+  tapa los campos. Plugins oficiales de Capacitor, cargados solo dentro de la app. **Sin compilar ni probar en un iPhone.**
+- **App de iPhone: copias por la hoja Compartir** (Fase 1 nativa, bloque 6; decisión 167): dentro de la app no hay
+  descargas, así que «Exportar copia», el CSV y el resto de archivos abren la hoja Compartir de iOS (guardar en
+  Archivos o iCloud Drive, enviar). La copia solo cuenta como exportada si se eligió un destino. «Importar copia» abre
+  Archivos. **Sin compilar ni probar en un iPhone.**
 - **Análisis** (etapa 4 del programa): nuevo destino en la barra (Inicio · Movimientos · + · Plan · Análisis · Ajustes) con
   señales calculadas con reglas fijas (pagos vencidos, saldo proyectado en negativo o bajo los apartados, límites, metas por
   detrás, gasto a fecha equivalente, categoría dominante, copia pendiente), cada una con «¿Cómo se calculó?» (regla y cifras), y

@@ -42,4 +42,16 @@ describe('estado «Uso sin conexión»', () => {
     await connect(fakeContainer({ controlled: false, register: () => Promise.reject(new Error('no')) }), () => {})
     expect(getPwaState().offlineReady).toBe(false)
   })
+
+  it('dentro de la app de iPhone (puente nativo) ya abre sin conexión, sin service worker', async () => {
+    vi.stubGlobal('window', { Capacitor: { isNativePlatform: () => true, getPlatform: () => 'ios' } })
+    try {
+      const { getPwaState } = await load()
+      expect(getPwaState().offlineReady).toBe(true)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+    // De vuelta en el navegador, sin puente: no se promete nada.
+    expect((await load()).getPwaState().offlineReady).toBe(false)
+  })
 })

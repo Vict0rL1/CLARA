@@ -8,6 +8,7 @@ import { BACKUP_REMINDERS, BUDGET_PERIOD_TYPES, DATE_STYLES, LANGUAGES, NUMBER_L
 import { formatMoney } from '../../domain/money'
 import { createDemoData } from '../../demo/demoData'
 import { loadLanguage, translate, useT, type MessageKey } from '../../i18n'
+import { isNativeIOS } from '../../platform'
 import { GROUP_TITLE_KEY, SETTINGS_GROUPS, SETTINGS_SECTIONS, settingsSection } from './settings/sections'
 import { SearchBar } from '../components/base'
 import { categoriesForKind } from '../../domain/categories'
@@ -31,6 +32,7 @@ import { NotificationsSection } from './NotificationsSection'
 import { RulesSection } from './RulesSection'
 import { PersonalizeSection } from './PersonalizeSection'
 import { InstallSection } from './settings/InstallSection'
+import { NativeAppSection } from './settings/NativeAppSection'
 import { ErrorReport } from './settings/ErrorReport'
 import { FeedbackSection } from './settings/FeedbackSection'
 import { IosShortcutsSection } from './settings/IosShortcutsSection'
@@ -85,6 +87,8 @@ const COMMON_TIME_ZONES = [
 export function Settings({ route }: { route: Route }) {
   const [theme, setTheme] = useThemePreference()
   const { t, tn } = useT()
+  // Dentro de la app de iPhone no hay nada que instalar ni enlaces de Atajos hacia la web (decisión 164).
+  const native = isNativeIOS()
   const fmt = useFormat()
   const data = useData()
   const run = useRun()
@@ -409,7 +413,7 @@ export function Settings({ route }: { route: Route }) {
 
       {section?.id === 'personalizar' && <PersonalizeSection />}
 
-      {section?.id === 'instalar' && <InstallSection />}
+      {section?.id === 'instalar' && (native ? <NativeAppSection /> : <InstallSection />)}
 
 
       {section?.id === 'cuentas' && <AccountsSection />}
@@ -613,7 +617,8 @@ export function Settings({ route }: { route: Route }) {
         <p className="note">{t('settings.shortcuts.note')}</p>
       </Card>
       )}
-      {section?.id === 'atajos' && <IosShortcutsSection />}
+      {/* Los enlaces de Atajos abren la Clara de la web; dentro de la app no sirven (la captura llega en la Fase 2). */}
+      {section?.id === 'atajos' && !native && <IosShortcutsSection />}
 
       {section?.id === 'legal' && (
       <Card labelledBy="legal-title">

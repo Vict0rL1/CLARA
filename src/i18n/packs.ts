@@ -1,5 +1,5 @@
 /**
- * Paquetes de texto diferidos: textos que solo necesita una pantalla poco visitada (Legal, Galería, Importar CSV) y que no van en el
+ * Paquetes de texto diferidos: textos que solo necesita una pantalla poco visitada (Legal, Galería, Importar CSV, ¿Qué cambió?) y que no van en el
  * JS inicial (presupuesto de tamaño, `scripts/check-size.mjs`). Cada paquete es un archivo JSON por idioma en `packs/`
  * (con huella de contenido al compilar, precacheado por el service worker como cualquier otro archivo de la app), con el
  * mismo conjunto de claves en los cuatro idiomas (`packs/packKeys.ts` lo exige en `tsc`). Se piden con `fetch` al abrir
@@ -36,8 +36,16 @@ import legalEnUrl from './packs/legal.en.json?url'
 import legalEsUrl from './packs/legal.es.json?url'
 import legalFrUrl from './packs/legal.fr.json?url'
 import legalPtUrl from './packs/legal.pt.json?url'
+import nativeAppEnUrl from './packs/nativeApp.en.json?url'
+import nativeAppEsUrl from './packs/nativeApp.es.json?url'
+import nativeAppFrUrl from './packs/nativeApp.fr.json?url'
+import nativeAppPtUrl from './packs/nativeApp.pt.json?url'
+import whatChangedEnUrl from './packs/whatChanged.en.json?url'
+import whatChangedEsUrl from './packs/whatChanged.es.json?url'
+import whatChangedFrUrl from './packs/whatChanged.fr.json?url'
+import whatChangedPtUrl from './packs/whatChanged.pt.json?url'
 
-export type PackName = 'legal' | 'gallery' | 'bankImport'
+export type PackName = 'legal' | 'gallery' | 'bankImport' | 'nativeApp' | 'whatChanged'
 type Pack = Record<string, string>
 /** Dirección del archivo JSON de cada paquete e idioma. */
 export type PackUrls = Record<PackName, Record<Language, string>>
@@ -46,6 +54,9 @@ export const PACK_URLS: PackUrls = {
   legal: { es: legalEsUrl, en: legalEnUrl, pt: legalPtUrl, fr: legalFrUrl },
   gallery: { es: galleryEsUrl, en: galleryEnUrl, pt: galleryPtUrl, fr: galleryFrUrl },
   bankImport: { es: bankImportEsUrl, en: bankImportEnUrl, pt: bankImportPtUrl, fr: bankImportFrUrl },
+  // Solo se pide dentro de la app de iPhone (`nativeTexts.ts` y Ajustes › «Clara en este iPhone»).
+  nativeApp: { es: nativeAppEsUrl, en: nativeAppEnUrl, pt: nativeAppPtUrl, fr: nativeAppFrUrl },
+  whatChanged: { es: whatChangedEsUrl, en: whatChangedEnUrl, pt: whatChangedPtUrl, fr: whatChangedFrUrl },
 }
 
 /** Una carga que no responde en este tiempo se cancela y se da por fallida (la pantalla ofrece reintentar). `0` = sin plazo (solo pruebas). */
@@ -188,6 +199,9 @@ export function createPackLoader(table: PackUrls, timeoutMs = PACK_LOAD_TIMEOUT_
 }
 
 const packs = createPackLoader(PACK_URLS)
+
+/** El mismo cargador (y la misma memoria) que usa `usePack`, para quien pide un paquete fuera de una pantalla. */
+export const loadPack: PackLoader['load'] = (name, language) => packs.load(name, language)
 
 export type PackTranslate = (key: string, params?: Params) => string
 export type PackTranslatePlural = (base: string, count: number, params?: Params) => string

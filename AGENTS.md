@@ -31,12 +31,29 @@ npm run build && npm run preview    # production build at http://localhost:4173
 On the welcome screen, **«Explorar con datos de demostración»** loads a synthetic budget in CAD (dates are
 relative to today, everything is marked as demo). «Ajustes › Demostración y borrado» clears it.
 
+### iPhone app (native shell)
+
+`ios/` is a Capacitor 8 Xcode project that opens the same web build inside a native app (`docs/IOS-NATIVE.md`; full plan in `docs/NATIVE-PLAN.md`). It can
+only be built on a Mac with Xcode: `npm run ios:sync` (web build + `cap sync ios`), then Run in Xcode; `npm run ios:open`
+opens Xcode. Nothing under `ios/` is compiled or tested in CI or on Linux, so never report an iOS change as
+working unless someone built it and ran it on a device. The web code detects the shell with `isNativeIOS()`
+(`src/platform/`). No Capacitor import is allowed outside `src/platform/`, and inside it only under
+`src/platform/native/`, which is loaded with `import()` in the app (a unit test enforces it; the initial-JS budget
+has almost no headroom).
+
+Texts inside the app (decision 164): the lazy pack `src/i18n/packs/nativeApp.<lang>.json` is fetched only in the
+app. Its keys that already exist in the main dictionary replace the web text there (anything that talks about the
+browser, Safari or tabs); its `nativeApp.*` keys belong to Settings › “Clara en este iPhone”. A new text that mentions
+the browser gets its replacement in that pack, in all four languages; do not branch the text in the component.
+`tests/e2e/native-shell.spec.ts` boots the web app with a fake Capacitor bridge and a fake `ClaraStorage` plugin
+(`tests/e2e/nativeShell.ts`): it covers the web side of the native path, not the Swift code and not a real iPhone.
+
 ## 3. Automated checks (run all of these before declaring a change done)
 
 ```bash
 npm run check        # typecheck + oxlint + i18n literal check + Vitest (≈1 220 unit tests, incl. qa/, the QA V2, the PR #15 audit, the self-review contracts, the follow-up audit, the lead pass, the QA27 pass and the 2026-11-02 and 2026-11-04 audit passes)
 npm run build        # production build
-npm run size         # initial JS budget: must stay ≤ 844.6 KB (≈ 844.1 KB after the 2026-11-02 audit pass: about 0.5 KB of margin; before adding visible text, move rarely visited screen texts to the lazy packs in `src/i18n/packs/` to free bytes) — do not raise it
+npm run size         # initial JS budget: must stay ≤ 844.6 KB (about 840 KB after moving the «¿Qué cambió?» texts to a lazy pack during native Phase 1; before adding visible text, move rarely visited screen texts to the lazy packs in `src/i18n/packs/` to free bytes) — do not raise it
 npm audit --audit-level=high   # dependency audit (CI fails on a high/critical vulnerability)
 npm run test:e2e     # Playwright: 3 projects (celular 412 px, celular-pequeno 320 px, escritorio) + axe
                      # budgets inside the suite: Home interactive < 500 ms with 10 000 movements (performance-10k.spec.ts); History's first entry < 300 ms after navigating from Home with 10 000 movements, 100 schedules, 1 000 linked payments and 30 schedule-touching entries (performance-history.spec.ts; measured 39–43 ms on the second navigation, ~310 ms on the first, which includes the lazy chunk)

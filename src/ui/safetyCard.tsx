@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { backupStatus } from '../domain/backupReminder'
 import { useT } from '../i18n'
+import { isNativeIOS } from '../platform'
 import { useToday } from '../state/hooks'
 import { useData } from '../state/store'
 import { useExportBackup } from './backupActions'
@@ -11,7 +12,7 @@ import { usePersistStatus } from './persist'
 /**
  * K3 · «Protege tus datos», una vez por dispositivo: pedir al navegador que conserve los datos y
  * hacer la primera copia (con la hoja de compartir si existe, K1). Cada paso dice su resultado tal
- * cual; el recordatorio de copias sigue igual.
+ * cual; el recordatorio de copias sigue igual. Dentro de la app de iPhone solo queda la copia.
  */
 export function SafetyCard({ onClose }: { onClose: () => void }) {
   const { t } = useT()
@@ -21,6 +22,7 @@ export function SafetyCard({ onClose }: { onClose: () => void }) {
   const exportBackup = useExportBackup()
   const [exporting, setExporting] = useState(false)
   const exported = !backupStatus(data, today).neverExported
+  const native = isNativeIOS()
   return (
     <Card labelledBy="safety-title">
       <div className="stack-sm" data-testid="safety-card">
@@ -28,13 +30,14 @@ export function SafetyCard({ onClose }: { onClose: () => void }) {
           <Icon name="shield" size={18} /> {t('safety.title')}
         </h2>
         <p>{t('safety.text')}</p>
-        <h3 className="section-title">{t('safety.step1')}</h3>
-        {status !== 'checking' && (
+        {/* En la app de iPhone los datos van en un archivo propio: no hay nada que pedirle al navegador (decisión 164). */}
+        {!native && <h3 className="section-title">{t('safety.step1')}</h3>}
+        {!native && status !== 'checking' && (
           <p data-testid="safety-persist" data-status={status}>
             <Icon name={status === 'granted' ? 'check' : 'info'} size={16} /> {t(`settings.storage.persist.${status}` as 'settings.storage.persist.granted')}
           </p>
         )}
-        {status === 'notGranted' && (
+        {!native && status === 'notGranted' && (
           <div className="button-row">
             <button type="button" className="btn btn--secondary" onClick={() => void request()}>
               {t('settings.storage.persist.request')}
@@ -65,7 +68,7 @@ export function SafetyCard({ onClose }: { onClose: () => void }) {
         <p className="note">{t('safety.reminder')}</p>
         <div className="button-row">
           <button type="button" className="btn btn--secondary" onClick={onClose}>
-            {t(exported || status === 'granted' ? 'safety.done' : 'safety.later')}
+            {t(exported || (!native && status === 'granted') ? 'safety.done' : 'safety.later')}
           </button>
         </div>
       </div>

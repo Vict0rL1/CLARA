@@ -1,6 +1,7 @@
 /** Acciones de copia de seguridad compartidas por Inicio y Ajustes. */
 import { recordExport, recordVerification, snoozeBackupReminder } from '../domain/backupReminder'
 import { useT } from '../i18n'
+import { isNativeIOS, nativeServices } from '../platform'
 import { useRun } from '../state/hooks'
 import { getStore } from '../state/store'
 import { MAX_BACKUP_BYTES, parseBackup, performExport, type ImportIssue } from '../storage/backup'
@@ -12,8 +13,16 @@ import { APP_VERSION } from './version'
 
 export { APP_VERSION }
 
-/** Pide al navegador descargar un archivo de texto. */
+/**
+ * Pide al navegador descargar un archivo de texto. Dentro de la app de iPhone no hay descargas: se abre la hoja
+ * Compartir con el archivo (decisión 167).
+ */
 export function downloadText(filename: string, text: string, type = 'application/json') {
+  const share = isNativeIOS() ? nativeServices().shareTextFile : undefined
+  if (share) {
+    void share(filename, text).catch(() => {})
+    return
+  }
   const blob = new Blob([text], { type })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -58,7 +67,15 @@ export function useExportBackup() {
     const { filename, text } = file as { filename: string; text: string }
     let delivery: Awaited<ReturnType<typeof deliverFile>>
     try {
-      delivery = await deliverFile(filename, text, { nav: typeof navigator === 'undefined' ? undefined : navigator, download: downloadText })
+      if (isNativeIOS()) {
+        // En la app, siempre la hoja Compartir nativa (decisión 167). Sin ella no hay forma de entregar el archivo:
+        // se dice que no se exportó, nunca se registra una descarga que no ocurrió.
+        const share = nativeServices().shareTextFile
+        if (!share) throw new Error('shareUnavailable')
+        delivery = await share(filename, text)
+      } else {
+        delivery = await deliverFile(filename, text, { nav: typeof navigator === 'undefined' ? undefined : navigator, download: downloadText })
+      }
     } catch {
       // La descarga no se pudo pedir (p. ej. el navegador la bloquea): no se registra nada.
       toast({ message: t('backup.exportFailed'), tone: 'critical' })
