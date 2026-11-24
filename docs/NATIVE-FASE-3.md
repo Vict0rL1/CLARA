@@ -123,3 +123,30 @@ también la excepción «sin conexiones a otros sitios» para el Banco de Canad�
 CSV con el original), 180 (el asistente con la tasa del viaje), 181 (tasas del Banco de Canadá: opcionales, del
 dispositivo, solo la serie y dos fechas, sin capa nativa), 182 (orden viaje → banco → cargo real y dónde se usa).
 Detalle en `docs/DECISIONS.md`.
+
+## 7. Compilado en el Mac
+
+> **Pendiente: la Fase 3 no se ha compilado todavía en un Mac.** El 24-nov se intentó desde una sesión en la nube
+> (Linux) que no pudo usar el Mac: la carpeta ALCANZA de Victors-MacBook-Pro-3 está en la lista de Remote Control, pero
+> el Mac no la ofrece a sesiones en la nube (no dice por qué; suele ser que la carpeta está dentro de una carpeta oculta
+> del inicio o que la app de Claude necesita actualizarse). Sin Mac no hay `swift test`, `xcodebuild` ni simulador, así
+> que aquí no hay versión de macOS, Xcode ni simulador que apuntar.
+
+| Paso | Resultado el 24-nov (Linux, Node 22.23.5, commit `38b389b`) |
+|---|---|
+| macOS, Xcode, simulador | Sin datos: no se usó un Mac |
+| `swift test` | **Sin hacer.** Ubuntu 24.04 no trae Swift y la red de la sesión no llega a swift.org |
+| `npm ci` | 158 paquetes, 0 vulnerabilidades |
+| `npm run typecheck`, `npm run lint` | En verde |
+| `npm test` | 1 480 pasan, 1 omitida, 0 fallan (153 archivos) |
+| `npm run ios:sync` | Compila la web y `cap sync ios` termina: 5 plugins en `CapApp-SPM/Package.swift`; nada versionado cambia |
+| `npm run test:e2e` | Chromium 158.0.8127.36 (Playwright 1.63): 1 341 pasan, 4 omitidas, 2 fallan, las dos la guarda «ningún control recorta su texto» en `/movimientos` (celular y celular 320 px). Es un falso recorte: en ese Chromium el `clientWidth` de un `<input>` ya viene sin el relleno y la guarda lo restaba otra vez (95 px de hueco para 153 px de texto, en un campo de 179 px de contenido donde «Buscar movimientos» se ve entero). Arreglada en `b0cf3b6`: con el arreglo, `layout-guards` 102 de 102 y las dos que fallaron, 2 de 2 |
+| `xcodebuild` | **Sin hacer.** Revisión sin compilador: los 8 `.swift` de `ios/App/App/` están en `project.pbxproj`; `Info.plist` y los dos `.xcstrings` se leen; la CSP copiada a `ios/App/App/public/` abre solo `https://www.bankofcanada.ca`. Ningún cambio en la app ni en `ios/` |
+| Comprobaciones 1–45 en el simulador | **Ninguna hecha** |
+| 40–45 (Banco de Canadá) | Sin probar. La red de la sesión tampoco llega a www.bankofcanada.ca: ni siquiera se repitió lo de `curl`. Sigue abierta la petición desde `capacitor://localhost` |
+| iPhone físico | Sin probar |
+
+En el simulador se pueden hacer: 1–5, 7–9, 11–14, 16, 17 (Face ID simulado: Features › Face ID), 19, 21, 22 y 24–30
+(si el simulador trae Atajos), 31–35, 39, 40–42 y 43 desconectando el Mac de la red. Necesitan el iPhone: 6 (modo
+avión), 10 (cámara), 15 (reiniciar el teléfono), 18 (vibración), 23 (pago real con Apple Pay y la automatización de
+Wallet), 36–38 y 44–45 si se hacen con la automatización de Wallet o con la tarjeta.
