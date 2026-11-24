@@ -205,6 +205,58 @@ importa nada (los pagos esperan en la cola). Abre Clara una vez después de inst
 Apunta también: qué variables ofrece el disparador de Wallet (y cómo se llaman), si «Importe» encajó directamente en
 el campo de la acción o hubo que pasarlo como texto, y qué dice Siri con «Registrar un pago en Clara».
 
+## Fase 3: varias monedas y modo viaje
+
+Rama `feat/ios-fase-3` (PR #20, sobre la Fase 2). Todo es web (formulario, viajes, Estadísticas, CSV, capturas
+convertidas): no hay Swift nuevo, así que basta con volver a compilar.
+
+> **Estado: escrito y probado en el navegador con un iPhone simulado (y el Banco de Canadá simulado); sin probar en el
+> iPhone.** Las comprobaciones 31–39 son con el Banco de Canadá **apagado** (como viene); las 40–45, encendido.
+
+```bash
+git checkout feat/ios-fase-3
+git pull
+npm ci
+npm run ios:sync
+```
+
+y ▶ en Xcode. Las cifras de abajo están calculadas a mano (una sola vez al céntimo más cercano).
+
+| # | Qué | Cómo | ¿Bien? |
+|---|---|---|---|
+| 31 | Crear un viaje | Plan › Periodos › nuevo › «Viaje», con fechas que incluyan hoy. Enciende «Modo viaje», añade JPY, KRW y CNY con las tasas 0.0092, 0.00098 y 0.1923 y comisión 0. Guarda: el detalle dice las tres tasas | |
+| 32 | Yen, won y yuan | Desde «+», con «Pagado en otra moneda»: ¥1 200 (la tasa del viaje sale sola), luego KRW 15 000 y CNY 88.30. Cada uno dice su cuenta: 11,04 $, 14,70 $ y 16,98 $ | |
+| 33 | Total del viaje | En el detalle del viaje: «Total en CAD: 42,72 $», una línea por moneda con el importe original y el convertido | |
+| 34 | Comisión | Edita el viaje: comisión 2.5. Un gasto nuevo de ¥1 200 da 11,32 $; los de antes no cambian | |
+| 35 | Cargo real | Edita el gasto de ¥1 200 › «Con lo que cobró el banco» › 11.17: se guarda 11,17 $ y la tasa sale «≈ 0.009308» | |
+| 36 | Captura en yenes | En Atajos, ejecuta «Registrar pago en Clara» con un importe en **JPY** (1 200): al abrir Clara está «Por revisar», convertido con la tasa del viaje y dentro del viaje | |
+| 37 | Sin tasa | Igual con un importe en USD (no es moneda del viaje), con el Banco de Canadá apagado: queda como propuesta; «Registrar» con lo que cobró el banco guarda los dos importes | |
+| 38 | «¥» suelto | En el detalle del viaje, «Ahora estás en» › CNY; ejecuta la acción con el importe como texto «¥88.30»: se lee como yuan. Con «Ninguna», queda como propuesta | |
+| 39 | Estadísticas y CSV | Estadísticas › «Gastado por moneda» con las tres monedas; Movimientos › Más › Exportar CSV: cada gasto en otra moneda tiene su importe original, la moneda y la tasa | |
+
+Apunta si el campo de importe de la acción ofreció elegir la moneda (JPY) o si hubo que usar «Importe como texto».
+
+### Tasas del Banco de Canadá (decisión 181)
+
+Opcional y apagado por defecto. Encendido, Clara pide al Banco de Canadá (www.bankofcanada.ca) solo la moneda y dos
+fechas; nada tuyo. La tasa es **indicativa**: la del último día hábil publicado hasta la fecha del gasto (el banco
+publica hacia las 16:30 de Ottawa; hoy, antes de esa hora, sale la del día hábil anterior). Lo que se comprobó de la
+API está en `docs/BOC-VALET.md`. Las cifras dependen de la tasa del día: compruébalas con la que enseña Clara
+(importe × tasa, un solo redondeo al céntimo).
+
+| # | Qué | Cómo | ¿Bien? |
+|---|---|---|---|
+| 40 | Encenderlo | Ajustes › Formato › «Tasas del Banco de Canadá» › «Pedir tasas al Banco de Canadá». Lee la explicación (qué se envía, indicativa, fuente) | |
+| 41 | Formulario | Termina el viaje de la 31 (o usa una moneda sin tasa del viaje, p. ej. USD). «+» › «Pagado en otra moneda» › USD 25.00 › «Usar la tasa del Banco de Canadá»: el campo de la tasa se llena, la fecha de la tasa es un día hábil ≤ hoy y debajo dice «Tasa indicativa del Banco de Canadá del <fecha>». Guarda: el importe en CAD es 25 × tasa | |
+| 42 | La misma en la web del banco | Abre en Safari https://www.bankofcanada.ca/rates/exchange/daily-exchange-rates/ («Daily exchange rates», comprobada el 16-nov) y mira USD/CAD de esa fecha: es la misma cifra | |
+| 43 | Sin conexión | Modo avión. Repite la 41: dice «No se pudo conectar con el Banco de Canadá: no hay tasa» y sin tasa no deja guardar | |
+| 44 | Captura en otra moneda | Con conexión y sin tasa del viaje para esa moneda, ejecuta la acción con un importe en **USD** (12.50): al abrir Clara está «Por revisar» y dice «Convertido con la tasa indicativa del Banco de Canadá del <fecha>» | |
+| 45 | Captura sin conexión | En modo avión, otra captura en USD: queda como propuesta. Quita el modo avión, en Pendientes «Pedir la tasa del Banco de Canadá» › «Registrar con esta tasa» | |
+
+Si en la 41 o la 44 Clara dice que no pudo conectar aunque haya conexión, apúntalo: dentro de la app la petición la
+hace el WebView (origen `capacitor://localhost`); el banco responde `Access-Control-Allow-Origin: *`, pero eso solo se
+ha comprobado con `curl`, no en el iPhone.
+
 ## Tus datos reales
 
 Prueba primero con los datos de demostración y la lista de comprobación. Cuando todo esté bien:

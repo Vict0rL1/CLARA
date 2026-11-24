@@ -4,7 +4,7 @@
  * Excel. Las etiquetas (categoría, cuenta, tipo) las resuelve quien llama, ya traducidas.
  */
 import { minorToDecimalString } from './money'
-import type { Category, Plan, Transaction } from './types'
+import type { Category, Plan, RateSource, Transaction } from './types'
 
 export interface CsvLabels {
   headers: readonly string[]
@@ -14,8 +14,34 @@ export interface CsvLabels {
   account: (id: string | undefined) => string
   /** Origen del registro (manual, asistente, atajo…): columna final si se indica. */
   source?: (tx: Transaction) => string
+  /**
+   * Fase 3: con esto, seis columnas más tras el origen, con el importe en la moneda en que se pagó (`original`):
+   * importe (mismo signo que el convertido), moneda, tasa exacta, fecha de la tasa, de dónde salió y comisión (%).
+   * Vacías en los movimientos sin `original`.
+   */
+  rateSource?: (source: RateSource) => string
   /** Separador de columnas: «;» cuando el locale usa coma decimal (Excel lo espera así), «,» si no. */
   separator?: ',' | ';'
+}
+
+/** Claves de cabecera de las columnas de movimientos, en orden (las de `source` y `rateSource` al final). */
+export const TX_CSV_COLUMNS = ['date', 'kind', 'status', 'amount', 'currency', 'category', 'account', 'toAccount', 'note', 'merchant', 'id', 'source'] as const
+export const TX_CSV_ORIGINAL_COLUMNS = ['originalAmount', 'originalCurrency', 'rate', 'rateDate', 'rateSource', 'fee'] as const
+
+/** Puntos básicos → porcentaje con punto decimal: 250 → «2.50». */
+function bpsToPercent(bps: number): string {
+  return `${Math.trunc(bps / 100)}.${String(bps % 100).padStart(2, '0')}`
+}
+
+/**
+ * Columnas del importe original. La tasa va tal cual (exacta, con punto); una fracción del cargo real («1117/120000»)
+ * lleva un apóstrofo delante para que la hoja de cálculo no la convierta en fecha.
+ */
+function originalCells(tx: Transaction, rateSource: (s: RateSource) => string): string[] {
+  const o = tx.original
+  if (!o) return ['', '', '', '', '', '']
+  const sign = signedAmount(tx) < 0 ? -1 : 1
+  return [minorToDecimalString(sign * o.amountMinor, o.currency), o.currency, o.rate.includes('/') ? `'${o.rate}` : o.rate, o.rateDate, safeText(rateSource(o.rateSource)), o.feeBps ? bpsToPercent(o.feeBps) : '']
 }
 
 /** Separador según el separador decimal del locale (§7.7 · Exportar datos). */
@@ -82,6 +108,7 @@ export function transactionsToCsv(txs: readonly Transaction[], labels: CsvLabels
     safeText(tx.merchant),
     tx.id,
     ...(labels.source ? [safeText(labels.source(tx))] : []),
+    ...(labels.rateSource ? originalCells(tx, labels.rateSource) : []),
   ])
   return `${BOM}${table(labels.headers, rows, sep)}\r\n`
 }

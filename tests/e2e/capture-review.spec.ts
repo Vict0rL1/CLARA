@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
-import type { CaptureProposal, Transaction } from '../../src/domain/types'
+import type { CaptureProposal, PeriodBudget, Transaction } from '../../src/domain/types'
 import { account, baseData, EARLIER, tx } from '../../src/test/fixtures'
 import { available, expectNoHorizontalScroll, go, seedStoredData, storedData } from './helpers'
 
@@ -65,7 +65,7 @@ test('por revisar: confirmar, deshacer, editar, rechazar, registrar en otra mone
   await expect(page.getByTestId('inbox-count')).toHaveText('6 pendientes')
   await expect(page.getByRole('heading', { name: /Sin categoría/ })).toHaveCount(0)
   await expect(card(page, 'Metro')).toContainText('Texto del aviso: Compra por $18.40 en METRO')
-  await expect(card(page, 'Amazon')).toContainText('Llegó en USD ($12.50). Clara no convierte monedas')
+  await expect(card(page, 'Amazon')).toContainText('Llegó como $12.50 USD y no hay una tasa escrita para esa moneda')
   await expect(card(page, 'Amazon')).toContainText('Propuesta · no cuenta')
   await expect(review.locator('article', { hasText: 'Se parece a otro gasto' })).toContainText('Tim Hortons')
   await expectNoHorizontalScroll(page, 'por revisar')
@@ -151,4 +151,67 @@ test('tarjeta nueva: se pregunta su cuenta una vez; lo que espera revisión pasa
   const stored = JSON.parse((await storedData(page))!) as ReturnType<typeof baseData>
   expect(stored.settings.capture?.cardAccounts).toEqual([{ card: 'Visa ••1234', accountId: 'visa' }])
   expect(stored.transactions[0]!.accountId).toBe('visa')
+})
+
+/**
+ * Fase 3: viaje «Asia» (25-sep → 4-oct) con yen y yuan a mano y 2,5 % de comisión. A mano:
+ *   ¥1 200 × 0,0092 × 1,025 = 11,316 → 11,32 $ (llegó solo y ya resta: 1 000,00 − 11,32 = 988,68)
+ *   CN¥88,30 × 0,1923 × 1,025 = 17,404… → 17,40 $ (propuesta; con la tasa del viaje: 988,68 − 17,40 = 971,28)
+ *   12,50 US$ cobrados como 13,71 $ → tasa 1,0968 (el dólar no es del viaje: 971,28 − 13,71 = 957,57)
+ */
+test('viaje: lo convertido dice su tasa; una propuesta se registra con la tasa del viaje o con el cargo real', async ({ page }) => {
+  const trip: PeriodBudget = {
+    id: 'asia',
+    name: 'Asia',
+    template: 'trip',
+    startDate: '2026-09-25',
+    endDate: '2026-10-04',
+    allocatedMinor: 50000,
+    currency: 'CAD',
+    txIds: ['cap-j0000001'],
+    archived: false,
+    trip: {
+      currencies: ['JPY', 'CNY'],
+      localCurrency: 'JPY',
+      rates: [
+        { currency: 'JPY', rate: '0.0092', date: '2026-09-25' },
+        { currency: 'CNY', rate: '0.1923', date: '2026-09-28' },
+      ],
+      feeBps: 250,
+    },
+    createdAt: EARLIER,
+    updatedAt: EARLIER,
+  }
+  const ramen = captured('cap-j0000001', 1132, 'Ichiran', '2026-09-28T15:00:00Z', {
+    original: { currency: 'JPY', amountMinor: 1200, rate: '0.0092', rateDate: '2026-09-25', rateSource: 'manual', feeBps: 250 },
+    review: { needed: true, reason: 'currency' },
+  })
+  const tea = proposal({ captureId: 'cap-c0000001', amount: { kind: 'foreign', currency: 'CNY', minor: 8830 }, merchant: 'Tea house', categoryId: 'dining' })
+  const usd = proposal({ captureId: 'cap-u0000001' })
+  await seedStoredData(page, baseData({ transactions: [ramen], periodBudgets: [trip], captures: { processed: ['cap-j0000001', 'cap-c0000001', 'cap-u0000001'].map((id) => ({ id, at: EARLIER })), proposals: [tea, usd] } }))
+  await expect(await available(page)).toHaveText('$988.68')
+  await go(page, '/pendientes')
+  await expect(card(page, 'Ichiran')).toContainText('Pagado ¥1,200 JPY. Convertido con la tasa del viaje 0.0092 del 25 sep')
+  await expect(card(page, 'Ichiran')).toContainText('y 2.5 % de comisión')
+  await expect(card(page, 'Tea house')).toContainText('Con la tasa del viaje (0.1923 del')
+  await expect(card(page, 'Tea house')).toContainText('y 2.5 % de comisión: $17.40.')
+  await expect(card(page, 'Amazon').getByRole('button', { name: 'Registrar con esta tasa' })).toHaveCount(0)
+  await expectNoHorizontalScroll(page, 'por revisar con viaje')
+  expect((await new AxeBuilder({ page }).include('[data-testid="capture-review"]').analyze()).violations).toEqual([])
+
+  await card(page, 'Tea house').getByRole('button', { name: 'Registrar con esta tasa' }).click()
+  await expect(toast(page, 'Registrado: Tea house')).toBeVisible()
+  await expect(card(page, 'Tea house')).toHaveCount(0)
+  await card(page, 'Amazon').getByLabel('Importe en CAD').fill('13.71')
+  await card(page, 'Amazon').getByRole('button', { name: 'Registrar', exact: true }).click()
+  await expect(toast(page, 'Registrado: Amazon')).toBeVisible()
+  await expect(await available(page)).toHaveText('$957.57')
+
+  const stored = JSON.parse((await storedData(page))!) as ReturnType<typeof baseData>
+  expect(stored.transactions.find((t) => t.id === 'cap-c0000001')).toMatchObject({
+    amountMinor: 1740,
+    original: { currency: 'CNY', amountMinor: 8830, rate: '0.1923', rateDate: '2026-09-28', rateSource: 'manual', feeBps: 250 },
+  })
+  expect(stored.transactions.find((t) => t.id === 'cap-u0000001')).toMatchObject({ amountMinor: 1371, original: { currency: 'USD', amountMinor: 1250, rate: '1.0968', rateSource: 'card_actual' } })
+  expect(stored.periodBudgets[0]!.txIds).toEqual(['cap-j0000001', 'cap-c0000001'])
 })

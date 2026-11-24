@@ -12,6 +12,10 @@ import captureEn from './capture.en.json'
 import captureEs from './capture.es.json'
 import captureFr from './capture.fr.json'
 import capturePt from './capture.pt.json'
+import fxEn from './fx.en.json'
+import fxEs from './fx.es.json'
+import fxFr from './fx.fr.json'
+import fxPt from './fx.pt.json'
 import galleryEn from './gallery.en.json'
 import galleryEs from './gallery.es.json'
 import galleryFr from './gallery.fr.json'
@@ -24,10 +28,18 @@ import nativeAppEn from './nativeApp.en.json'
 import nativeAppEs from './nativeApp.es.json'
 import nativeAppFr from './nativeApp.fr.json'
 import nativeAppPt from './nativeApp.pt.json'
+import periodsEn from './periods.en.json'
+import periodsEs from './periods.es.json'
+import periodsFr from './periods.fr.json'
+import periodsPt from './periods.pt.json'
 import shortfallEn from './shortfall.en.json'
 import shortfallEs from './shortfall.es.json'
 import shortfallFr from './shortfall.fr.json'
 import shortfallPt from './shortfall.pt.json'
+import weeklyEn from './weekly.en.json'
+import weeklyEs from './weekly.es.json'
+import weeklyFr from './weekly.fr.json'
+import weeklyPt from './weekly.pt.json'
 import whatChangedEn from './whatChanged.en.json'
 import whatChangedEs from './whatChanged.es.json'
 import whatChangedFr from './whatChanged.fr.json'
@@ -40,6 +52,9 @@ export type NativeAppPackKey = keyof typeof nativeAppEs
 export type WhatChangedPackKey = keyof typeof whatChangedEs
 export type ShortfallPackKey = keyof typeof shortfallEs
 export type CapturePackKey = keyof typeof captureEs
+export type WeeklyPackKey = keyof typeof weeklyEs
+export type FxPackKey = keyof typeof fxEs
+export type PeriodsPackKey = keyof typeof periodsEs
 
 /** `true` solo si A y B tienen las mismas claves (ninguna falta en ninguno de los dos). */
 type SameKeys<A, B> = Record<keyof A, string> extends Record<keyof B, string> ? (Record<keyof B, string> extends Record<keyof A, string> ? true : never) : never
@@ -67,4 +82,13 @@ export const PACK_KEY_CHECKS: [
   SameKeys<typeof captureEs, typeof captureEn>,
   SameKeys<typeof captureEs, typeof capturePt>,
   SameKeys<typeof captureEs, typeof captureFr>,
-] = [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true]
+  SameKeys<typeof weeklyEs, typeof weeklyEn>,
+  SameKeys<typeof weeklyEs, typeof weeklyPt>,
+  SameKeys<typeof weeklyEs, typeof weeklyFr>,
+  SameKeys<typeof fxEs, typeof fxEn>,
+  SameKeys<typeof fxEs, typeof fxPt>,
+  SameKeys<typeof fxEs, typeof fxFr>,
+  SameKeys<typeof periodsEs, typeof periodsEn>,
+  SameKeys<typeof periodsEs, typeof periodsPt>,
+  SameKeys<typeof periodsEs, typeof periodsFr>,
+] = [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true]

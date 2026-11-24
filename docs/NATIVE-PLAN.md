@@ -163,6 +163,30 @@ fusiona cuando Victor la haya probado.
 - **Sin comprobar:** los nombres de los menús de Atajos para el disparador de transacciones de Wallet y qué variables
   ofrece (support.apple.com no es accesible desde este entorno). La guía lo dice; se confirma en el iPhone.
 
+## 4 quater. Fase 3: plan (rama `feat/ios-fase-3`, sobre la Fase 2)
+
+En orden; cada bloque con pruebas de cifras calculadas a mano, un commit y la cuenta del JS inicial (lo nuevo de
+pantallas y textos va en código y paquetes diferidos):
+
+1. **Hecho.** Conversión exacta y esquema 16 (`domain/fx.ts`, `original` en el movimiento; `docs/FORMULAS.md` §45;
+   decisión 175). Para dejar sitio, los textos de la revisión semanal pasan a un paquete diferido.
+2. **Hecho.** Viajes (`domain/trips.ts`; decisión 176): fechas, monedas, «moneda local actual» (resuelve el «¥»), tasas del viaje escritas a
+   mano con su fecha y vínculo con un Periodo de presupuesto.
+3. **Hecho.** Formulario (decisión 178): «Otra moneda» (moneda, importe, tasa, comisión; la cifra en CAD se calcula y se explica) y «Ajustar al
+   cargo real» en un movimiento ya guardado.
+4. **Hecho.** Capturas en otra moneda con la tasa escrita del viaje en curso (decisión 177): movimiento real «Por
+   revisar» con `original`; sin tasa, propuesta como hasta ahora. Nunca se inventa una tasa.
+5. **Hecho, en otro sitio.** Los viajes y su comisión se escriben en el formulario del periodo «Viaje» (no hizo falta
+   una sección de Ajustes: la comisión es de cada viaje y, en un movimiento suelto, del propio movimiento).
+6. **Hecho.** Vista del viaje: gastado por moneda, total en CAD, gasto por día y lo que queda del periodo vinculado.
+7. **Hecho.** Estadísticas y CSV con el importe original y el convertido (decisión 179). Y el asistente con la tasa
+   del viaje (decisión 180).
+8. **Hecho.** Banco de Canadá (Valet; decisión 181, `docs/BOC-VALET.md`): API comprobada de verdad el 16-nov desde el
+   entorno «clara» (URL, JSON con el valor en texto, festivos, CORS `*` sin consulta previa: no hace falta HTTP
+   nativo). Opcional y apagado por defecto; solo la serie y dos fechas; caché local; aviso «Tasa indicativa del Banco
+   de Canadá del <fecha>» en el formulario, «Por revisar» y la vista del viaje; las capturas sin tasa del viaje se
+   convierten con ella. Sin probar en el iPhone (comprobaciones 40–45 de `docs/IOS-NATIVE.md`).
+
 ## 5. Notas del historial de la rama
 
 - El commit `1e80e3c` (documentación del Paso 0) se llevó por error los renombrados de `src/platform/` y de la guía,

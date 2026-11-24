@@ -1,0 +1,21 @@
+{
+    "terms": {
+        "url": "https://www.bankofcanada.ca/terms/"
+    },
+    "seriesDetail": {
+        "FXVNDCAD": {
+            "label": "VND/CAD",
+            "description": "Daily average exchange rate — historical series of the Vietnamese dong in Canadian dollars.",
+            "dimension": {
+                "key": "d",
+                "name": "Date"
+            },
+            "dateFormat": "daily",
+            "metadata": {
+                "unit": "Canadian dollars per Vietnamese dong",
+                "frequency": "Business daily"
+            }
+        }
+    },
+    "observations": []
+}

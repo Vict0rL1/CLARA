@@ -202,3 +202,38 @@ describe('adaptador del plugin ClaraCaptures', () => {
     expect(removeHandle).toHaveBeenCalled()
   })
 })
+
+describe('captureSync con las tasas del Banco de Canadá (decisión 181)', () => {
+  const yen = (id: string) => line(id, { createdAt: '2026-11-08T15:00:00Z', rawAmount: '1200', currencyHint: 'JPY', merchant: 'Lawson' })
+
+  it('pide solo lo que hace falta y convierte con la tasa que llegó (¥1 200 × 0,00891 = 10,69 $)', async () => {
+    const queue = fakeQueue(yen('cap-boc0001') + line('cap-cad0001'))
+    const store = fakeStore(baseData())
+    const asked: unknown[] = []
+    const sync = createCaptureSync(queue, store, async (budget, wanted, today) => {
+      asked.push({ budget, wanted, today: typeof today })
+      return new Map([['JPY|2026-11-08', { rate: '0.00891', rateDate: '2026-11-06' }]])
+    })
+    const out = await sync.sync()
+    expect(out.status).toBe('imported')
+    expect(asked).toEqual([{ budget: 'CAD', wanted: [{ currency: 'JPY', date: '2026-11-08' }], today: 'string' }])
+    expect(store.data?.transactions.find((t) => t.id === 'cap-boc0001')).toMatchObject({ amountMinor: 1069, original: { rateSource: 'boc', rateDate: '2026-11-06' } })
+    expect(queue.removed).toEqual([['cap-boc0001', 'cap-cad0001']])
+  })
+
+  it('sin tasa o si pedirla falla, el pago queda como propuesta y la cola se vacía igual (nada se pierde)', async () => {
+    for (const source of [async () => new Map(), async () => Promise.reject(new Error('sin red'))]) {
+      const queue = fakeQueue(yen('cap-boc0002'))
+      const store = fakeStore(baseData())
+      const out = await createCaptureSync(queue, store, source).sync()
+      expect(out.status).toBe('imported')
+      expect(store.data?.captures?.proposals.map((p) => [p.captureId, p.reason])).toEqual([['cap-boc0002', 'currency']])
+    }
+  })
+
+  it('sin nada en otra moneda no pide nada', async () => {
+    const source = vi.fn(async () => new Map())
+    await createCaptureSync(fakeQueue(line('cap-cad0002')), fakeStore(baseData()), source).sync()
+    expect(source).not.toHaveBeenCalled()
+  })
+})

@@ -21,6 +21,7 @@ import type {
   Account,
   AllocationReason,
   AppData,
+  OriginalAmount,
   SplitLine,
   CardDetails,
   CategoryRule,
@@ -83,7 +84,9 @@ function upsert<T extends { id: string }>(list: T[], item: T): T[] {
 /* Movimientos                                                         */
 /* ------------------------------------------------------------------ */
 
-export type TransactionDraft = Omit<Transaction, 'createdAt' | 'updatedAt' | 'currency' | 'realizedAt' | 'receiptUri'> & {
+export type TransactionDraft = Omit<Transaction, 'createdAt' | 'updatedAt' | 'currency' | 'realizedAt' | 'receiptUri' | 'original'> & {
+  /** v16: importe en otra moneda (`domain/fx.ts`). `null` lo quita; ausente lo conserva (lote, etiquetas, vínculos). */
+  original?: OriginalAmount | null
   /** Foto del recibo (data URL comprimida). `null` quita la existente; ausente la conserva. */
   receiptUri?: string | null
   /**
@@ -173,6 +176,7 @@ export function saveTransaction(data: AppData, draft: TransactionDraft, ctx: OpC
     // v15: la captura de la que vino se conserva siempre (evita importarla otra vez); la marca «Por revisar», hasta
     // que la persona lo revisa.
     ...((draft.captureId ?? existing?.captureId) ? { captureId: draft.captureId ?? existing?.captureId } : {}),
+    ...(draft.original === null ? {} : (draft.original ?? existing?.original) ? { original: draft.original ?? existing?.original } : {}),
     ...(!draft.reviewed && (draft.review ?? existing?.review) ? { review: draft.review ?? existing?.review } : {}),
     createdAt: existing?.createdAt ?? ctx.now,
     updatedAt: ctx.now,

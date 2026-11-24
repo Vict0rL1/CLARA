@@ -94,3 +94,18 @@ describe('QA-07 · texto que una hoja de cálculo ejecutaría como fórmula', ()
     expect(sections.slice(1)).toMatch(/^'=título\r\n/)
   })
 })
+
+describe('Fase 3 · importe original en el CSV', () => {
+  it('seis columnas tras el origen: importe con el mismo signo, moneda, tasa exacta, fecha, origen y comisión', () => {
+    const yen = tx({ id: 'y', amountMinor: 1132, original: { currency: 'JPY', amountMinor: 1200, rate: '0.0092', rateDate: '2026-09-25', rateSource: 'manual', feeBps: 250 } })
+    const actual = tx({ id: 'z', amountMinor: 1117, original: { currency: 'JPY', amountMinor: 1200, rate: '1117/120000', rateDate: '2026-09-28', rateSource: 'card_actual' } })
+    const refund = tx({ id: 'r', kind: 'refund', amountMinor: 552, original: { currency: 'JPY', amountMinor: 600, rate: '0.0092', rateDate: '2026-09-25', rateSource: 'manual' } })
+    const plain = tx({ id: 'p', amountMinor: 500 })
+    const csv = transactionsToCsv([yen, actual, refund, plain], { ...labels, headers: [...labels.headers, 'Origen', 'Original', 'Moneda original', 'Tasa', 'Fecha de la tasa', 'Tasa de', 'Comisión'], source: () => 'Manual', rateSource: (s) => `src:${s}` })
+    const lines = csv.slice(1).split('\r\n')
+    expect(lines[1]).toBe('2026-09-28,expense,realized,-11.32,CAD,groceries,main,,,,y,Manual,-1200,JPY,0.0092,2026-09-25,src:manual,2.50')
+    expect(lines[2]).toBe("2026-09-28,expense,realized,-11.17,CAD,groceries,main,,,,z,Manual,-1200,JPY,'1117/120000,2026-09-28,src:card_actual,")
+    expect(lines[3]).toBe('2026-09-28,refund,realized,5.52,CAD,groceries,main,,,,r,Manual,600,JPY,0.0092,2026-09-25,src:manual,')
+    expect(lines[4]).toBe('2026-09-28,expense,realized,-5.00,CAD,groceries,main,,,,p,Manual,,,,,,')
+  })
+})

@@ -6,7 +6,7 @@
 import { useMemo } from 'react'
 import { daysBetween, localDateToDisplayDate, parseLocalDate } from '../domain/dates'
 import { formatMoney, localeSeparators, minorToInputString, MASKED_DIGITS } from '../domain/money'
-import type { LocalDate, Settings, Timestamp } from '../domain/types'
+import type { CurrencyCode, LocalDate, Settings, Timestamp } from '../domain/types'
 import { useData } from '../state/store'
 import { usePrivacy } from './preferences'
 
@@ -16,6 +16,8 @@ export interface Formatter {
   currency: string
   numberLocale: string
   money: (minor: number, options?: { sign?: boolean }) => string
+  /** Un importe en OTRA moneda (Fase 3: el original de un movimiento), siempre con su código. También se oculta en modo privado. */
+  moneyIn: (minor: number, currency: CurrencyCode) => string
   /** Modo privado activo: los importes se muestran ocultos. */
   privacy: boolean
   moneyInput: (minor: number) => string
@@ -63,6 +65,11 @@ export function createFormatter(settings: Settings, options: { privacy?: boolean
     // exportaciones no usan esta función.
     money: (minor, opts) =>
       formatMoney(minor, settings.currency, settings.numberLocale, { signDisplay: opts?.sign ? 'exceptZero' : 'auto', privacy: !!options.privacy }),
+    // Siempre con su código: «$12.50» en dólares de EE. UU. se confundiría con la moneda del presupuesto.
+    moneyIn: (minor, currency) => {
+      const text = formatMoney(minor, currency, settings.numberLocale, { privacy: !!options.privacy })
+      return text.includes(currency) ? text : `${text} ${currency}`
+    },
     privacy: !!options.privacy,
     moneyInput: (minor) => minorToInputString(minor, settings.currency, settings.numberLocale),
     date: (date, options = {}) => {

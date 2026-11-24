@@ -1,5 +1,5 @@
 /**
- * Paquetes de texto diferidos: textos que solo necesita una pantalla poco visitada (Legal, Galería, Importar CSV, ¿Qué cambió?, Plan ante faltante, capturas por revisar) y que no van en el
+ * Paquetes de texto diferidos: textos que solo necesita una pantalla poco visitada (Legal, Galería, Importar CSV, ¿Qué cambió?, Plan ante faltante, capturas por revisar, revisión semanal) y que no van en el
  * JS inicial (presupuesto de tamaño, `scripts/check-size.mjs`). Cada paquete es un archivo JSON por idioma en `packs/`
  * (con huella de contenido al compilar, precacheado por el service worker como cualquier otro archivo de la app), con el
  * mismo conjunto de claves en los cuatro idiomas (`packs/packKeys.ts` lo exige en `tsc`). Se piden con `fetch` al abrir
@@ -32,6 +32,10 @@ import captureEnUrl from './packs/capture.en.json?url'
 import captureEsUrl from './packs/capture.es.json?url'
 import captureFrUrl from './packs/capture.fr.json?url'
 import capturePtUrl from './packs/capture.pt.json?url'
+import fxEnUrl from './packs/fx.en.json?url'
+import fxEsUrl from './packs/fx.es.json?url'
+import fxFrUrl from './packs/fx.fr.json?url'
+import fxPtUrl from './packs/fx.pt.json?url'
 import galleryEnUrl from './packs/gallery.en.json?url'
 import galleryEsUrl from './packs/gallery.es.json?url'
 import galleryFrUrl from './packs/gallery.fr.json?url'
@@ -44,16 +48,24 @@ import nativeAppEnUrl from './packs/nativeApp.en.json?url'
 import nativeAppEsUrl from './packs/nativeApp.es.json?url'
 import nativeAppFrUrl from './packs/nativeApp.fr.json?url'
 import nativeAppPtUrl from './packs/nativeApp.pt.json?url'
+import periodsEnUrl from './packs/periods.en.json?url'
+import periodsEsUrl from './packs/periods.es.json?url'
+import periodsFrUrl from './packs/periods.fr.json?url'
+import periodsPtUrl from './packs/periods.pt.json?url'
 import shortfallEnUrl from './packs/shortfall.en.json?url'
 import shortfallEsUrl from './packs/shortfall.es.json?url'
 import shortfallFrUrl from './packs/shortfall.fr.json?url'
 import shortfallPtUrl from './packs/shortfall.pt.json?url'
+import weeklyEnUrl from './packs/weekly.en.json?url'
+import weeklyEsUrl from './packs/weekly.es.json?url'
+import weeklyFrUrl from './packs/weekly.fr.json?url'
+import weeklyPtUrl from './packs/weekly.pt.json?url'
 import whatChangedEnUrl from './packs/whatChanged.en.json?url'
 import whatChangedEsUrl from './packs/whatChanged.es.json?url'
 import whatChangedFrUrl from './packs/whatChanged.fr.json?url'
 import whatChangedPtUrl from './packs/whatChanged.pt.json?url'
 
-export type PackName = 'legal' | 'gallery' | 'bankImport' | 'nativeApp' | 'whatChanged' | 'shortfall' | 'capture'
+export type PackName = 'legal' | 'gallery' | 'bankImport' | 'nativeApp' | 'whatChanged' | 'shortfall' | 'capture' | 'weekly' | 'fx' | 'periods'
 type Pack = Record<string, string>
 /** Dirección del archivo JSON de cada paquete e idioma. */
 export type PackUrls = Record<PackName, Record<Language, string>>
@@ -67,6 +79,11 @@ export const PACK_URLS: PackUrls = {
   whatChanged: { es: whatChangedEsUrl, en: whatChangedEnUrl, pt: whatChangedPtUrl, fr: whatChangedFrUrl },
   shortfall: { es: shortfallEsUrl, en: shortfallEnUrl, pt: shortfallPtUrl, fr: shortfallFrUrl },
   capture: { es: captureEsUrl, en: captureEnUrl, pt: capturePtUrl, fr: captureFrUrl },
+  weekly: { es: weeklyEsUrl, en: weeklyEnUrl, pt: weeklyPtUrl, fr: weeklyFrUrl },
+  // Fase 3: «Pagado en otra moneda» del formulario y modo viaje.
+  fx: { es: fxEsUrl, en: fxEnUrl, pt: fxPtUrl, fr: fxFrUrl },
+  // Presupuestos por periodo y viajes (cuerpo de las pantallas; las cabeceras siguen en el diccionario principal).
+  periods: { es: periodsEsUrl, en: periodsEnUrl, pt: periodsPtUrl, fr: periodsFrUrl },
 }
 
 /** Una carga que no responde en este tiempo se cancela y se da por fallida (la pantalla ofrece reintentar). `0` = sin plazo (solo pruebas). */

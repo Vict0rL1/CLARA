@@ -7,6 +7,8 @@ import { useMemo, useState } from 'react'
 import { categoryVisual, categoryVisuals } from '../../domain/categories'
 import { addDays, daysBetween } from '../../domain/dates'
 import { filterStatsData, statsFilterCount, type StatsFilter } from '../../domain/statsFilter'
+import { spentByCurrency } from '../../domain/trips'
+import { StatsCurrencyCard } from '../statsCurrency'
 import { categoryBreakdown, cumulativeTrend, dailyAverage, futureBalance, periodSeries, periodStats, shiftRange, statsRange, STATS_PERIOD_TYPES, topMerchants, type Delta, type SeriesPoint, type StatsPeriodType } from '../../domain/statistics'
 import type { CategoryColor } from '../../domain/types'
 import { useT, type MessageKey } from '../../i18n'
@@ -87,6 +89,8 @@ export function Statistics({ route }: { route: Route }) {
   }, [data, today, filter.merchant])
   const stats = useMemo(() => periodStats(fdata, type, range), [fdata, type, range])
   const breakdown = useMemo(() => categoryBreakdown(fdata, range), [fdata, range])
+  // Fase 3: gastado por la moneda en que se pagó (solo se enseña si hay algo en otra moneda).
+  const byCurrency = useMemo(() => spentByCurrency(fdata.transactions.filter((x) => x.date >= range.start && x.date <= range.end), data.settings.currency), [fdata, range, data.settings.currency])
   const series = useMemo(() => periodSeries(fdata, type, range, 6), [fdata, type, range])
   const trend = useMemo(() => cumulativeTrend(fdata, range, stats.previous, today), [fdata, range, stats.previous, today])
   const top = useMemo(() => topMerchants(fdata, range, 5), [fdata, range])
@@ -246,6 +250,8 @@ export function Statistics({ route }: { route: Route }) {
               <p>{t('stats.byCategoryExplain')}</p>
             </Explain>
           </Card>
+
+          {byCurrency.some((l) => l.currency !== data.settings.currency) && <StatsCurrencyCard lines={byCurrency} budget={data.settings.currency} />}
 
           <Card labelledBy="stats-bars-title">
             <h2 id="stats-bars-title" className="section-title">

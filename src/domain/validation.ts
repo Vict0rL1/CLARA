@@ -6,6 +6,7 @@
 import { txIndex } from './txIndex'
 import { categoriesForKind, isCustomCategoryId, isExpenseCategory } from './categories'
 import { isValidLocalDate, isValidTimeZone, isValidTimestamp } from './dates'
+import { convertToBudget, FEE_BPS_MAX, parseRate } from './fx'
 import { isValidId } from './ids'
 import { MAX_AMOUNT_MINOR, isMinorAmount, isSupportedCurrency, sumMinor } from './money'
 import { normalizeText, RULE_PATTERN_MAX, RULE_PATTERN_MIN } from './rules'
@@ -41,6 +42,8 @@ import type {
   CategoryPref,
   Tag,
   UserProfile,
+  TripSettings,
+  CurrencyCode,
 } from './types'
 
 export type IssueCode =
@@ -537,6 +540,34 @@ export function validateCategoryRule(r: CategoryRule, all: readonly CategoryRule
   return issues
 }
 
+export const RATE_SOURCES = ['manual', 'boc', 'card_actual'] as const
+
+/**
+ * v16: el importe en otra moneda. Además del formato, `amountMinor` tiene que ser EXACTAMENTE lo que da la conversión
+ * (`convertToBudget`): así un movimiento nunca dice una tasa y una cifra que no cuadran.
+ */
+function checkOriginal(tx: Transaction, budget: string, p: string, issues: Issue[]) {
+  const o = tx.original as unknown as Record<string, unknown> | null
+  const path = `${p}original`
+  if (!o || typeof o !== 'object' || Array.isArray(o) || (tx.kind !== 'expense' && tx.kind !== 'income' && tx.kind !== 'refund')) {
+    issues.push({ path, code: 'invalidValue' })
+    return
+  }
+  const okCurrency = typeof o.currency === 'string' && CURRENCY_CODE.test(o.currency) && isSupportedCurrency(o.currency) && o.currency !== budget
+  const okAmount = isMinorAmount(o.amountMinor) && (o.amountMinor as number) > 0 && (o.amountMinor as number) <= MAX_AMOUNT_MINOR
+  const okRate = typeof o.rate === 'string' && parseRate(o.rate) !== null
+  const okFee = o.feeBps === undefined || (Number.isInteger(o.feeBps) && (o.feeBps as number) >= 0 && (o.feeBps as number) <= FEE_BPS_MAX)
+  if (!okCurrency) issues.push({ path: `${path}.currency`, code: 'invalidValue' })
+  if (!okAmount) issues.push({ path: `${path}.amountMinor`, code: 'invalidAmount' })
+  if (!okRate) issues.push({ path: `${path}.rate`, code: 'invalidValue' })
+  if (!okFee) issues.push({ path: `${path}.feeBps`, code: 'invalidValue' })
+  checkDate(o.rateDate, `${path}.rateDate`, issues)
+  if (!isOneOf(RATE_SOURCES, o.rateSource)) issues.push({ path: `${path}.rateSource`, code: 'invalidValue' })
+  if (okCurrency && okAmount && okRate && okFee && convertToBudget(o.amountMinor as number, o.currency as string, budget, o.rate as string, (o.feeBps as number | undefined) ?? 0) !== tx.amountMinor) {
+    issues.push({ path: `${path}.rate`, code: 'invalidValue' })
+  }
+}
+
 export function validateTransaction(tx: Transaction, ctx: ValidationContext): Issue[] {
   const p = ctx.prefix ?? ''
   const issues: Issue[] = []
@@ -622,6 +653,7 @@ export function validateTransaction(tx: Transaction, ctx: ValidationContext): Is
   if (tx.isInitialBalance !== undefined && typeof tx.isInitialBalance !== 'boolean') issues.push({ path: `${p}isInitialBalance`, code: 'invalidValue' })
   // v15
   if (tx.captureId !== undefined && !isValidId(tx.captureId)) issues.push({ path: `${p}captureId`, code: 'invalidId' })
+  if (tx.original !== undefined) checkOriginal(tx, data.settings.currency, p, issues)
   if (tx.review !== undefined) {
     const r = tx.review as unknown as Record<string, unknown> | null
     if (!r || typeof r !== 'object' || Array.isArray(r) || typeof r.needed !== 'boolean' || !isOneOf(REVIEW_REASONS, r.reason)) issues.push({ path: `${p}review`, code: 'invalidValue' })
@@ -1041,7 +1073,45 @@ export function validatePeriodBudget(b: PeriodBudget, ctx: { data: Pick<AppData,
   }
   if (typeof b.archived !== 'boolean') issues.push({ path: `${p}archived`, code: 'invalidValue' })
   checkOptionalText(b.note, `${p}note`, issues)
+  if (b.trip !== undefined) {
+    if (b.template !== 'trip') issues.push({ path: `${p}trip`, code: 'invalidValue' })
+    else issues.push(...validateTripSettings(b.trip, ctx.data.settings.currency, `${p}trip.`))
+  }
   checkTimestamps(b, p, issues)
+  return issues
+}
+
+/** Monedas de un viaje como mucho. */
+export const TRIP_CURRENCIES_MAX = 8
+
+export function validateTripSettings(trip: TripSettings, budgetCurrency: CurrencyCode, p = ''): Issue[] {
+  const issues: Issue[] = []
+  if (!trip || typeof trip !== 'object') return [{ path: p.replace(/\.$/, ''), code: 'invalidValue' }]
+  const currencies = Array.isArray(trip.currencies) ? trip.currencies : []
+  if (
+    !Array.isArray(trip.currencies) ||
+    currencies.length === 0 ||
+    currencies.length > TRIP_CURRENCIES_MAX ||
+    !currencies.every((c) => typeof c === 'string' && isSupportedCurrency(c) && c !== budgetCurrency) ||
+    new Set(currencies).size !== currencies.length
+  ) {
+    issues.push({ path: `${p}currencies`, code: 'invalidValue' })
+  }
+  if (trip.localCurrency !== undefined && !currencies.includes(trip.localCurrency)) issues.push({ path: `${p}localCurrency`, code: 'invalidValue' })
+  if (!Array.isArray(trip.rates) || trip.rates.length > currencies.length) {
+    issues.push({ path: `${p}rates`, code: 'invalidValue' })
+  } else {
+    const seen = new Set<string>()
+    trip.rates.forEach((r, i) => {
+      const rp = `${p}rates[${i}].`
+      if (!r || typeof r !== 'object') return void issues.push({ path: `${p}rates[${i}]`, code: 'invalidValue' })
+      if (!currencies.includes(r.currency) || seen.has(r.currency)) issues.push({ path: `${rp}currency`, code: 'invalidValue' })
+      seen.add(r.currency)
+      if (typeof r.rate !== 'string' || !parseRate(r.rate)) issues.push({ path: `${rp}rate`, code: 'invalidValue' })
+      checkDate(r.date, `${rp}date`, issues)
+    })
+  }
+  if (trip.feeBps !== undefined && (!Number.isInteger(trip.feeBps) || trip.feeBps < 0 || trip.feeBps > FEE_BPS_MAX)) issues.push({ path: `${p}feeBps`, code: 'invalidValue' })
   return issues
 }
 

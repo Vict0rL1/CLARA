@@ -15,10 +15,16 @@ reglas de este documento cambian, **cada una solo desde la fase que la implement
 - «Nada se guarda sin confirmar» → excepción para las capturas automáticas (Fase 2, **vigente**: `captureImport.ts`):
   con «Guardar automáticamente» entran como movimiento real marcado «Por revisar»; apagado, solo como propuestas.
   Nunca en la demostración ni sin presupuesto, y la cola del iPhone solo se vacía después de guardar.
-- «Una moneda por presupuesto» → sigue para los totales; cada movimiento podrá guardar su moneda original y la tasa
-  usada (Fase 3). Nunca se inventa una tasa.
-- «Sin conexiones a otros sitios» → excepción opcional para las tasas del Banco de Canadá (Fase 3), sin datos de la
-  persona.
+- «Una moneda por presupuesto» → sigue para los totales; cada movimiento puede guardar su moneda original y la tasa
+  usada (Fase 3, **vigente**: `domain/fx.ts`, `original`, esquema 16; modo viaje en `domain/trips.ts`). Nunca se
+  inventa una tasa: sin tasa escrita no hay importe.
+- «Sin conexiones a otros sitios» → excepción opcional para las tasas del Banco de Canadá (Fase 3, **vigente**,
+  decisión 181; `docs/BOC-VALET.md`): apagada por defecto y del dispositivo (`state/bocRates.ts`, Ajustes › Formato),
+  solo con presupuesto en CAD, `connect-src` abre solo `https://www.bankofcanada.ca` (`vite.config.ts`); GET
+  sin cabeceras propias, credenciales ni Referer, con la serie y dos fechas y nada de la persona. Lo puro en
+  `domain/boc.ts` (valor como texto exacto, última observación ≤ la fecha del gasto y como mucho 10 días antes,
+  `rateSource: 'boc'`); caché local acotada solo de lo definitivo, fuera de las copias. Orden: tasa del viaje → banco →
+  cargo real; sin conexión o sin tasa, nada se inventa (las capturas quedan como propuesta).
 
 Lo nativo tiene tres estados y no se salta ninguno: **escrito**, **compila** (en el Mac de Victor) y **probado en
 iPhone**. Nunca se dice que algo funciona en el iPhone si Victor no lo probó.
@@ -66,7 +72,8 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
 - `src/i18n/` — todos los textos visibles. **Nunca** escribir texto de interfaz
   directamente en componentes: añadir cada clave a `es.ts`, `en.ts`, `pt.ts` **y** `fr.ts`
   (el tipo compartido obliga a tener todas las claves en los cuatro). Los textos de pantallas poco visitadas (Legal,
-  Galería, Importar CSV, «¿Qué cambió?», plan ante faltante, capturas por revisar) son paquetes diferidos fuera del JS inicial: archivos `src/i18n/packs/<paquete>.<idioma>.json` (mismas
+  Galería, Importar CSV, «¿Qué cambió?», plan ante faltante, capturas por revisar, revisión semanal, presupuestos por
+  periodo y viajes, «Pagado en otra moneda») son paquetes diferidos fuera del JS inicial: archivos `src/i18n/packs/<paquete>.<idioma>.json` (mismas
   claves en los cuatro: `packs/packKeys.ts` lo exige en `tsc`) pedidos con `fetch` por `usePack` (`src/i18n/packs.ts`):
   estados `loading`, `ready` (con `fallback` si el texto salió en español porque el idioma pedido no cargó; la pantalla
   marca ese contenido con `lang="es"`) y `failed`; un fallo nunca se guarda como paquete ni se enseña una clave;
@@ -77,7 +84,8 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
   viejo que termine tarde ni entra en memoria ni retira al nuevo. Con el español de respaldo, el contenido va en
   `PackLangScope` (`lang="es"` y el traductor del contexto en español, así ningún texto de la interfaz queda con la
   marca de otro idioma); la cabecera y `PackNotice` van fuera. Un texto de la interfaz nunca se traduce con el paquete
-  (`packTranslator`: claves del paquete del paquete, el resto del traductor de la interfaz). Textos de la app de iPhone
+  (`packTranslator`: claves del paquete del paquete, el resto del traductor de la interfaz). Una pantalla con muchos
+  componentes envuelve su cuerpo en `PackBody` y cada componente lee `usePackT()` (`ui/components/packTexts.ts`). Textos de la app de iPhone
   (decisión 164): el paquete `nativeApp` solo se pide dentro de la app (`platform/texts.ts` → `import()` de
   `i18n/nativeTexts.ts`); sus claves que YA existen en el diccionario principal sustituyen al texto de la web (el que
   habla del navegador, de Safari o de pestañas) y las `nativeApp.*` son de la sección «Clara en este iPhone». Solo se
@@ -153,15 +161,22 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
   otra forma lo piden de nuevo, RT-03); el archivo nunca sale del dispositivo.
 - Capturas automáticas (`domain/captureImport.ts`, Fase 2 nativa): idempotentes por `captureId` (leídas, movimiento,
   papelera o propuesta); en la moneda del presupuesto y con «Guardar automáticamente», gasto realizado con
-  `review` «Por revisar» y `realizedAt` = hora del pago; si no, propuesta que no cuenta en ninguna cifra: otra moneda o
-  «¥» (`currency`, nunca se convierte), sin entender (`unparsed`), mismo importe y comercio a ≤ 2 min de un gasto
+  `review` «Por revisar» y `realizedAt` = hora del pago; en otra moneda (o un «¥» que resuelve la moneda local) durante
+  un viaje en curso con tasa escrita para ella, igual pero convertido con ESA tasa y la comisión del viaje (`original`,
+  `review.reason: 'currency'`, asociado al viaje; Fase 3, decisión 177); sin tasa del viaje, con la del Banco de Canadá
+  que `state/captureSync.ts` pidió antes (`bocRatesNeeded`, `options.boc`; la importación sigue pura y síncrona;
+  `rateSource: 'boc'`, decisión 181); si no, propuesta que no cuenta en ninguna
+  cifra: otra moneda sin tasa o «¥» sin resolver (`currency`, nunca se inventa una tasa), sin entender (`unparsed`),
+  mismo importe y comercio a ≤ 2 min de un gasto
   realizado o captura (`duplicate`), apagado o más allá de la cota de exactitud (`auto_capture`). Cuenta: tarjeta →
   por defecto → primera activa del presupuesto (nunca archivada). Lo que no cabe (500 propuestas) o sin cuenta activa
   se queda en la cola sin confirmar. `saveTransaction` conserva `captureId` y `review` (solo `reviewed: true` la
   quita; el formulario lo manda al guardar) y retira la propuesta de esa captura. Revisar (`CaptureReview`, arriba de
   Pendientes; cuenta en «pendientes» de Inicio): «Está bien» (`confirmReviews`, con deshacer), «Fue rechazado» →
-  papelera; una propuesta en otra moneda o sin entender solo se registra con el importe que la persona escribe en la
-  moneda del presupuesto (`registerProposal(…, amountMinor)`, hora del pago como `realizedAt`). La prueba de Ajustes
+  papelera; una propuesta en otra moneda o sin entender se registra con el importe que la persona escribe en la
+  moneda del presupuesto (`registerProposal(…, amountMinor)`, hora del pago como `realizedAt`; en otra moneda guarda
+  `original` con la tasa exacta del cargo real) o, con tasa del viaje, con esa tasa (`{ rate, rateDate, feeBps }`). Un
+  importe en otra moneda siempre se muestra con su código (`fmt.moneyIn`) y respeta el modo privado. La prueba de Ajustes
   (`test: true`) siempre es propuesta, nunca se registra y no cuenta como duplicado. Un movimiento «Por revisar» no sale
   además como «Sin categoría». Tarjeta nueva (`review.card`, se borra al confirmar): «Por revisar» pregunta su cuenta
   una vez; `assignCardAccount` la guarda y mueve solo lo que aún espera revisión.
@@ -340,7 +355,7 @@ no se haya compilado y abierto en un iPhone se dice como «sin probar».
   sigue con deshacer inmediato, reparar exige la descarga (QA27-04; ver `docs/STORAGE.md`).
 - Restaurar una copia valida TODO el archivo y no aplica nada si hay un error. CSV del banco: cada fila
   con error se muestra con su motivo y no se importa; las filas marcadas se guardan todo o nada.
-- Cambios de formato de datos: subir `SCHEMA_VERSION` (hoy 15) y añadir migración con prueba.
+- Cambios de formato de datos: subir `SCHEMA_VERSION` (hoy 16) y añadir migración con prueba.
   Las migraciones solo rellenan campos ausentes; nunca borran datos mal formados.
 - Guardado (`indexedDbRepository.ts`, `localStorageRepository.ts`; ver `docs/STORAGE.md`): nunca sobrescribe lo que otra pestaña u otra
   versión guardó después de leer (error `conflict`); si guardar falla, se avisa de forma
