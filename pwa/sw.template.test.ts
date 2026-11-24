@@ -11,10 +11,11 @@ function fakeCaches() {
     async put(request: Request, response: Response) {
       entries.push({ request, response })
     },
-    async match(key: Request | string, opts?: { ignoreVary?: boolean }) {
+    async match(key: Request | string, opts?: { ignoreVary?: boolean; ignoreSearch?: boolean }) {
       const query = typeof key === 'string' ? new Request(new URL(key, ORIGIN)) : key
+      const bare = (u: string) => (opts?.ignoreSearch ? u.replace(/\?.*$/, '') : u)
       for (const e of entries) {
-        if (e.request.url !== query.url) continue
+        if (bare(e.request.url) !== bare(query.url)) continue
         const vary = (e.response.headers.get('vary') ?? '').split(',').map((h) => h.trim()).filter(Boolean)
         if (!opts?.ignoreVary && vary.some((h) => e.request.headers.get(h) !== query.headers.get(h))) continue
         return e.response.clone()
@@ -22,7 +23,7 @@ function fakeCaches() {
       return undefined
     },
   }
-  return { cache, caches: { open: async () => cache, keys: async () => [], delete: async () => true } }
+  return { cache, entries, caches: { open: async () => cache, keys: async () => [], delete: async () => true } }
 }
 
 /** Carga el sw.js real (plantilla) y devuelve su manejador de `fetch`. */
@@ -58,5 +59,17 @@ describe('service worker sin conexión', () => {
     const handle = loadServiceWorker(caches)
     const navigation = { method: 'GET', mode: 'navigate', url: `${ORIGIN}/#/ajustes/almacenamiento`, headers: new Headers() } as unknown as Request
     expect(await (await handle(navigation)).text()).toBe('<html>Clara</html>')
+  })
+
+  it('un reintento de un paquete de texto (`?retry=n`) se sirve del precacheado sin conexión y no guarda la dirección marcada; un .js con consulta no', async () => {
+    const { cache, caches, entries } = fakeCaches()
+    await cache.put(new Request(`${ORIGIN}/assets/legal.es-Abc123.json`), new Response('{"legal.terms.1.title":"Qué es Clara"}', { headers: { 'content-type': 'application/json' } }))
+    const handle = loadServiceWorker(caches)
+    const retry = await handle(new Request(`${ORIGIN}/assets/legal.es-Abc123.json?retry=2`))
+    expect(await retry.json()).toEqual({ 'legal.terms.1.title': 'Qué es Clara' })
+    expect(entries).toHaveLength(1)
+    // Solo los paquetes: cualquier otro archivo con consulta sigue buscándose tal cual (sin conexión, falla).
+    await cache.put(new Request(`${ORIGIN}/assets/Settings-abc.js`), new Response('export {}'))
+    await expect(handle(new Request(`${ORIGIN}/assets/Settings-abc.js?v=2`))).rejects.toThrow()
   })
 })

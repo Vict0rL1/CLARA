@@ -40,10 +40,14 @@ self.addEventListener('fetch', (event) => {
       // Cada URL de la caché es un archivo fijo de ESTA versión: no depende de cabeceras como
       // `Origin`. Sin `ignoreVary`, una respuesta con `Vary: Origin` no coincide cuando el navegador
       // añade `Origin` a un import() (Chromium 153) y, sin conexión, la pantalla no abriría.
-      const hit = await cache.match(key, { ignoreVary: true })
+      // Un paquete de texto (`/assets/*.json`, con huella de contenido en el nombre) pedido con una marca de reintento
+      // (`?retry=n`) es el mismo archivo: se sirve el precacheado, también sin conexión (auditoría del 2026-11-04, B11).
+      const pack = url.pathname.startsWith('/assets/') && url.pathname.endsWith('.json')
+      const hit = await cache.match(key, { ignoreVary: true, ignoreSearch: pack })
       if (hit) return hit
       const response = await fetch(request)
-      if (response.ok && request.mode !== 'navigate') cache.put(request, response.clone())
+      // Una dirección marcada no se guarda: el archivo sin marca ya está (o estará) en la caché de esta versión.
+      if (response.ok && request.mode !== 'navigate' && !(pack && url.search)) cache.put(request, response.clone())
       return response
     }),
   )

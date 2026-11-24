@@ -38,7 +38,8 @@ const ROUTES = [
 ]
 
 async function horizontalOverflow(page: import('@playwright/test').Page) {
-  return page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+  // `clientWidth` (viewport de diseño): con `isMobile`, `innerWidth` crece con el desbordamiento y no lo detectaba (B2).
+  return page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
 }
 
 test('ninguna pantalla tiene desplazamiento horizontal', async ({ page }) => {

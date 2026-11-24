@@ -30,6 +30,8 @@ export interface ScenarioResult {
   firstNegativeDate: LocalDate | null
   /** Desde ese día la proyección no tiene cifra (fuera del rango exacto); «sin faltante» solo vale hasta el día antes. */
   outOfRangeFrom: LocalDate | null
+  /** Último día con cifra exacta de ESTA columna; `null` con cero días exactos (auditoría del 2026-11-04, F2). */
+  lastExactDate: LocalDate | null
   /** Cuánto faltaría en el peor día (0 si nunca baja de cero). */
   shortfallMinor: number
   /** «Puedes gastar hasta tu próximo ingreso» en el escenario. */
@@ -107,6 +109,7 @@ export function evaluate(data: AppData, today: LocalDate, changes: ScenarioChang
     lowest: p.lowest,
     firstNegativeDate: p.firstNegativeDate,
     outOfRangeFrom: p.outOfRangeFrom,
+    lastExactDate: p.lastExactDate,
     shortfallMinor: Math.max(0, -p.lowest.minor),
     availableMinor: budget.availableMinor,
     belowGoalsDate: p.firstBelowGoalsDate,

@@ -1,0 +1,9 @@
+Inicio con 10k: cifra principal a los 294 / 278 ms
+Historial con libro grande: primera entrada a los 307 / 47 ms desde Inicio; 15 entradas con dependientes a la vista
+  ✓  179 [celular-pequeno] › tests/e2e/performance-history.spec.ts:57:1 › Historial con 10 000 movimientos, 100 programados, 1 000 pagos vinculados y 30 cambios de programados: desde Inicio, la primera entrada en < 300 ms (2.3s)
+Inicio con 10k: cifra principal a los 269 / 195 ms
+Historial con libro grande: primera entrada a los 304 / 38 ms desde Inicio; 15 entradas con dependientes a la vista
+  ✓  179 [celular] › tests/e2e/performance-history.spec.ts:57:1 › Historial con 10 000 movimientos, 100 programados, 1 000 pagos vinculados y 30 cambios de programados: desde Inicio, la primera entrada en < 300 ms (2.7s)
+Inicio con 10k: cifra principal a los 431 / 382 ms
+Historial con libro grande: primera entrada a los 312 / 53 ms desde Inicio; 15 entradas con dependientes a la vista
+  ✓  179 [escritorio] › tests/e2e/performance-history.spec.ts:57:1 › Historial con 10 000 movimientos, 100 programados, 1 000 pagos vinculados y 30 cambios de programados: desde Inicio, la primera entrada en < 300 ms (3.0s)

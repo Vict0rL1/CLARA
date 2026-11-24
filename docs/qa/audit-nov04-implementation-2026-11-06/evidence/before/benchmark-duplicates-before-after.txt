@@ -1,0 +1,3 @@
+BENCH | 5000 iguales, 50 parejas de nota igual, resto únicas (la reproducción) | antes 4110.4 ms | después 7.7 ms | parejas 50 | truncado false | examinados 50 | mismas parejas y orden: true
+BENCH | 5000 iguales sin nota (denso, tope 50) | antes 1.9 ms | después 2.1 ms | parejas 50 | truncado true | examinados 51 | mismas parejas y orden: true
+BENCH | 10000 repartidos en 10 meses × 50 importes × 7 notas | antes 11.2 ms | después 8.8 ms | parejas 2500 | truncado true | examinados 2550 | mismas parejas y orden: true

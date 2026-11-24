@@ -1,0 +1,55 @@
+
+Running 13 tests using 1 worker
+
+  ✓   1 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:65:1 › F1 · Proyección con ingresos brutos fuera del rango exacto abre: «Sin cifra exacta» en la columna de ingresos, saldos y faltantes exactos (4.0s)
+  ✓   2 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:86:1 › F1 · Análisis con el faltante de −1 el 27-nov abre: la señal es exacta y el «¿Cómo se calculó?» dice ingresos y pagos sin cifra (2.7s)
+  ✓   3 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:129:1 › F2 · cada fila del comparador dice su propia cobertura: el mínimo los 30 días, el esperado y el extra hasta el 25 nov, elija el escenario que se elija (3.4s)
+  ✘   4 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:163:1 › F2 · cero días exactos: Proyección, Análisis, Plan ante faltante, Escenarios y «¿Me alcanza?» lo dicen sin afirmar «hasta hoy» (25.7s)
+  ✓   5 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:196:1 › F2 · la cobertura por escenario y la ausencia de días exactos se dicen en inglés, portugués y francés (4.3s)
+  ✓   6 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:232:3 › F3 · paquetes de texto diferidos (sin service worker: el archivo JSON se pide a la red) › Privacidad en español con la descarga detenida: al vencer el plazo, estado de fallo; «Reintentar» pide el archivo de nuevo (otra marca) y el texto llega sin recargar; los datos siguen (1.9s)
+  ✓   7 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:261:3 › F3 · paquetes de texto diferidos (sin service worker: el archivo JSON se pide a la red) › inglés con su descarga detenida: respaldo en español marcado con lang="es" bajo una interfaz en inglés; «Retry» pide el inglés de nuevo y llega (2.2s)
+  ✓   8 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:285:3 › F3 · paquetes de texto diferidos (sin service worker: el archivo JSON se pide a la red) › Importar CSV con su archivo en inglés bloqueado: cabecera y aviso en inglés, contenido en español marcado con lang="es"; «Retry» trae el inglés sin perder la pantalla (1.8s)
+  ✓   9 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:310:3 › F3 · paquetes de texto diferidos (sin service worker: el archivo JSON se pide a la red) › Importar CSV con red sale en los cuatro idiomas y sin claves (2.6s)
+  ✓  10 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:328:3 › F3 · paquetes de texto diferidos (sin service worker: el archivo JSON se pide a la red) › una petición rechazada (no detenida) se recupera igual: «Reintentar» pide el archivo con otra marca y Galería también (2.1s)
+  ✓  11 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:369:1 › F4 · 5 000 movimientos iguales con 50 parejas de nota igual: Pendientes abre con las 50 parejas y sin «hay más» (2.0s)
+  ✓  12 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:392:1 › F5 · la pareja descartada sigue en «Descartados» con las 12 anteriores llenando el tope, y «Volver a mostrar» quita la decisión sin revisar las 66 ajenas (1.8s)
+  ✓  13 [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:413:1 › F5 · la pareja pospuesta sigue en «Pospuestos» con su fecha y «Mostrar ahora» quita la decisión; tras recargar, igual (2.3s)
+
+
+  1) [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:163:1 › F2 · cero días exactos: Proyección, Análisis, Plan ante faltante, Escenarios y «¿Me alcanza?» lo dicen sin afirmar «hasta hoy» 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText('solo hoy; después sin cifra').first()
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText('solo hoy; después sin cifra').first() with timeout 5000ms
+      - waiting for getByText('solo hoy; después sin cifra').first()
+
+
+      189 |   await expect(page.getByTestId('verdict')).toBeVisible()
+      190 |   await expect(page.getByTestId('afford-partial')).toContainText('sobre los días siguientes no se afirma nada')
+    > 191 |   await expect(page.getByText('solo hoy; después sin cifra').first()).toBeVisible()
+          |                                                                       ^
+      192 |   expect(await page.locator('#main').innerText()).not.toMatch(/hasta el 3 nov|hasta el 4 nov/i)
+      193 |   await shot(page, 'nov04-f2-zero-days-afford')
+      194 | })
+        at /home/user/ALCANZA/tests/e2e/audit-nov04.spec.ts:191:71
+
+    Error Context: test-results/final-shots-celular-pequeno/audit-nov04-F2-·-cero-días-b80b0-cen-sin-afirmar-«hasta-hoy»-celular-pequeno/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/final-shots-celular-pequeno/audit-nov04-F2-·-cero-días-b80b0-cen-sin-afirmar-«hasta-hoy»-celular-pequeno/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/final-shots-celular-pequeno/audit-nov04-F2-·-cero-días-b80b0-cen-sin-afirmar-«hasta-hoy»-celular-pequeno/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [celular-pequeno] › tests/e2e/audit-nov04.spec.ts:163:1 › F2 · cero días exactos: Proyección, Análisis, Plan ante faltante, Escenarios y «¿Me alcanza?» lo dicen sin afirmar «hasta hoy» 
+  12 passed (59.5s)
+exit 1

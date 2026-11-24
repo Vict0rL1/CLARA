@@ -6,7 +6,7 @@ import { nextPendingOccurrence } from '../../domain/repeat'
 import { categoryVisual, categoryVisuals } from '../../domain/categories'
 import { CategoryIcon } from '../components/CategoryIcon'
 import { planItems, type PlanItem } from '../../domain/planItems'
-import { CALENDAR_PROJECTION_MAX_DAYS, dayBalance, projectBalance, type ProjectionDay } from '../../domain/projection'
+import { CALENDAR_PROJECTION_MAX_DAYS, dayBalance, projectBalance, type ProjectionDay, flowHeadline } from '../../domain/projection'
 import { linkSettlement, unlinkedSettlements } from '../../domain/reconcileSchedules'
 import { recurringCosts } from '../../domain/recurringCosts'
 import { useT, type MessageKey } from '../../i18n'
@@ -57,8 +57,10 @@ export function Calendar() {
   // QA V2 (FIN-01): con importes extremos la proyección acaba en el último día exacto; después no hay cifra.
   const projection = useMemo(() => projectBalance(data, today, { days: projectionDays }), [data, today, projectionDays])
   const byDate = useMemo(() => new Map<string, ProjectionDay>(projection.days.map((d) => [d.date, d])), [projection])
-  const lastProjected = projection.days[projection.days.length - 1]?.date ?? today
-  const firstNegative = projection.firstNegativeDate ? byDate.get(projection.firstNegativeDate) : undefined
+  // Último día con cifra exacta (`null` si ni el cierre de hoy cabe) y lo que dice la línea de flujo (`flowHeadline`,
+  // revisión de la auditoría del 2026-11-04, R3: antes «sin saldo negativo hasta hoy» sin ningún día calculado).
+  const lastProjected = projection.lastExactDate ?? today
+  const headline = flowHeadline(projection)
   // Simulación: un pago extra el día elegido (o hoy). Se calcula sobre una copia; nunca se guarda.
   const simDay = selectedDay && selectedDay > today ? selectedDay : today
   const simParsed = simText.trim() ? parseMoneyText(simText, fmt) : null
@@ -249,11 +251,13 @@ export function Calendar() {
           <Icon name="trend" />
           {t('calendar.flow.title')}
         </h2>
-        <p className={firstNegative ? 'flow-line flow-line--negative' : 'flow-line'} data-testid="flow-line">
-          <Icon name={firstNegative ? 'alert' : 'checkCircle'} size={16} />
-          {firstNegative
-            ? t('calendar.flow.shortfall', { date: fmt.date(firstNegative.date, { compact: true, today }), amount: fmt.money(firstNegative.endMinor) })
-            : t('calendar.flow.noShortfall', { date: fmt.date(lastProjected, { compact: true, today }) })}
+        <p className={headline.kind === 'shortfall' ? 'flow-line flow-line--negative' : 'flow-line'} data-testid="flow-line">
+          <Icon name={headline.kind === 'shortfall' ? 'alert' : headline.kind === 'noShortfall' ? 'checkCircle' : 'info'} size={16} />
+          {headline.kind === 'shortfall'
+            ? t('calendar.flow.shortfall', { date: fmt.date(headline.date, { compact: true, today }), amount: fmt.money(headline.amountMinor) })
+            : headline.kind === 'noShortfall'
+              ? t('calendar.flow.noShortfall', { date: fmt.date(headline.until, { compact: true, today }) })
+              : t('calendar.flow.noneExact')}
         </p>
         <Explain>{t('calendar.flow.explain')}</Explain>
       </Card>

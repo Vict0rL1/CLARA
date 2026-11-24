@@ -21,13 +21,18 @@ export function Legal({ route }: { route: Route }) {
       <Card>
         <p className="note">{t('legal.updated')}</p>
         <PackNotice state={legal} />
-        {legal.status === 'ready' &&
-          Array.from({ length: SECTIONS[page] }, (_, i) => i + 1).map((n) => (
-            <section key={n} className="stack-sm">
-              <h2 className="section-title">{legal.t(`legal.${page}.${n}.title`)}</h2>
-              <p>{legal.t(`legal.${page}.${n}.text`)}</p>
-            </section>
-          ))}
+        {legal.status === 'ready' && (
+          // Con el español de respaldo, el contenido lleva `lang="es"` y lo demás sigue en el idioma de la interfaz
+          // (auditoría del 2026-11-04, F3).
+          <div className="stack" lang={legal.fallback ? 'es' : undefined} data-testid="pack-content">
+            {Array.from({ length: SECTIONS[page] }, (_, i) => i + 1).map((n) => (
+              <section key={n} className="stack-sm">
+                <h2 className="section-title">{legal.t(`legal.${page}.${n}.title`)}</h2>
+                <p>{legal.t(`legal.${page}.${n}.text`)}</p>
+              </section>
+            ))}
+          </div>
+        )}
       </Card>
     </div>
   )

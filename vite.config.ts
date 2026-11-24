@@ -110,12 +110,23 @@ function buildHash(): string {
   }
 }
 
+/**
+ * Los paquetes de texto diferidos (`src/i18n/packs/*.json`) son archivos de verdad, nunca `data:` en línea (Vite
+ * incrusta por defecto lo que pesa menos de 4 KB): se piden con `fetch` bajo `connect-src 'self'` (un `data:` no pasa),
+ * el service worker los precachea como cualquier archivo de la app y un reintento pide la dirección con otra marca
+ * (auditoría del 2026-11-04, F3). Lo demás sigue con el umbral por defecto.
+ */
+export function packAssetsInlineLimit(filePath: string): boolean | undefined {
+  return /[\\/]src[\\/]i18n[\\/]packs[\\/][^\\/]+\.json$/.test(filePath) ? false : undefined
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
   define: {
     __APP_VERSION__: JSON.stringify(APP_VERSION),
     __BUILD_HASH__: JSON.stringify(buildHash()),
   },
+  build: { assetsInlineLimit: packAssetsInlineLimit },
   plugins: [react(), serviceWorker({ publicDir: 'public' }), contentSecurityPolicy(safeRemoteEndpoint(loadEnv(mode, process.cwd(), 'VITE_')))],
   test: {
     // Las pruebas unitarias cubren la lógica financiera pura (sin navegador).

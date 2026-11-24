@@ -1,0 +1,31 @@
+src/i18n/packs.ts(28,22): error TS2307: Cannot find module './packs/legal.es' or its corresponding type declarations.
+src/i18n/packs.ts(29,22): error TS2307: Cannot find module './packs/legal.en' or its corresponding type declarations.
+src/i18n/packs.ts(30,22): error TS2307: Cannot find module './packs/legal.pt' or its corresponding type declarations.
+src/i18n/packs.ts(31,22): error TS2307: Cannot find module './packs/legal.fr' or its corresponding type declarations.
+src/i18n/packs.ts(34,22): error TS2307: Cannot find module './packs/gallery.es' or its corresponding type declarations.
+src/i18n/packs.ts(35,22): error TS2307: Cannot find module './packs/gallery.en' or its corresponding type declarations.
+src/i18n/packs.ts(36,22): error TS2307: Cannot find module './packs/gallery.pt' or its corresponding type declarations.
+src/i18n/packs.ts(37,22): error TS2307: Cannot find module './packs/gallery.fr' or its corresponding type declarations.
+src/i18n/auditNov02Packs.test.ts(9,34): error TS2307: Cannot find module './packs/legal.es' or its corresponding type declarations.
+src/i18n/auditNov02Packs.test.ts(10,34): error TS2307: Cannot find module './packs/legal.en' or its corresponding type declarations.
+src/i18n/packs.test.ts(3,38): error TS2307: Cannot find module './packs/gallery.es' or its corresponding type declarations.
+src/i18n/packs.test.ts(4,34): error TS2307: Cannot find module './packs/legal.es' or its corresponding type declarations.
+src/i18n/packs.ts(28,22): error TS2307: Cannot find module './packs/legal.es' or its corresponding type declarations.
+src/i18n/packs.ts(29,22): error TS2307: Cannot find module './packs/legal.en' or its corresponding type declarations.
+src/i18n/packs.ts(30,22): error TS2307: Cannot find module './packs/legal.pt' or its corresponding type declarations.
+src/i18n/packs.ts(31,22): error TS2307: Cannot find module './packs/legal.fr' or its corresponding type declarations.
+src/i18n/packs.ts(34,22): error TS2307: Cannot find module './packs/gallery.es' or its corresponding type declarations.
+src/i18n/packs.ts(35,22): error TS2307: Cannot find module './packs/gallery.en' or its corresponding type declarations.
+src/i18n/packs.ts(36,22): error TS2307: Cannot find module './packs/gallery.pt' or its corresponding type declarations.
+src/i18n/packs.ts(37,22): error TS2307: Cannot find module './packs/gallery.fr' or its corresponding type declarations.
+tsc exit 2
+oxlint exit 0
+ Test Files  2 failed | 126 passed (128)
+      Tests  1204 passed | 1 skipped (1205)
+   Start at  19:51:59
+   Duration  15.77s (tests 66%, import 19%, transform 13%, worker 2%)
+
+    Isolate  128 workers spawned · ~120ms startup each (spawn + environment, per file)
+             at least ~5.02s faster with isolate: false — reuses workers across files instead of one per file
+
+vitest exit 1
