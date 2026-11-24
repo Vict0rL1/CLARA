@@ -485,21 +485,36 @@ export async function expectNoTruncatedControls(page: Page, label?: string) {
     const probe = document.createElement('span')
     probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;top:-9999px'
     document.body.appendChild(probe)
+    // La sonda copia la fuente propiedad a propiedad: con `font-feature-settings` el atajo `font` sale vacío
+    // (Chromium 158) y la sonda mediría con otra fuente.
+    const useFontOf = (cs: CSSStyleDeclaration) => {
+      for (const p of ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'fontStretch', 'fontFeatureSettings', 'fontVariant', 'letterSpacing'] as const) {
+        probe.style[p] = cs[p]
+      }
+    }
+    // Hueco para el texto: ancho del control menos bordes y relleno. No se usa `clientWidth`: en un `<input>`, Chromium
+    // 158 ya lo da sin el relleno (265 px de campo con 40 + 44 de relleno → 179) y restarlo otra vez daba recortes falsos.
+    const textRoom = (el: HTMLElement, cs: CSSStyleDeclaration) =>
+      el.offsetWidth -
+      parseFloat(cs.borderLeftWidth) -
+      parseFloat(cs.borderRightWidth) -
+      parseFloat(cs.paddingLeft) -
+      parseFloat(cs.paddingRight)
     for (const sel of document.querySelectorAll<HTMLSelectElement>('select')) {
       if (!visible(sel)) continue
       const cs = getComputedStyle(sel)
-      probe.style.font = cs.font
+      useFontOf(cs)
       probe.textContent = sel.selectedOptions[0]?.textContent ?? ''
-      const room = sel.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 20
+      const room = textRoom(sel, cs) - 20
       if (probe.offsetWidth > room) out.push(`select «${probe.textContent.slice(0, 30)}» (${probe.offsetWidth} > ${Math.round(room)})`)
     }
     // Marcadores de posición (G1): el texto de ayuda de un campo vacío tampoco se recorta.
     for (const input of document.querySelectorAll<HTMLInputElement>('input[placeholder]')) {
       if (!visible(input) || input.value) continue
       const cs = getComputedStyle(input)
-      probe.style.font = cs.font
+      useFontOf(cs)
       probe.textContent = input.placeholder
-      const room = input.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
+      const room = textRoom(input, cs)
       if (probe.offsetWidth > room) out.push(`placeholder «${input.placeholder.slice(0, 30)}» (${probe.offsetWidth} > ${Math.round(room)})`)
     }
     probe.remove()
