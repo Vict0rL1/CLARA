@@ -10,8 +10,10 @@ claves internas (`margen.data.v1`, `margen-backup`, cachés `margen-`) NO se ren
 Clara se está convirtiendo también en app de iPhone con Capacitor, reutilizando toda la web. La PWA no cambia. Cuatro
 reglas de este documento cambian, **cada una solo desde la fase que la implementa** (hasta entonces rige lo de siempre):
 
-- «Sin IA dentro del producto» → se permitirá IA **en el dispositivo** (Fase 5), opcional, que nunca envía datos ni
-  guarda sola.
+- «Sin IA dentro del producto» → IA **en el dispositivo** (Fase 5, **vigente**: `ClaraAIPlugin.swift`,
+  `domain/deviceAi.ts`), opcional y apagada por defecto (`state/deviceAiSetting.ts`), que nunca envía datos ni guarda
+  sola: cada propuesta cita su trozo literal, el importe lo lee el analizador de siempre y, si falla o propone menos,
+  manda este.
 - «Nada se guarda sin confirmar» → excepción para las capturas automáticas (Fase 2, **vigente**: `captureImport.ts`):
   con «Guardar automáticamente» entran como movimiento real marcado «Por revisar»; apagado, solo como propuestas.
   Nunca en la demostración ni sin presupuesto, y la cola del iPhone solo se vacía después de guardar.
@@ -34,6 +36,12 @@ revisión: el historial (`historyValue`) y la papelera (`withoutCaptureText`) no
 control (extensión `ClaraWidgets`, fuentes en `ios/ClaraWidgetsSources/`, se crea en Xcode) piden una pantalla por
 nombre (`ClaraScreen`); el plugin `ClaraLaunch` la entrega con `take()` y la web decide la ruta
 (`platform/nativeLaunch.ts`). `nativeProject.test.ts` vigila el proyecto de Xcode sin compilarlo.
+
+Fase 5 (decisiones 187–190): dictado solo en el teléfono (`ClaraSpeech`, nunca el de la web dentro de la app), recibos
+con Vision y la cámara de documentos (`ClaraVision`, hasta 5; `domain/ocrLines.ts` junta las líneas) e IA del iPhone
+(`ClaraAI`). Contratos sin Capacitor en `platform/nativeAssistant.ts`; lo que ofrece el iPhone se PREGUNTA
+(`availability`) y llega con `useNativeServices`; textos en el paquete `device`. Sin Foundation Models compila con
+`CLARA_NO_AI`.
 
 Lo nativo tiene tres estados y no se salta ninguno: **escrito**, **compila** (en el Mac de Victor) y **probado en
 iPhone**. Nunca se dice que algo funciona en el iPhone si Victor no lo probó.

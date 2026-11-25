@@ -343,6 +343,72 @@ Fase 6 irán en esta misma extensión.
 Si Xcode da errores al compilar la extensión, copia el texto del error tal cual. La app no depende de la extensión:
 si quieres seguir sin ella, borra el target `ClaraWidgets` (proyecto › target › «−»).
 
+## Fase 5: voz, recibos e IA en el iPhone
+
+Rama `feat/ios-fase-5`. Tres cosas nuevas en el asistente, todas **escritas y sin compilar**:
+
+- **Dictado en el iPhone:** «Dictar» usa el reconocimiento de voz de iOS **en el teléfono**: el audio no sale del
+  iPhone. Lo dictado aparece mientras hablas y, al tocar «Detener», Clara lo analiza y propone. Nada se registra
+  hasta que tocas «Registrar». Si tu iPhone no puede dictar el idioma de Clara sin conexión, Clara no ofrece el botón
+  y dice por qué. No usa el dictado de la web, que puede enviar el audio a un servicio.
+- **Recibos con Vision:** la foto de un recibo se lee en el iPhone. «Escanear recibos» abre la cámara de documentos
+  de iOS y lee hasta 5 recibos seguidos; cada uno es una línea para revisar, con su foto.
+- **IA del iPhone (opcional):** si tu iPhone tiene Apple Intelligence (iOS 26 o posterior en un modelo compatible),
+  Ajustes › Asistente ofrece «Usar la IA de este iPhone en el asistente», **apagada al empezar**. Encendida, la IA
+  propone primero con texto desordenado y en recibos difíciles, con la etiqueta «Sugerido por IA en tu iPhone».
+  Corre en el teléfono y no envía nada. Lo que propone se comprueba: cada línea tiene que citar tu texto y el importe
+  lo lee el analizador de siempre. Si falla, tarda más de 20 s o propone menos movimientos que el analizador de
+  siempre, se usa este y se dice.
+
+> **Estado: escrito, sin compilar.** Lo web está probado en el navegador con un iPhone simulado que responde lo que
+> la prueba le dice. Cómo dicta, lee o responde un iPhone de verdad solo lo sabremos con tus comprobaciones.
+
+### 1. Probar el Swift sin el iPhone
+
+```bash
+git checkout feat/ios-fase-5
+git pull
+cd ios/ClaraNativeTests
+swift test
+cd ../..
+```
+
+Debe seguir diciendo «Executed 15 tests, with 0 failures»: Speech, Vision y la IA solo funcionan en un iPhone, así
+que esta fase no añade pruebas Swift.
+
+### 2. Compilar e instalar
+
+```bash
+npm ci
+npm run ios:sync
+npm run ios:open
+```
+
+y ▶ en Xcode.
+
+**Si Xcode da errores en `ClaraAIPlugin.swift`** (la IA usa el framework Foundation Models, que es nuevo): proyecto
+› target «App» › Build Settings › busca «Active Compilation Conditions» › en Debug y en Release añade `CLARA_NO_AI`.
+La app compila sin la IA y Ajustes dice que no está disponible. Copia el error tal cual y me lo pasas.
+
+### 3. Qué mirar
+
+| # | Qué | Cómo | ¿Bien? |
+|---|---|---|---|
+| 58 | Las pruebas Swift | La salida del paso 1: 15 pruebas, 0 fallos | |
+| 59 | Qué hay en tu iPhone | Ajustes › Asistente › «En este iPhone». Apunta lo que dice de Dictado, Fotos de recibos, Cámara de documentos e IA | |
+| 60 | Permisos del dictado | Asistente › «Dictar»: iOS pide permiso para el reconocimiento de voz y el micrófono, con el texto de Clara en tu idioma. Acepta los dos | |
+| 61 | **Dictar dos gastos** | Toca «Dictar» y di «café cuatro coma cincuenta y uber dieciocho ayer». El texto aparece mientras hablas; debería quedar «café 4,50 y uber 18 ayer». Toca «Detener»: dos propuestas, 4,50 y 18,00, la segunda con la fecha de ayer. Nada se registra hasta «Registrar». Apunta el texto exacto que escribió el dictado (sobre todo si escribe los números con letras) y prueba también «cuatro cincuenta» sin «coma» | |
+| 62 | Dictado sin conexión | Activa el modo avión y repite la 61: debe funcionar igual (el audio no sale del iPhone). Si Clara dice que no puede dictar sin conexión, apunta el mensaje | |
+| 63 | Sin permiso | Ajustes del iPhone › Clara › apaga el micrófono. En el asistente ya no hay botón «Dictar» y Clara dice dónde dar el permiso. Vuelve a encenderlo | |
+| 64 | **La foto de un recibo real** | Asistente › «Foto de un recibo» › foto de un recibo de verdad: propone el total, la fecha y el comercio. Apunta si alguno sale mal | |
+| 65 | Escanear recibos | «Escanear recibos» (permiso de la cámara la primera vez): escanea 2 o 3 recibos seguidos y toca «Guardar» en la cámara. Una línea por recibo, con su foto. Si escaneas 6, Clara avisa de que 1 quedó fuera | |
+| 66 | Recibo en otra moneda | Un recibo en dólares estadounidenses o euros: la línea queda bloqueada con la moneda escrita, como siempre. Nunca se convierte sola | |
+| 67 | Encender la IA | Solo si la 59 dice «disponible»: Ajustes › Asistente › «Usar la IA de este iPhone en el asistente». Si no está disponible, apunta el motivo que da | |
+| 68 | La IA con texto desordenado | Con la IA encendida, escribe o dicta «pues el café de esta mañana fueron 4,50 y luego el uber de ayer 18» y analiza. Dos propuestas con la etiqueta «Sugerido por IA en tu iPhone» y la nota de arriba. Apunta cuánto tarda | |
+| 69 | La IA sin conexión | Modo avión y repite la 68: debe funcionar igual | |
+| 70 | La IA en un recibo difícil | Con la IA encendida, la foto de un recibo sin la palabra «TOTAL» (o arrugado): si la IA propone el total, la línea dice de qué línea del recibo lo sacó. Compruébalo | |
+| 71 | Otro idioma | Ajustes › Formato › Idioma › English: «Dictar» (ahora «Dictate») y una foto funcionan en inglés. Vuelve al español | |
+
 ## Tus datos reales
 
 Prueba primero con los datos de demostración y la lista de comprobación. Cuando todo esté bien:
