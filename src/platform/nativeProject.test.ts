@@ -80,6 +80,25 @@ describe('proyecto de iPhone (sin Xcode)', () => {
     }
   })
 
+  it('cada texto de permiso del Info.plist está en InfoPlist.xcstrings en en, es, pt y fr (y está en el proyecto)', () => {
+    const plist = readFileSync(join(APP, 'Info.plist'), 'utf8')
+    const keys = [...plist.matchAll(/<key>(NS\w+UsageDescription)<\/key>/g)].map((m) => m[1]!)
+    expect(keys).toEqual(expect.arrayContaining(['NSCameraUsageDescription', 'NSMicrophoneUsageDescription', 'NSSpeechRecognitionUsageDescription', 'NSFaceIDUsageDescription']))
+    const strings = readStrings(join(APP, 'InfoPlist.xcstrings'))
+    for (const key of keys) for (const lang of ['en', ...LANGS]) expect(strings.strings[key]?.localizations?.[lang]?.stringUnit?.value?.trim(), `${key} ${lang}`).toBeTruthy()
+    const pbx = readFileSync(join(IOS, 'App', 'App.xcodeproj', 'project.pbxproj'), 'utf8')
+    expect(pbx).toContain('/* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile;')
+  })
+
+  it('cada plugin propio está registrado en la vista de Clara', () => {
+    const scene = readFileSync(join(APP, 'SceneDelegate.swift'), 'utf8')
+    const plugins = swiftFiles(APP)
+      .map((f) => /@objc\((Clara\w+Plugin)\)/.exec(readFileSync(join(APP, f), 'utf8'))?.[1])
+      .filter((name): name is string => !!name)
+    expect(plugins.length).toBeGreaterThanOrEqual(7)
+    for (const name of plugins) expect(scene, name).toContain(`registerPluginInstance(${name}())`)
+  })
+
   it('solo un proveedor de frases de Siri en la app (Apple admite uno)', () => {
     const providers = swiftFiles(APP).filter((f) => /:\s*AppShortcutsProvider\b/.test(readFileSync(join(APP, f), 'utf8')))
     expect(providers).toEqual(['ClaraShortcuts.swift'])
