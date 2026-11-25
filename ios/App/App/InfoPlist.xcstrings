@@ -1,0 +1,122 @@
+{
+  "sourceLanguage": "en",
+  "version": "1.0",
+  "strings": {
+    "NSCameraUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clara uses the camera to photograph or scan a receipt when you ask. The photo is read on your iPhone."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clara usa la cámara para fotografiar o escanear un recibo cuando tú lo pides. La foto se lee en tu iPhone."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clara utilise l’appareil photo pour photographier ou numériser un reçu quand vous le demandez. La photo est lue sur votre iPhone."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Clara usa a câmera para fotografar ou digitalizar um recibo quando você pede. A foto é lida no seu iPhone."
+          }
+        }
+      }
+    },
+    "NSMicrophoneUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clara uses the microphone to dictate a movement when you ask."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clara usa el micrófono para dictar un movimiento cuando tú lo pides."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clara utilise le micro pour dicter un mouvement quand vous le demandez."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Clara usa o microfone para ditar um movimento quando você pede."
+          }
+        }
+      }
+    },
+    "NSSpeechRecognitionUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clara turns what you dictate into text, on your iPhone, to record a movement. The audio doesn’t leave your iPhone."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clara convierte en texto, en tu iPhone, lo que dictas para registrar un movimiento. El audio no sale del iPhone."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clara transforme en texte, sur votre iPhone, ce que vous dictez pour enregistrer un mouvement. L’audio ne quitte pas votre iPhone."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Clara transforma em texto, no seu iPhone, o que você dita para registrar um movimento. O áudio não sai do iPhone."
+          }
+        }
+      }
+    },
+    "NSFaceIDUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clara uses Face ID to unlock the app if you turned on the lock in Settings."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clara usa Face ID para desbloquear la app si activaste el bloqueo en Ajustes."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clara utilise Face ID pour déverrouiller l’app si vous avez activé le verrouillage dans Réglages."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Clara usa o Face ID para desbloquear o app se você ativou o bloqueio em Ajustes."
+          }
+        }
+      }
+    }
+  }
+}

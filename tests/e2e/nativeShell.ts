@@ -23,6 +23,9 @@ export interface FakeBiometric {
  *   acción de Atajos con la app abierta).
  * - `ClaraLaunch` (`ClaraLaunchPlugin.swift`, Fase 4): `take` entrega una vez la pantalla pedida y el evento
  *   `openScreen` avisa (`requestFakeScreen`, como «Nuevo gasto en Clara» o el control con la app abierta).
+ * - `ClaraSpeech`, `ClaraVision` y `ClaraAI` (Fase 5): lo que «responde» el iPhone se fija con `setFakeDevice` (por
+ *   defecto: dictado y cámara de documentos disponibles, IA no disponible en este modelo); lo dictado llega con
+ *   `fakeDictation` (evento `partial`) y cada llamada se anota (`nativeCalls(page, 'Clara')`).
  *
  * Es un doble: comprueba el lado web de la app (repositorio nativo, textos, pantallas). No dice nada del Swift ni del
  * iPhone real; eso solo se prueba compilando en Xcode.
@@ -122,6 +125,65 @@ export async function asNativeApp(page: Page, options: { storage?: boolean; biom
         },
         removeListener: () => ({}),
       }
+      // Fase 5: dictado, recibos e IA. La configuración vive en `sessionStorage` (`fake-device`) para poder cambiarla.
+      type Device = {
+        speech: { available: boolean; reason?: string; locales?: string[]; final: string; startError?: string }
+        vision: { scanner: boolean; observations: unknown[]; pages: unknown[]; skipped: number; scanError?: string }
+        ai: { available: boolean; reason?: string; extract?: unknown; receipt?: unknown }
+      }
+      const device = (): Device => ({
+        speech: { available: true, final: '' },
+        vision: { scanner: true, observations: [], pages: [], skipped: 0 },
+        ai: { available: false, reason: 'deviceNotEligible' },
+        ...(JSON.parse(sessionStorage.getItem('fake-device') ?? '{}') as Partial<Device>),
+      })
+      type DeviceOptions = Options & { locale?: string }
+      plugins.ClaraSpeech = {
+        availability: (o) => {
+          const { speech } = device()
+          const locale = (o as DeviceOptions).locale ?? ''
+          if (!speech.available) return { available: false, reason: speech.reason ?? 'noOnDevice' }
+          return !speech.locales || speech.locales.includes(locale) ? { available: true } : { available: false, reason: 'noOnDevice' }
+        },
+        start: (o) => {
+          record('ClaraSpeech.start', o)
+          const error = device().speech.startError
+          return error ? fail('No se pudo empezar', error) : {}
+        },
+        stop: (o) => {
+          record('ClaraSpeech.stop', o)
+          return { text: device().speech.final }
+        },
+        removeListener: () => ({}),
+      }
+      plugins.ClaraVision = {
+        availability: () => ({ text: true, scanner: device().vision.scanner }),
+        recognize: (o) => {
+          record('ClaraVision.recognize', { ...o, image: `${String((o as { image?: string }).image ?? '').length} caracteres` } as Options)
+          return { observations: device().vision.observations }
+        },
+        scan: (o) => {
+          record('ClaraVision.scan', o)
+          const { vision } = device()
+          return vision.scanError ? fail('La cámara de documentos falló', vision.scanError) : { pages: vision.pages, skipped: vision.skipped }
+        },
+      }
+      plugins.ClaraAI = {
+        availability: () => {
+          const { ai } = device()
+          return ai.available ? { available: true } : { available: false, reason: ai.reason ?? 'unknown' }
+        },
+        extract: (o) => {
+          record('ClaraAI.extract', o)
+          const { ai } = device()
+          return ai.extract === undefined ? fail('La IA no respondió', 'failed') : { json: JSON.stringify(ai.extract) }
+        },
+        receipt: (o) => {
+          record('ClaraAI.receipt', o)
+          const { ai } = device()
+          return ai.receipt === undefined ? fail('La IA no respondió', 'failed') : { json: JSON.stringify(ai.receipt) }
+        },
+      }
       // Pantalla pedida desde fuera: la guarda `requestFakeScreen` (o `seedFakeScreen` antes de cargar) y `take` la entrega una vez.
       plugins.ClaraLaunch = {
         take: () => {
@@ -131,8 +193,8 @@ export async function asNativeApp(page: Page, options: { storage?: boolean; biom
         },
         removeListener: () => ({}),
       }
-      const listeners: Record<string, (() => void)[]> = {}
-      ;(window as unknown as { __fakeNativeFire: (event: string) => void }).__fakeNativeFire = (event) => (listeners[event] ?? []).forEach((l) => l())
+      const listeners: Record<string, ((data?: unknown) => void)[]> = {}
+      ;(window as unknown as { __fakeNativeFire: (event: string, data?: unknown) => void }).__fakeNativeFire = (event, data) => (listeners[event] ?? []).forEach((l) => l(data))
       const w = window as unknown as Record<string, unknown>
       w.webkit = { messageHandlers: { bridge: { postMessage() {} } } }
       w.Capacitor = {
@@ -140,11 +202,11 @@ export async function asNativeApp(page: Page, options: { storage?: boolean; biom
         getPlatform: () => 'ios',
         PluginHeaders: Object.entries(plugins).map(([name, methods]) => ({
           name,
-          methods: [...Object.keys(methods).map((m) => ({ name: m, rtype: 'promise' })), ...(name === 'ClaraCaptures' || name === 'ClaraLaunch' ? [{ name: 'addListener', rtype: 'callback' }] : [])],
+          methods: [...Object.keys(methods).map((m) => ({ name: m, rtype: 'promise' })), ...(['ClaraCaptures', 'ClaraLaunch', 'ClaraSpeech'].includes(name) ? [{ name: 'addListener', rtype: 'callback' }] : [])],
         })),
         nativePromise: (plugin: string, method: string, o?: Options) => Promise.resolve().then(() => plugins[plugin]![method]!(o ?? {})),
         // Solo `addListener`: guarda la función para que `addFakeCapture` la llame.
-        nativeCallback: (_plugin: string, method: string, o: { eventName?: string }, callback: () => void) => {
+        nativeCallback: (_plugin: string, method: string, o: { eventName?: string }, callback: (data?: unknown) => void) => {
           if (method === 'addListener' && o.eventName) (listeners[o.eventName] ??= []).push(callback)
           return 'fake-callback'
         },
@@ -231,4 +293,25 @@ export async function requestFakeScreen(page: Page, screen: string): Promise<voi
 /** Como la acción ejecutada ANTES de que la web cargue: la pantalla espera a que la web la pida al arrancar. */
 export async function seedFakeScreen(page: Page, screen: string): Promise<void> {
   await page.evaluate((s) => sessionStorage.setItem('fake-launch', s), screen)
+}
+
+/** Lo que «responde» el iPhone en la Fase 5 (dictado, Vision, IA). Se aplica a lo que venga (también tras recargar). */
+export interface FakeDevice {
+  speech?: { available: boolean; reason?: string; locales?: string[]; final: string; startError?: string }
+  vision?: { scanner: boolean; observations: unknown[]; pages: unknown[]; skipped: number; scanError?: string }
+  ai?: { available: boolean; reason?: string; extract?: unknown; receipt?: unknown }
+}
+
+export function setFakeDevice(page: Page, device: FakeDevice): Promise<void> {
+  return page.evaluate((d) => sessionStorage.setItem('fake-device', JSON.stringify({ ...(JSON.parse(sessionStorage.getItem('fake-device') ?? '{}') as object), ...d })), device)
+}
+
+/** Como el iPhone mientras se dicta: lo reconocido hasta ahora (evento `partial`). */
+export function fakeDictation(page: Page, text: string): Promise<void> {
+  return page.evaluate((t) => (window as unknown as { __fakeNativeFire: (event: string, data?: unknown) => void }).__fakeNativeFire('partial', { text: t }), text)
+}
+
+/** Como el iPhone cuando el dictado termina solo (silencio largo): evento `end` con lo último. */
+export function fakeDictationEnd(page: Page, text: string): Promise<void> {
+  return page.evaluate((t) => (window as unknown as { __fakeNativeFire: (event: string, data?: unknown) => void }).__fakeNativeFire('end', { text: t }), text)
 }

@@ -38,6 +38,16 @@ if (isNativeIOS()) {
   void Promise.all([import('./platform/files'), import('./platform/native/files')])
     .then(([files, native]) => provideNativeServices({ shareTextFile: (filename, text) => files.shareTextFile(native.fileSharer, filename, text) }))
     .catch(() => {})
+  // Dictado, recibos y la IA del iPhone para el asistente; todo en el teléfono (Fase 5, decisiones 187–189).
+  void Promise.all([import('./platform/nativeAssistant'), import('./platform/native/assistant')])
+    .then(([assistant, native]) =>
+      provideNativeServices({
+        dictation: assistant.createDictation(native.speechPlugin),
+        receipts: assistant.createReceipts(native.visionPlugin),
+        deviceAi: assistant.createDeviceAi(native.aiPlugin),
+      }),
+    )
+    .catch(() => {})
   // «Nuevo gasto en Clara» y el control del Centro de control abren el formulario (Fase 4, decisión 185).
   void Promise.all([import('./platform/nativeLaunch'), import('./platform/native/launch')])
     .then(([launch, native]) => launch.followLaunchRequests(native.launchPlugin, (path) => navigate(path)))

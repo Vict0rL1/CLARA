@@ -8,6 +8,15 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
 
 ### Novedades
 
+- **Voz, recibos e IA en el iPhone** (Fase 5 nativa; decisiones 187–190, `docs/IOS-NATIVE.md` › «Fase 5»): en la app,
+  «Dictar» usa el reconocimiento de voz del iPhone en el teléfono (el audio no sale de él) y, al parar, el asistente
+  propone; nada se registra sin «Registrar». La foto de un recibo se lee con Vision y «Escanear recibos» abre la
+  cámara de documentos para hasta 5 recibos seguidos, una línea por recibo. Con Apple Intelligence (iOS 26), Ajustes ›
+  Asistente ofrece «Usar la IA de este iPhone», apagada al empezar: propone con la etiqueta «Sugerido por IA en tu
+  iPhone», cada línea cita tu texto, el importe lo lee el analizador de siempre y, si la IA falla o propone menos, se
+  usa este. Ajustes › Asistente dice lo que hay de verdad en ese iPhone. **Probado en navegador con un iPhone simulado;
+  el Swift, sin compilar ni probar en un iPhone.**
+
 - **Avisos del banco por SMS y «Nuevo gasto» en un toque** (Fase 4 nativa; decisiones 183–186, `docs/IOS-NATIVE.md` ›
   «Fase 4»): la acción «Registrar desde texto en Clara» recibe el SMS de aviso del banco desde una automatización de
   Atajos. Mientras Clara no conozca el formato de un banco (hacen falta ejemplos reales), cada aviso queda en «Por

@@ -19,12 +19,13 @@ import capturePack from './packs/capture.es.json'
 import weeklyPack from './packs/weekly.es.json'
 import fxPack from './packs/fx.es.json'
 import periodsPack from './packs/periods.es.json'
+import devicePack from './packs/device.es.json'
 
 const LANGS = { en, pt, fr } as const
 
 const keys = new Set(Object.keys(es))
 /** Las claves de los paquetes diferidos (`packs/*.json`, mismas en los cuatro idiomas por `packKeys.ts`). */
-const packKeys = new Set([...Object.keys(legalPack), ...Object.keys(galleryPack), ...Object.keys(bankImportPack), ...Object.keys(nativeAppPack), ...Object.keys(whatChangedPack), ...Object.keys(shortfallPack), ...Object.keys(capturePack), ...Object.keys(weeklyPack), ...Object.keys(fxPack), ...Object.keys(periodsPack)])
+const packKeys = new Set([...Object.keys(legalPack), ...Object.keys(galleryPack), ...Object.keys(bankImportPack), ...Object.keys(nativeAppPack), ...Object.keys(whatChangedPack), ...Object.keys(shortfallPack), ...Object.keys(capturePack), ...Object.keys(weeklyPack), ...Object.keys(fxPack), ...Object.keys(periodsPack), ...Object.keys(devicePack)])
 const has = (k: string) => keys.has(k)
 
 function sourceFiles(dir: string): string[] {

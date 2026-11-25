@@ -26,8 +26,12 @@
 		9731AEB9A2945E470BA0F43A /* ClaraOpenIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EC935A906EC5F03A525AE69 /* ClaraOpenIntent.swift */; };
 		EB32FADE7F8F9BE3302151CF /* ClaraShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00D523D8C29F3F8F6B742EC /* ClaraShortcuts.swift */; };
 		96BCACC01BB6DEE4FA737DFC /* ClaraLaunchPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BEA5D82399BE7A0B5732A8B /* ClaraLaunchPlugin.swift */; };
+		704301100E11CB4E3C41EC76 /* ClaraAIPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AA2EEB830DE911AE6836433 /* ClaraAIPlugin.swift */; };
+		566469E6B40D014367EAC8E8 /* ClaraVisionPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88CB5CB0F720669732F5D0A3 /* ClaraVisionPlugin.swift */; };
+		7E1AFC95499F5B29B232B622 /* ClaraSpeechPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5ABA47DD21DEC04B0C3D98C /* ClaraSpeechPlugin.swift */; };
 		823B2B0065E8F8B53391BD5C /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 6D9171C8595DD0F57E983884 /* Localizable.xcstrings */; };
 		3DD82A479AC80C0FC07DA853 /* AppShortcuts.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CE3622A85DEBA56CEFC36A65 /* AppShortcuts.xcstrings */; };
+		B925D23E7CEDBF63AC2E55E2 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 3CC8D30958B5D09C748F0024 /* InfoPlist.xcstrings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -48,8 +52,12 @@
 		9EC935A906EC5F03A525AE69 /* ClaraOpenIntent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClaraOpenIntent.swift; sourceTree = "<group>"; };
 		A00D523D8C29F3F8F6B742EC /* ClaraShortcuts.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClaraShortcuts.swift; sourceTree = "<group>"; };
 		8BEA5D82399BE7A0B5732A8B /* ClaraLaunchPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClaraLaunchPlugin.swift; sourceTree = "<group>"; };
+		5AA2EEB830DE911AE6836433 /* ClaraAIPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClaraAIPlugin.swift; sourceTree = "<group>"; };
+		88CB5CB0F720669732F5D0A3 /* ClaraVisionPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClaraVisionPlugin.swift; sourceTree = "<group>"; };
+		D5ABA47DD21DEC04B0C3D98C /* ClaraSpeechPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClaraSpeechPlugin.swift; sourceTree = "<group>"; };
 		6D9171C8595DD0F57E983884 /* Localizable.xcstrings */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		CE3622A85DEBA56CEFC36A65 /* AppShortcuts.xcstrings */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.json.xcstrings; path = AppShortcuts.xcstrings; sourceTree = "<group>"; };
+		3CC8D30958B5D09C748F0024 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		63D65B826C7AF31C710F246F /* ClaraStoragePlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClaraStoragePlugin.swift; sourceTree = "<group>"; };
 		8AECBE85BB83E5518AACE0C5 /* ClaraFileStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClaraFileStore.swift; sourceTree = "<group>"; };
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -107,8 +115,12 @@
 				9EC935A906EC5F03A525AE69 /* ClaraOpenIntent.swift */,
 				A00D523D8C29F3F8F6B742EC /* ClaraShortcuts.swift */,
 				8BEA5D82399BE7A0B5732A8B /* ClaraLaunchPlugin.swift */,
+				5AA2EEB830DE911AE6836433 /* ClaraAIPlugin.swift */,
+				88CB5CB0F720669732F5D0A3 /* ClaraVisionPlugin.swift */,
+				D5ABA47DD21DEC04B0C3D98C /* ClaraSpeechPlugin.swift */,
 				6D9171C8595DD0F57E983884 /* Localizable.xcstrings */,
 				CE3622A85DEBA56CEFC36A65 /* AppShortcuts.xcstrings */,
+				3CC8D30958B5D09C748F0024 /* InfoPlist.xcstrings */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -189,6 +201,7 @@
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
 				823B2B0065E8F8B53391BD5C /* Localizable.xcstrings in Resources */,
 				3DD82A479AC80C0FC07DA853 /* AppShortcuts.xcstrings in Resources */,
+				B925D23E7CEDBF63AC2E55E2 /* InfoPlist.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -211,6 +224,9 @@
 				9731AEB9A2945E470BA0F43A /* ClaraOpenIntent.swift in Sources */,
 				EB32FADE7F8F9BE3302151CF /* ClaraShortcuts.swift in Sources */,
 				96BCACC01BB6DEE4FA737DFC /* ClaraLaunchPlugin.swift in Sources */,
+				704301100E11CB4E3C41EC76 /* ClaraAIPlugin.swift in Sources */,
+				566469E6B40D014367EAC8E8 /* ClaraVisionPlugin.swift in Sources */,
+				7E1AFC95499F5B29B232B622 /* ClaraSpeechPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

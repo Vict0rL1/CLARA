@@ -202,6 +202,19 @@ Informe: `docs/NATIVE-FASE-4.md`. Decisiones 183–186.
 4. **Falta de Victor:** 3–6 avisos reales de su banco con los números tapados (§4, punto 6), y las comprobaciones 46–57
    de `docs/IOS-NATIVE.md`.
 
+## 4 sexies. Fase 5: lo hecho (rama `feat/ios-fase-5`, desde `feat/ios-fase-4`)
+
+Informe: `docs/NATIVE-FASE-5.md`. Decisiones 187–190.
+
+1. **Dictado en el teléfono** (decisión 187): `ClaraSpeech` con reconocimiento solo en el dispositivo; dentro de la
+   app nunca el dictado de la web. Al parar, el asistente propone.
+2. **Recibos con Vision** (decisión 188): `ClaraVision` lee el texto con sus recuadros; `domain/ocrLines.ts` lo junta
+   en líneas; «Escanear recibos» con la cámara de documentos, hasta 5, una línea por recibo.
+3. **IA del iPhone** (decisión 189): `ClaraAI` con Foundation Models, opcional y apagada al empezar;
+   `domain/deviceAi.ts` comprueba todo contra el texto y, si algo no cuadra, manda el analizador de siempre.
+4. **Lo que hay se pregunta** (decisión 190): Ajustes › Asistente › «En este iPhone», con el motivo de lo que falta.
+5. **Falta de Victor:** las comprobaciones 58–71 de `docs/IOS-NATIVE.md` (61 y 64 son las del encargo).
+
 ## 5. Notas del historial de la rama
 
 - El commit `1e80e3c` (documentación del Paso 0) se llevó por error los renombrados de `src/platform/` y de la guía,
@@ -224,3 +237,4 @@ Informe: `docs/NATIVE-FASE-4.md`. Decisiones 183–186.
 | Cola de capturas (`ClaraCaptureQueue.swift`, `ClaraCapturesPlugin.swift`) | Swift escrito, sin compilar; XCTest escrito (`ios/ClaraNativeTests`, sin ejecutar); lado web con el plugin simulado en navegador |
 | Importar, revisar y Ajustes › Captura automática (`captureImport.ts`, `captureSync.ts`, `CaptureReview`, `CaptureSection`) | Solo web: pruebas unitarias y de navegador (3 tamaños); sin probar en iPhone |
 | Copias locales, PIN y preferencias fuera del WebView (`nativeLocalBackups.ts`, `deviceMirror.ts`) | Sin Swift nuevo (usa `ClaraStorage`); pruebas unitarias y de navegador con el plugin simulado; sin probar en iPhone |
+| Dictado, recibos e IA (`ClaraSpeechPlugin.swift`, `ClaraVisionPlugin.swift`, `ClaraAIPlugin.swift`, `InfoPlist.xcstrings`) | Swift escrito, sin compilar ni probar en iPhone; lado web (`nativeAssistant.ts`, asistente, Ajustes) con 11 pruebas del contrato y 5 de navegador con los plugins simulados (3 tamaños) |
