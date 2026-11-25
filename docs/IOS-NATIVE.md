@@ -158,7 +158,7 @@ cd ../..
 ```
 
 Debe terminar con «Executed 13 tests, with 0 failures» (la cola de capturas, también con dos escrituras a la vez, y el
-archivo de datos). Si algo falla,
+archivo de datos; 15 desde la Fase 4). Si algo falla,
 copia la salida tal cual.
 
 ### 2. Compilar e instalar
@@ -256,6 +256,92 @@ API está en `docs/BOC-VALET.md`. Las cifras dependen de la tasa del día: compr
 Si en la 41 o la 44 Clara dice que no pudo conectar aunque haya conexión, apúntalo: dentro de la app la petición la
 hace el WebView (origen `capacitor://localhost`); el banco responde `Access-Control-Allow-Origin: *`, pero eso solo se
 ha comprobado con `curl`, no en el iPhone.
+
+## Fase 4: pagos sin Apple Pay y registrar en un toque
+
+Rama `feat/ios-fase-4`. Tres cosas nuevas, todas **escritas y sin compilar**:
+
+- **«Registrar desde texto en Clara»:** una automatización de Atajos con el disparador «Mensaje» le pasa el SMS de
+  aviso de tu banco. Clara lo lee al abrirse. Mientras no conozca el formato de tu banco (hace falta que me pases
+  ejemplos reales), cada aviso queda en Pendientes › Por revisar como **propuesta**: no cuenta hasta que la registres,
+  con su texto y un importe sugerido si el texto trae uno solo con su moneda. El texto se borra en cuanto registras,
+  descartas o confirmas el pago (ni el historial ni la papelera lo guardan).
+- **«Nuevo gasto en Clara»:** abre el formulario de un gasto. Para el botón de Acción, «Tocar atrás» y Siri. No guarda
+  nada hasta que tocas Guardar.
+- **Control «Nuevo gasto»** para el Centro de control y la pantalla bloqueada: opcional y aparte, porque hay que crear
+  una extensión en Xcode (abajo). No lo hagas hasta que la app compile y funcione.
+
+> **Estado: escrito, sin compilar.** Lo web está probado en el navegador con un iPhone simulado. Los nombres de los
+> menús de Atajos y de Ajustes de iOS no se pudieron comprobar desde aquí (support.apple.com no es accesible desde este
+> entorno): apunta los que veas.
+
+### 1. Probar el Swift sin el iPhone
+
+```bash
+git checkout feat/ios-fase-4
+git pull
+cd ios/ClaraNativeTests
+swift test
+cd ../..
+```
+
+Debe terminar con «Executed 15 tests, with 0 failures» (dos nuevas: una línea con solo el texto del aviso y el recorte
+a 2 000 caracteres sin partir un emoji).
+
+### 2. Compilar e instalar
+
+```bash
+npm ci
+npm run ios:sync
+npm run ios:open
+```
+
+y ▶ en Xcode. Xcode puede avisar de que `openAppWhenRun` está obsoleto en iOS 26: es un aviso, no un error (en iOS 18,
+el mínimo de Clara, todavía no existe lo que lo sustituye).
+
+### 3. Qué mirar
+
+| # | Qué | Cómo | ¿Bien? |
+|---|---|---|---|
+| 46 | Las pruebas Swift | La salida del paso 1 | |
+| 47 | La acción existe | En Atajos, busca «Registrar desde texto en Clara» y «Nuevo gasto en Clara» (también en inglés si el iPhone está en inglés) | |
+| 48 | Un aviso a mano | En Atajos, crea un atajo con «Registrar desde texto en Clara» y el texto `prueba compra $4.25`; ejecútalo: dice «Clara: aviso anotado para revisar». Abre Clara: Pendientes › Por revisar › «Aviso del banco», con el texto y 4,25 $ sugeridos. No cuenta hasta «Registrar» | |
+| 49 | Un SMS de prueba | Atajos › Automatización › nueva › «Mensaje»: remitente, tú mismo (o quien te lo envíe); «El mensaje contiene»: `prueba`; ejecutar sin confirmar; acción «Registrar desde texto en Clara» con el mensaje recibido. Envíate `prueba compra $4.25`: al abrir Clara está como en la 48. Apunta qué variable ofrece Atajos para el texto del mensaje | |
+| 50 | Un aviso real de tu banco | Lo mismo con el remitente de tu banco y una palabra de sus avisos de compra. Cuando llegue uno, cópialo **tapando los números de tarjeta** y pásamelo: con 3–6 ejemplos escribo el formato de tu banco y esos avisos entrarán «Por revisar» como un pago de Apple Pay | |
+| 51 | Probar un aviso | Ajustes › Captura automática › «Probar un aviso»: pega un aviso y toca «Ver qué entiende Clara». Dice qué haría; no guarda nada | |
+| 52 | El texto se va | Registra la propuesta de la 48: el movimiento ya no enseña el texto del aviso | |
+| 53 | Nuevo gasto (app cerrada) | Cierra Clara a la fuerza. En Atajos ejecuta «Nuevo gasto en Clara»: Clara se abre en «Nuevo movimiento» | |
+| 54 | Nuevo gasto (app abierta) | Con Clara en Inicio, desliza para ir a Atajos y ejecútalo otra vez: vuelve a Clara en el formulario | |
+| 55 | Tocar atrás y Siri | Ajustes › Accesibilidad › Tocar › Tocar atrás › Doble toque › «Nuevo gasto en Clara»; da dos toques en la espalda del iPhone. Y «Oye Siri, nuevo gasto en Clara». Si tu iPhone tiene botón de Acción: Ajustes › Botón de Acción › Atajo | |
+| 56 | Notificaciones de una app (iOS 27) | Mira si Atajos › Automatización ofrece un disparador para las notificaciones de una app (p. ej. la de tu banco). Si existe, apunta qué datos de la notificación pasa (título, texto) y prueba la acción con el texto: debería comportarse como la 49 | |
+
+### 4. Control «Nuevo gasto» (opcional, cuando todo lo anterior funcione)
+
+Los controles del Centro de control viven en una **extensión de widgets**, que se crea en Xcode (Apple no ofrece otra
+forma). Con la cuenta gratuita, la extensión gasta uno de los 10 identificadores de cada 7 días. Los widgets de la
+Fase 6 irán en esta misma extensión.
+
+1. En Xcode: File › New › Target… › iOS › **Widget Extension** › Next.
+2. Product Name: `ClaraWidgets`. Team: tu Personal Team. Marca **Include Control**; desmarca «Include Live Activity» y
+   «Include Configuration App Intent». Finish. Si pregunta por activar el esquema nuevo, elige no activarlo (sigue con
+   «App»).
+3. A la izquierda, en la carpeta `ClaraWidgets` nueva: borra los `.swift` que creó Xcode (clic derecho › Delete › Move
+   to Trash).
+4. Arrastra desde Finder a esa carpeta los tres archivos de `ios/ClaraWidgetsSources/` (`ClaraWidgetsBundle.swift`,
+   `NewExpenseControl.swift` y `Localizable.xcstrings`). En el cuadro que sale: **sin** marcar «Copy items if needed» y,
+   en «Add to targets», solo `ClaraWidgets`.
+5. Selecciona `App/ClaraOpenIntent.swift`. En el panel derecho (icono de documento), «Target Membership»: marca
+   `ClaraWidgets` **además** de `App`. Apple lo exige para que el control abra la app.
+6. Selecciona el proyecto › target `ClaraWidgets` › General › Minimum Deployments: **iOS 18.0**. En «Signing &
+   Capabilities», el mismo Team que la app.
+7. ▶ con el esquema «App».
+
+| # | Qué | Cómo | ¿Bien? |
+|---|---|---|---|
+| 57 | El control | Centro de control › mantén pulsado › «Añadir un control» › busca Clara › «Nuevo gasto». Tócalo: Clara se abre en el formulario. Prueba también en la pantalla bloqueada (personalizarla › controles) y, si lo tienes, en el botón de Acción (Ajustes › Botón de Acción › Control) | |
+
+Si Xcode da errores al compilar la extensión, copia el texto del error tal cual. La app no depende de la extensión:
+si quieres seguir sin ella, borra el target `ClaraWidgets` (proyecto › target › «−»).
 
 ## Tus datos reales
 

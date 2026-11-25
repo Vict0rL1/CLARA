@@ -23,6 +23,50 @@
         }
       }
     },
+    "Adds the text of a bank alert (an SMS or a notification) for Clara to read. Clara shows it to review the next time it opens. Nothing leaves your iPhone.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anota el texto de un aviso del banco (un SMS o una notificación) para que Clara lo lea. Clara lo muestra para revisar la próxima vez que se abre. Nada sale de tu iPhone."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Note le texte d’une alerte de la banque (un SMS ou une notification) pour que Clara le lise. Clara l’affiche à vérifier à sa prochaine ouverture. Rien ne quitte votre iPhone."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anota o texto de um aviso do banco (um SMS ou uma notificação) para o Clara ler. O Clara o mostra para revisar na próxima vez que abrir. Nada sai do seu iPhone."
+          }
+        }
+      }
+    },
+    "Alert text": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Texto del aviso"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Texte de l’alerte"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Texto do aviso"
+          }
+        }
+      }
+    },
     "Amount": {
       "localizations": {
         "es": {
@@ -111,6 +155,28 @@
         }
       }
     },
+    "Clara screen": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pantalla de Clara"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Écran de Clara"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tela do Clara"
+          }
+        }
+      }
+    },
     "Clara: %@ at %@, to review": {
       "localizations": {
         "es": {
@@ -151,6 +217,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Clara: %@, para revisar"
+          }
+        }
+      }
+    },
+    "Clara: alert saved to review": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clara: aviso anotado para revisar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clara : alerte notée, à vérifier"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clara: aviso anotado para revisar"
           }
         }
       }
@@ -199,6 +287,138 @@
         }
       }
     },
+    "New expense": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nuevo gasto"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nouvelle dépense"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nova despesa"
+          }
+        }
+      }
+    },
+    "New expense in Clara": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nuevo gasto en Clara"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nouvelle dépense dans Clara"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nova despesa no Clara"
+          }
+        }
+      }
+    },
+    "Open in Clara": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir en Clara"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir dans Clara"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir no Clara"
+          }
+        }
+      }
+    },
+    "Opens Clara on the form to add an expense. Nothing is saved until you tap Save.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre Clara en el formulario para anotar un gasto. No se guarda nada hasta que tocas Guardar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvre Clara sur le formulaire pour noter une dépense. Rien n’est enregistré tant que vous n’appuyez pas sur Enregistrer."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre o Clara no formulário para anotar uma despesa. Nada é salvo até você tocar em Salvar."
+          }
+        }
+      }
+    },
+    "Opens Clara on the screen you choose.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre Clara en la pantalla que elijas."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvre Clara sur l’écran choisi."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre o Clara na tela que você escolher."
+          }
+        }
+      }
+    },
+    "Record from text in Clara": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Registrar desde texto en Clara"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrer depuis un texte dans Clara"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Registrar a partir de texto no Clara"
+          }
+        }
+      }
+    },
     "Record payment": {
       "localizations": {
         "es": {
@@ -239,6 +459,50 @@
           "stringUnit": {
             "state": "translated",
             "value": "Registrar pagamento no Clara"
+          }
+        }
+      }
+    },
+    "Screen": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pantalla"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Écran"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tela"
+          }
+        }
+      }
+    },
+    "What does the alert say?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Qué dice el aviso?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Que dit l’alerte ?"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O que diz o aviso?"
           }
         }
       }

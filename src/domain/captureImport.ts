@@ -31,6 +31,7 @@
  */
 import { activeAccounts } from './balances'
 import { bocConversion, bocKey, bocSeries, type BocRate } from './boc'
+import { BANK_ALERT_PATTERNS, readBankAlert, unknownAlertLabel, type BankAlertPattern } from './bankAlert'
 import { readCaptureAmount, type CaptureAmount, type CaptureRecord } from './captureQueue'
 import { localDateInTimeZone } from './dates'
 import { convertToBudget, parseRate, rateToText } from './fx'
@@ -165,19 +166,38 @@ function linkToTrips(data: AppData, links: ReadonlyMap<string, string[]>, now: s
 export interface CaptureImportOptions {
   /** Tasas del Banco de Canadá ya pedidas, por `bocKey(moneda, fecha del pago)`. */
   boc?: ReadonlyMap<string, BocRate>
+  /** Formatos de aviso conocidos (por defecto `BANK_ALERT_PATTERNS`; las pruebas pasan los suyos). */
+  alertPatterns?: readonly BankAlertPattern[]
+}
+
+/**
+ * Qué dice una captura (Fase 4, decisión 183): el importe y, de un aviso de texto con un formato conocido, también el
+ * comercio y la tarjeta (lo que diga el propio registro manda). Un aviso de texto sin formato conocido es un importe
+ * sin entender, nunca se adivina: se enseña la sugerencia (el único importe con su moneda) o el principio del texto.
+ */
+export function readCapture(record: CaptureRecord, settings: { currency: string; numberLocale: string }, patterns: readonly BankAlertPattern[] = BANK_ALERT_PATTERNS): { amount: CaptureAmount; merchant?: string; card?: string } {
+  const base = { ...(record.merchant ? { merchant: record.merchant } : {}), ...(record.card ? { card: record.card } : {}) }
+  if (record.rawAmount !== undefined) return { amount: readCaptureAmount({ rawAmount: record.rawAmount, ...(record.currencyHint ? { currencyHint: record.currencyHint } : {}) }, settings), ...base }
+  const alert = readBankAlert(record.rawText ?? '', settings, patterns)
+  if (alert.kind === 'known') {
+    const merchant = record.merchant ?? alert.merchant
+    const card = record.card ?? alert.card
+    return { amount: alert.amount, ...(merchant ? { merchant } : {}), ...(card ? { card } : {}) }
+  }
+  return { amount: { kind: 'unreadable', text: unknownAlertLabel(record.rawText ?? '', alert.guess?.text ?? null) }, ...base }
 }
 
 /**
  * Las tasas del Banco de Canadá que harían falta para estas capturas: las nuevas (no leídas), que no son la prueba, en
  * otra moneda que se lee y sin tasa del viaje, con presupuesto en CAD y serie publicada. Una por (moneda, fecha).
  */
-export function bocRatesNeeded(data: AppData, records: readonly CaptureRecord[], ctx: OpContext): { currency: CurrencyCode; date: LocalDate }[] {
+export function bocRatesNeeded(data: AppData, records: readonly CaptureRecord[], ctx: OpContext, options: Pick<CaptureImportOptions, 'alertPatterns'> = {}): { currency: CurrencyCode; date: LocalDate }[] {
   const out = new Map<string, { currency: CurrencyCode; date: LocalDate }>()
   for (const record of records) {
     if (record.test || captureKnown(data, record.captureId)) continue
     const date = captureDate(record, data, ctx)
     const trip = activeTrip(data, date)
-    const foreign = foreignAmount(readCaptureAmount(record, data.settings), trip, data.settings.numberLocale)
+    const foreign = foreignAmount(readCapture(record, data.settings, options.alertPatterns).amount, trip, data.settings.numberLocale)
     if (!foreign || tripRate(trip?.trip, foreign.currency) || !bocSeries(data.settings.currency, foreign.currency)) continue
     out.set(bocKey(foreign.currency, date), { currency: foreign.currency, date })
   }
@@ -209,12 +229,13 @@ export function importCaptures(data: AppData, records: readonly CaptureRecord[],
       summary.ack.push(record.captureId)
       continue
     }
-    const accountId = accountForCard(data, record.card)
+    const what = readCapture(record, data.settings, options.alertPatterns)
+    const accountId = accountForCard(data, what.card)
     if (!accountId) {
       summary.deferred.push(record.captureId)
       continue
     }
-    const read = readCaptureAmount(record, data.settings)
+    const read = what.amount
     const at = Date.parse(record.createdAt)
     // Un reloj o una zona horaria desfasados no pueden dejar un gasto realizado en el futuro.
     const date = captureDate(record, data, ctx)
@@ -229,8 +250,8 @@ export function importCaptures(data: AppData, records: readonly CaptureRecord[],
     // Lo convirtió el viaje (su tasa) o es una moneda del viaje: se asocia a él.
     const linkTrip = conversion && trip?.trip && (tripConv || trip.trip.currencies.includes(conversion.original.currency)) ? trip : undefined
     const budgetMinor = amount.kind === 'budget' ? amount.minor : conversion?.amountMinor
-    const merchant = merchantKey(record.merchant ?? '')
-    const categoryId = (record.merchant && suggestCategoryForMerchant(record.merchant, 'expense', data)) || CAPTURE_FALLBACK_CATEGORY
+    const merchant = merchantKey(what.merchant ?? '')
+    const categoryId = (what.merchant && suggestCategoryForMerchant(what.merchant, 'expense', data)) || CAPTURE_FALLBACK_CATEGORY
     const similar = budgetMinor !== undefined ? similarCharge(charges, budgetMinor, at, merchant) : undefined
     const reason: ReviewReason | null = record.test
       ? 'auto_capture'
@@ -256,10 +277,10 @@ export function importCaptures(data: AppData, records: readonly CaptureRecord[],
         date,
         accountId,
         categoryId,
-        ...(record.merchant ? { merchant: record.merchant } : {}),
+        ...(what.merchant ? { merchant: what.merchant } : {}),
         source: SOURCE[record.origin],
         captureId: record.captureId,
-        review: { needed: true, reason: conversion ? 'currency' : 'auto_capture', ...(record.rawText ? { rawText: record.rawText } : {}), ...(record.card ? { card: record.card } : {}) },
+        review: { needed: true, reason: conversion ? 'currency' : 'auto_capture', ...(record.rawText ? { rawText: record.rawText } : {}), ...(what.card ? { card: what.card } : {}) },
         // Pagado cuando avisó el sistema: si el saldo de referencia se escribió después, ya lo incluía.
         realizedAt: record.createdAt,
         createdAt: ctx.now,
@@ -285,8 +306,8 @@ export function importCaptures(data: AppData, records: readonly CaptureRecord[],
       origin: record.origin,
       reason: reason ?? 'auto_capture',
       amount,
-      ...(record.merchant ? { merchant: record.merchant } : {}),
-      ...(record.card ? { card: record.card } : {}),
+      ...(what.merchant ? { merchant: what.merchant } : {}),
+      ...(what.card ? { card: what.card } : {}),
       accountId,
       date,
       categoryId,

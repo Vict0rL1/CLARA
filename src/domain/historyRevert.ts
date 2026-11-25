@@ -5,7 +5,7 @@
  * faltante, ¿Qué cambió?): así no cuenta en el presupuesto de tamaño del JS inicial (`npm run size`).
  */
 import { canChangeCurrency } from './currencyChange'
-import { currentValue, sameValue, setValue, setValues } from './history'
+import { currentValue, historyValue, sameValue, setValue, setValues } from './history'
 import type { OpContext, OpResult } from './operations'
 import { occurrencesBetween } from './recurrence'
 import type { AppData, HistoryChange, HistoryCollection, HistoryEntry, LocalDate, Schedule, Transaction } from './types'
@@ -17,7 +17,8 @@ const same = sameValue
  * entrada guardó: una entrada anterior a v13 no tiene `safeToSpend` y sigue pudiendo revertirse.
  */
 function currentValueFor(data: AppData, c: HistoryChange): unknown {
-  const current = currentValue(data, c.collection, c.id)
+  // Sin el texto de un aviso del banco, igual que lo guardó el historial (decisión 184).
+  const current = historyValue(c.collection, currentValue(data, c.collection, c.id))
   if (c.collection !== 'settings' || !c.after || typeof c.after !== 'object') return current
   const all = current as Record<string, unknown>
   return Object.fromEntries(Object.keys(c.after).map((k) => [k, all[k] ?? null]))

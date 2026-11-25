@@ -11,8 +11,9 @@
  * - Importar una copia o reiniciar la demo es un corte (`replace`): no se puede revertir ni
  *   reconstruir el estado anterior a ese punto.
  */
+import { withoutCaptureText } from './captureText'
 import { newId } from './ids'
-import type { AppData, HistoryChange, HistoryCollection, HistoryEntry, HistorySource, Settings } from './types'
+import type { AppData, HistoryChange, HistoryCollection, HistoryEntry, HistorySource, Settings, Transaction, TrashEntry } from './types'
 
 /** Como mucho se conservan estas entradas; al superarlas sale la más antigua. */
 export const HISTORY_MAX_ENTRIES = 1000
@@ -64,6 +65,22 @@ function financialSettings(s: Settings) {
   return Object.fromEntries(FINANCIAL_SETTINGS.map((k) => [k, s[k] ?? null]))
 }
 
+/**
+ * Lo que el historial guarda (y compara) de un registro: todo, salvo el texto original de un aviso del banco
+ * (`review.rawText`), que solo vive en el movimiento mientras espera revisión (Fase 4, decisión 184). Revertir no lo
+ * devuelve: el movimiento vuelve «Por revisar», sin el texto.
+ */
+export function historyValue(collection: HistoryCollection, item: unknown): unknown {
+  if (item === null || typeof item !== 'object') return item
+  if (collection === 'transactions') return withoutCaptureText(item as Transaction)
+  if (collection === 'trash') {
+    const entry = item as TrashEntry
+    const tx = entry.transaction ? withoutCaptureText(entry.transaction) : entry.transaction
+    return tx === entry.transaction ? entry : { ...entry, transaction: tx }
+  }
+  return item
+}
+
 /** Registros financieros que cambiaron entre dos estados (en una pasada, por id). */
 export function diffForHistory(prev: AppData, next: AppData): HistoryChange[] {
   const changes: HistoryChange[] = []
@@ -77,10 +94,14 @@ export function diffForHistory(prev: AppData, next: AppData): HistoryChange[] {
       seen.add(item.id)
       const old = before.get(item.id)
       if (old === item) continue
-      if (!old) changes.push({ collection, id: item.id, before: null, after: item })
-      else if (!same(old, item)) changes.push({ collection, id: item.id, before: old, after: item })
+      const after = historyValue(collection, item)
+      if (!old) changes.push({ collection, id: item.id, before: null, after })
+      else {
+        const was = historyValue(collection, old)
+        if (!same(was, after)) changes.push({ collection, id: item.id, before: was, after })
+      }
     }
-    for (const [id, old] of before) if (!seen.has(id)) changes.push({ collection, id, before: old, after: null })
+    for (const [id, old] of before) if (!seen.has(id)) changes.push({ collection, id, before: historyValue(collection, old), after: null })
   }
   if (prev.settings !== next.settings) {
     const a = financialSettings(prev.settings)

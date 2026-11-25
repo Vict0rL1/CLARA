@@ -23,6 +23,50 @@
         }
       }
     },
+    "Add an expense in ${applicationName}": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anotar un gasto en ${applicationName}"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter une dépense dans ${applicationName}"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anotar uma despesa no ${applicationName}"
+          }
+        }
+      }
+    },
+    "New expense in ${applicationName}": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nuevo gasto en ${applicationName}"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nouvelle dépense dans ${applicationName}"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nova despesa no ${applicationName}"
+          }
+        }
+      }
+    },
     "Record a payment in ${applicationName}": {
       "localizations": {
         "es": {

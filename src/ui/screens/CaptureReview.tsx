@@ -19,8 +19,10 @@
 import { useMemo, useState } from 'react'
 import { activeAccounts } from '../../domain/balances'
 import { assignCardAccount, cardIsMapped, confirmReviews, dismissProposals, foreignAmount, registerProposal, reopenReviews, restoreProposals, type RegisterWith } from '../../domain/captureImport'
+import { singleMarkedAmount } from '../../domain/bankAlert'
 import { bocSeries, bocWindow, type BocRate } from '../../domain/boc'
 import { convertToBudget } from '../../domain/fx'
+import { minorToInputString } from '../../domain/money'
 import { activeTrip, tripRate } from '../../domain/trips'
 import { normalizeText } from '../../domain/text'
 import { transactionsToReview } from '../../domain/captureReview'
@@ -241,9 +243,16 @@ function ProposalCard({ proposal: p, tr }: { proposal: CaptureProposal; tr: Text
   const today = useToday()
   const run = useRun()
   const toast = useToast()
-  const [text, setText] = useState('')
-  const [error, setError] = useState<string | null>(null)
   const budget = data.settings.currency
+  // Fase 4: un aviso del banco sin formato conocido. Si el texto tiene un único importe con su moneda y es la del
+  // presupuesto, se escribe en el campo como sugerencia (se dice); la persona lo comprueba y registra.
+  const textAlert = !p.test && p.reason === 'unparsed' && p.amount.kind === 'unreadable' && !!p.rawText
+  const [suggested] = useState(() => {
+    const guess = textAlert ? singleMarkedAmount(p.rawText!, data.settings) : null
+    return guess?.amount.kind === 'budget' ? minorToInputString(guess.amount.minor, budget, fmt.numberLocale) : ''
+  })
+  const [text, setText] = useState(suggested)
+  const [error, setError] = useState<string | null>(null)
   const source = sourceOf(p.origin)
   const name = p.merchant ?? tr.t('capture.proposal.noMerchant')
   // La prueba de Ajustes nunca se registra: solo se descarta.
@@ -270,15 +279,17 @@ function ProposalCard({ proposal: p, tr }: { proposal: CaptureProposal; tr: Text
     ? tr.t('capture.proposal.why.test')
     : p.reason === 'duplicate'
       ? tr.t('capture.proposal.why.duplicate')
-      : p.amount.kind === 'unreadable'
-        ? tr.t('capture.proposal.why.unparsed', { original: p.amount.text, budget })
-        : p.reason === 'currency' && p.amount.kind === 'foreign'
-          ? tr.t('capture.proposal.why.foreign', { currency: p.amount.currency, original: fmt.moneyIn(p.amount.minor, p.amount.currency), budget })
-          : p.reason === 'currency' && p.amount.kind === 'ambiguous'
-            ? tr.t('capture.proposal.why.ambiguous', { original: p.amount.text, budget })
-            : data.settings.capture?.autoSave === false
-              ? tr.t('capture.proposal.why.autoSaveOff')
-              : tr.t('capture.proposal.why.manual')
+      : textAlert
+        ? tr.t('capture.proposal.why.unknownText', { budget })
+        : p.amount.kind === 'unreadable'
+          ? tr.t('capture.proposal.why.unparsed', { original: p.amount.text, budget })
+          : p.reason === 'currency' && p.amount.kind === 'foreign'
+            ? tr.t('capture.proposal.why.foreign', { currency: p.amount.currency, original: fmt.moneyIn(p.amount.minor, p.amount.currency), budget })
+            : p.reason === 'currency' && p.amount.kind === 'ambiguous'
+              ? tr.t('capture.proposal.why.ambiguous', { original: p.amount.text, budget })
+              : data.settings.capture?.autoSave === false
+                ? tr.t('capture.proposal.why.autoSaveOff')
+                : tr.t('capture.proposal.why.manual')
 
   const register = async (how?: RegisterWith) => {
     let typed: RegisterWith | undefined = how
@@ -390,7 +401,7 @@ function ProposalCard({ proposal: p, tr }: { proposal: CaptureProposal; tr: Text
       {needsAmount && (
         <MoneyField
           label={tr.t('capture.proposal.amountLabel', { budget })}
-          hint={tr.t('capture.proposal.amountHelp')}
+          hint={suggested && text === suggested ? tr.t('capture.proposal.suggested') : tr.t('capture.proposal.amountHelp')}
           value={text}
           onChange={setText}
           error={error}

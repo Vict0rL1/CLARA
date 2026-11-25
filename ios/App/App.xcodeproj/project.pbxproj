@@ -22,6 +22,10 @@
 		392E8852E96B1DACC638D944 /* ClaraCaptureQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = E68B7B08B351624E2B34676B /* ClaraCaptureQueue.swift */; };
 		E59431CC874E2317105A0D1B /* RecordPaymentIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96AD80493D2D4652C5F819A7 /* RecordPaymentIntent.swift */; };
 		50DBA5B00D7B44EF3A5778EE /* ClaraCapturesPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BD1F9415944B9201A920378 /* ClaraCapturesPlugin.swift */; };
+		26E58C44A8B2FBD432392DDF /* RecordTextIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FFD33D720619AE9A58A343F /* RecordTextIntent.swift */; };
+		9731AEB9A2945E470BA0F43A /* ClaraOpenIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EC935A906EC5F03A525AE69 /* ClaraOpenIntent.swift */; };
+		EB32FADE7F8F9BE3302151CF /* ClaraShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00D523D8C29F3F8F6B742EC /* ClaraShortcuts.swift */; };
+		96BCACC01BB6DEE4FA737DFC /* ClaraLaunchPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BEA5D82399BE7A0B5732A8B /* ClaraLaunchPlugin.swift */; };
 		823B2B0065E8F8B53391BD5C /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 6D9171C8595DD0F57E983884 /* Localizable.xcstrings */; };
 		3DD82A479AC80C0FC07DA853 /* AppShortcuts.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CE3622A85DEBA56CEFC36A65 /* AppShortcuts.xcstrings */; };
 /* End PBXBuildFile section */
@@ -40,6 +44,10 @@
 		E68B7B08B351624E2B34676B /* ClaraCaptureQueue.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClaraCaptureQueue.swift; sourceTree = "<group>"; };
 		96AD80493D2D4652C5F819A7 /* RecordPaymentIntent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordPaymentIntent.swift; sourceTree = "<group>"; };
 		7BD1F9415944B9201A920378 /* ClaraCapturesPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClaraCapturesPlugin.swift; sourceTree = "<group>"; };
+		7FFD33D720619AE9A58A343F /* RecordTextIntent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordTextIntent.swift; sourceTree = "<group>"; };
+		9EC935A906EC5F03A525AE69 /* ClaraOpenIntent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClaraOpenIntent.swift; sourceTree = "<group>"; };
+		A00D523D8C29F3F8F6B742EC /* ClaraShortcuts.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClaraShortcuts.swift; sourceTree = "<group>"; };
+		8BEA5D82399BE7A0B5732A8B /* ClaraLaunchPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClaraLaunchPlugin.swift; sourceTree = "<group>"; };
 		6D9171C8595DD0F57E983884 /* Localizable.xcstrings */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		CE3622A85DEBA56CEFC36A65 /* AppShortcuts.xcstrings */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.json.xcstrings; path = AppShortcuts.xcstrings; sourceTree = "<group>"; };
 		63D65B826C7AF31C710F246F /* ClaraStoragePlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClaraStoragePlugin.swift; sourceTree = "<group>"; };
@@ -95,6 +103,10 @@
 				E68B7B08B351624E2B34676B /* ClaraCaptureQueue.swift */,
 				96AD80493D2D4652C5F819A7 /* RecordPaymentIntent.swift */,
 				7BD1F9415944B9201A920378 /* ClaraCapturesPlugin.swift */,
+				7FFD33D720619AE9A58A343F /* RecordTextIntent.swift */,
+				9EC935A906EC5F03A525AE69 /* ClaraOpenIntent.swift */,
+				A00D523D8C29F3F8F6B742EC /* ClaraShortcuts.swift */,
+				8BEA5D82399BE7A0B5732A8B /* ClaraLaunchPlugin.swift */,
 				6D9171C8595DD0F57E983884 /* Localizable.xcstrings */,
 				CE3622A85DEBA56CEFC36A65 /* AppShortcuts.xcstrings */,
 			);
@@ -195,6 +207,10 @@
 				392E8852E96B1DACC638D944 /* ClaraCaptureQueue.swift in Sources */,
 				E59431CC874E2317105A0D1B /* RecordPaymentIntent.swift in Sources */,
 				50DBA5B00D7B44EF3A5778EE /* ClaraCapturesPlugin.swift in Sources */,
+				26E58C44A8B2FBD432392DDF /* RecordTextIntent.swift in Sources */,
+				9731AEB9A2945E470BA0F43A /* ClaraOpenIntent.swift in Sources */,
+				EB32FADE7F8F9BE3302151CF /* ClaraShortcuts.swift in Sources */,
+				96BCACC01BB6DEE4FA737DFC /* ClaraLaunchPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

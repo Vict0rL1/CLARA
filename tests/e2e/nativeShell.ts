@@ -21,6 +21,8 @@ export interface FakeBiometric {
  * - `ClaraCaptures` (`ClaraCapturesPlugin.swift`): la cola `captures.jsonl` como un «archivo» más (sobrevive a
  *   recargar), con `read`, `remove`, `appendTest` y el evento `capturesAdded` (`addFakeCapture` lo dispara, como la
  *   acción de Atajos con la app abierta).
+ * - `ClaraLaunch` (`ClaraLaunchPlugin.swift`, Fase 4): `take` entrega una vez la pantalla pedida y el evento
+ *   `openScreen` avisa (`requestFakeScreen`, como «Nuevo gasto en Clara» o el control con la app abierta).
  *
  * Es un doble: comprueba el lado web de la app (repositorio nativo, textos, pantallas). No dice nada del Swift ni del
  * iPhone real; eso solo se prueba compilando en Xcode.
@@ -120,6 +122,15 @@ export async function asNativeApp(page: Page, options: { storage?: boolean; biom
         },
         removeListener: () => ({}),
       }
+      // Pantalla pedida desde fuera: la guarda `requestFakeScreen` (o `seedFakeScreen` antes de cargar) y `take` la entrega una vez.
+      plugins.ClaraLaunch = {
+        take: () => {
+          const screen = sessionStorage.getItem('fake-launch')
+          sessionStorage.removeItem('fake-launch')
+          return screen === null ? {} : { screen }
+        },
+        removeListener: () => ({}),
+      }
       const listeners: Record<string, (() => void)[]> = {}
       ;(window as unknown as { __fakeNativeFire: (event: string) => void }).__fakeNativeFire = (event) => (listeners[event] ?? []).forEach((l) => l())
       const w = window as unknown as Record<string, unknown>
@@ -129,7 +140,7 @@ export async function asNativeApp(page: Page, options: { storage?: boolean; biom
         getPlatform: () => 'ios',
         PluginHeaders: Object.entries(plugins).map(([name, methods]) => ({
           name,
-          methods: [...Object.keys(methods).map((m) => ({ name: m, rtype: 'promise' })), ...(name === 'ClaraCaptures' ? [{ name: 'addListener', rtype: 'callback' }] : [])],
+          methods: [...Object.keys(methods).map((m) => ({ name: m, rtype: 'promise' })), ...(name === 'ClaraCaptures' || name === 'ClaraLaunch' ? [{ name: 'addListener', rtype: 'callback' }] : [])],
         })),
         nativePromise: (plugin: string, method: string, o?: Options) => Promise.resolve().then(() => plugins[plugin]![method]!(o ?? {})),
         // Solo `addListener`: guarda la función para que `addFakeCapture` la llame.
@@ -207,4 +218,17 @@ export async function addFakeCapture(page: Page, record: Record<string, unknown>
 export async function seedNativeData(page: Page, data: unknown): Promise<void> {
   await page.evaluate(({ key, text }) => localStorage.setItem(key, JSON.stringify({ text, revision: 1 })), { key: FAKE_NATIVE_PREFIX + 'data', text: JSON.stringify(data) })
   await page.reload()
+}
+
+/** Como «Nuevo gasto en Clara» o el control con la app abierta: deja la pantalla pedida y avisa (`openScreen`). */
+export async function requestFakeScreen(page: Page, screen: string): Promise<void> {
+  await page.evaluate((s) => {
+    sessionStorage.setItem('fake-launch', s)
+    ;(window as unknown as { __fakeNativeFire: (event: string) => void }).__fakeNativeFire('openScreen')
+  }, screen)
+}
+
+/** Como la acción ejecutada ANTES de que la web cargue: la pantalla espera a que la web la pida al arrancar. */
+export async function seedFakeScreen(page: Page, screen: string): Promise<void> {
+  await page.evaluate((s) => sessionStorage.setItem('fake-launch', s), screen)
 }

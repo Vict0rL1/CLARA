@@ -5,6 +5,7 @@
  * Idempotencia: cada registro tiene un id generado al abrir el formulario.
  * Guardar dos veces el mismo id actualiza el registro; no crea duplicados.
  */
+import { withoutCaptureText } from './captureText'
 import { isBudgetAccount } from './balances'
 import { computeBudget } from './budget'
 import { defaultCollectionsV9, defaultSettingsV9 } from './defaults'
@@ -256,7 +257,8 @@ export function deleteTransaction(data: AppData, id: string, ctx: OpContext): Op
   const entry: TrashEntry = {
     id,
     deletedAt: ctx.now,
-    transaction: tx,
+    // «Fue rechazado» o eliminar: el texto de un aviso del banco ya no hace falta (decisión 184).
+    transaction: withoutCaptureText(tx),
     unlinkedRefundIds,
     ...(Object.keys(unlinkedRefundSplits).length ? { unlinkedRefundSplits } : {}),
   }

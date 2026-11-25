@@ -138,3 +138,29 @@ describe('cola de capturas: el importe, sin flotantes ni conversiones', () => {
     expect(readCaptureAmount({ rawAmount: '0.00' }, CAD).kind).toBe('unreadable')
   })
 })
+
+describe('cola de capturas: avisos de texto sin importe (Fase 4, decisión 183)', () => {
+  const textOnly = (o: Record<string, unknown>) => JSON.stringify({ captureId: 'cap-00000001', createdAt: '2026-12-20T03:14:15Z', origin: 'bank_text', ...o })
+
+  it('un aviso del banco o una notificación pueden llegar solo con el texto', () => {
+    const text = [textOnly({ rawText: 'texto del aviso' }), textOnly({ captureId: 'cap-00000002', origin: 'notification', rawText: 'otro aviso' })].join('\n') + '\n'
+    const read = readCaptureQueue(text)
+    expect(read.issues).toEqual([])
+    expect(read.records).toEqual([
+      { captureId: 'cap-00000001', createdAt: '2026-12-20T03:14:15Z', origin: 'bank_text', rawText: 'texto del aviso' },
+      { captureId: 'cap-00000002', createdAt: '2026-12-20T03:14:15Z', origin: 'notification', rawText: 'otro aviso' },
+    ])
+  })
+
+  it('sin importe ni texto, o sin importe desde Apple Pay o Siri, la línea no vale y se señala', () => {
+    const text = [textOnly({}), textOnly({ captureId: 'cap-00000002', rawText: '   ' }), textOnly({ captureId: 'cap-00000003', origin: 'apple_pay', rawText: 'x' }), textOnly({ captureId: 'cap-00000004', origin: 'siri', rawText: 'x' })].join('\n') + '\n'
+    const read = readCaptureQueue(text)
+    expect(read.records).toEqual([])
+    expect(read.issues).toEqual([1, 2, 3, 4].map((n) => ({ line: n, issue: 'rawAmount' })))
+  })
+
+  it('un texto de más de 2 000 caracteres no se acepta (el iPhone lo recorta antes)', () => {
+    expect(readCaptureQueue(textOnly({ rawText: 'x'.repeat(2001) }) + '\n').issues).toEqual([{ line: 1, issue: 'text' }])
+    expect(readCaptureQueue(textOnly({ rawText: 'x'.repeat(2000) }) + '\n').records).toHaveLength(1)
+  })
+})
