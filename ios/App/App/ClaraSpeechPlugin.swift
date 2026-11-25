@@ -19,7 +19,7 @@ import Capacitor
 ///
 /// APIs comprobadas en developer.apple.com: `SFSpeechRecognizer(locale:)`, `supportsOnDeviceRecognition` (iOS 13),
 /// `authorizationStatus()`, `requestAuthorization(_:)`, `SFSpeechAudioBufferRecognitionRequest`,
-/// `requiresOnDeviceRecognition` (iOS 13), `shouldReportPartialResults`, `addsPunctuation` (iOS 16), `endAudio()`,
+/// `requiresOnDeviceRecognition` (iOS 13), `shouldReportPartialResults`, `addsPunctuation` (iOS 16, apagado), `endAudio()`,
 /// `recognitionTask(with:resultHandler:)`, `SFTranscription.formattedString` y
 /// `AVAudioApplication.requestRecordPermission(completionHandler:)` (iOS 17). Textos de permiso:
 /// `NSSpeechRecognitionUsageDescription` y `NSMicrophoneUsageDescription` (`InfoPlist.xcstrings`).
@@ -116,7 +116,9 @@ public class ClaraSpeechPlugin: CAPPlugin, CAPBridgedPlugin {
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
         request.requiresOnDeviceRecognition = true
-        request.addsPunctuation = true
+        // Sin puntuación automática: una coma tras una palabra («Café, 4,50 y Uber, 18») hace que el asistente vea una
+        // sola línea. Los importes siguen saliendo con su coma o punto decimal.
+        request.addsPunctuation = false
         self.request = request
 
         let input = audioEngine.inputNode
