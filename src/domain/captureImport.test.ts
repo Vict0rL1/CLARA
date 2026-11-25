@@ -14,7 +14,10 @@ import {
   restoreProposals,
 } from './captureImport'
 import { captureReviewCount, transactionsToReview } from './captureReview'
+import type { BankAlertPattern } from './bankAlert'
 import { readCaptureQueue, type CaptureRecord } from './captureQueue'
+import { revertConflicts } from './historyRevert'
+import { recordHistory } from './history'
 import { saveTransaction, trashTransactions } from './operations'
 import type { AppData, CaptureProposal } from './types'
 import { CAPTURE_PROCESSED_MAX, CAPTURE_PROPOSALS_MAX } from './validation'
@@ -558,5 +561,96 @@ describe('tarjeta nueva: elegir su cuenta la primera vez', () => {
     const data = imported(twoAccounts(), [record()]).data
     const r = confirmReviews(data, ['cap-00000001'], ctx)
     expect(r.ok && r.data.transactions[0]).not.toHaveProperty('review')
+  })
+})
+
+describe('avisos de texto del banco (Fase 4, decisión 183)', () => {
+  /** Un aviso que llega SOLO con el texto (la acción «Registrar desde texto»), sin importe ni comercio. */
+  const sms = (rawText: string, overrides: Partial<CaptureRecord> = {}): CaptureRecord => ({
+    captureId: 'cap-sms00001',
+    createdAt: '2026-09-28T15:00:00Z',
+    origin: 'bank_text',
+    rawText,
+    ...overrides,
+  })
+  /** Formato de PRUEBA, inventado: no imita a ningún banco (los reales se añaden con ejemplos de Victor). */
+  const TEST_ONLY: BankAlertPattern = { id: 'solo-prueba', re: /PRUEBA (?<amount>.+?) EN (?<merchant>.+?)(?: TARJETA (?<card>\S+))?/, kind: 'purchase', example: 'PRUEBA $4.25 EN CAFE' }
+  const withPatterns = (data: AppData, records: CaptureRecord[], c = ctx) => {
+    const r = importCaptures(deepFreeze(data), records, c, { alertPatterns: [TEST_ONLY] })
+    if (!r.ok) throw new Error(JSON.stringify(r.issues))
+    return r
+  }
+
+  it('un texto sin formato conocido nunca se registra solo: propuesta «sin entender» con el texto y la sugerencia', () => {
+    const r = imported(baseData(), [sms('algo de $4.25 en un sitio')])
+    expect(r.value).toEqual({ saved: [], proposed: ['cap-sms00001'], skipped: [], deferred: [], ack: ['cap-sms00001'] })
+    expect(r.data.transactions).toEqual([])
+    expect(r.data.captures!.proposals).toEqual([
+      {
+        captureId: 'cap-sms00001',
+        capturedAt: '2026-09-28T15:00:00Z',
+        origin: 'bank_text',
+        reason: 'unparsed',
+        amount: { kind: 'unreadable', text: '$4.25' },
+        accountId: 'main',
+        date: '2026-09-28',
+        categoryId: 'other_expense',
+        rawText: 'algo de $4.25 en un sitio',
+        receivedAt: NOW,
+      },
+    ])
+    // Sin sugerencia (dos importes con moneda): el principio del texto.
+    const two = imported(baseData(), [sms('pagado $4.25 disponible $1,000.00')])
+    expect(two.data.captures!.proposals[0]!.amount).toEqual({ kind: 'unreadable', text: 'pagado $4.25 disponible $1,000.00' })
+  })
+
+  it('idempotente: el mismo aviso otra vez no crea nada y se confirma para quitarlo de la cola', () => {
+    const once = imported(baseData(), [sms('algo de $4.25')])
+    const again = importCaptures(once.data, [sms('algo de $4.25')], ctx)
+    expect(again).toMatchObject({ ok: true, unchanged: true, value: { skipped: ['cap-sms00001'], ack: ['cap-sms00001'] } })
+  })
+
+  it('un formato conocido sigue el camino de Apple Pay: gasto «Por revisar» con comercio, tarjeta y el texto hasta revisar', () => {
+    const data = baseData({ settings: { ...baseData().settings, capture: { autoSave: true, cardAccounts: [{ card: '••1234', accountId: 'main' }] } } })
+    const r = withPatterns(data, [sms('PRUEBA $4.25 EN TIM HORTONS TARJETA ••1234')])
+    expect(r.value.saved).toEqual(['cap-sms00001'])
+    expect(r.data.transactions[0]).toMatchObject({
+      id: 'cap-sms00001',
+      kind: 'expense',
+      status: 'realized',
+      amountMinor: 425,
+      merchant: 'TIM HORTONS',
+      source: 'bank_text',
+      captureId: 'cap-sms00001',
+      review: { needed: true, reason: 'auto_capture', rawText: 'PRUEBA $4.25 EN TIM HORTONS TARJETA ••1234', card: '••1234' },
+      realizedAt: '2026-09-28T15:00:00Z',
+    })
+    // 1 000,00 − 4,25 (pagado después del saldo de referencia).
+    expect(accountBalance(r.data, mainOf(r.data)).balanceMinor).toBe(99575)
+  })
+
+  it('un formato conocido también respeta duplicados y «Guardar automáticamente» apagado', () => {
+    const saved = imported(baseData(), [record()])
+    const dup = withPatterns(saved.data, [sms('PRUEBA $4.25 EN Tim Hortons', { createdAt: '2026-09-28T15:01:00Z' })])
+    expect(dup.data.captures!.proposals[0]).toMatchObject({ reason: 'duplicate', similarTxId: 'cap-00000001', amount: { kind: 'budget', minor: 425 } })
+    const off = baseData({ settings: { ...baseData().settings, capture: { autoSave: false, cardAccounts: [] } } })
+    expect(withPatterns(off, [sms('PRUEBA $4.25 EN CAFE')]).data.captures!.proposals[0]).toMatchObject({ reason: 'auto_capture', merchant: 'CAFE' })
+  })
+
+  it('el texto no queda en el historial ni en la papelera; revertir la importación sigue siendo posible', () => {
+    const before = baseData()
+    const r = withPatterns(before, [sms('PRUEBA $4.25 EN CAFE')])
+    const logged = recordHistory(before, r.data, NOW)
+    const entry = logged.history.at(-1)!
+    expect(JSON.stringify(entry)).not.toContain('PRUEBA')
+    expect(entry.changes[0]).toMatchObject({ collection: 'transactions', id: 'cap-sms00001', before: null, after: { review: { needed: true, reason: 'auto_capture' } } })
+    // El movimiento actual SÍ conserva el texto, pero para revertir cuenta igual que lo que guardó el historial.
+    expect(logged.transactions[0]!.review?.rawText).toBe('PRUEBA $4.25 EN CAFE')
+    expect(revertConflicts(logged, entry)).toEqual([])
+    // «Fue rechazado»: a la papelera sin el texto.
+    const trashed = trashTransactions(logged, ['cap-sms00001'], ctx)
+    if (!trashed.ok) throw new Error('trash')
+    expect(trashed.data.trash[0]!.transaction.review).toEqual({ needed: true, reason: 'auto_capture' })
+    expect(JSON.stringify(recordHistory(logged, trashed.data, NOW).history.at(-1))).not.toContain('PRUEBA')
   })
 })

@@ -7,6 +7,8 @@
  * Contrato de una línea (lo escribe el Swift tal cual; el Swift no calcula dinero, solo transporta texto):
  *   { "captureId": "…", "createdAt": "2026-12-20T03:14:15Z", "origin": "apple_pay",
  *     "rawAmount": "1200" | "¥1,200", "currencyHint": "JPY", "merchant": "…", "card": "…", "rawText": "…" }
+ * - Un aviso de texto (`bank_text` o `notification`; Fase 4, «Registrar desde texto») puede llegar SIN `rawAmount`:
+ *   solo con `rawText`, el SMS o la alerta tal cual. Qué dice lo lee `bankAlert.ts`; el Swift no lo interpreta.
  * - Con `currencyHint` (el código ISO 4217 que dé el sistema, p. ej. `IntentCurrencyAmount.currencyCode`),
  *   `rawAmount` es un decimal canónico con punto («1200», «12.5»): lo que da `Decimal.description` en Swift.
  * - Sin `currencyHint`, `rawAmount` es el texto que dio Atajos («CA$12.50», «¥1,200», «12,50 €») y se lee con el mismo
@@ -23,7 +25,8 @@ export interface CaptureRecord {
   /** Marca de tiempo ISO en UTC de cuando el sistema avisó del pago. */
   createdAt: string
   origin: CaptureOrigin
-  rawAmount: string
+  /** El importe tal como llegó. Falta solo en un aviso de texto (`TEXT_ORIGINS`), que trae `rawText`. */
+  rawAmount?: string
   currencyHint?: string
   merchant?: string
   card?: string
@@ -51,17 +54,21 @@ const CANONICAL_DECIMAL = /^\d{1,15}(\.\d{1,9})?$/
 
 const isText = (v: unknown, max: number) => v === undefined || (typeof v === 'string' && v.length <= max)
 
+/** Orígenes que pueden traer solo el texto del aviso, sin importe (Fase 4). */
+export const TEXT_ORIGINS: readonly CaptureOrigin[] = ['bank_text', 'notification']
+
 function validRecord(raw: unknown): { ok: true; record: CaptureRecord } | { ok: false; issue: CaptureLineIssue } {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return { ok: false, issue: 'shape' }
   const r = raw as Record<string, unknown>
   if (typeof r.captureId !== 'string' || !ID.test(r.captureId)) return { ok: false, issue: 'captureId' }
   if (typeof r.createdAt !== 'string' || !ISO_UTC.test(r.createdAt) || Number.isNaN(Date.parse(r.createdAt))) return { ok: false, issue: 'createdAt' }
   if (typeof r.origin !== 'string' || !(CAPTURE_ORIGINS as readonly string[]).includes(r.origin)) return { ok: false, issue: 'origin' }
-  if (typeof r.rawAmount !== 'string' || r.rawAmount.trim() === '' || r.rawAmount.length > CAPTURE_LIMITS.amount) return { ok: false, issue: 'rawAmount' }
+  const textOnly = r.rawAmount === undefined && TEXT_ORIGINS.includes(r.origin as CaptureOrigin) && typeof r.rawText === 'string' && r.rawText.trim() !== ''
+  if (!textOnly && (typeof r.rawAmount !== 'string' || r.rawAmount.trim() === '' || r.rawAmount.length > CAPTURE_LIMITS.amount)) return { ok: false, issue: 'rawAmount' }
   if (r.currencyHint !== undefined && (typeof r.currencyHint !== 'string' || !/^[A-Za-z]{3}$/.test(r.currencyHint))) return { ok: false, issue: 'currencyHint' }
   if (!isText(r.merchant, LIMITS.nameMax * 4) || !isText(r.card, CAPTURE_LIMITS.card) || !isText(r.rawText, CAPTURE_LIMITS.rawText)) return { ok: false, issue: 'text' }
   if (r.test !== undefined && r.test !== true) return { ok: false, issue: 'shape' }
-  const record: CaptureRecord = { captureId: r.captureId, createdAt: r.createdAt, origin: r.origin as CaptureOrigin, rawAmount: r.rawAmount }
+  const record: CaptureRecord = { captureId: r.captureId, createdAt: r.createdAt, origin: r.origin as CaptureOrigin, ...(typeof r.rawAmount === 'string' ? { rawAmount: r.rawAmount } : {}) }
   if (typeof r.currencyHint === 'string') record.currencyHint = r.currencyHint.toUpperCase()
   const merchant = typeof r.merchant === 'string' ? r.merchant.replace(/\s+/g, ' ').trim() : ''
   if (merchant) record.merchant = merchant.slice(0, LIMITS.nameMax)
@@ -128,7 +135,7 @@ export function canonicalDecimalToMinor(text: string, currency: string): number 
   return Number(minor)
 }
 
-export function readCaptureAmount(record: Pick<CaptureRecord, 'rawAmount' | 'currencyHint'>, settings: { currency: string; numberLocale: string }): CaptureAmount {
+export function readCaptureAmount(record: { rawAmount: string; currencyHint?: string }, settings: { currency: string; numberLocale: string }): CaptureAmount {
   const raw = record.rawAmount.trim()
   const hint = record.currencyHint?.toUpperCase()
   if (hint && isSupportedCurrency(hint) && CANONICAL_DECIMAL.test(raw)) {
