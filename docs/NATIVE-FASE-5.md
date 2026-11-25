@@ -143,4 +143,7 @@ En este entorno (Linux, Node 22, Chromium de Playwright), sobre `feat/ios-fase-5
 - `npm run build` y `npm run size`: JS inicial 839,4 KB de 844,6 (+0,5 KB respecto a la Fase 4; lo nuevo se carga
   aparte).
 - Navegador: lo que toca esta fase (`native-assistant.spec.ts`, las pruebas del asistente y las de la app simulada),
-  126 de 126 en celular, celular 320 px y escritorio. La matriz completa la corre el CI del PR.
+  126 de 126 en celular, celular 320 px y escritorio.
+- Matriz completa de navegador aquí (tres tamaños, 4 procesos): 1 366 pasan, 4 omitidas y 1 falla. La que falla es
+  `audit-nov04` F2 en celular, que no toca esta fase: carga 9 008 programados y se le acabó la espera de 20 s con las
+  4 pruebas en paralelo. Repetida sola, pasa (42,7 s). El CI del PR corre la matriz otra vez.
