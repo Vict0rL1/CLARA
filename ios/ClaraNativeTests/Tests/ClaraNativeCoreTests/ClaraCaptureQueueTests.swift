@@ -36,6 +36,25 @@ final class ClaraCaptureQueueTests: XCTestCase {
         XCTAssertEqual(try JSONSerialization.jsonObject(with: Data(try record("x", test: true).utf8)) as? NSDictionary, ["captureId": "x", "createdAt": "2026-09-21T14:13:20Z", "origin": "apple_pay", "rawAmount": "4.25", "currencyHint": "CAD", "merchant": "Tim Hortons", "test": true] as NSDictionary)
     }
 
+    /// Fase 4: «Registrar desde texto» escribe solo el texto del aviso, sin importe; la web lo interpreta.
+    func testATextLineHasNoAmountAndKeepsTheText() throws {
+        let line = try ClaraCaptureQueue.line(captureId: "cap-sms00001", createdAt: Date(timeIntervalSince1970: 1_790_000_000), origin: "bank_text", rawAmount: nil, currencyHint: nil, merchant: nil, card: nil, rawText: "  Aviso\ncon dos líneas  ")
+        XCTAssertFalse(line.contains("\n"), "el salto de línea del aviso va escapado: una línea por captura")
+        XCTAssertEqual(try JSONSerialization.jsonObject(with: Data(line.utf8)) as? NSDictionary, ["captureId": "cap-sms00001", "createdAt": "2026-09-21T14:13:20Z", "origin": "bank_text", "rawText": "Aviso\ncon dos líneas"] as NSDictionary)
+    }
+
+    /// La web no acepta más de 2 000 unidades UTF-16 (`CAPTURE_TEXT_MAX`): se recorta antes, sin partir un emoji.
+    func testLongTextIsClippedInUTF16WithoutSplittingACharacter() throws {
+        XCTAssertEqual(ClaraCaptureQueue.clip("abc", maxUTF16: 2000), "abc")
+        let long = String(repeating: "a", count: 1999) + "😀" + "b"
+        let clipped = ClaraCaptureQueue.clip(long, maxUTF16: 2000)
+        XCTAssertEqual(clipped, String(repeating: "a", count: 1999), "el emoji (2 unidades) ya no cabe entero")
+        XCTAssertEqual(ClaraCaptureQueue.clip(String(repeating: "a", count: 1998) + "😀b", maxUTF16: 2000).utf16.count, 2000)
+        let line = try ClaraCaptureQueue.line(captureId: "cap-sms00002", createdAt: Date(), origin: "bank_text", rawAmount: nil, currencyHint: nil, merchant: nil, card: nil, rawText: String(repeating: "x", count: 5000))
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any])
+        XCTAssertEqual((object["rawText"] as? String)?.utf16.count, 2000)
+    }
+
     func testDecimalDescriptionIsCanonicalWithADot() {
         // Lo que escribe la acción con `IntentCurrencyAmount.amount`: siempre con punto, sin separador de miles.
         XCTAssertEqual(Decimal(string: "1200")!.description, "1200")

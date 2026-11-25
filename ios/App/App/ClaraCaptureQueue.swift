@@ -50,21 +50,42 @@ final class ClaraCaptureQueue {
         directory.appendingPathComponent(ClaraCaptureQueue.fileName, isDirectory: false)
     }
 
+    /// Lo más largo que la web acepta de un texto (`CAPTURE_TEXT_MAX`, contado como JavaScript: en UTF-16).
+    static let maxTextUTF16 = 2000
+
     /// Una línea de la cola, con las claves que lee `captureQueue.ts`. Las vacías no se escriben.
-    static func line(captureId: String, createdAt: Date, origin: String, rawAmount: String, currencyHint: String?, merchant: String?, card: String?, test: Bool = false) throws -> String {
+    ///
+    /// Un aviso de texto (Fase 4, «Registrar desde texto») va sin `rawAmount` y con `rawText`: la web lo interpreta.
+    static func line(captureId: String, createdAt: Date, origin: String, rawAmount: String?, currencyHint: String?, merchant: String?, card: String?, rawText: String? = nil, test: Bool = false) throws -> String {
         var record: [String: Any] = [
             "captureId": captureId,
             "createdAt": iso8601(createdAt),
             "origin": origin,
-            "rawAmount": rawAmount,
         ]
+        if let rawAmount, !rawAmount.isEmpty { record["rawAmount"] = rawAmount }
         if let hint = currencyHint, !hint.isEmpty { record["currencyHint"] = hint }
         if let merchant = merchant?.trimmingCharacters(in: .whitespacesAndNewlines), !merchant.isEmpty { record["merchant"] = merchant }
         if let card = card?.trimmingCharacters(in: .whitespacesAndNewlines), !card.isEmpty { record["card"] = card }
+        if let text = rawText?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty { record["rawText"] = clip(text, maxUTF16: maxTextUTF16) }
         if test { record["test"] = true }
         let data = try JSONSerialization.data(withJSONObject: record, options: [.sortedKeys, .withoutEscapingSlashes])
         // JSONSerialization nunca escribe saltos de línea sin escapar: una línea por pago.
         return String(decoding: data, as: UTF8.self)
+    }
+
+    /// El texto recortado a `maxUTF16` unidades UTF-16 (lo que cuenta `String.length` en la web) sin partir un carácter:
+    /// un emoji o una letra con acento compuesto entran enteros o no entran.
+    static func clip(_ text: String, maxUTF16: Int) -> String {
+        if text.utf16.count <= maxUTF16 { return text }
+        var used = 0
+        var out = ""
+        for character in text {
+            let size = String(character).utf16.count
+            if used + size > maxUTF16 { break }
+            out.append(character)
+            used += size
+        }
+        return out
     }
 
     /// `2026-12-20T03:14:15Z`: UTC, sin fracciones (lo que acepta `captureQueue.ts`).

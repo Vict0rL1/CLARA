@@ -17,9 +17,8 @@ extension Notification.Name {
 /// APIs comprobadas en developer.apple.com: `AppIntent` (`title`, `description: IntentDescription?`, `perform()`),
 /// `IntentParameter` (`needsValueError(_:)`), `IntentCurrencyAmount` (`amount: Decimal`, `currencyCode: String`),
 /// `Decimal.FormatStyle.Currency(code:locale:)` y `Decimal.formatted(_:)` (iOS 15),
-/// `ProvidesDialog`, `IntentResult.result(dialog:)`, `AppShortcutsProvider`, `AppShortcut(intent:phrases:shortTitle:
-/// systemImageName:)` (iOS 17) y `AppShortcutPhraseToken.applicationName`. Los textos se traducen en
-/// `Localizable.xcstrings` y las frases en `AppShortcuts.xcstrings`.
+/// `ProvidesDialog` e `IntentResult.result(dialog:)`. Los textos se traducen en `Localizable.xcstrings`; las frases
+/// para Siri están en `ClaraShortcuts.swift` y `AppShortcuts.xcstrings`.
 struct RecordPaymentIntent: AppIntent {
     static let title: LocalizedStringResource = "Record payment in Clara"
     static let description: IntentDescription? = IntentDescription("Adds a payment for Clara to review. Clara reads it the next time it opens. Nothing leaves your iPhone.")
@@ -73,20 +72,5 @@ struct RecordPaymentIntent: AppIntent {
             return .result(dialog: "Clara: \(shown) at \(place), to review")
         }
         return .result(dialog: "Clara: \(shown), to review")
-    }
-}
-
-/// La acción aparece sola en Atajos (y se puede pedir a Siri) sin que la persona la cree.
-struct ClaraShortcuts: AppShortcutsProvider {
-    static var appShortcuts: [AppShortcut] {
-        AppShortcut(
-            intent: RecordPaymentIntent(),
-            phrases: [
-                "Record a payment in \(.applicationName)",
-                "Add a payment to \(.applicationName)",
-            ],
-            shortTitle: "Record payment",
-            systemImageName: "creditcard"
-        )
     }
 }
