@@ -9,6 +9,7 @@ import { enablePseudoLocale } from './i18n'
 import { AppStore, getStore, setStore } from './state/store'
 import { isNativeIOS, provideNativeServices } from './platform'
 import { createPlatformRepository } from './platform/repository'
+import { navigate } from './ui/router'
 import './styles.css'
 import { watchThemeChanges } from './ui/theme'
 
@@ -36,6 +37,10 @@ if (isNativeIOS()) {
   // Dentro de la app no hay descargas: los archivos salen por la hoja Compartir (decisión 167).
   void Promise.all([import('./platform/files'), import('./platform/native/files')])
     .then(([files, native]) => provideNativeServices({ shareTextFile: (filename, text) => files.shareTextFile(native.fileSharer, filename, text) }))
+    .catch(() => {})
+  // «Nuevo gasto en Clara» y el control del Centro de control abren el formulario (Fase 4, decisión 185).
+  void Promise.all([import('./platform/nativeLaunch'), import('./platform/native/launch')])
+    .then(([launch, native]) => launch.followLaunchRequests(native.launchPlugin, (path) => navigate(path)))
     .catch(() => {})
 }
 // Pseudo-locale solo en desarrollo: `?pseudo=1` marca todo texto que pasa por i18n.

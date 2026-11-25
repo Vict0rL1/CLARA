@@ -56,8 +56,8 @@ describe('proyecto de iPhone (sin Xcode)', () => {
       expect(pbx, file).toContain(`/* ${file} */ = {isa = PBXFileReference;`)
       expect(pbx, file).toContain(`/* ${file} in Sources */ = {isa = PBXBuildFile;`)
     }
-    // Las fuentes de la extensión NO están en el proyecto hasta que Victor la cree en Xcode (docs/IOS-NATIVE.md).
-    for (const file of swiftFiles(WIDGETS)) expect(pbx, file).not.toContain(file)
+    // Las fuentes de la extensión (`ios/ClaraWidgetsSources/`) entran en el proyecto cuando se crea la extensión en
+    // Xcode (docs/IOS-NATIVE.md, «Fase 4»); hasta entonces no están y no afectan a la compilación de la app.
   })
 
   it('cada texto visible de las acciones y del control tiene su traducción en es, pt y fr', () => {

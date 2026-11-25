@@ -7,11 +7,16 @@
  * - Tarjeta → cuenta y la cuenta por defecto (solo cuentas activas).
  * - Guía para crear la automatización y «Probar», que escribe una prueba por el mismo camino que un pago real
  *   (`state/captureSync.ts`); la prueba nunca cuenta en ninguna cifra.
+ * - Fase 4 (decisiones 183 y 185): guía de los avisos del banco por SMS («Registrar desde texto en Clara»), «Probar un
+ *   aviso» (lee el texto pegado con `domain/bankAlert.ts` y dice qué haría Clara; no guarda nada) y «Nuevo gasto en un
+ *   toque» (botón de Acción, Tocar atrás, Siri).
  *
  * Textos en el paquete diferido `capture`; el título de la sección está en el diccionario principal (índice y búsqueda).
  */
 import { useMemo, useState } from 'react'
 import { activeAccounts } from '../../../domain/balances'
+import { BANK_ALERT_PATTERNS, readBankAlert, type BankAlertRead } from '../../../domain/bankAlert'
+import type { CaptureAmount } from '../../../domain/captureQueue'
 import { updateSettings } from '../../../domain/operations'
 import { normalizeText } from '../../../domain/text'
 import type { CaptureSettings, Language } from '../../../domain/types'
@@ -22,7 +27,7 @@ import { useRun } from '../../../state/hooks'
 import { useData } from '../../../state/store'
 import { Toggle } from '../../components/base'
 import { Alert, Card } from '../../components/common'
-import { SelectField, TextField } from '../../components/fields'
+import { SelectField, TextAreaField, TextField } from '../../components/fields'
 import { Icon } from '../../components/Icon'
 import { PackLangScope } from '../../components/PackLangScope'
 import { PackNotice } from '../../components/PackNotice'
@@ -65,6 +70,9 @@ function CaptureBody({ texts, packLanguage }: { texts: Record<string, string>; p
   const [cardAccount, setCardAccount] = useState(accounts[0]?.id ?? '')
   const [cardError, setCardError] = useState<string | null>(null)
   const [test, setTest] = useState<'idle' | 'running' | 'ok' | 'failed'>('idle')
+  const [alertText, setAlertText] = useState('')
+  const [alertRead, setAlertRead] = useState<BankAlertRead | null>(null)
+  const [alertError, setAlertError] = useState<string | null>(null)
 
   const save = async (next: CaptureSettings) => {
     const { result, saved } = await run((d, c) => updateSettings(d, { capture: next }, c))
@@ -80,6 +88,18 @@ function CaptureBody({ texts, packLanguage }: { texts: Record<string, string>; p
     setCardError(null)
     if (await save({ ...capture, cardAccounts: [...capture.cardAccounts, { card: name.slice(0, 64), accountId: cardAccount }] })) setCard('')
   }
+
+  // «Probar un aviso»: solo lee el texto en memoria; no se guarda ni sale del iPhone.
+  const readAlert = () => {
+    if (!alertText.trim()) {
+      setAlertRead(null)
+      return setAlertError(t('capture.settings.smsTestEmpty'))
+    }
+    setAlertError(null)
+    setAlertRead(readBankAlert(alertText, data.settings))
+  }
+  const amountText = (a: CaptureAmount, written?: string) =>
+    a.kind === 'budget' ? fmt.money(a.minor) : a.kind === 'foreign' ? fmt.moneyIn(a.minor, a.currency) : (written ?? a.text)
 
   const runTest = async () => {
     setTest('running')
@@ -156,6 +176,58 @@ function CaptureBody({ texts, packLanguage }: { texts: Record<string, string>; p
         </Alert>
       )}
       {test === 'failed' && <Alert tone="critical" title={t('capture.settings.testFailed')} />}
+
+      <h3 className="section-title">{t('capture.settings.smsTitle')}</h3>
+      <p className="note">{t('capture.settings.smsHelp')}</p>
+      <p className="note" data-testid="capture-sms-state">
+        {t(BANK_ALERT_PATTERNS.length === 0 ? 'capture.settings.smsStateNone' : 'capture.settings.smsStateSome')}
+      </p>
+      <ol className="bullets">
+        {(['sms1', 'sms2', 'sms3', 'sms4', 'sms5'] as const).map((k) => (
+          <li key={k}>{t(`capture.settings.${k}`)}</li>
+        ))}
+      </ol>
+      <p className="note">{t('capture.settings.smsNote')}</p>
+
+      <h3 className="section-title">{t('capture.settings.smsTestTitle')}</h3>
+      <TextAreaField
+        label={t('capture.settings.smsTestLabel')}
+        hint={t('capture.settings.smsTestHelp')}
+        value={alertText}
+        onChange={(e) => {
+          setAlertText(e.target.value)
+          setAlertRead(null)
+        }}
+        error={alertError}
+        rows={3}
+        maxLength={2000}
+        autoComplete="off"
+        spellCheck={false}
+      />
+      <button type="button" className="btn btn--secondary" onClick={readAlert} data-testid="capture-sms-test">
+        <Icon name="search" size={16} />
+        {t('capture.settings.smsTestButton')}
+      </button>
+      {alertRead && (
+        <p className="note" role="status" data-testid="capture-sms-result">
+          <Icon name="info" size={16} />{' '}
+          {alertRead.kind === 'known'
+            ? alertRead.merchant
+              ? t('capture.settings.smsTestKnown', { amount: amountText(alertRead.amount), merchant: alertRead.merchant })
+              : t('capture.settings.smsTestKnownNoMerchant', { amount: amountText(alertRead.amount) })
+            : alertRead.guess
+              ? t('capture.settings.smsTestGuess', { amount: amountText(alertRead.guess.amount, alertRead.guess.text) })
+              : t('capture.settings.smsTestNoGuess')}
+        </p>
+      )}
+
+      <h3 className="section-title">{t('capture.settings.oneTapTitle')}</h3>
+      <p className="note">{t('capture.settings.oneTapHelp')}</p>
+      <ul className="bullets">
+        {(['oneTapAction', 'oneTapBackTap', 'oneTapSiri'] as const).map((k) => (
+          <li key={k}>{t(`capture.settings.${k}`)}</li>
+        ))}
+      </ul>
     </div>
   )
 }
