@@ -119,8 +119,9 @@ public class ClaraVisionPlugin: CAPPlugin, CAPBridgedPlugin, VNDocumentCameraVie
         }
         return (request.results ?? []).compactMap { observation in
             guard let best = observation.topCandidates(1).first else { return nil }
+            // `Double` y no `CGFloat`: el puente de Capacitor convierte con seguridad los tipos numéricos de JSON.
             let box = observation.boundingBox
-            return ["text": best.string, "x": box.origin.x, "y": box.origin.y, "width": box.size.width, "height": box.size.height]
+            return ["text": best.string, "x": Double(box.origin.x), "y": Double(box.origin.y), "width": Double(box.size.width), "height": Double(box.size.height)]
         }
     }
 
