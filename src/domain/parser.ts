@@ -40,6 +40,8 @@ export interface ParsedEntry {
    * (`withCurrencyMarks`) y la línea no se registra hasta corregirla (QA V2, CUR-01/02).
    */
   currencyConflict?: readonly [string, string]
+  /** Propuesta de la IA del propio iPhone (Fase 5, `deviceAi.ts`): la vista previa lo dice. Nunca se guarda. */
+  suggestedBy?: 'deviceAi'
 }
 
 export type ParserHint =
