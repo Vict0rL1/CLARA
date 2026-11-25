@@ -145,4 +145,6 @@ En este entorno (Linux, Node 22, Chromium de Playwright), sobre `feat/ios-fase-4
   140 de 140.
 - `npm run build` y `npm run size`: JS inicial 838,9 KB de 844,6 (+0,7 KB respecto a la Fase 3; lo nuevo se carga
   aparte).
-- La matriz completa de navegador (tres tamaños) y el CI del PR se anotan abajo cuando terminen.
+- La matriz completa de navegador aquí se cortó al reiniciarse el contenedor. La corrió el CI del PR #21 sobre
+  `b64f3fe`: `check` (tipos, lint, textos, unitarias, compilación y tamaño) y `e2e` en celular, celular 320 px y
+  escritorio, todo en verde (25-nov).
