@@ -601,7 +601,7 @@ export function Assistant({ route }: { route: Route }) {
             </div>
           )}
           {speech && <p className="note">{t('assistant.voiceHint')}</p>}
-          <DeviceAssistantNotes device={device} voiceError={voiceError} />
+          <DeviceAssistantNotes device={device} voiceError={voiceError} thinking={busy && device.aiReady} />
         </form>
       </Card>
 

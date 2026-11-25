@@ -17,7 +17,7 @@ import { useToast } from './components/toastContext'
 import type { DeviceAssistant } from './useDeviceAssistant'
 
 /** Debajo del campo del asistente: cómo se dicta en este iPhone, o por qué no se puede; y la IA, si está encendida. */
-export function DeviceAssistantNotes({ device, voiceError }: { device: DeviceAssistant; voiceError: 'busy' | 'noOnDevice' | 'denied' | 'failed' | null }) {
+export function DeviceAssistantNotes({ device, voiceError, thinking }: { device: DeviceAssistant; voiceError: 'busy' | 'noOnDevice' | 'denied' | 'failed' | null; thinking: boolean }) {
   if (!device.active) return null
   if (!device.text) return device.pack.status === 'failed' ? <PackNotice state={device.pack} /> : null
   const dt = device.text
@@ -39,6 +39,11 @@ export function DeviceAssistantNotes({ device, voiceError }: { device: DeviceAss
         {device.aiReady && (
           <p className="note" data-testid="device-ai-on">
             {dt('device.ai.onNote')}
+          </p>
+        )}
+        {thinking && (
+          <p className="note" role="status" data-testid="device-ai-thinking">
+            {dt('device.ai.thinking')}
           </p>
         )}
       </div>

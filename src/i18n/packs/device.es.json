@@ -1,6 +1,5 @@
 {
   "device.voice.hint": "Se dicta en este iPhone: el audio no sale del teléfono. Al terminar, Clara propone y nada se registra sin tu confirmación.",
-  "device.voice.listening": "Escuchando en este iPhone…",
   "device.voice.unavailable.unsupportedLocale": "Dictado: este iPhone no reconoce el idioma de Clara.",
   "device.voice.unavailable.noOnDevice": "Dictado: este iPhone no puede reconocer el idioma de Clara sin conexión, y Clara solo usa el dictado que se hace en el teléfono.",
   "device.voice.unavailable.denied": "Dictado: Clara no tiene permiso para el micrófono o el reconocimiento de voz. Puedes darlo en la app Ajustes del iPhone › Clara.",

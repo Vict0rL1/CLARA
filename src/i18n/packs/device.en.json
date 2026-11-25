@@ -1,6 +1,5 @@
 {
   "device.voice.hint": "Dictation happens on this iPhone: the audio never leaves the phone. When you stop, Clara proposes and nothing is recorded until you confirm.",
-  "device.voice.listening": "Listening on this iPhone…",
   "device.voice.unavailable.unsupportedLocale": "Dictation: this iPhone does not recognize Clara's language.",
   "device.voice.unavailable.noOnDevice": "Dictation: this iPhone can't recognize Clara's language offline, and Clara only uses dictation that happens on the phone.",
   "device.voice.unavailable.denied": "Dictation: Clara doesn't have permission for the microphone or speech recognition. You can allow it in the iPhone Settings app › Clara.",
