@@ -26,6 +26,15 @@ reglas de este documento cambian, **cada una solo desde la fase que la implement
   `rateSource: 'boc'`); caché local acotada solo de lo definitivo, fuera de las copias. Orden: tasa del viaje → banco →
   cargo real; sin conexión o sin tasa, nada se inventa (las capturas quedan como propuesta).
 
+Fase 4 (decisiones 183–186): «Registrar desde texto en Clara» solo añade el texto de un aviso del banco a la cola
+(`bank_text`, sin importe); `domain/bankAlert.ts` lo lee con formatos REALES (`BANK_ALERT_PATTERNS`, vacía hasta tener
+ejemplos de Victor; nunca se inventa el formato de un banco) y, si no lo conoce, queda como propuesta `unparsed` con,
+como mucho, la sugerencia del único importe escrito con su moneda. El texto (`review.rawText`) solo vive mientras espera
+revisión: el historial (`historyValue`) y la papelera (`withoutCaptureText`) no lo guardan. «Nuevo gasto en Clara» y el
+control (extensión `ClaraWidgets`, fuentes en `ios/ClaraWidgetsSources/`, se crea en Xcode) piden una pantalla por
+nombre (`ClaraScreen`); el plugin `ClaraLaunch` la entrega con `take()` y la web decide la ruta
+(`platform/nativeLaunch.ts`). `nativeProject.test.ts` vigila el proyecto de Xcode sin compilarlo.
+
 Lo nativo tiene tres estados y no se salta ninguno: **escrito**, **compila** (en el Mac de Victor) y **probado en
 iPhone**. Nunca se dice que algo funciona en el iPhone si Victor no lo probó.
 

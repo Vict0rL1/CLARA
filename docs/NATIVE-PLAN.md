@@ -32,10 +32,10 @@ fusiona cuando Victor la haya probado.
 | Fase | Qué | Estado |
 |---|---|---|
 | 0 | Rama, este plan, decisiones 152–163, `CLAUDE.md` | Hecho |
-| 1 | Clara funciona en el iPhone como app nativa | Escrita y probada en navegador con el puente simulado; **pendiente de compilar y probar en el iPhone** (PR #18) |
-| 2 | Los pagos con Apple Pay se registran solos | Pendiente |
-| 3 | Varias monedas y modo viaje | Pendiente |
-| 4 | Pagos sin Apple Pay y registrar en un toque | Pendiente |
+| 1 | Clara funciona en el iPhone como app nativa | Fusionada en `main` (PR #18, 24-nov); **pendiente de compilar y probar en el iPhone** |
+| 2 | Los pagos con Apple Pay se registran solos | Fusionada en `main` (PR #19, 24-nov); **pendiente de compilar y probar en el iPhone** |
+| 3 | Varias monedas y modo viaje | Fusionada en `main` (PR #20, 24-nov); **pendiente de compilar y probar en el iPhone** |
+| 4 | Pagos sin Apple Pay y registrar en un toque | Escrita (rama `feat/ios-fase-4`); lo web probado en navegador; sin compilar. Formatos de banco: esperando ejemplos reales |
 | 5 | Voz, recibos e IA en el iPhone | Pendiente |
 | 6 | Widgets, Siri y avisos reales | Pendiente |
 | 7 | Préstamos y gastos compartidos | Pendiente |
@@ -186,6 +186,21 @@ pantallas y textos va en código y paquetes diferidos):
    nativo). Opcional y apagado por defecto; solo la serie y dos fechas; caché local; aviso «Tasa indicativa del Banco
    de Canadá del <fecha>» en el formulario, «Por revisar» y la vista del viaje; las capturas sin tasa del viaje se
    convierten con ella. Sin probar en el iPhone (comprobaciones 40–45 de `docs/IOS-NATIVE.md`).
+
+## 4 quinquies. Fase 4: lo hecho (rama `feat/ios-fase-4`, desde `main`)
+
+Informe: `docs/NATIVE-FASE-4.md`. Decisiones 183–186.
+
+1. **Avisos del banco por texto** (decisiones 183 y 184): acción «Registrar desde texto en Clara» (solo transporta el
+   texto), cola sin importe para `bank_text`/`notification`, `domain/bankAlert.ts` con la tabla de formatos VACÍA hasta
+   tener ejemplos reales, propuesta con sugerencia prudente, y el texto fuera del historial y de la papelera.
+2. **Registrar en un toque** (decisión 185): «Nuevo gasto en Clara» (botón de Acción, Tocar atrás, Siri), plugin
+   `ClaraLaunch` y, aparte, el control «Nuevo gasto» en una extensión que se crea en Xcode (fuentes en
+   `ios/ClaraWidgetsSources/`; los widgets de la Fase 6 irán en la misma).
+3. **Alertas de otras apps en iOS 27** (decisión 186): sin API pública documentada; si Atajos ofrece el disparador de
+   notificaciones, sirve la misma acción.
+4. **Falta de Victor:** 3–6 avisos reales de su banco con los números tapados (§4, punto 6), y las comprobaciones 46–57
+   de `docs/IOS-NATIVE.md`.
 
 ## 5. Notas del historial de la rama
 

@@ -8,6 +8,16 @@ Todos los cambios importantes de Clara se anotan aquí. El formato sigue
 
 ### Novedades
 
+- **Avisos del banco por SMS y «Nuevo gasto» en un toque** (Fase 4 nativa; decisiones 183–186, `docs/IOS-NATIVE.md` ›
+  «Fase 4»): la acción «Registrar desde texto en Clara» recibe el SMS de aviso del banco desde una automatización de
+  Atajos. Mientras Clara no conozca el formato de un banco (hacen falta ejemplos reales), cada aviso queda en «Por
+  revisar» como propuesta que no cuenta, con su texto y, si trae un único importe con su moneda, ese importe sugerido.
+  El texto del aviso se borra al registrarlo, confirmarlo o descartarlo: el historial y la papelera ya no lo guardan.
+  Ajustes › Captura automática explica la automatización y ofrece «Probar un aviso» (no guarda nada). «Nuevo gasto en
+  Clara» abre el formulario desde el botón de Acción, Tocar atrás o Siri; el control para el Centro de control queda
+  listo para añadirlo en Xcode. iOS 27 no tiene una API pública para leer las notificaciones de otras apps.
+  **Probado en navegador con un iPhone simulado; el Swift, sin compilar ni probar en un iPhone.**
+
 - **Varias monedas y modo viaje** (Fase 3 nativa; decisiones 175–180, `docs/IOS-NATIVE.md` › «Fase 3»): un movimiento
   puede guardar el importe en la moneda en que se pagó, con la tasa exacta, su fecha y la comisión de la tarjeta; la
   cifra en la moneda del presupuesto sale de un solo redondeo al céntimo y se valida. «Pagado en otra moneda» en el
