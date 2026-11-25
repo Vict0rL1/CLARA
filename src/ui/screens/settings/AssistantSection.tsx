@@ -5,6 +5,8 @@ import { useToday } from '../../../state/hooks'
 import { useData } from '../../../state/store'
 import { Card } from '../../components/common'
 import { Icon } from '../../components/Icon'
+import { DeviceAssistantStatus } from '../../deviceAssistant'
+import { useDeviceAssistant } from '../../useDeviceAssistant'
 import { ocrAvailable } from '../../ocr'
 import { href } from '../../router'
 
@@ -25,6 +27,8 @@ export function AssistantSection() {
   const today = useToday()
   const usage = data.settings.aiUsage?.month === today.slice(0, 7) ? data.settings.aiUsage.count : 0
   const speech = typeof window !== 'undefined' && !!((window as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }).SpeechRecognition ?? (window as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition)
+  // En la app de iPhone, el dictado y los recibos son los del teléfono: los dice «En este iPhone» (Fase 5).
+  const device = useDeviceAssistant()
   return (
     <Card labelledBy="assistant-section-title">
       <h2 id="asistente" className="card__title">
@@ -32,10 +36,11 @@ export function AssistantSection() {
       </h2>
       <ul className="bullets" data-testid="assistant-status">
         <li>{provider.id === 'remote' ? t('assistantSettings.remote', { host: endpointHost() }) : t('assistantSettings.local')}</li>
-        <li>{t(speech ? 'assistantSettings.voiceOn' : 'assistantSettings.voiceOff')}</li>
-        <li>{t(ocrAvailable() ? 'assistantSettings.ocrOn' : 'assistantSettings.ocrOff')}</li>
+        {!device.active && <li>{t(speech ? 'assistantSettings.voiceOn' : 'assistantSettings.voiceOff')}</li>}
+        {!device.active && <li>{t(ocrAvailable() ? 'assistantSettings.ocrOn' : 'assistantSettings.ocrOff')}</li>}
         <li>{t('assistantSettings.usage', { count: usage })}</li>
       </ul>
+      <DeviceAssistantStatus device={device} />
       <p className="note">{t('assistantSettings.note')}</p>
       <a className="btn btn--secondary btn--small" href={href('/asistente?returnTo=/ajustes')}>
         <Icon name="sparkles" size={16} />

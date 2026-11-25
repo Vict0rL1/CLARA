@@ -37,6 +37,10 @@ import weeklyEn from './packs/weekly.en.json'
 import weeklyEs from './packs/weekly.es.json'
 import weeklyFr from './packs/weekly.fr.json'
 import weeklyPt from './packs/weekly.pt.json'
+import deviceEn from './packs/device.en.json'
+import deviceEs from './packs/device.es.json'
+import deviceFr from './packs/device.fr.json'
+import devicePt from './packs/device.pt.json'
 import whatChangedEn from './packs/whatChanged.en.json'
 import whatChangedEs from './packs/whatChanged.es.json'
 import whatChangedFr from './packs/whatChanged.fr.json'
@@ -55,15 +59,16 @@ const ALL: Record<string, Record<string, Record<string, string>>> = {
   weekly: { es: weeklyEs, en: weeklyEn, pt: weeklyPt, fr: weeklyFr },
   fx: { es: fxEs, en: fxEn, pt: fxPt, fr: fxFr },
   periods: { es: periodsEs, en: periodsEn, pt: periodsPt, fr: periodsFr },
+  device: { es: deviceEs, en: deviceEn, pt: devicePt, fr: deviceFr },
 }
 const vars = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort()
 
 describe('paquetes de texto diferidos', () => {
   it('cada paquete tiene las mismas claves en los cuatro idiomas, sin textos vacíos, y ninguna de esas claves sigue en el diccionario principal', async () => {
     const packs = createPackLoader(PACK_URLS, 0, fromDisk)
-    for (const [name, reference] of [['legal', legalEs], ['gallery', galleryEs], ['bankImport', bankImportEs], ['nativeApp', nativeAppEs], ['whatChanged', whatChangedEs], ['shortfall', shortfallEs], ['capture', captureEs], ['weekly', weeklyEs], ['fx', fxEs], ['periods', periodsEs]] as const) {
+    for (const [name, reference] of [['legal', legalEs], ['gallery', galleryEs], ['bankImport', bankImportEs], ['nativeApp', nativeAppEs], ['whatChanged', whatChangedEs], ['shortfall', shortfallEs], ['capture', captureEs], ['weekly', weeklyEs], ['fx', fxEs], ['periods', periodsEs], ['device', deviceEs]] as const) {
       const keys = Object.keys(reference).sort()
-      expect(keys.length).toBe({ legal: 22, gallery: 54, bankImport: 103, nativeApp: 72, whatChanged: 69, shortfall: 67, capture: 107, weekly: 54, fx: 46, periods: 136 }[name])
+      expect(keys.length).toBe({ legal: 22, gallery: 54, bankImport: 103, nativeApp: 72, whatChanged: 69, shortfall: 67, capture: 107, weekly: 54, fx: 46, periods: 136, device: 46 }[name])
       for (const lang of ['es', 'en', 'pt', 'fr'] as const) {
         const { pack, language } = await packs.load(name, lang)
         expect(language).toBe(lang)
@@ -80,8 +85,8 @@ describe('paquetes de texto diferidos', () => {
 
   it('cada paquete e idioma es un archivo JSON propio, fuera del JS inicial', () => {
     const urls = Object.values(PACK_URLS).flatMap((byLang) => Object.values(byLang))
-    expect(new Set(urls).size).toBe(40)
-    for (const name of ['legal', 'gallery', 'bankImport', 'nativeApp', 'whatChanged', 'shortfall', 'capture', 'weekly', 'fx', 'periods'] as const) {
+    expect(new Set(urls).size).toBe(44)
+    for (const name of ['legal', 'gallery', 'bankImport', 'nativeApp', 'whatChanged', 'shortfall', 'capture', 'weekly', 'fx', 'periods', 'device'] as const) {
       for (const lang of ['es', 'en', 'pt', 'fr'] as const) expect(PACK_URLS[name][lang]).toMatch(new RegExp(`${name}\\.${lang}[^/]*\\.json$`))
     }
   })

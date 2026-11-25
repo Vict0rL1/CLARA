@@ -33,9 +33,10 @@ describe('entriesFromDeviceAi', () => {
       ctx,
     )!
     // En el orden del texto, aunque la IA las devuelva al revés.
-    expect(entries.map((e) => [e.amountMinor, e.description, e.categoryId, e.date, e.kind, e.suggestedBy])).toEqual([
-      [450, 'Café', 'dining', '2026-11-25', 'expense', 'deviceAi'],
-      [1800, 'Uber', 'transport', '2026-11-24', 'expense', 'deviceAi'],
+    expect(entries.map((e) => [e.amountMinor, e.description, e.categoryId, e.date, e.kind, e.suggestedBy, e.aiFields])).toEqual([
+      [450, 'Café', 'dining', '2026-11-25', 'expense', 'deviceAi', undefined],
+      // «ayer» lo lee el analizador (fecha detectada): no es un campo de la IA.
+      [1800, 'Uber', 'transport', '2026-11-24', 'expense', 'deviceAi', undefined],
     ])
   })
 
@@ -57,7 +58,7 @@ describe('entriesFromDeviceAi', () => {
     const [e] = entriesFromDeviceAi({ entries: [{ fragment: words, amount: '4.50', description: 'Taxi' }] }, words, ctx)!
     expect([e!.amountMinor, e!.hints.includes('amountWords')]).toEqual([400, true])
     const [n] = entriesFromDeviceAi({ entries: [{ fragment: 'taxi', amount: '4.50' }] }, 'taxi', ctx)!
-    expect([n!.amountMinor, n!.confidence]).toEqual([450, 0.3])
+    expect([n!.amountMinor, n!.confidence, n!.aiFields, n!.hints.includes('noAmount')]).toEqual([450, 0.3, ['amount'], false])
     // Un importe con flotantes raros, separador de miles o demasiados decimales no vale.
     for (const amount of ['4,50', '1,000.00', '4.505', '-3', '4.5e2', 'cuatro']) {
       const [x] = entriesFromDeviceAi({ entries: [{ fragment: 'taxi', amount }] }, 'taxi', ctx)!
@@ -75,6 +76,9 @@ describe('entriesFromDeviceAi', () => {
     expect([e!.categoryId, e!.date, e!.kind]).toEqual(['dining', '2026-11-25', 'expense'])
     const old = entriesFromDeviceAi({ entries: [{ fragment: 'café 4,50', date: '2025-01-01' }] }, 'café 4,50', ctx)!
     expect(old[0]!.date).toBe('2026-11-25')
+    // Una fecha válida que el texto no dice la pone la IA: se marca y desaparece «fecha: hoy».
+    const [d] = entriesFromDeviceAi({ entries: [{ fragment: 'café 4,50', date: '2026-11-20' }] }, 'café 4,50', ctx)!
+    expect([d!.date, d!.aiFields, d!.hints.includes('assumedToday')]).toEqual(['2026-11-20', ['date'], false])
     const withRule = { ...ctx, rules: [{ pattern: 'cafe', kind: 'expense' as const, categoryId: 'groceries' }] }
     expect(entriesFromDeviceAi({ entries: [{ fragment: 'café 4,50', category: 'dining' }] }, 'café 4,50', withRule)![0]!.categoryId).toBe('groceries')
   })
@@ -105,7 +109,7 @@ describe('receiptFromDeviceAi', () => {
   const OCR = 'CAFE CENTRAL\n24/11/2026\nCAPUCCINO 4.25\nPAGADO CON TARJETA 4.25\nGRACIAS'
 
   it('acepta el total solo si cita su línea y el importe está en ella', () => {
-    expect(receiptFromDeviceAi({ total: '4.25', fragment: 'PAGADO CON TARJETA 4.25', date: '2026-11-24', merchant: 'Café Central' }, OCR, ctx)).toEqual({ totalMinor: 425, date: '2026-11-24', merchant: 'Café Central' })
+    expect(receiptFromDeviceAi({ total: '4.25', fragment: 'PAGADO CON TARJETA 4.25', date: '2026-11-24', merchant: 'Café Central' }, OCR, ctx)).toEqual({ totalMinor: 425, fragment: 'PAGADO CON TARJETA 4.25', date: '2026-11-24', merchant: 'Café Central' })
   })
 
   it('un total que no está en la línea citada, o una línea que no está en el recibo, no vale', () => {
@@ -116,6 +120,6 @@ describe('receiptFromDeviceAi', () => {
   })
 
   it('una fecha futura o un comercio vacío no se usan', () => {
-    expect(receiptFromDeviceAi({ total: '4.25', fragment: 'CAPUCCINO 4.25', date: '2027-01-01', merchant: '  ' }, OCR, ctx)).toEqual({ totalMinor: 425 })
+    expect(receiptFromDeviceAi({ total: '4.25', fragment: 'CAPUCCINO 4.25', date: '2027-01-01', merchant: '  ' }, OCR, ctx)).toEqual({ totalMinor: 425, fragment: 'CAPUCCINO 4.25' })
   })
 })

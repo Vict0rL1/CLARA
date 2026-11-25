@@ -12,6 +12,10 @@ import captureEn from './capture.en.json'
 import captureEs from './capture.es.json'
 import captureFr from './capture.fr.json'
 import capturePt from './capture.pt.json'
+import deviceEn from './device.en.json'
+import deviceEs from './device.es.json'
+import deviceFr from './device.fr.json'
+import devicePt from './device.pt.json'
 import fxEn from './fx.en.json'
 import fxEs from './fx.es.json'
 import fxFr from './fx.fr.json'
@@ -55,6 +59,7 @@ export type CapturePackKey = keyof typeof captureEs
 export type WeeklyPackKey = keyof typeof weeklyEs
 export type FxPackKey = keyof typeof fxEs
 export type PeriodsPackKey = keyof typeof periodsEs
+export type DevicePackKey = keyof typeof deviceEs
 
 /** `true` solo si A y B tienen las mismas claves (ninguna falta en ninguno de los dos). */
 type SameKeys<A, B> = Record<keyof A, string> extends Record<keyof B, string> ? (Record<keyof B, string> extends Record<keyof A, string> ? true : never) : never
@@ -91,4 +96,7 @@ export const PACK_KEY_CHECKS: [
   SameKeys<typeof periodsEs, typeof periodsEn>,
   SameKeys<typeof periodsEs, typeof periodsPt>,
   SameKeys<typeof periodsEs, typeof periodsFr>,
-] = [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true]
+  SameKeys<typeof deviceEs, typeof deviceEn>,
+  SameKeys<typeof deviceEs, typeof devicePt>,
+  SameKeys<typeof deviceEs, typeof deviceFr>,
+] = [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true]

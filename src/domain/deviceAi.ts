@@ -62,11 +62,13 @@ export function entriesFromDeviceAi(raw: unknown, source: string, ctx: ParseCont
     const local = parseEntry(fragment, ctx)
     let amountMinor = local.amountMinor
     let confidence = Math.max(local.confidence, 0.5)
+    const aiFields: ('amount' | 'date')[] = []
     if (amountMinor === null) {
       const fromAi = typeof r.amount === 'string' ? canonicalDecimalToMinor(r.amount.trim(), ctx.currency) : null
       if (fromAi !== null) {
         amountMinor = fromAi
         confidence = 0.3
+        aiFields.push('amount')
       } else confidence = local.confidence
     }
     const kind = local.kind === 'transfer' ? 'transfer' : r.kind === 'income' || r.kind === 'expense' ? r.kind : local.kind
@@ -74,10 +76,15 @@ export function entriesFromDeviceAi(raw: unknown, source: string, ctx: ParseCont
     const allowed = new Set(ctx.categories.filter((c) => c.kind === kind).map((c) => c.id))
     const aiCategory = typeof r.category === 'string' && allowed.has(r.category) ? r.category : undefined
     const categoryId = own ? local.categoryId : (aiCategory ?? (local.categoryId && allowed.has(local.categoryId) ? local.categoryId : undefined))
-    const date = local.hints.includes('dateDetected') ? local.date : (validDate(r.date, ctx.today) ?? local.date)
+    const aiDate = local.hints.includes('dateDetected') ? undefined : validDate(r.date, ctx.today)
+    const date = aiDate ?? local.date
+    if (aiDate) aiFields.push('date')
     const merchant = local.merchant ?? text(r.merchant, MERCHANT_MAX)
+    // Las pistas del analizador que la IA dejó sin efecto («sin importe», «fecha: hoy») no se enseñan: lo dice `aiFields`.
+    const hints = local.hints.filter((h) => !(h === 'noAmount' && aiFields.includes('amount')) && !(h === 'assumedToday' && aiDate))
     const entry: ParsedEntry = {
       ...local,
+      hints,
       kind,
       amountMinor,
       description: text(r.description, DESCRIPTION_MAX) ?? local.description,
@@ -85,6 +92,7 @@ export function entriesFromDeviceAi(raw: unknown, source: string, ctx: ParseCont
       date,
       confidence: Math.round(Math.min(confidence, 0.85) * 100) / 100,
       suggestedBy: 'deviceAi',
+      ...(aiFields.length ? { aiFields } : {}),
     }
     if (categoryId) entry.categoryId = categoryId
     else delete entry.categoryId
@@ -109,7 +117,15 @@ export function chooseEntries(raw: unknown, source: string, ctx: ParseContext): 
  * Para un recibo que el lector de siempre no entendió del todo: el total que propone la IA, solo si cita la línea del
  * recibo donde está (`fragment`) y ese importe está de verdad en esa línea. Fecha y comercio, con las mismas reglas.
  */
-export function receiptFromDeviceAi(raw: unknown, ocrText: string, ctx: ParseContext): { totalMinor: number; date?: LocalDate; merchant?: string } | null {
+export interface DeviceAiReceipt {
+  totalMinor: number
+  /** La línea del recibo que la IA citó para el total (está en el texto leído). */
+  fragment: string
+  date?: LocalDate
+  merchant?: string
+}
+
+export function receiptFromDeviceAi(raw: unknown, ocrText: string, ctx: ParseContext): DeviceAiReceipt | null {
   if (!raw || typeof raw !== 'object') return null
   const r = raw as Record<string, unknown>
   const fragment = text(r.fragment, FRAGMENT_MAX)
@@ -118,5 +134,5 @@ export function receiptFromDeviceAi(raw: unknown, ocrText: string, ctx: ParseCon
   if (total === null || !amountsInLine(fragment, currencyDigits(ctx.currency as CurrencyCode)).includes(total)) return null
   const date = validDate(r.date, ctx.today)
   const merchant = text(r.merchant, MERCHANT_MAX)
-  return { totalMinor: total, ...(date ? { date } : {}), ...(merchant ? { merchant } : {}) }
+  return { totalMinor: total, fragment, ...(date ? { date } : {}), ...(merchant ? { merchant } : {}) }
 }

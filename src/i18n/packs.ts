@@ -32,6 +32,10 @@ import captureEnUrl from './packs/capture.en.json?url'
 import captureEsUrl from './packs/capture.es.json?url'
 import captureFrUrl from './packs/capture.fr.json?url'
 import capturePtUrl from './packs/capture.pt.json?url'
+import deviceEnUrl from './packs/device.en.json?url'
+import deviceEsUrl from './packs/device.es.json?url'
+import deviceFrUrl from './packs/device.fr.json?url'
+import devicePtUrl from './packs/device.pt.json?url'
 import fxEnUrl from './packs/fx.en.json?url'
 import fxEsUrl from './packs/fx.es.json?url'
 import fxFrUrl from './packs/fx.fr.json?url'
@@ -65,7 +69,7 @@ import whatChangedEsUrl from './packs/whatChanged.es.json?url'
 import whatChangedFrUrl from './packs/whatChanged.fr.json?url'
 import whatChangedPtUrl from './packs/whatChanged.pt.json?url'
 
-export type PackName = 'legal' | 'gallery' | 'bankImport' | 'nativeApp' | 'whatChanged' | 'shortfall' | 'capture' | 'weekly' | 'fx' | 'periods'
+export type PackName = 'legal' | 'gallery' | 'bankImport' | 'nativeApp' | 'whatChanged' | 'shortfall' | 'capture' | 'weekly' | 'fx' | 'periods' | 'device'
 type Pack = Record<string, string>
 /** Dirección del archivo JSON de cada paquete e idioma. */
 export type PackUrls = Record<PackName, Record<Language, string>>
@@ -84,6 +88,8 @@ export const PACK_URLS: PackUrls = {
   fx: { es: fxEsUrl, en: fxEnUrl, pt: fxPtUrl, fr: fxFrUrl },
   // Presupuestos por periodo y viajes (cuerpo de las pantallas; las cabeceras siguen en el diccionario principal).
   periods: { es: periodsEsUrl, en: periodsEnUrl, pt: periodsPtUrl, fr: periodsFrUrl },
+  // Dictado, recibos e IA del iPhone (Fase 5): solo se pide dentro de la app (asistente y Ajustes › Asistente).
+  device: { es: deviceEsUrl, en: deviceEnUrl, pt: devicePtUrl, fr: deviceFrUrl },
 }
 
 /** Una carga que no responde en este tiempo se cancela y se da por fallida (la pantalla ofrece reintentar). `0` = sin plazo (solo pruebas). */
@@ -258,17 +264,20 @@ export type PackState =
 /**
  * Estado del paquete en el idioma activo. Las claves del paquete no están en `MessageKey`; lo que no esté en el
  * paquete cae al diccionario principal. La pantalla no dibuja ninguna clave mientras no esté `ready`.
+ *
+ * `enabled = false` (una pantalla que solo necesita el paquete en algunos casos, como el asistente fuera de la app de
+ * iPhone): no se pide nada y se queda en `loading`.
  */
-export function usePack(name: PackName): PackState {
+export function usePack(name: PackName, enabled = true): PackState {
   const ui = useT()
   const { language } = ui
   const id = `${name}:${language}`
   const [attempt, setAttempt] = useState(0)
   const [result, setResult] = useState<{ id: string; attempt: number; loaded: LoadedPack | null } | null>(null)
-  const hit = packs.cached(name, language)
+  const hit = enabled ? packs.cached(name, language) : null
   const cachedNow = hit !== null
   useEffect(() => {
-    if (cachedNow) return
+    if (cachedNow || !enabled) return
     let alive = true
     packs.load(name, language).then(
       (loaded) => {
@@ -281,12 +290,12 @@ export function usePack(name: PackName): PackState {
     return () => {
       alive = false
     }
-  }, [id, name, language, attempt, cachedNow])
+  }, [id, name, language, attempt, cachedNow, enabled])
   const retry = useCallback(() => setAttempt((a) => a + 1), [])
   // Mientras un reintento está en curso, un resultado ya listo de este paquete (p. ej. el respaldo en español) se sigue
   // mostrando: reintentar nunca vacía la pantalla ni pierde lo que la persona tenía abierto (revisión, B4). Un fallo
   // anterior sí pasa a «cargando».
-  const loaded: LoadedPack | null | undefined = hit ?? (result && result.id === id ? (result.attempt === attempt ? result.loaded : (result.loaded ?? undefined)) : undefined)
+  const loaded: LoadedPack | null | undefined = !enabled ? undefined : (hit ?? (result && result.id === id ? (result.attempt === attempt ? result.loaded : (result.loaded ?? undefined)) : undefined))
   return useMemo<PackState>(() => {
     if (loaded === undefined) return { status: 'loading', retry }
     if (loaded === null) return { status: 'failed', retry }

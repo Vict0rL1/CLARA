@@ -12,7 +12,12 @@ import { recordAiUsage, saveConfirmedEntries, type ConfirmedEntry } from '../../
 import { tripAmountFromText } from '../../domain/trips'
 import { feeLabel, rateLabel } from '../fxText'
 import { parseReceiptText } from '../../domain/receipt'
-import { compressReceipt, ocrAvailable, recognizeText } from '../ocr'
+import { chooseEntries, receiptFromDeviceAi } from '../../domain/deviceAi'
+import { base64Blob, compressReceipt, ocrAvailable, recognizeText, type OcrResult } from '../ocr'
+import { isNativeIOS, nativeServices } from '../../platform'
+import { DeviceAiOutcome, DeviceAssistantNotes, DeviceLineNotes, type AiReceiptNotes } from '../deviceAssistant'
+import { useDeviceAssistant } from '../useDeviceAssistant'
+import { useNativeServices } from '../useNativeServices'
 import { resolveCategories } from '../../domain/categories'
 import { newId } from '../../domain/ids'
 import { parseMoney, withCurrencyMark, withCurrencyMarks, type ParseMoneyResult } from '../../domain/money'
@@ -57,6 +62,14 @@ interface Line {
   receiptUri?: string
   /** La persona decidió vincularla con el pago programado que coincide (revisión). */
   linked?: boolean
+  /** Recibo: lo que puso la IA del iPhone (Fase 5), para decirlo en la línea. */
+  aiReceipt?: AiReceiptNotes
+}
+
+/** Lo dictado detrás de lo que ya había escrito, en una línea nueva (como el dictado de la web). */
+function joinDictated(base: string, dictated: string): string {
+  if (!dictated) return base
+  return base.trim() ? `${base.replace(/\s+$/, '')}\n${dictated}` : dictated
 }
 
 /**
@@ -106,7 +119,13 @@ export function Assistant({ route }: { route: Route }) {
   const [truncated, setTruncated] = useState(0)
   const [listening, setListening] = useState(false)
   const recognizer = useRef<InstanceType<SpeechCtor> | null>(null)
-  const speech = useMemo(() => speechApi(), [])
+  // En la app de iPhone no se usa el dictado de la web (podría enviar el audio a un servicio): solo el del iPhone, en el
+  // teléfono (Fase 5, decisión 187).
+  const speech = useMemo(() => (isNativeIOS() ? null : speechApi()), [])
+  const native = useNativeServices()
+  const device = useDeviceAssistant()
+  const [voiceError, setVoiceError] = useState<'busy' | 'noOnDevice' | 'denied' | 'failed' | null>(null)
+  const [aiOutcome, setAiOutcome] = useState<'deviceAi' | 'aiFailed' | 'aiFewer' | null>(null)
   const categories = useMemo(() => resolveCategories(data).filter((c) => !c.archived), [data])
   const learned = useMemo(() => learnCategories(data), [data])
   const [accountId, setAccountId] = useState(() => activeAccounts(data.accounts).find((a) => a.id === lastUsedAccount(data, 'expense'))?.id ?? activeAccounts(data.accounts).find(isBudgetAccount)?.id ?? activeAccounts(data.accounts)[0]?.id ?? data.accounts[0]?.id ?? '')
@@ -116,7 +135,52 @@ export function Assistant({ route }: { route: Route }) {
   const photoRef = useRef<HTMLInputElement>(null)
   const parseCtx = () => ({ today, currency: data.settings.currency, language, categories: categories.map((c) => ({ id: c.id, kind: c.kind })), learned, rules: data.categoryRules })
 
-  /** Foto de un recibo: se comprime, se lee el texto en el dispositivo (si el navegador puede) y se propone UNA línea para revisar. */
+  /**
+   * La línea de un recibo: el lector de siempre busca total, fecha y comercio en el texto leído. En la app de iPhone,
+   * con la IA encendida, lo que el lector no encontró con seguridad lo puede proponer la IA, siempre comprobado contra
+   * el texto del recibo (`receiptFromDeviceAi`): el total solo si cita su línea y el importe está en ella.
+   */
+  const receiptLine = async (receiptUri: string, ocr: OcrResult | null, raw: string): Promise<Line> => {
+    const ctx = parseCtx()
+    const receipt = ocr ? parseReceiptText(ocr.text, ctx) : null
+    const sureTotal = !!receipt && receipt.totalMinor !== null && receipt.amountsMinor.length > 0 && receipt.confidence >= 0.5
+    const ai = ocr && ocr.text.trim() && device.aiReady && native.deviceAi && !(sureTotal && receipt?.date && receipt.merchant) ? receiptFromDeviceAi(await native.deviceAi.receipt(ocr.text, today), ocr.text, ctx) : null
+    const aiTotal = ai && !sureTotal ? ai : null
+    const aiDate = ai?.date && !receipt?.date ? ai.date : undefined
+    const aiMerchant = ai?.merchant && !receipt?.merchant ? ai.merchant : undefined
+    const totalMinor = aiTotal ? aiTotal.totalMinor : (receipt?.totalMinor ?? null)
+    const date = receipt?.date ?? aiDate
+    const merchant = receipt?.merchant ?? aiMerchant
+    const hints: ParsedEntry['hints'] = []
+    if (!ocr) hints.push('ocrUnavailable')
+    else if (aiTotal) {
+      // El total lo propuso la IA citando su línea: lo dice la nota de la IA en la línea.
+    } else if (receipt?.totalMinor === null) hints.push('receiptNoAmount')
+    else if (sureTotal) hints.push('receiptTotal')
+    else hints.push('receiptLargest')
+    if (receipt?.date) hints.push('receiptDate')
+    else if (!aiDate) hints.push('assumedToday')
+    if (receipt?.merchant) hints.push('receiptMerchant')
+    const aiReceipt: AiReceiptNotes = { ...(aiTotal ? { total: aiTotal.fragment } : {}), ...(aiDate ? { date: true } : {}), ...(aiMerchant ? { merchant: true } : {}) }
+    const byAi = Object.keys(aiReceipt).length > 0
+    const entry: ParsedEntry = {
+      kind: 'expense',
+      amountMinor: totalMinor,
+      description: merchant ?? t('assistant.photoDefaultNote'),
+      ...(merchant ? { merchant } : {}),
+      ...(receipt?.categoryId ? { categoryId: receipt.categoryId } : {}),
+      date: date ?? today,
+      confidence: aiTotal ? 0.5 : (receipt?.confidence ?? 0),
+      raw,
+      hints,
+      ...(receipt?.foreignCurrency ? { foreignCurrency: receipt.foreignCurrency } : {}),
+      ...(receipt?.currencyConflict ? { currencyConflict: receipt.currencyConflict } : {}),
+      ...(byAi ? { suggestedBy: 'deviceAi' as const } : {}),
+    }
+    return { id: newId(), entry, kind: 'expense', amountText: initialAmountText(entry, fmt), categoryId: entry.categoryId ?? 'other_expense', date: entry.date, note: entry.description, receiptUri, ...(byAi ? { aiReceipt } : {}) }
+  }
+
+  /** Foto de un recibo: se comprime, se lee el texto en el dispositivo (si se puede) y se propone UNA línea para revisar. */
   const onPhoto = async (file: File | undefined) => {
     if (photoRef.current) photoRef.current.value = ''
     if (!file || photoBusy) return
@@ -127,34 +191,44 @@ export function Assistant({ route }: { route: Route }) {
         toast({ message: t('assistant.photoTooBig'), tone: 'critical' })
         return
       }
-      const ocr = await recognizeText(file)
-      const receipt = ocr ? parseReceiptText(ocr.text, parseCtx()) : null
-      const hints: ParsedEntry['hints'] = []
-      if (!ocr) hints.push('ocrUnavailable')
-      else if (receipt?.totalMinor === null) hints.push('receiptNoAmount')
-      else if (receipt && receipt.amountsMinor.length > 0 && receipt.confidence >= 0.5) hints.push('receiptTotal')
-      else hints.push('receiptLargest')
-      if (receipt?.date) hints.push('receiptDate')
-      else hints.push('assumedToday')
-      if (receipt?.merchant) hints.push('receiptMerchant')
-      const entry: ParsedEntry = {
-        kind: 'expense',
-        amountMinor: receipt?.totalMinor ?? null,
-        description: receipt?.merchant ?? t('assistant.photoDefaultNote'),
-        ...(receipt?.merchant ? { merchant: receipt.merchant } : {}),
-        ...(receipt?.categoryId ? { categoryId: receipt.categoryId } : {}),
-        date: receipt?.date ?? today,
-        confidence: receipt?.confidence ?? 0,
-        raw: t('assistant.photoRaw', { name: file.name || 'foto' }),
-        hints,
-        ...(receipt?.foreignCurrency ? { foreignCurrency: receipt.foreignCurrency } : {}),
-        ...(receipt?.currencyConflict ? { currencyConflict: receipt.currencyConflict } : {}),
-      }
-      const line: Line = { id: newId(), entry, kind: 'expense', amountText: initialAmountText(entry, fmt), categoryId: entry.categoryId ?? 'other_expense', date: entry.date, note: entry.description, receiptUri }
+      const ocr = await recognizeText(file, language)
+      const line = await receiptLine(receiptUri, ocr, t('assistant.photoRaw', { name: file.name || 'foto' }))
       setLines((ls) => [...(ls ?? []), line])
       setIssues([])
     } catch {
       toast({ message: t('assistant.photoFailed'), tone: 'critical' })
+    } finally {
+      setPhotoBusy(false)
+    }
+  }
+
+  /** App de iPhone: la cámara de documentos lee hasta 5 recibos seguidos; cada uno es una línea para revisar. */
+  const onScan = async () => {
+    const receipts = native.receipts
+    const dt = device.text
+    if (!receipts || !dt || photoBusy) return
+    setPhotoBusy(true)
+    try {
+      const scan = await receipts.scan(language)
+      const added: Line[] = []
+      let tooBig = 0
+      for (const [i, page] of scan.pages.entries()) {
+        const receiptUri = await compressReceipt(base64Blob(page.image, 'image/jpeg'))
+        if (!receiptUri) {
+          tooBig++
+          continue
+        }
+        added.push(await receiptLine(receiptUri, page.text, t('assistant.photoRaw', { name: dt('device.scan.raw', { n: i + 1 }) })))
+      }
+      if (added.length) {
+        setLines((ls) => [...(ls ?? []), ...added])
+        setIssues([])
+      }
+      if (scan.skipped > 0) toast({ message: dt('device.scan.skipped', { count: scan.skipped }), tone: 'info' })
+      if (tooBig > 0) toast({ message: dt('device.scan.tooBig'), tone: 'critical' })
+    } catch (error) {
+      const reason = (error as { reason?: unknown }).reason
+      toast({ message: reason === 'unavailable' ? dt('device.scan.error.unavailable', { photo: t('assistant.photo') }) : reason === 'busy' ? dt('device.scan.error.busy') : dt('device.scan.error.failed'), tone: 'critical' })
     } finally {
       setPhotoBusy(false)
     }
@@ -165,14 +239,17 @@ export function Assistant({ route }: { route: Route }) {
     setBusy(true)
     const remoteGate = gate('aiRemote', data.settings, { today, devMode: DEV_MODE })
     const active = provider.id === 'remote' && remoteGate.allowed ? provider : localProvider
-    const entries = await active.parseText(input, {
-      today,
-      currency: data.settings.currency,
-      language,
-      categories: categories.map((c) => ({ id: c.id, kind: c.kind })),
-      learned,
-      rules: data.categoryRules,
-    })
+    const ctx = parseCtx()
+    // App de iPhone con la IA encendida (y sin proveedor remoto): propone la IA del teléfono y se comprueba todo contra
+    // el texto; si falla, tarda o propone menos, el analizador de siempre (Fase 5, decisión 189).
+    let entries: ParsedEntry[]
+    let outcome: typeof aiOutcome = null
+    if (active === localProvider && device.aiReady && native.deviceAi) {
+      const chosen = chooseEntries(await native.deviceAi.extract(input, today, categories.map((c) => c.id)), input, ctx)
+      entries = chosen.entries
+      outcome = chosen.by === 'deviceAi' ? 'deviceAi' : chosen.reason
+    } else entries = await active.parseText(input, ctx)
+    setAiOutcome(outcome)
     setBusy(false)
     setIssues([])
     const total = countEntries(input)
@@ -308,22 +385,29 @@ export function Assistant({ route }: { route: Route }) {
   // `prefers-reduced-motion` una barra fija. Si el navegador no da micrófono, solo el tiempo.
   const [voiceLevel, setVoiceLevel] = useState(0)
   const [elapsed, setElapsed] = useState(0)
-  const audio = useRef<{ ctx: AudioContext; stream: MediaStream; frame: number; timer: number } | null>(null)
+  const audio = useRef<{ ctx?: AudioContext; stream?: MediaStream; frame: number; timer: number } | null>(null)
   const reducedMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  // El dictado del iPhone no da nivel de voz: barra fija, como con movimiento reducido.
+  const staticMeter = reducedMotion || !speech
   const stopMeter = () => {
     const a = audio.current
     if (!a) return
     cancelAnimationFrame(a.frame)
     window.clearInterval(a.timer)
-    a.stream.getTracks().forEach((track) => track.stop())
-    void a.ctx.close()
+    a.stream?.getTracks().forEach((track) => track.stop())
+    void a.ctx?.close()
     audio.current = null
     setVoiceLevel(0)
     setElapsed(0)
   }
-  const startMeter = async () => {
+  /** `level = false` (dictado del iPhone): solo el tiempo; el micrófono lo usa el iPhone y la web no lo abre. */
+  const startMeter = async (level = true) => {
     const started = Date.now()
     const timer = window.setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 500)
+    if (!level) {
+      audio.current = { frame: 0, timer }
+      return
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const ctx = new AudioContext()
@@ -373,6 +457,57 @@ export function Assistant({ route }: { route: Route }) {
     void startMeter()
     r.start()
   }
+
+  // Dictado del iPhone (Fase 5): lo reconocido aparece mientras se habla; al terminar se analiza (solo vista previa).
+  const dictationRun = useRef(0)
+  const dictationBase = useRef('')
+  const dictating = useRef(false)
+  const finishDeviceVoice = (run: number, dictated: string) => {
+    if (dictationRun.current !== run) return
+    dictationRun.current++
+    dictating.current = false
+    setListening(false)
+    stopMeter()
+    const joined = joinDictated(dictationBase.current, dictated)
+    setText(joined)
+    if (dictated) void analyze(joined)
+  }
+  const toggleDeviceVoice = async () => {
+    const dictation = native.dictation
+    const voice = device.voice
+    if (!dictation || voice?.available !== true) return
+    if (listening) {
+      const run = dictationRun.current
+      finishDeviceVoice(run, await dictation.stop())
+      return
+    }
+    const run = ++dictationRun.current
+    dictationBase.current = text
+    setVoiceError(null)
+    try {
+      await dictation.start(
+        voice.locale,
+        (partial) => {
+          if (dictationRun.current === run) setText(joinDictated(dictationBase.current, partial))
+        },
+        (dictated) => finishDeviceVoice(run, dictated),
+      )
+    } catch (error) {
+      const reason = (error as { reason?: unknown }).reason
+      setVoiceError(reason === 'busy' || reason === 'noOnDevice' || reason === 'denied' ? reason : 'failed')
+      return
+    }
+    if (dictationRun.current !== run) return
+    dictating.current = true
+    setListening(true)
+    void startMeter(false)
+  }
+  useEffect(
+    () => () => {
+      if (dictating.current) void nativeServices().dictation?.stop()
+    },
+    [],
+  )
 
   const level = (c: number) => (c >= 0.7 ? 'high' : c >= 0.4 ? 'medium' : 'low')
   const lineError = (i: number, field: string) => issues.find((x) => x.path === `entries[${i}].${field}`)
@@ -427,11 +562,21 @@ export function Assistant({ route }: { route: Route }) {
                 {listening ? t('assistant.voiceStop') : t('assistant.voice')}
               </SecondaryButton>
             ) : null}
+            {device.voice?.available === true && device.text ? (
+              <SecondaryButton icon="mic" onClick={() => void toggleDeviceVoice()} aria-pressed={listening} data-testid="device-voice">
+                {listening ? t('assistant.voiceStop') : t('assistant.voice')}
+              </SecondaryButton>
+            ) : null}
             <label className={`btn btn--secondary file-button${photoBusy ? ' is-disabled' : ''}`}>
               <Icon name="camera" size={18} />
               {photoBusy ? t('assistant.photoReading') : t('assistant.photo')}
               <input ref={photoRef} type="file" accept="image/*" capture="environment" className="sr-only" disabled={photoBusy} onChange={(e) => void onPhoto(e.target.files?.[0])} data-testid="photo-input" />
             </label>
+            {device.scanner && device.text ? (
+              <SecondaryButton icon="receipt" onClick={() => void onScan()} disabled={photoBusy} data-testid="device-scan">
+                {device.text('device.scan')}
+              </SecondaryButton>
+            ) : null}
             <TextButton
               onClick={() => {
                 const example = t('assistant.exampleText')
@@ -444,18 +589,19 @@ export function Assistant({ route }: { route: Route }) {
           </div>
           <p className="note">{provider.id === 'remote' ? t('assistant.remote', { endpoint: (import.meta.env as { VITE_AI_ENDPOINT?: string }).VITE_AI_ENDPOINT ?? '' }) : t('assistant.local')}</p>
           {provider.id === 'remote' && !gate('aiRemote', data.settings, { today, devMode: DEV_MODE }).allowed && <p className="note">{t('assistant.aiLimitReached')}</p>}
-          {!speech && <p className="note">{t('assistant.voiceUnavailable')}</p>}
+          {!speech && !device.active && <p className="note">{t('assistant.voiceUnavailable')}</p>}
           <p className="note">{ocrAvailable() ? t('assistant.photoHint') : t('assistant.photoNoOcr')}</p>
           {listening && (
             <div className="voice-meter" role="status" data-testid="voice-meter">
               <span className="voice-meter__time">{t('assistant.recording', { time: `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}` })}</span>
               <div className="voice-meter__track" role="meter" aria-label={t('assistant.levelAria')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(voiceLevel * 100)}>
-                <div className={`voice-meter__bar${reducedMotion ? ' voice-meter__bar--static' : ''}`} style={reducedMotion ? undefined : { width: `${Math.round(voiceLevel * 100)}%` }} />
+                <div className={`voice-meter__bar${staticMeter ? ' voice-meter__bar--static' : ''}`} style={staticMeter ? undefined : { width: `${Math.round(voiceLevel * 100)}%` }} />
               </div>
-              {reducedMotion && <span className="sr-only">{t('assistant.levelStatic')}</span>}
+              {staticMeter && <span className="sr-only">{t('assistant.levelStatic')}</span>}
             </div>
           )}
           {speech && <p className="note">{t('assistant.voiceHint')}</p>}
+          <DeviceAssistantNotes device={device} voiceError={voiceError} />
         </form>
       </Card>
 
@@ -466,6 +612,7 @@ export function Assistant({ route }: { route: Route }) {
             {t('assistant.preview', { count: lines.length })}
           </h2>
           <p className="note">{t('assistant.previewHint')}</p>
+          <DeviceAiOutcome device={device} outcome={aiOutcome} />
           {reviewed && (
             <p className="note" data-testid="review-summary">
               {reviewed.available && reviewed.available.afterMinor !== reviewed.available.beforeMinor
@@ -502,6 +649,7 @@ export function Assistant({ route }: { route: Route }) {
                     <li key={h}>{t(`assistant.hint.${h}` as MessageKey)}</li>
                   ))}
                 </ul>
+                <DeviceLineNotes device={device} entry={l.entry} receipt={l.aiReceipt} />
                 {reviewOf(l.id) && <ProposalReviewView review={reviewOf(l.id)!} linked={!!l.linked} onLink={(v) => update(l.id, { linked: v })} returnTo="/asistente" testId={`review-${i}`} />}
                 <div className="button-row">
                   <a className="btn btn--ghost btn--small" href={href(withQuery('/movimientos/nuevo', { kind: l.kind, amount: amountOf(l).parsed.ok ? (amountOf(l).parsed as { minor: number }).minor : undefined, date: l.date, note: l.note, category: l.categoryId, account: accountId, returnTo: '/asistente' }))}>

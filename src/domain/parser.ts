@@ -42,6 +42,8 @@ export interface ParsedEntry {
   currencyConflict?: readonly [string, string]
   /** Propuesta de la IA del propio iPhone (Fase 5, `deviceAi.ts`): la vista previa lo dice. Nunca se guarda. */
   suggestedBy?: 'deviceAi'
+  /** Lo que puso la IA porque el analizador no lo encontró en el texto: importe y fecha. La vista previa pide comprobarlo. */
+  aiFields?: readonly ('amount' | 'date')[]
 }
 
 export type ParserHint =

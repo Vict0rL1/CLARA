@@ -9,6 +9,7 @@
  * - La plataforma decide CÓMO se hace algo (guardar, vibrar, compartir) y qué se EXPLICA; nunca cambia cifras.
  */
 import type { LocalBackupStore } from '../storage/autoBackup'
+import type { DeviceAi, DeviceDictation, DeviceReceipts } from './nativeAssistant'
 
 type CapacitorGlobal = { isNativePlatform?: () => boolean; getPlatform?: () => string }
 type WithCapacitor = { Capacitor?: CapacitorGlobal }
@@ -39,14 +40,31 @@ export interface NativeServices {
   localBackups?: LocalBackupStore
   /** Copia ya los ajustes de este dispositivo al archivo de la app (`deviceMirror.ts`); tras cambiar el bloqueo. */
   saveDeviceSettings?: () => Promise<boolean>
+  /** Dictado en el iPhone, sin enviar el audio (`nativeAssistant.ts`, Fase 5). */
+  dictation?: DeviceDictation
+  /** Texto de recibos leído en el iPhone (Vision) y cámara de documentos (`nativeAssistant.ts`, Fase 5). */
+  receipts?: DeviceReceipts
+  /** La IA de Apple Intelligence que corre en el iPhone, opcional (`nativeAssistant.ts`, Fase 5). */
+  deviceAi?: DeviceAi
 }
 
-const services: NativeServices = {}
+let services: Readonly<NativeServices> = {}
+const listeners = new Set<() => void>()
 
+/** Cada llamada deja un objeto nuevo y avisa: una pantalla abierta antes de que llegaran se entera (`subscribeNativeServices`). */
 export function provideNativeServices(provided: NativeServices): void {
-  Object.assign(services, provided)
+  services = { ...services, ...provided }
+  for (const listener of [...listeners]) listener()
 }
 
 export function nativeServices(): Readonly<NativeServices> {
   return services
+}
+
+/** Para `useSyncExternalStore`: avisa cuando llegan servicios nuevos. Devuelve cómo dejar de escuchar. */
+export function subscribeNativeServices(listener: () => void): () => void {
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+  }
 }
