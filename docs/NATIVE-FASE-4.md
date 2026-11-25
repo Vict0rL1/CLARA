@@ -138,8 +138,9 @@ Resultados de la verificación final: ver §7.
 En este entorno (Linux, Node 22, Chromium de Playwright), sobre `feat/ios-fase-4`:
 
 - `npm run typecheck`, `npm run lint` y `npm run lint:i18n`: en verde.
-- `npm test`: 1 501 pasan y 1 omitida tras el bloque de dominio (154 archivos); después se añadieron 9 de la
-  plataforma, en verde (`src/platform`: 38 de 38).
+- `npm test`: 1 510 pasan y 1 omitida (156 archivos). La primera subida falló en CI por una cifra de
+  `src/i18n/packs.test.ts` que no actualicé: el paquete `capture` pasó de 81 a 107 claves (las 26 de esta fase). Lo
+  corrige el commit siguiente; desde entonces, toda la batería en verde.
 - Navegador, lo que toca esta fase (app simulada, «Por revisar», guardas de maquetación) en celular y celular 320 px:
   140 de 140.
 - `npm run build` y `npm run size`: JS inicial 838,9 KB de 844,6 (+0,7 KB respecto a la Fase 3; lo nuevo se carga
